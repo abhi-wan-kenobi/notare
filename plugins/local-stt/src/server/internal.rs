@@ -9,6 +9,9 @@ use reqwest::StatusCode;
 use tower_http::cors::{self, CorsLayer};
 
 use super::{ServerInfo, ServerStatus};
+#[cfg(feature = "parakeet-onnx")]
+use hypr_parakeet_onnx_model::ParakeetOnnxModel;
+#[cfg(feature = "whisper-cpp")]
 use hypr_whisper_local_model::WhisperModel;
 
 pub enum InternalSTTMessage {
@@ -16,15 +19,48 @@ pub enum InternalSTTMessage {
     ServerError(String),
 }
 
+/// The models the in-process `/v1/listen` server can run. One internal
+/// server exists at a time; each variant maps to a `TranscribeService<E>`
+/// over the matching engine.
+#[derive(Clone)]
+pub enum InternalModel {
+    #[cfg(feature = "whisper-cpp")]
+    Whisper(WhisperModel),
+    #[cfg(feature = "parakeet-onnx")]
+    ParakeetOnnx(ParakeetOnnxModel),
+}
+
+impl InternalModel {
+    fn local_model(&self) -> crate::LocalModel {
+        match self {
+            #[cfg(feature = "whisper-cpp")]
+            InternalModel::Whisper(model) => crate::LocalModel::Whisper(model.clone()),
+            #[cfg(feature = "parakeet-onnx")]
+            InternalModel::ParakeetOnnx(model) => crate::LocalModel::ParakeetOnnx(model.clone()),
+        }
+    }
+
+    /// Path handed to the engine's `TranscribeService`: the model *file*
+    /// for whisper.cpp, the model *directory* for Parakeet ONNX.
+    fn model_path(&self, model_cache_dir: &std::path::Path) -> PathBuf {
+        match self {
+            #[cfg(feature = "whisper-cpp")]
+            InternalModel::Whisper(model) => model_cache_dir.join(model.file_name()),
+            #[cfg(feature = "parakeet-onnx")]
+            InternalModel::ParakeetOnnx(model) => model_cache_dir.join(model.model_dir()),
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct InternalSTTArgs {
-    pub model_type: WhisperModel,
+    pub model_type: InternalModel,
     pub model_cache_dir: PathBuf,
 }
 
 pub struct InternalSTTState {
     base_url: String,
-    model: WhisperModel,
+    model: crate::LocalModel,
     shutdown: tokio::sync::watch::Sender<()>,
     server_task: tokio::task::JoinHandle<()>,
 }
@@ -53,26 +89,44 @@ impl Actor for InternalSTTActor {
             model_cache_dir,
         } = args;
 
-        let model_path = model_cache_dir.join(model_type.file_name());
+        let model_path = model_type.model_path(&model_cache_dir);
+        let on_error = move |err: String| async move {
+            let _ = myself.send_message(InternalSTTMessage::ServerError(err.clone()));
+            (StatusCode::INTERNAL_SERVER_ERROR, err)
+        };
 
-        let whisper_service = HandleError::new(
-            hypr_transcribe_whisper_local::TranscribeService::builder()
-                .model_path(model_path)
-                .build(),
-            move |err: String| async move {
-                let _ = myself.send_message(InternalSTTMessage::ServerError(err.clone()));
-                (StatusCode::INTERNAL_SERVER_ERROR, err)
-            },
+        // Each arm yields the same `Router` type, so the engines can differ.
+        let router = match &model_type {
+            #[cfg(feature = "whisper-cpp")]
+            InternalModel::Whisper(_) => {
+                let service = HandleError::new(
+                    hypr_transcribe_whisper_local::TranscribeService::builder()
+                        .model_path(model_path)
+                        .build(),
+                    on_error,
+                );
+                Router::new().route_service("/v1/listen", service)
+            }
+            #[cfg(feature = "parakeet-onnx")]
+            InternalModel::ParakeetOnnx(_) => {
+                let service = HandleError::new(
+                    hypr_transcribe_core::TranscribeService::<
+                        hypr_parakeet_onnx::LoadedParakeet,
+                    >::builder()
+                    .model_path(model_path)
+                    .build(),
+                    on_error,
+                );
+                Router::new().route_service("/v1/listen", service)
+            }
+        };
+
+        let router = router.layer(
+            CorsLayer::new()
+                .allow_origin(cors::Any)
+                .allow_methods(cors::Any)
+                .allow_headers(cors::Any),
         );
-
-        let router = Router::new()
-            .route_service("/v1/listen", whisper_service)
-            .layer(
-                CorsLayer::new()
-                    .allow_origin(cors::Any)
-                    .allow_methods(cors::Any)
-                    .allow_headers(cors::Any),
-            );
 
         let listener =
             tokio::net::TcpListener::bind(SocketAddr::from((Ipv4Addr::LOCALHOST, 0))).await?;
@@ -93,7 +147,7 @@ impl Actor for InternalSTTActor {
 
         Ok(InternalSTTState {
             base_url,
-            model: model_type,
+            model: model_type.local_model(),
             shutdown: shutdown_tx,
             server_task,
         })
@@ -121,7 +175,7 @@ impl Actor for InternalSTTActor {
                 let info = ServerInfo {
                     url: Some(state.base_url.clone()),
                     status: ServerStatus::Ready,
-                    model: Some(crate::LocalModel::Whisper(state.model.clone())),
+                    model: Some(state.model.clone()),
                 };
 
                 if let Err(e) = reply_port.send(info) {

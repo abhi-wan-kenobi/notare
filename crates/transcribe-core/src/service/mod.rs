@@ -1,5 +1,7 @@
 mod batch;
 mod message;
+#[cfg(test)]
+pub(crate) mod mock;
 mod recorded;
 mod response;
 mod streaming;
@@ -10,7 +12,8 @@ pub use streaming::*;
 use std::path::Path;
 use std::time::Duration;
 
-use hypr_transcribe_core::TARGET_SAMPLE_RATE;
+use crate::TARGET_SAMPLE_RATE;
+use crate::engine::{EngineSegment, SttEngine, SttEngineSession};
 use owhisper_interface::ListenParams;
 use owhisper_interface::stream::{Extra, Metadata, ModelInfo};
 
@@ -29,18 +32,18 @@ pub(crate) fn parse_listen_params(query: &str) -> Result<ListenParams, serde_htm
     serde_html_form::from_str(query)
 }
 
-pub(crate) fn build_metadata(model_path: &Path) -> Metadata {
+pub(crate) fn build_metadata<E: SttEngine>(model_path: &Path) -> Metadata {
     let model_name = model_path
         .file_stem()
         .and_then(|s| s.to_str())
-        .unwrap_or("whisper-local")
+        .unwrap_or(E::arch())
         .to_string();
 
     Metadata {
         model_info: ModelInfo {
             name: model_name,
             version: "1.0".to_string(),
-            arch: "whisper-local".to_string(),
+            arch: E::arch().to_string(),
         },
         extra: Some(Extra::default().into()),
         ..Default::default()
@@ -57,42 +60,26 @@ pub(crate) fn redemption_time(params: &ListenParams) -> Duration {
         .unwrap_or(DEFAULT_REDEMPTION_TIME)
 }
 
-pub(crate) fn build_model(
-    loaded_model: &hypr_whisper_local::LoadedWhisper,
+pub(crate) fn build_session<E: SttEngine>(
+    engine: &E,
     params: &ListenParams,
-) -> Result<hypr_whisper_local::Whisper, crate::Error> {
-    build_model_with_languages(
-        loaded_model,
-        params
-            .languages
-            .iter()
-            .filter_map(|lang| lang.clone().try_into().ok())
-            .collect(),
-    )
+) -> Result<E::Session, crate::Error> {
+    build_session_with_languages(engine, params.languages.clone())
 }
 
-pub(crate) fn load_model(
-    model_path: &Path,
-) -> Result<hypr_whisper_local::LoadedWhisper, crate::Error> {
-    hypr_whisper_local::LoadedWhisper::builder()
-        .model_path(model_path.to_string_lossy().into_owned())
-        .build()
-        .map_err(crate::Error::from)
+pub(crate) fn build_session_with_languages<E: SttEngine>(
+    engine: &E,
+    languages: Vec<hypr_language::Language>,
+) -> Result<E::Session, crate::Error> {
+    engine.session(languages).map_err(crate::Error::from)
 }
 
-pub(crate) fn build_model_with_languages(
-    loaded_model: &hypr_whisper_local::LoadedWhisper,
-    languages: Vec<hypr_whisper::Language>,
-) -> Result<hypr_whisper_local::Whisper, crate::Error> {
-    loaded_model.session(languages).map_err(crate::Error::from)
-}
-
-pub(crate) fn transcribe_chunk(
-    model: &mut hypr_whisper_local::Whisper,
+pub(crate) fn transcribe_chunk<S: SttEngineSession>(
+    session: &mut S,
     samples: &[f32],
     chunk_start_sec: f64,
 ) -> Result<Vec<Segment>, crate::Error> {
-    let raw_segments = model.transcribe(samples)?;
+    let raw_segments = session.transcribe(samples)?;
     let chunk_duration_sec = samples.len() as f64 / TARGET_SAMPLE_RATE as f64;
 
     Ok(build_chunk_segments(
@@ -103,7 +90,7 @@ pub(crate) fn transcribe_chunk(
 }
 
 fn build_chunk_segments(
-    raw_segments: Vec<hypr_whisper_local::Segment>,
+    raw_segments: Vec<EngineSegment>,
     chunk_start_sec: f64,
     chunk_duration_sec: f64,
 ) -> Vec<Segment> {
@@ -114,20 +101,20 @@ fn build_chunk_segments(
     let raw_segments: Vec<_> = raw_segments
         .into_iter()
         .filter_map(|segment| {
-            let text = segment.text().trim().to_string();
+            let text = segment.text.trim().to_string();
             if text.is_empty() {
                 return None;
             }
 
             Some((
-                segment.start(),
-                segment.end(),
+                segment.start,
+                segment.end,
                 Segment {
                     text,
                     start: 0.0,
                     duration: 0.0,
-                    confidence: segment.confidence() as f64,
-                    language: segment.language().map(|value| value.to_string()),
+                    confidence: segment.confidence,
+                    language: segment.language.clone(),
                 },
             ))
         })
@@ -276,21 +263,19 @@ mod tests {
     fn preserves_multiple_segments_with_normalized_timings() {
         let segments = build_chunk_segments(
             vec![
-                hypr_whisper_local::Segment {
+                EngineSegment {
                     text: "hello".to_string(),
                     language: Some("en".to_string()),
                     start: 0.0,
                     end: 1.0,
                     confidence: 0.8,
-                    ..Default::default()
                 },
-                hypr_whisper_local::Segment {
+                EngineSegment {
                     text: "again".to_string(),
                     language: Some("en".to_string()),
                     start: 1.5,
                     end: 2.0,
                     confidence: 1.0,
-                    ..Default::default()
                 },
             ],
             10.0,
@@ -315,21 +300,19 @@ mod tests {
     fn falls_back_to_synthetic_timings_when_raw_timings_are_invalid() {
         let segments = build_chunk_segments(
             vec![
-                hypr_whisper_local::Segment {
+                EngineSegment {
                     text: "hello world".to_string(),
                     language: Some("en".to_string()),
                     start: 0.0,
                     end: 0.0,
                     confidence: 0.8,
-                    ..Default::default()
                 },
-                hypr_whisper_local::Segment {
+                EngineSegment {
                     text: "again".to_string(),
                     language: Some("en".to_string()),
                     start: 0.0,
                     end: 0.0,
                     confidence: 1.0,
-                    ..Default::default()
                 },
             ],
             10.0,

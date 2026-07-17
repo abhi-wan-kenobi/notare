@@ -116,13 +116,20 @@ impl<M: DownloadableModel> ModelDownloadManager<M> {
         tokio::task::spawn_blocking(move || {
             let destination = model_clone.download_destination(&models_base);
             integrity::remove_stamp(&destination);
+            let mut name = destination
+                .file_name()
+                .unwrap_or_default()
+                .to_os_string();
+            name.push(".corrupt");
+            let quarantine_path = destination.with_file_name(name);
             if destination.is_file() {
-                let mut name = destination
-                    .file_name()
-                    .unwrap_or_default()
-                    .to_os_string();
-                name.push(".corrupt");
-                std::fs::rename(&destination, destination.with_file_name(name))
+                std::fs::rename(&destination, &quarantine_path)
+                    .map_err(|e| Error::OperationFailed(e.to_string()))?;
+            } else if destination.is_dir() {
+                // Multi-part models install as a directory; quarantine the
+                // whole directory (stamps live inside and move with it).
+                let _ = std::fs::remove_dir_all(&quarantine_path);
+                std::fs::rename(&destination, &quarantine_path)
                     .map_err(|e| Error::OperationFailed(e.to_string()))?;
             }
             Ok(())
@@ -132,6 +139,10 @@ impl<M: DownloadableModel> ModelDownloadManager<M> {
     }
 
     pub async fn download(&self, model: &M) -> Result<(), Error> {
+        if let Some(parts) = model.download_parts() {
+            return self.download_multi(model, parts).await;
+        }
+
         let key = model.download_key();
         let generation = self.next_generation.fetch_add(1, Ordering::Relaxed);
 
@@ -174,6 +185,69 @@ impl<M: DownloadableModel> ModelDownloadManager<M> {
                     token: cancellation_token,
                     generation,
                     download_path: destination,
+                },
+            )
+            .await;
+
+        if let Some(entry) = existing {
+            entry.token.cancel();
+            wait_for_task_exit(
+                entry.task,
+                Self::TASK_JOIN_WARN_AFTER,
+                "replace_existing_download",
+            )
+            .await;
+        }
+
+        let _ = start_tx.send(());
+
+        Ok(())
+    }
+
+    async fn download_multi(
+        &self,
+        model: &M,
+        parts: Vec<crate::model::DownloadPart>,
+    ) -> Result<(), Error> {
+        use crate::download_task::{MultiDownloadTaskParams, spawn_multi_download_task};
+
+        let key = model.download_key();
+        let generation = self.next_generation.fetch_add(1, Ordering::Relaxed);
+
+        let models_base = self.runtime.models_base()?;
+        let destination_dir = model.download_destination(&models_base);
+        fs::create_dir_all(&destination_dir).await?;
+
+        let (start_tx, start_rx) = tokio::sync::oneshot::channel::<()>();
+
+        let cancellation_token = tokio_util::sync::CancellationToken::new();
+        let task = spawn_multi_download_task(
+            MultiDownloadTaskParams {
+                runtime: self.runtime.clone(),
+                registry: self.downloads.clone(),
+                model: model.clone(),
+                parts,
+                destination_dir: destination_dir.clone(),
+                models_base,
+                key: key.clone(),
+                generation,
+                cancellation_token: cancellation_token.clone(),
+            },
+            start_rx,
+        );
+
+        let existing = self
+            .downloads
+            .insert(
+                key,
+                DownloadEntry {
+                    task,
+                    token: cancellation_token,
+                    generation,
+                    // The task cleans its own `.part-*` temps on
+                    // cancel/failure; removing this directory path here is a
+                    // harmless no-op in `cancel_download`.
+                    download_path: destination_dir,
                 },
             )
             .await;

@@ -10,6 +10,7 @@ description = ""
 [features]
 default = []
 whisper-cpp = ["dep:hypr-transcribe-whisper-local", "dep:hypr-whisper-local"]
+parakeet-onnx = ["dep:hypr-parakeet-onnx", "dep:hypr-transcribe-core"]
 coreml = ["whisper-cpp", "hypr-transcribe-whisper-local/coreml"]
 directml = ["whisper-cpp", "hypr-transcribe-whisper-local/directml"]
 cuda = ["whisper-cpp", "hypr-transcribe-whisper-local/cuda"]
@@ -44,6 +45,9 @@ hypr-language = { workspace = true, features = ["whisper"] }
 hypr-local-model = { workspace = true }
 hypr-local-stt-core = { workspace = true, features = ["specta"] }
 hypr-model-downloader = { workspace = true, features = ["specta"] }
+hypr-parakeet-onnx = { workspace = true, optional = true }
+hypr-parakeet-onnx-model = { workspace = true }
+hypr-transcribe-core = { workspace = true, optional = true }
 hypr-transcribe-soniqo = { workspace = true }
 hypr-transcribe-whisper-local = { workspace = true, optional = true }
 hypr-whisper-local = { workspace = true, optional = true }

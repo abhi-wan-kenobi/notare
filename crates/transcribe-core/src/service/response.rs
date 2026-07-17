@@ -1,7 +1,7 @@
 #[cfg(test)]
 use std::path::Path;
 
-pub(super) use hypr_transcribe_core::{format_timestamp_now, send_ws, send_ws_best_effort};
+pub(super) use crate::{format_timestamp_now, send_ws, send_ws_best_effort};
 use owhisper_interface::{batch, stream};
 
 #[derive(Debug, Clone, Copy)]
@@ -12,7 +12,7 @@ pub(super) enum TranscriptKind {
 
 #[cfg(test)]
 pub(super) fn build_session_metadata(model_path: &Path) -> stream::Metadata {
-    crate::service::build_metadata(model_path)
+    crate::service::build_metadata::<crate::service::mock::MockEngine>(model_path)
 }
 
 pub(super) fn build_transcript_response(
@@ -106,7 +106,7 @@ mod tests {
         assert!(!meta.request_id.is_empty());
         assert!(!meta.model_uuid.is_empty());
         assert_eq!(meta.model_info.name, "ggml-small-q8_0");
-        assert_eq!(meta.model_info.arch, "whisper-local");
+        assert_eq!(meta.model_info.arch, "mock-engine");
         assert!(meta.extra.is_some());
     }
 

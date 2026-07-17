@@ -2968,6 +2968,7 @@ dependencies = [
  "chrono-tz 0.10.4",
  "google-calendar",
  "hypr-http-utils",
+ "ics-calendar",
  "outlook-calendar",
  "regex",
  "reqwest 0.13.2",
@@ -9145,6 +9146,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ical"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9b7cab7543a8b7729a19e2c04309f902861293dcdae6558dfbeb634454d279f6"
+dependencies = [
+ "thiserror 1.0.69",
+]
+
+[[package]]
 name = "ico"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -9152,6 +9162,22 @@ checksum = "3e795dff5605e0f04bff85ca41b51a96b83e80b281e96231bcaaf1ac35103371"
 dependencies = [
  "byteorder",
  "png 0.17.16",
+]
+
+[[package]]
+name = "ics-calendar"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "chrono-tz 0.10.4",
+ "ical",
+ "rrule",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tracing",
+ "uuid",
 ]
 
 [[package]]
@@ -10580,6 +10606,7 @@ dependencies = [
  "audio-utils",
  "bytes",
  "data",
+ "denoise",
  "device-monitor",
  "futures-util",
  "host",
@@ -10731,8 +10758,11 @@ dependencies = [
  "am",
  "file",
  "model-downloader",
+ "parakeet-onnx-model",
  "serde",
+ "serde_json",
  "specta",
+ "tempfile",
  "transcribe-soniqo",
  "whisper-local-model",
 ]
@@ -10743,6 +10773,7 @@ version = "0.1.0"
 dependencies = [
  "local-model",
  "serde",
+ "serde_json",
  "specta",
 ]
 
@@ -12821,6 +12852,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "parakeet-onnx"
+version = "0.1.0"
+dependencies = [
+ "audio-utils",
+ "data",
+ "language",
+ "model-manager",
+ "onnx",
+ "regex",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tracing",
+ "transcribe-core",
+]
+
+[[package]]
+name = "parakeet-onnx-model"
+version = "0.1.0"
+dependencies = [
+ "language",
+ "serde",
+ "serde_json",
+ "specta",
+ "strum 0.28.0",
+]
+
+[[package]]
 name = "parking"
 version = "2.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -14889,6 +14947,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "27344601ef27460e82d6a4e1ecb9e7e99f518122095f3c51296da8e9be2b9d83"
 dependencies = [
  "cc",
+]
+
+[[package]]
+name = "rrule"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "720acfb4980b9d8a6a430f6d7a11933e701ebbeba5eee39cc9d8c5f932aaff74"
+dependencies = [
+ "chrono",
+ "chrono-tz 0.10.4",
+ "log",
+ "regex",
+ "thiserror 2.0.18",
 ]
 
 [[package]]
@@ -17983,6 +18054,7 @@ dependencies = [
  "calendar",
  "calendar-interface",
  "google-oauth",
+ "ics-calendar",
  "reqwest 0.13.2",
  "serde",
  "serde_json",
@@ -18462,6 +18534,8 @@ dependencies = [
  "model-downloader",
  "owhisper-client",
  "owhisper-interface",
+ "parakeet-onnx",
+ "parakeet-onnx-model",
  "port-killer",
  "port_check",
  "ractor",
@@ -18488,6 +18562,7 @@ dependencies = [
  "tower 0.5.3",
  "tower-http 0.6.8",
  "tracing",
+ "transcribe-core",
  "transcribe-soniqo",
  "transcribe-whisper-local",
  "whisper-local",
@@ -20235,14 +20310,23 @@ name = "transcribe-core"
 version = "0.1.0"
 dependencies = [
  "audio-chunking",
+ "audio-interface",
  "audio-utils",
  "axum 0.8.9",
+ "bytes",
  "futures-util",
+ "language",
+ "model-manager",
  "owhisper-interface",
  "rodio",
+ "serde_html_form 0.4.0",
  "serde_json",
+ "tempfile",
+ "thiserror 2.0.18",
  "tokio",
+ "tower 0.5.3",
  "tracing",
+ "ws-utils",
 ]
 
 [[package]]
@@ -20309,33 +20393,25 @@ dependencies = [
 name = "transcribe-whisper-local"
 version = "0.1.0"
 dependencies = [
- "audio-chunking",
- "audio-interface",
  "audio-utils",
  "axum 0.8.9",
  "bytes",
  "data",
  "dirs 6.0.0",
  "futures-util",
+ "language",
  "model-manager",
  "owhisper-client",
  "owhisper-interface",
  "pyannote-local",
  "reqwest 0.13.2",
  "rodio",
- "serde_html_form 0.4.0",
  "serde_json",
- "tempfile",
- "thiserror 2.0.18",
  "tokio",
  "tokio-tungstenite 0.29.0",
- "tokio-util",
- "tower 0.5.3",
- "tracing",
  "transcribe-core",
  "whisper",
  "whisper-local",
- "ws-utils",
 ]
 
 [[package]]

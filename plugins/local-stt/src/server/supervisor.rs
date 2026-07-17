@@ -7,7 +7,7 @@ use hypr_supervisor::{
 };
 use ractor::{ActorCell, ActorProcessingErr, ActorRef, concurrency::Duration, registry};
 
-#[cfg(feature = "whisper-cpp")]
+#[cfg(any(feature = "whisper-cpp", feature = "parakeet-onnx"))]
 use super::internal::{InternalSTTActor, InternalSTTArgs};
 use super::{
     ServerType,
@@ -44,7 +44,7 @@ pub async fn spawn_stt_supervisor(
     Ok((supervisor_ref, handle))
 }
 
-#[cfg(feature = "whisper-cpp")]
+#[cfg(any(feature = "whisper-cpp", feature = "parakeet-onnx"))]
 pub async fn start_internal_stt(
     supervisor: &ActorRef<DynamicSupervisorMsg>,
     args: InternalSTTArgs,
@@ -61,7 +61,7 @@ pub async fn start_external_stt(
     DynamicSupervisor::spawn_child(supervisor.clone(), child_spec).await
 }
 
-#[cfg(feature = "whisper-cpp")]
+#[cfg(any(feature = "whisper-cpp", feature = "parakeet-onnx"))]
 fn create_internal_child_spec_with_args(args: InternalSTTArgs) -> DynChildSpec {
     let spawn_fn = DynSpawnFn::new(move |supervisor: ActorCell, child_id: String| {
         let args = args.clone();
@@ -112,11 +112,11 @@ pub async fn stop_stt_server(
 ) -> Result<(), ActorProcessingErr> {
     let child_ids: Vec<&str> = match server_type {
         ServerType::Internal => {
-            #[cfg(feature = "whisper-cpp")]
+            #[cfg(any(feature = "whisper-cpp", feature = "parakeet-onnx"))]
             {
                 vec![INTERNAL_STT_ACTOR_NAME]
             }
-            #[cfg(not(feature = "whisper-cpp"))]
+            #[cfg(not(any(feature = "whisper-cpp", feature = "parakeet-onnx")))]
             {
                 Vec::new()
             }
@@ -140,7 +140,7 @@ pub async fn stop_stt_server(
 
     match server_type {
         ServerType::Internal => {
-            #[cfg(feature = "whisper-cpp")]
+            #[cfg(any(feature = "whisper-cpp", feature = "parakeet-onnx"))]
             wait_for_actor_shutdown(InternalSTTActor::name()).await;
         }
         ServerType::External => wait_for_actor_shutdown(ExternalSTTActor::name()).await,

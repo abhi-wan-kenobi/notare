@@ -7,9 +7,11 @@ use crate::download_task_progress::make_progress_callback;
 use crate::model::DownloadableModel;
 
 mod failure;
+mod multi;
 mod params;
 mod steps;
 
+pub(crate) use multi::{MultiDownloadTaskParams, spawn_multi_download_task};
 pub(crate) use params::DownloadTaskParams;
 
 pub(crate) fn spawn_download_task<M: DownloadableModel>(

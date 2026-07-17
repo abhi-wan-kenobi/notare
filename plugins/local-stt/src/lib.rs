@@ -55,6 +55,7 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
             types::DownloadProgressPayload,
         ])
         .typ::<hypr_whisper_local_model::WhisperModel>()
+        .typ::<hypr_parakeet_onnx_model::ParakeetOnnxModel>()
         .error_handling(tauri_specta::ErrorHandlingMode::Result)
 }
 

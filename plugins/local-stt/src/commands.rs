@@ -35,6 +35,8 @@ pub async fn list_supported_models() -> Result<Vec<SttModelInfo>, String> {
         // Whisper models are only usable when the whisper.cpp engine is
         // compiled into this build.
         .filter(|m| cfg!(feature = "whisper-cpp") || !matches!(m, LocalModel::Whisper(_)))
+        // Same rule for the Parakeet ONNX engine.
+        .filter(|m| cfg!(feature = "parakeet-onnx") || !matches!(m, LocalModel::ParakeetOnnx(_)))
         .map(stt_model_info)
         .collect())
 }

@@ -8,24 +8,27 @@ use axum::{
 };
 use bytes::Bytes;
 use hypr_model_manager::ModelManager;
-use hypr_transcribe_core::{
-    ProgressTracker, batch_sse_response, channel_duration_sec, chunk_channel_audio,
-    initial_resolved_until, json_error_response, next_resolved_until, split_resampled_channels,
-};
 use owhisper_interface::ListenParams;
 use owhisper_interface::batch;
 use owhisper_interface::batch_sse::BatchSseMessage;
 use rodio::Source;
 use tokio::sync::mpsc;
 
-use super::response::{TranscriptKind, build_batch_words, build_transcript_response};
-use super::{TARGET_SAMPLE_RATE, build_metadata, build_model, transcribe_chunk};
+use crate::engine::{SttEngine, SttEngineSession};
+use crate::{
+    ProgressTracker, TARGET_SAMPLE_RATE, batch_sse_response, channel_duration_sec,
+    chunk_channel_audio, initial_resolved_until, json_error_response, next_resolved_until,
+    split_resampled_channels,
+};
 
-pub(super) async fn handle_batch(
+use super::response::{TranscriptKind, build_batch_words, build_transcript_response};
+use super::{build_metadata, build_session, transcribe_chunk};
+
+pub(super) async fn handle_batch<E: SttEngine>(
     body: Bytes,
     content_type: &str,
     params: &ListenParams,
-    manager: &ModelManager<hypr_whisper_local::LoadedWhisper>,
+    manager: &ModelManager<E>,
     model_path: &Path,
 ) -> Response {
     let model = match manager.get(None).await {
@@ -76,11 +79,11 @@ pub(super) async fn handle_batch(
     }
 }
 
-pub(super) async fn handle_batch_sse(
+pub(super) async fn handle_batch_sse<E: SttEngine>(
     body: Bytes,
     content_type: &str,
     params: &ListenParams,
-    manager: &ModelManager<hypr_whisper_local::LoadedWhisper>,
+    manager: &ModelManager<E>,
     model_path: &Path,
 ) -> Response {
     let model = match manager.get(None).await {
@@ -129,17 +132,17 @@ pub(super) async fn handle_batch_sse(
     batch_sse_response(event_rx)
 }
 
-fn transcribe_batch(
+fn transcribe_batch<E: SttEngine>(
     audio_data: &[u8],
     content_type: &str,
     params: &ListenParams,
-    loaded_model: &hypr_whisper_local::LoadedWhisper,
+    engine: &E,
     model_path: &Path,
     event_tx: Option<mpsc::UnboundedSender<BatchSseMessage>>,
 ) -> Result<batch::Response, crate::Error> {
     let extension = hypr_audio_utils::content_type_to_extension(content_type);
     let mut temp_file = tempfile::Builder::new()
-        .prefix("whisper_local_batch_")
+        .prefix("stt_local_batch_")
         .suffix(&format!(".{}", extension))
         .tempfile()?;
 
@@ -147,11 +150,11 @@ fn transcribe_batch(
     temp_file.flush()?;
 
     let source = hypr_audio_utils::source_from_path(temp_file.path())?;
-    transcribe_source(source, params, loaded_model, model_path, event_tx)
+    transcribe_source(source, params, engine, model_path, event_tx)
 }
 
-pub(super) fn transcribe_recorded_file(
-    loaded_model: &hypr_whisper_local::LoadedWhisper,
+pub(super) fn transcribe_recorded_file<E: SttEngine>(
+    engine: &E,
     model_path: &Path,
     audio_path: &Path,
 ) -> Result<Vec<owhisper_interface::Word2>, crate::Error> {
@@ -159,7 +162,7 @@ pub(super) fn transcribe_recorded_file(
     let response = transcribe_source(
         source,
         &ListenParams::default(),
-        loaded_model,
+        engine,
         model_path,
         None,
     )?;
@@ -184,14 +187,15 @@ pub(super) fn transcribe_recorded_file(
     Ok(words)
 }
 
-fn transcribe_source<S>(
+fn transcribe_source<E, S>(
     source: S,
     params: &ListenParams,
-    loaded_model: &hypr_whisper_local::LoadedWhisper,
+    engine: &E,
     model_path: &Path,
     event_tx: Option<mpsc::UnboundedSender<BatchSseMessage>>,
 ) -> Result<batch::Response, crate::Error>
 where
+    E: SttEngine,
     S: Source<Item = f32>,
 {
     let channel_count = u16::from(source.channels()).max(1) as usize;
@@ -202,8 +206,8 @@ where
         .map(|samples| channel_duration_sec(samples))
         .fold(0.0_f64, f64::max);
 
-    let metadata = build_metadata(model_path);
-    let mut model = build_model(loaded_model, params)?;
+    let metadata = build_metadata::<E>(model_path);
+    let mut session = build_session(engine, params)?;
     let channel_durations = channel_samples
         .iter()
         .map(|samples| channel_duration_sec(samples))
@@ -229,7 +233,7 @@ where
             channel_idx,
             chunks,
             channel_duration,
-            &mut model,
+            &mut session,
             &mut progress,
             &metadata,
             &channel_index,
@@ -261,11 +265,11 @@ where
     })
 }
 
-fn transcribe_chunks(
+fn transcribe_chunks<S: SttEngineSession>(
     channel_idx: usize,
     chunks: &[hypr_audio_chunking::AudioChunk],
     channel_duration: f64,
-    model: &mut hypr_whisper_local::Whisper,
+    session: &mut S,
     progress: &mut ProgressTracker,
     metadata: &owhisper_interface::stream::Metadata,
     channel_index: &[i32],
@@ -279,7 +283,7 @@ fn transcribe_chunks(
         let chunk_start_sec = chunk.sample_start as f64 / TARGET_SAMPLE_RATE as f64;
         progress.update_channel(channel_idx, chunk_start_sec);
 
-        let segments = transcribe_chunk(model, &chunk.samples, chunk_start_sec)?;
+        let segments = transcribe_chunk(session, &chunk.samples, chunk_start_sec)?;
         for segment in segments {
             cumulative_confidence += segment.confidence;
             segment_count += 1;
