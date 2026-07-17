@@ -226,6 +226,34 @@ let app = core                              // /health + /v1/listen (batch + WS)
 }
 ```
 
+### Phase 1 implementation notes (added when Phase 1 shipped)
+
+`apps/stt-server` implements the table above as follows for Phase 1; kept
+here so the frozen contract has one written source of truth instead of
+drifting from the code:
+
+- `/health` and `/v1/listen` are the **unmodified**
+  `hypr_transcribe_core::TranscribeService` router — no wrapping, no
+  behavior change from what the desktop serves in-process.
+- `/api/status` is real (version, engine `arch`, `loaded_model`/
+  `model_integrity`, GPU `backends` list, `require_gpu`, uptime) but
+  `backends` is always `[]` in Phase 1: `list_ggml_backends()`
+  (`crates/whisper-local/src/ggml.rs`) is compiled out in debug builds and
+  this image never links a GPU feature — real backend reporting is Phase 4.
+  Field names are `camelCase` (not the `snake_case` sketched above) to match
+  the rest of the JSON the desktop's TS client already expects.
+- `/api/models` is real and read-only: the 7-model whisper.cpp catalog with
+  live on-disk `ModelIntegrity` per model. No caching — it re-verifies on
+  every request (fine at catalog size 7; revisit if it grows).
+- `/api/models/{id}/download`, `.../progress`, `.../cancel`,
+  `DELETE /api/models/{id}`, `.../activate` are **routed but stubbed**:
+  `501 Not Implemented` with the **same JSON error envelope `/v1/listen`
+  already uses** (`hypr_transcribe_core::json_error_response`, i.e.
+  `{"error": "<code>", "detail": "<message>"}`, code `not_implemented`).
+  This was a deliberate choice over leaving the paths unrouted, so Phase 2
+  lands as a diff against a stable route table instead of adding new routes.
+- `GET /` (static admin SPA) is **not implemented** in Phase 1 — Phase 3.
+
 ## 7. GPU story
 
 ### Build matrix (three Dockerfiles, one crate)
