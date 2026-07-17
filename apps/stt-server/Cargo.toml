@@ -20,6 +20,7 @@ serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
+reqwest = { workspace = true }
 
 axum = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "net", "signal", "sync"] }
@@ -39,6 +40,7 @@ cuda = [
 
 [dev-dependencies]
 reqwest = { workspace = true, features = ["json"] }
+rodio = { workspace = true }
 tempfile = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "net", "signal", "sync", "time"] }
 tower = { workspace = true, features = ["util"] }

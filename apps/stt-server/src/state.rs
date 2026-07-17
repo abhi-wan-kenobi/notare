@@ -124,13 +124,11 @@ impl AppState {
             "probe: starting GPU offload verification inference"
         );
 
-        let result = tokio::task::spawn_blocking(move || {
-            crate::probe::run_probe(&model_path)
-        })
-        .await;
+        let port = self.config.port;
+        let result = crate::probe::run_probe(port).await;
 
         match result {
-            Ok(Some(factor)) => {
+            Some(factor) => {
                 tracing::info!(
                     model = %model,
                     realtime_factor = factor,
@@ -139,17 +137,10 @@ impl AppState {
                 let mut guard = self.probe_result.write().await;
                 *guard = Some(factor);
             }
-            Ok(None) => {
+            None => {
                 tracing::warn!(
                     model = %model,
                     "probe: GPU offload verification inference returned no factor"
-                );
-            }
-            Err(error) => {
-                tracing::error!(
-                    model = %model,
-                    %error,
-                    "probe: GPU offload verification inference panicked"
                 );
             }
         }
