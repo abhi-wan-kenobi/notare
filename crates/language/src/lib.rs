@@ -18,6 +18,12 @@ pub const PARAKEET_TDT_V3_LANGUAGE_CODES: &[&str] = &[
     "nl", "pl", "pt", "ro", "ru", "sk", "sl", "sv", "uk",
 ];
 
+/// Voxtral Mini 3B 2507's official "natively multilingual" set (model card,
+/// <https://huggingface.co/mistralai/Voxtral-Mini-3B-2507>): English,
+/// Spanish, French, Portuguese, Hindi, German, Dutch, Italian.
+pub const VOXTRAL_MINI_3B_LANGUAGE_CODES: &[&str] =
+    &["en", "es", "fr", "pt", "hi", "de", "nl", "it"];
+
 #[derive(Debug, Clone, PartialEq, schemars::JsonSchema)]
 pub struct Language {
     #[schemars(
@@ -272,6 +278,18 @@ pub fn is_parakeet_tdt_v3_language(language: &Language) -> bool {
     PARAKEET_TDT_V3_LANGUAGE_CODES.contains(&language.iso639_code())
 }
 
+pub fn voxtral_mini_3b_languages() -> Vec<Language> {
+    VOXTRAL_MINI_3B_LANGUAGE_CODES
+        .iter()
+        .filter_map(|code| code.parse::<ISO639>().ok())
+        .map(Language::from)
+        .collect()
+}
+
+pub fn is_voxtral_mini_3b_language(language: &Language) -> bool {
+    VOXTRAL_MINI_3B_LANGUAGE_CODES.contains(&language.iso639_code())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -349,5 +367,15 @@ mod tests {
         assert_eq!(parakeet_tdt_v3_languages().len(), 25);
         assert!(is_parakeet_tdt_v3_language(&english_us));
         assert!(!is_parakeet_tdt_v3_language(&korean));
+    }
+
+    #[test]
+    fn test_voxtral_mini_3b_language_support() {
+        let hindi: Language = "hi".parse().unwrap();
+        let korean: Language = "ko".parse().unwrap();
+
+        assert_eq!(voxtral_mini_3b_languages().len(), 8);
+        assert!(is_voxtral_mini_3b_language(&hindi));
+        assert!(!is_voxtral_mini_3b_language(&korean));
     }
 }

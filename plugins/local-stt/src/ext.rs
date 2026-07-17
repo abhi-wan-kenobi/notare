@@ -60,7 +60,11 @@ impl<'a, R: Runtime, M: Manager<R>> LocalStt<'a, R, M> {
             LocalModel::Soniqo(_)
             | LocalModel::Am(_)
             | LocalModel::Whisper(_)
-            | LocalModel::ParakeetOnnx(_) => {
+            | LocalModel::ParakeetOnnx(_)
+            // Catalog + download machinery is ready (Phase A, issue #16);
+            // live server/session wiring is Phase B, see the `start_server`
+            // and `get_server_for_model` match arms below.
+            | LocalModel::VoxtralLlama(_) => {
                 if model.is_available_on_current_platform() {
                     Ok(())
                 } else {
@@ -143,7 +147,10 @@ impl<'a, R: Runtime, M: Manager<R>> LocalStt<'a, R, M> {
         let server_type = match &model {
             LocalModel::Am(_) => ServerType::External,
             LocalModel::Whisper(_) | LocalModel::ParakeetOnnx(_) => ServerType::Internal,
-            LocalModel::Soniqo(_) | LocalModel::GgufLlm(_) => {
+            // Catalogued and downloadable (Phase A, issue #16); starting a
+            // live llama.cpp session is Phase B (in-process actor wiring,
+            // mirroring `internal::InternalModel`).
+            LocalModel::Soniqo(_) | LocalModel::GgufLlm(_) | LocalModel::VoxtralLlama(_) => {
                 return Err(crate::Error::UnsupportedModelType);
             }
         };
@@ -258,7 +265,8 @@ impl<'a, R: Runtime, M: Manager<R>> LocalStt<'a, R, M> {
         let server_type = match model {
             LocalModel::Am(_) => ServerType::External,
             LocalModel::Whisper(_) | LocalModel::ParakeetOnnx(_) => ServerType::Internal,
-            LocalModel::Soniqo(_) | LocalModel::GgufLlm(_) => {
+            // Same Phase A/B split as `start_server` above.
+            LocalModel::Soniqo(_) | LocalModel::GgufLlm(_) | LocalModel::VoxtralLlama(_) => {
                 return Err(crate::Error::UnsupportedModelType);
             }
         };

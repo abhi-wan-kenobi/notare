@@ -9,6 +9,7 @@ hypr-file = { workspace = true }
 hypr-model-downloader = { workspace = true }
 hypr-parakeet-onnx-model = { workspace = true }
 hypr-transcribe-soniqo = { workspace = true }
+hypr-voxtral-llama-model = { workspace = true }
 hypr-whisper-local-model = { workspace = true }
 
 serde = { workspace = true }
