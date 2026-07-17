@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-ics-replace-file"
+description = "Enables the ics_replace_file command without any pre-configured scope."
+commands.allow = ["ics_replace_file"]
+
+[[permission]]
+identifier = "deny-ics-replace-file"
+description = "Denies the ics_replace_file command without any pre-configured scope."
+commands.deny = ["ics_replace_file"]

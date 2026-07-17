@@ -23,11 +23,13 @@ pub async fn is_provider_enabled<R: tauri::Runtime>(
     let token = access_token(&app);
     let apple = is_apple_authorized(&app).await?;
     let google = crate::google::is_connected(&app).await;
+    let ics = crate::ics::has_files(&app);
     hypr_calendar::is_provider_enabled(
         &config.api_base_url,
         token.as_deref(),
         apple,
         google,
+        ics,
         provider,
     )
     .await
@@ -43,7 +45,8 @@ pub async fn list_connection_ids<R: tauri::Runtime>(
     let token = access_token(&app);
     let apple = is_apple_authorized(&app).await?;
     let google = crate::google::is_connected(&app).await;
-    hypr_calendar::list_connection_ids(&config.api_base_url, token.as_deref(), apple, google)
+    let ics = crate::ics::has_files(&app);
+    hypr_calendar::list_connection_ids(&config.api_base_url, token.as_deref(), apple, google, ics)
         .await
         .map_err(Into::into)
 }
@@ -59,11 +62,19 @@ pub async fn list_calendars<R: tauri::Runtime>(
     let token = match provider {
         CalendarProviderType::Apple => access_token(&app).unwrap_or_default(),
         CalendarProviderType::Google => crate::google::access_token(&app).await?,
+        CalendarProviderType::Ics => String::new(),
         _ => require_access_token(&app)?,
     };
-    hypr_calendar::list_calendars(&config.api_base_url, &token, provider, &connection_id)
-        .await
-        .map_err(Into::into)
+    let ics_dir = crate::ics::ics_dir(&app)?;
+    hypr_calendar::list_calendars(
+        &config.api_base_url,
+        &token,
+        provider,
+        &connection_id,
+        Some(&ics_dir),
+    )
+    .await
+    .map_err(Into::into)
 }
 
 #[tauri::command]
@@ -78,14 +89,17 @@ pub async fn list_events<R: tauri::Runtime>(
     let token = match provider {
         CalendarProviderType::Apple => access_token(&app).unwrap_or_default(),
         CalendarProviderType::Google => crate::google::access_token(&app).await?,
+        CalendarProviderType::Ics => String::new(),
         _ => require_access_token(&app)?,
     };
+    let ics_dir = crate::ics::ics_dir(&app)?;
     hypr_calendar::list_events(
         &config.api_base_url,
         &token,
         provider,
         &connection_id,
         filter,
+        Some(&ics_dir),
     )
     .await
     .map_err(Into::into)
@@ -170,6 +184,49 @@ pub async fn google_reset<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
 ) -> Result<crate::google::GoogleAccountStatus, Error> {
     crate::google::reset(&app).await
+}
+
+// --- Imported .ics calendar files ---
+
+#[tauri::command]
+#[specta::specta]
+pub fn ics_list_files<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+) -> Result<Vec<crate::ics::IcsImportedFile>, Error> {
+    crate::ics::list(&app)
+}
+
+/// Copy one or more picked `.ics` files into the app data dir; each becomes
+/// its own calendar.
+#[tauri::command]
+#[specta::specta]
+pub fn ics_import_files<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    paths: Vec<String>,
+) -> Result<Vec<crate::ics::IcsImportedFile>, Error> {
+    crate::ics::import(&app, &paths)
+}
+
+/// Replace the stored copy of an imported calendar with a fresh file (keeps
+/// the calendar id, so enabled-state and synced events stay attached).
+#[tauri::command]
+#[specta::specta]
+pub fn ics_replace_file<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    id: String,
+    path: String,
+) -> Result<crate::ics::IcsImportedFile, Error> {
+    crate::ics::replace(&app, &id, &path)
+}
+
+/// Remove an imported calendar file (its events disappear on the next sync).
+#[tauri::command]
+#[specta::specta]
+pub fn ics_remove_file<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    id: String,
+) -> Result<(), Error> {
+    crate::ics::remove(&app, &id)
 }
 
 fn access_token<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Option<String> {

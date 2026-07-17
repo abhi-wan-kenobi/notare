@@ -391,6 +391,54 @@
           "markdownDescription": "Denies the google_reset command without any pre-configured scope."
         },
         {
+          "description": "Enables the ics_import_files command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-ics-import-files",
+          "markdownDescription": "Enables the ics_import_files command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the ics_import_files command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-ics-import-files",
+          "markdownDescription": "Denies the ics_import_files command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the ics_list_files command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-ics-list-files",
+          "markdownDescription": "Enables the ics_list_files command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the ics_list_files command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-ics-list-files",
+          "markdownDescription": "Denies the ics_list_files command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the ics_remove_file command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-ics-remove-file",
+          "markdownDescription": "Enables the ics_remove_file command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the ics_remove_file command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-ics-remove-file",
+          "markdownDescription": "Denies the ics_remove_file command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the ics_replace_file command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-ics-replace-file",
+          "markdownDescription": "Enables the ics_replace_file command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the ics_replace_file command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-ics-replace-file",
+          "markdownDescription": "Denies the ics_replace_file command without any pre-configured scope."
+        },
+        {
           "description": "Enables the is_provider_enabled command without any pre-configured scope.",
           "type": "string",
           "const": "allow-is-provider-enabled",
@@ -463,10 +511,10 @@
           "markdownDescription": "Denies the parse_meeting_link command without any pre-configured scope."
         },
         {
-          "description": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-available-providers`\n- `allow-is-provider-enabled`\n- `allow-list-connection-ids`\n- `allow-list-calendars`\n- `allow-list-events`\n- `allow-open-calendar`\n- `allow-create-event`\n- `allow-parse-meeting-link`\n- `allow-google-account-status`\n- `allow-google-import-client-json`\n- `allow-google-import-client-file`\n- `allow-google-connect`\n- `allow-google-disconnect`\n- `allow-google-reset`",
+          "description": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-available-providers`\n- `allow-is-provider-enabled`\n- `allow-list-connection-ids`\n- `allow-list-calendars`\n- `allow-list-events`\n- `allow-open-calendar`\n- `allow-create-event`\n- `allow-parse-meeting-link`\n- `allow-google-account-status`\n- `allow-google-import-client-json`\n- `allow-google-import-client-file`\n- `allow-google-connect`\n- `allow-google-disconnect`\n- `allow-google-reset`\n- `allow-ics-list-files`\n- `allow-ics-import-files`\n- `allow-ics-replace-file`\n- `allow-ics-remove-file`",
           "type": "string",
           "const": "default",
-          "markdownDescription": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-available-providers`\n- `allow-is-provider-enabled`\n- `allow-list-connection-ids`\n- `allow-list-calendars`\n- `allow-list-events`\n- `allow-open-calendar`\n- `allow-create-event`\n- `allow-parse-meeting-link`\n- `allow-google-account-status`\n- `allow-google-import-client-json`\n- `allow-google-import-client-file`\n- `allow-google-connect`\n- `allow-google-disconnect`\n- `allow-google-reset`"
+          "markdownDescription": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-available-providers`\n- `allow-is-provider-enabled`\n- `allow-list-connection-ids`\n- `allow-list-calendars`\n- `allow-list-events`\n- `allow-open-calendar`\n- `allow-create-event`\n- `allow-parse-meeting-link`\n- `allow-google-account-status`\n- `allow-google-import-client-json`\n- `allow-google-import-client-file`\n- `allow-google-connect`\n- `allow-google-disconnect`\n- `allow-google-reset`\n- `allow-ics-list-files`\n- `allow-ics-import-files`\n- `allow-ics-replace-file`\n- `allow-ics-remove-file`"
         }
       ]
     }

@@ -21,4 +21,8 @@ pub enum Error {
     Api(String),
     #[error("apple calendar error: {0}")]
     Apple(String),
+    #[error("ics calendar error: {0}")]
+    Ics(#[from] hypr_ics_calendar::Error),
+    #[error("no ics storage directory was provided for the ics provider")]
+    MissingIcsDir,
 }

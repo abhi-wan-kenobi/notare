@@ -1,4 +1,5 @@
 import { Icon } from "@iconify-icon/react";
+import { CalendarPlus } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { OutlookIcon } from "@hypr/ui/components/icons/outlook";
@@ -15,6 +16,8 @@ export type CalendarProvider = {
   nangoIntegrationId?: string;
   /** Direct integration using the user's own OAuth client (no cloud). */
   direct?: boolean;
+  /** Local imported `.ics` calendar files (no network at all). */
+  ics?: boolean;
 };
 
 const _PROVIDERS = [
@@ -45,6 +48,18 @@ const _PROVIDERS = [
       "https://github.com/abhi-wan-kenobi/notare/blob/main/docs/GOOGLE-CALENDAR.md",
     nangoIntegrationId: undefined,
     direct: true,
+  },
+  {
+    disabled: false,
+    id: "ics",
+    displayName: "Calendar files (.ics)",
+    badge: "",
+    icon: <CalendarPlus size={16} />,
+    platform: "all",
+    docsPath:
+      "https://github.com/abhi-wan-kenobi/notare/blob/main/docs/ICS-IMPORT.md",
+    nangoIntegrationId: undefined,
+    ics: true,
   },
   {
     disabled: false,

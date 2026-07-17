@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-ics-import-files"
+description = "Enables the ics_import_files command without any pre-configured scope."
+commands.allow = ["ics_import_files"]
+
+[[permission]]
+identifier = "deny-ics-import-files"
+description = "Denies the ics_import_files command without any pre-configured scope."
+commands.deny = ["ics_import_files"]

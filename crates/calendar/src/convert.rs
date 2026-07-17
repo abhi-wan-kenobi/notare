@@ -50,6 +50,29 @@ pub fn convert_google_calendars(calendars: Vec<GoogleCalendar>) -> Vec<CalendarL
         .collect()
 }
 
+pub fn convert_ics_calendars(
+    files: Vec<hypr_ics_calendar::IcsFileInfo>,
+) -> Vec<CalendarListItem> {
+    files
+        .into_iter()
+        .map(|file| {
+            let raw = serde_json::to_string(&file).unwrap_or_default();
+            CalendarListItem {
+                provider: CalendarProviderType::Ics,
+                id: file.id,
+                title: file.title,
+                // Group header in the UI: the imported file's name.
+                source: Some(file.file_name),
+                color: None,
+                is_primary: None,
+                // The stored copy is read-only; we never write events back.
+                can_edit: Some(false),
+                raw,
+            }
+        })
+        .collect()
+}
+
 pub fn convert_outlook_calendars(calendars: Vec<OutlookCalendar>) -> Vec<CalendarListItem> {
     calendars
         .into_iter()
@@ -120,6 +143,80 @@ pub fn convert_outlook_events(events: Vec<OutlookEvent>, calendar_id: &str) -> V
 
 pub fn convert_apple_events(events: Vec<AppleEvent>) -> Vec<CalendarEvent> {
     events.into_iter().map(convert_apple_event).collect()
+}
+
+pub fn convert_ics_events(
+    occurrences: Vec<hypr_ics_calendar::IcsOccurrence>,
+    calendar_id: &str,
+) -> Vec<CalendarEvent> {
+    occurrences
+        .into_iter()
+        .map(|occurrence| convert_ics_event(occurrence, calendar_id))
+        .collect()
+}
+
+fn convert_ics_event(
+    occurrence: hypr_ics_calendar::IcsOccurrence,
+    calendar_id: &str,
+) -> CalendarEvent {
+    let event = occurrence.event;
+
+    let organizer = event.organizer.map(|person| EventPerson {
+        name: person.name,
+        email: person.email,
+        // An .ics file has no notion of "the signed-in user".
+        is_current_user: false,
+    });
+
+    let attendees = event
+        .attendees
+        .into_iter()
+        .map(|attendee| EventAttendee {
+            name: attendee.name,
+            email: attendee.email,
+            is_current_user: false,
+            status: match attendee.status {
+                hypr_ics_calendar::IcsAttendeeStatus::Accepted => AttendeeStatus::Accepted,
+                hypr_ics_calendar::IcsAttendeeStatus::Tentative => AttendeeStatus::Tentative,
+                hypr_ics_calendar::IcsAttendeeStatus::Declined => AttendeeStatus::Declined,
+                hypr_ics_calendar::IcsAttendeeStatus::Pending => AttendeeStatus::Pending,
+            },
+            role: match attendee.role {
+                hypr_ics_calendar::IcsAttendeeRole::Chair => AttendeeRole::Chair,
+                hypr_ics_calendar::IcsAttendeeRole::Optional => AttendeeRole::Optional,
+                hypr_ics_calendar::IcsAttendeeRole::NonParticipant => AttendeeRole::NonParticipant,
+                hypr_ics_calendar::IcsAttendeeRole::Required => AttendeeRole::Required,
+            },
+        })
+        .collect();
+
+    CalendarEvent {
+        id: occurrence.id,
+        calendar_id: calendar_id.to_string(),
+        provider: CalendarProviderType::Ics,
+        external_id: event.uid,
+        title: event.summary.unwrap_or_default(),
+        description: event.description,
+        location: event.location,
+        url: event.url,
+        // Same as Apple: no explicit conference field in .ics — downstream
+        // extraction pulls meeting links out of description/location.
+        meeting_link: None,
+        started_at: occurrence.start.to_rfc3339(),
+        ended_at: occurrence.end.to_rfc3339(),
+        timezone: event.timezone,
+        is_all_day: event.is_all_day,
+        status: match event.status {
+            hypr_ics_calendar::IcsEventStatus::Tentative => EventStatus::Tentative,
+            hypr_ics_calendar::IcsEventStatus::Cancelled => EventStatus::Cancelled,
+            hypr_ics_calendar::IcsEventStatus::Confirmed => EventStatus::Confirmed,
+        },
+        organizer,
+        attendees,
+        has_recurrence_rules: occurrence.has_recurrence_rules,
+        recurring_event_id: occurrence.series_id,
+        raw: event.raw,
+    }
 }
 
 fn convert_google_event(event: GoogleEvent, calendar_id: &str) -> CalendarEvent {

@@ -117,6 +117,49 @@ async googleReset() : Promise<Result<GoogleAccountStatus, string>> {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
+},
+async icsListFiles() : Promise<Result<IcsImportedFile[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:calendar|ics_list_files") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Copy one or more picked `.ics` files into the app data dir; each becomes
+ * its own calendar.
+ */
+async icsImportFiles(paths: string[]) : Promise<Result<IcsImportedFile[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:calendar|ics_import_files", { paths }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Replace the stored copy of an imported calendar with a fresh file (keeps
+ * the calendar id, so enabled-state and synced events stay attached).
+ */
+async icsReplaceFile(id: string, path: string) : Promise<Result<IcsImportedFile, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:calendar|ics_replace_file", { id, path }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Remove an imported calendar file (its events disappear on the next sync).
+ */
+async icsRemoveFile(id: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:calendar|ics_remove_file", { id }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 }
 }
 
@@ -180,7 +223,11 @@ recurring_event_id: string | null;
  */
 raw: string }
 export type CalendarListItem = { provider: CalendarProviderType; id: string; title: string; source: string | null; color: string | null; is_primary: boolean | null; can_edit: boolean | null; raw: string }
-export type CalendarProviderType = "apple" | "google" | "outlook"
+export type CalendarProviderType = "apple" | "google" | "outlook" | 
+/**
+ * Imported `.ics` calendar files (local, available on all platforms).
+ */
+"ics"
 export type CreateEventInput = { calendar_tracking_id: string; title: string; started_at: string; ended_at: string; is_all_day: boolean | null; location: string | null; notes: string | null; url: string | null }
 export type EventAttendee = { name: string | null; 
 /**
@@ -251,6 +298,26 @@ client_kind: string;
  * work with those; the UI should warn but proceed.
  */
 warning_web_client: boolean }
+/**
+ * One imported `.ics` file, surfaced to the frontend.
+ */
+export type IcsImportedFile = { 
+/**
+ * Stable id — also the calendar tracking id in the DB.
+ */
+id: string; 
+/**
+ * Original file name at import time.
+ */
+file_name: string; 
+/**
+ * `X-WR-CALNAME`, when the file has one.
+ */
+calendar_name: string | null; 
+/**
+ * Display name (calendar name, else file name without extension).
+ */
+title: string; event_count: number; imported_at: string; updated_at: string }
 export type ProviderConnectionIds = { provider: CalendarProviderType; connection_ids: string[] }
 
 /** tauri-specta globals **/

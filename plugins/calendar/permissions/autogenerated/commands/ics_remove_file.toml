@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-ics-remove-file"
+description = "Enables the ics_remove_file command without any pre-configured scope."
+commands.allow = ["ics_remove_file"]
+
+[[permission]]
+identifier = "deny-ics-remove-file"
+description = "Denies the ics_remove_file command without any pre-configured scope."
+commands.deny = ["ics_remove_file"]

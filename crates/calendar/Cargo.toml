@@ -12,6 +12,9 @@ hypr-apple-calendar = { workspace = true, features = ["specta"] }
 hypr-calendar-interface = { workspace = true }
 hypr-google-calendar = { workspace = true, features = ["specta"] }
 hypr-http = { workspace = true }
+# Not in [workspace.dependencies] yet (root Cargo.toml is owned by another
+# track); direct path dep until an `hypr-ics-calendar` entry lands there.
+hypr-ics-calendar = { path = "../ics-calendar", package = "ics-calendar" }
 hypr-outlook-calendar = { workspace = true, features = ["specta"] }
 
 chrono = { workspace = true, features = ["serde"] }
