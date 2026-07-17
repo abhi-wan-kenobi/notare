@@ -11,6 +11,7 @@ tauri-event = ["specta", "dep:tauri-specta"]
 [dependencies]
 hypr-audio = { workspace = true }
 hypr-audio-utils = { workspace = true }
+hypr-denoise = { workspace = true, features = ["onnx"] }
 hypr-device-monitor = { workspace = true }
 hypr-host = { workspace = true }
 hypr-language = { workspace = true }

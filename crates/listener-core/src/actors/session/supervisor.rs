@@ -570,6 +570,7 @@ mod tests {
                 keywords: vec![],
                 participant_human_ids: vec![],
                 self_human_id: None,
+                mic_denoise: false,
             },
             app_dir: std::env::temp_dir(),
             started_at_instant: Instant::now(),

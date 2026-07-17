@@ -109,6 +109,14 @@ export const SETTING_DEFINITIONS = {
     path: ["general", "save_recordings"],
     default: true as boolean,
   },
+  // Opt-in DTLN noise suppression applied to the transcription-bound mic
+  // copy only (recordings stay raw). Read at session start; changing it does
+  // not affect an in-flight session.
+  mic_denoise: {
+    type: "boolean",
+    path: ["general", "mic_denoise"],
+    default: false as boolean,
+  },
   audio_retention: {
     type: "string",
     path: ["general", "audio_retention"],
@@ -213,6 +221,13 @@ export const SETTING_DEFINITIONS = {
     type: "string",
     path: ["todo", "github_repository"],
     default: "" as string,
+  },
+  // Live caption bubble above the dictation orb: the last few recognized
+  // words, fading out when you pause (Windows/Linux orb path only).
+  dictation_caption: {
+    type: "boolean",
+    path: ["general", "dictation_caption"],
+    default: true as boolean,
   },
 } as const;
 

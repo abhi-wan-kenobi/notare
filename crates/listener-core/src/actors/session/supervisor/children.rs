@@ -68,6 +68,7 @@ pub(super) async fn spawn_source(
         SourceArgs {
             mic_device: None,
             onboarding: ctx.params.onboarding,
+            mic_denoise: ctx.params.mic_denoise,
             runtime: ctx.runtime.clone(),
             audio: ctx.audio.clone(),
             session_id: ctx.params.session_id.clone(),
