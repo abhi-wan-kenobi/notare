@@ -73,6 +73,24 @@ jobs:
       - if: inputs.os == 'macos'
         run: echo "LIBCLANG_PATH=$(dirname "$(dirname "$(xcrun --find clang)")")/lib" >> "$GITHUB_ENV"
 
+      # whisper.cpp's vulkan-shaders-gen nested CMake fails under the default
+      # Visual Studio generator (VCTargetsPath probe) and the in-repo target
+      # dir exceeds Windows MAX_PATH (~230 chars of build dirs). Ninja inside
+      # an MSVC dev env + a short CARGO_TARGET_DIR are the proven fixes —
+      # same as the release workflow (release.yaml build-windows) and local
+      # builds (docs/BUILDING.md "Windows Vulkan build gotchas"). Only needed
+      # for the Windows Vulkan build; CPU-only Windows builds stay on the
+      # default generator + in-repo target dir.
+      - if: inputs.os == 'windows' && inputs.gpu == 'vulkan'
+        uses: ilammy/msvc-dev-cmd@v1
+      - if: inputs.os == 'windows' && inputs.gpu == 'vulkan'
+        shell: pwsh
+        run: |
+          Add-Content $env:GITHUB_ENV 'CMAKE_GENERATOR=Ninja'
+          Add-Content $env:GITHUB_ENV 'CARGO_TARGET_DIR=D:\nb'
+          Add-Content $env:GITHUB_ENV 'CC=cl'
+          Add-Content $env:GITHUB_ENV 'CXX=cl'
+
       - run: pnpm -F desktop tauri build --config ./src-tauri/tauri.conf.citest.json ${{ inputs.gpu == 'vulkan' && inputs.os != 'macos' && '--features gpu-vulkan' || '' }}
         env:
           CI: false
