@@ -4,6 +4,7 @@ import { Accordion } from "@hypr/ui/components/ui/accordion";
 
 import { useSttSettings } from "./context";
 import { ProviderId, PROVIDERS } from "./shared";
+import { TestConnectionButton } from "./test-connection-button";
 
 import { NonHyprProviderCard, StyledStreamdown } from "~/settings/ai/shared";
 
@@ -30,6 +31,22 @@ export function ConfigureProviders() {
               providerType="stt"
               providers={PROVIDERS}
               providerContext={<ProviderContext providerId={provider.id} />}
+              // The "Custom" provider is also how a self-hosted Notare STT
+              // companion server (docs/stt-server-design.md issue #14) plugs
+              // in — its base_url/api_key flow through the same
+              // ListenClient/BatchClient plumbing as every other STT
+              // provider (see docs/stt-server-design.md §5). Offer a live
+              // connectivity probe against its `/api/status` endpoint.
+              testConnection={
+                provider.id === "custom"
+                  ? (values) => (
+                      <TestConnectionButton
+                        baseUrl={values.base_url}
+                        apiKey={values.api_key}
+                      />
+                    )
+                  : undefined
+              }
             />
           ),
         )}
@@ -62,7 +79,11 @@ function ProviderContext({ providerId }: { providerId: ProviderId }) {
                     : providerId === "mistral"
                       ? `Use [Mistral](https://mistral.ai) for transcriptions.`
                       : providerId === "custom"
-                        ? `We only support **Deepgram compatible** endpoints for now.`
+                        ? `We only support **Deepgram compatible** endpoints for now. \
+    This is also where a self-hosted [Notare STT companion server](https://github.com/abhi-wan-kenobi/notare) \
+    on your LAN plugs in — enter its base URL (e.g. \`http://<host>:8383/v1\`), \
+    an API key only if you enabled one on the server, and use **Test connection**
+    to confirm it's reachable.`
                         : "";
 
   if (!content.trim()) {

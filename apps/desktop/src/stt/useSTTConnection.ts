@@ -109,15 +109,19 @@ export const useSTTConnection = () => {
       };
     }
 
-    if (!baseUrl || !apiKey) {
+    if (!baseUrl) {
       return null;
     }
 
+    // Most providers here require an api_key (enforced by the settings UI's
+    // `requires_config` fields), but the "Custom" provider — including a
+    // self-hosted STT companion server, docs/stt-server-design.md issue #14
+    // Phase 5 — allows an empty one (its bearer token is off by default).
     return {
       provider: current_stt_provider,
       model: current_stt_model,
       baseUrl,
-      apiKey,
+      apiKey: apiKey ?? "",
     };
   }, [
     current_stt_provider,

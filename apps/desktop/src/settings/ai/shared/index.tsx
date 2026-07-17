@@ -144,11 +144,18 @@ export function NonHyprProviderCard({
   providerType,
   providers,
   providerContext,
+  testConnection,
 }: {
   config: ProviderConfig;
   providerType: ProviderType;
   providers: readonly ProviderConfig[];
   providerContext?: ReactNode;
+  // Optional connectivity probe rendered right under the Base URL field
+  // (e.g. the "Custom" STT provider's "Test connection" button against a
+  // self-hosted companion server, docs/stt-server-design.md issue #14 Phase
+  // 5). A render prop so this shared card stays provider-agnostic — the
+  // caller owns what the probe actually does.
+  testConnection?: (values: { base_url: string; api_key: string }) => ReactNode;
 }) {
   const { t } = useLingui();
   const billing = useBillingAccess();
@@ -237,6 +244,10 @@ export function NonHyprProviderCard({
               {(field) => <FormField field={field} label={t`Base URL`} />}
             </form.Field>
           )}
+          {testConnection?.({
+            base_url: form.state.values.base_url,
+            api_key: form.state.values.api_key,
+          })}
           {showApiKey && (
             <form.Field name="api_key">
               {(field) => (

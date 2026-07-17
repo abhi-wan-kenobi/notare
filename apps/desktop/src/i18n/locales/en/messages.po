@@ -554,6 +554,10 @@ msgstr "Copy live transcript so far"
 msgid "Copy message"
 msgstr "Copy message"
 
+#: src/settings/ai/stt/test-connection-button.tsx
+msgid "Could not connect."
+msgstr "Could not connect."
+
 #: src/onboarding/account/after-login.tsx
 msgid "Could not start trial"
 msgstr "Could not start trial"
@@ -2270,6 +2274,10 @@ msgstr "Template content with Jinja2: {{ variable }}, {% if condition %}"
 #: src/templates/template-sidebar.tsx
 msgid "Templates"
 msgstr "Templates"
+
+#: src/settings/ai/stt/test-connection-button.tsx
+msgid "Test connection"
+msgstr "Test connection"
 
 #: src/settings/dictation/shortcut-recorder.tsx
 msgid "That key cannot be part of a global shortcut."
