@@ -88,8 +88,9 @@ model is re-verified (existence + size + CRC32) and quarantined to
   streaming transcription.
 - `GET /api/status` — version, engine, `loadedModel` (the currently active
   model, or `null` if it isn't installed/verified — see `activate`), on-disk
-  model integrity, GPU backend list (empty on this CPU image / debug
-  builds — `list_ggml_backends()` is release-build-only), uptime.
+  model integrity, GPU backend list (empty on CPU image / debug
+  builds), `requireGpu` config flag, `gpuOffload` status (`"verified" | "cpu" | "unknown"`),
+  `probeRealtimeFactor` (timed verification probe result in realtime factor ratio, or `null` if none run), uptime.
 - `GET /api/models` — the whisper.cpp catalog with per-model on-disk
   integrity (`notInstalled` / `verified` / `presentUnverified` / `corrupt`)
   and a `progress` snapshot (see `.../progress` below).
@@ -156,8 +157,11 @@ curl -X POST "http://127.0.0.1:8383/v1/listen?channels=1&sample_rate=16000" \
   -H "content-type: audio/wav" --data-binary @audio.wav | jq
 ```
 
-## Docker (CPU)
+## Docker
 
+The companion server has three Docker image options depending on your hardware:
+
+### 1. CPU (no GPU offload)
 ```sh
 docker build -f apps/stt-server/Dockerfile.cpu -t notare-stt-server:cpu .
 docker run --rm -p 8383:8383 \
@@ -165,12 +169,30 @@ docker run --rm -p 8383:8383 \
   notare-stt-server:cpu
 ```
 
-**The Dockerfile is untested** — there was no Docker available in the
-environment this was built in. It's a standard two-stage `rust:bookworm` ->
-`debian:bookworm-slim` build with the same apt packages the Linux desktop CI
-build installs for whisper-rs/bindgen (`cmake`, `clang`, `libclang-dev`,
-`build-essential`). Build and smoke-test it before relying on it in
-production; `Dockerfile.vulkan` / `Dockerfile.cuda` are Phase 4.
+### 2. AMD Vulkan GPU Offloading
+Enables whisper.cpp's `vulkan` feature. Requires mounting `/dev/dri` and adding the container user to the host's `video`/`render` group.
+```sh
+docker build -f apps/stt-server/Dockerfile.vulkan -t notare-stt-server:vulkan .
+docker run --rm -p 8383:8383 \
+  --device /dev/dri \
+  --group-add video \
+  -v notare-stt-models:/data/models \
+  -e NOTARE_STT_MODEL_DIR=/data/models \
+  notare-stt-server:vulkan
+```
+*Note for RDNA2 (e.g. RX 6600):* If silent CPU fallback is detected, the admin panel surfaces a `CPU Fallback` state. Run with `NOTARE_STT_REQUIRE_GPU=true` to fail startup if Vulkan is not working.
+
+### 3. NVIDIA CUDA GPU Offloading
+Enables whisper.cpp's `cuda` feature. Requires the NVIDIA Container Toolkit.
+```sh
+docker build -f apps/stt-server/Dockerfile.cuda -t notare-stt-server:cuda .
+docker run --rm -p 8383:8383 \
+  --gpus all \
+  -v notare-stt-models:/data/models \
+  -e NOTARE_STT_MODEL_DIR=/data/models \
+  notare-stt-server:cuda
+```
+
 
 ## Tests
 

@@ -1,0 +1,73 @@
+# Notare STT companion server — Vulkan GPU offloaded image.
+#
+# Build it with:
+#
+#   docker build -f apps/stt-server/Dockerfile.vulkan -t notare-stt-server:vulkan .
+#
+# Run it with Vulkan/Mesa device access for AMD GPU:
+#
+#   docker run --rm -p 8383:8383 \
+#     --device /dev/dri \
+#     --group-add video \
+#     -v notare-stt-models:/data/models \
+#     -e NOTARE_STT_MODEL_DIR=/data/models \
+#     notare-stt-server:vulkan
+#
+
+# --- builder -----------------------------------------------------------
+FROM rust:1.94-bookworm AS builder
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    cmake \
+    clang \
+    libclang-dev \
+    pkg-config \
+    libssl-dev \
+    ca-certificates \
+    libvulkan-dev \
+    glslc \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /workspace
+
+# Copy the whole workspace (needed due to local workspace path dependencies)
+COPY . .
+
+RUN cargo build --release -p stt-server --features vulkan && \
+    cp target/release/stt-server /usr/local/bin/stt-server
+
+# --- runtime -------------------------------------------------------------
+FROM debian:bookworm-slim AS runtime
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    libssl3 \
+    curl \
+    libvulkan1 \
+    mesa-vulkan-drivers \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd --system --create-home --uid 10001 notare
+
+COPY --from=builder /usr/local/bin/stt-server /usr/local/bin/stt-server
+
+# Storage layout:
+#   /data/models/stt/<file>            model catalog
+#   /data/models/stt/<file>.verified   CRC32 sidecar stamp
+RUN mkdir -p /data/models && chown -R notare:notare /data
+VOLUME ["/data"]
+USER notare
+
+ENV NOTARE_STT_HOST=0.0.0.0 \
+    NOTARE_STT_PORT=8383 \
+    NOTARE_STT_MODEL_DIR=/data/models \
+    NOTARE_STT_MODEL=QuantizedSmall \
+    NOTARE_STT_REQUIRE_GPU=false \
+    RUST_LOG=info
+
+EXPOSE 8383
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s \
+    CMD curl -f "http://localhost:${NOTARE_STT_PORT}/health" || exit 1
+
+ENTRYPOINT ["/usr/local/bin/stt-server"]

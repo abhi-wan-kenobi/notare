@@ -294,13 +294,19 @@ pub async fn activate_model(State(state): State<Arc<AppState>>, Path(id): Path<S
         return model_not_found(&id);
     };
 
-    match state.activate(model).await {
-        Ok(integrity) => Json(json!({
-            "id": id,
-            "status": "activated",
-            "integrity": integrity,
-        }))
-        .into_response(),
+    match state.activate(model.clone()).await {
+        Ok(integrity) => {
+            let state_clone = state.clone();
+            tokio::spawn(async move {
+                state_clone.run_probe_for_model(model).await;
+            });
+            Json(json!({
+                "id": id,
+                "status": "activated",
+                "integrity": integrity,
+            }))
+            .into_response()
+        }
         Err(ActivateError::NotInstalled) => json_error_response(
             StatusCode::CONFLICT,
             "model_not_installed",

@@ -36,12 +36,44 @@ async fn main() -> anyhow::Result<()> {
     let port = config.port;
     let state = Arc::new(AppState::new(config));
 
+    // Print GGML backends and verify GPU offload requirement if configured
+    let backends = hypr_whisper_local::list_ggml_backends();
+    if backends.is_empty() {
+        tracing::info!("No GGML backends found (or running a debug build)");
+    } else {
+        for b in &backends {
+            tracing::info!(
+                kind = %b.kind,
+                name = %b.name,
+                description = %b.description,
+                total_memory_mb = b.total_memory_mb,
+                free_memory_mb = b.free_memory_mb,
+                "GGML backend found"
+            );
+        }
+    }
+
+    let has_gpu = backends.iter().any(|b| b.kind == "GPU" || b.kind == "ACCEL");
+    if state.config.require_gpu && !has_gpu {
+        tracing::error!("require_gpu is set to true but no GPU or ACCEL backend is available. Exiting.");
+        std::process::exit(1);
+    }
+
     // Startup reconciliation (design doc §8): verify every installed
     // catalog model's on-disk reality before serving, so a half-written or
     // bit-rotted model is quarantined (`*.corrupt`) and reflected in
     // `/api/models` from the very first request instead of surfacing as a
     // mysterious `model_load_failed` later.
     state.reconcile_on_startup().await;
+
+    // Run the startup probe if the model file is already present on disk
+    let model_path = state.config.model_path();
+    if model_path.is_file() {
+        let state_clone = state.clone();
+        tokio::spawn(async move {
+            state_clone.run_probe_for_model(state_clone.config.model.clone()).await;
+        });
+    }
 
     let app = build_router(state);
 

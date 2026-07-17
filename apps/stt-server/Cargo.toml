@@ -26,6 +26,17 @@ tokio = { workspace = true, features = ["rt-multi-thread", "macros", "net", "sig
 tower = { workspace = true }
 tower-http = { workspace = true, features = ["cors", "trace"] }
 
+[features]
+default = []
+vulkan = [
+    "hypr-transcribe-whisper-local/vulkan",
+    "hypr-whisper-local/vulkan",
+]
+cuda = [
+    "hypr-transcribe-whisper-local/cuda",
+    "hypr-whisper-local/cuda",
+]
+
 [dev-dependencies]
 reqwest = { workspace = true, features = ["json"] }
 tempfile = { workspace = true }
