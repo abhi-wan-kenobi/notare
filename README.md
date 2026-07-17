@@ -65,7 +65,7 @@ Auto-updates are built in — install once and the app keeps itself current.
 ## Roadmap
 
 Development is planned in the open. See the
-[Notare Roadmap board](https://github.com/abhi-wan-kenobi/notare/projects)
+[Notare Roadmap board](https://github.com/users/abhi-wan-kenobi/projects/1)
 for what's up next, or browse the
 [v0.2 / v0.3 milestones](https://github.com/abhi-wan-kenobi/notare/milestones)
 and the [issue tracker](https://github.com/abhi-wan-kenobi/notare/issues).
