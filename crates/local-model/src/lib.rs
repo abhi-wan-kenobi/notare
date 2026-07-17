@@ -4,6 +4,7 @@ pub use hypr_am::AmModel;
 use hypr_model_downloader::{DownloadPart, DownloadableModel, Error};
 pub use hypr_parakeet_onnx_model::ParakeetOnnxModel;
 pub use hypr_transcribe_soniqo::SoniqoModel;
+pub use hypr_voxtral_llama_model::VoxtralLlamaModel;
 pub use hypr_whisper_local_model::WhisperModel;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, specta::Type, Eq, Hash, PartialEq)]
@@ -86,6 +87,10 @@ pub enum LocalModel {
     // ("soniqo-*"), Am ("am-*"), Whisper ("Quantized*") or GgufLlm
     // (variant-name) wire value under untagged deserialization.
     ParakeetOnnx(ParakeetOnnxModel),
+    // Serialized as "voxtral-mini-3b-2507-q4km"; collides with none of the
+    // above (nor ParakeetOnnx's "parakeet-*" prefix) under untagged
+    // deserialization.
+    VoxtralLlama(VoxtralLlamaModel),
     GgufLlm(GgufLlmModel),
 }
 
@@ -98,6 +103,9 @@ impl std::fmt::Display for LocalModel {
             // ParakeetOnnxModel's strum name already carries the
             // "parakeet-" prefix.
             LocalModel::ParakeetOnnx(model) => write!(f, "{model}"),
+            // VoxtralLlamaModel's strum name already carries the
+            // "voxtral-" prefix.
+            LocalModel::VoxtralLlama(model) => write!(f, "{model}"),
             LocalModel::GgufLlm(model) => write!(f, "llm-{model:?}"),
         }
     }
@@ -123,6 +131,7 @@ impl LocalModel {
             LocalModel::Am(AmModel::ParakeetV3),
             LocalModel::Am(AmModel::WhisperLargeV3),
             LocalModel::ParakeetOnnx(ParakeetOnnxModel::TdtV3Int8),
+            LocalModel::VoxtralLlama(VoxtralLlamaModel::Mini3bQ4KM),
         ]);
 
         models.extend([
@@ -140,6 +149,7 @@ impl LocalModel {
             LocalModel::Whisper(_) => "stt-whisper",
             LocalModel::Am(_) => "stt-am",
             LocalModel::ParakeetOnnx(_) => "stt-parakeet-onnx",
+            LocalModel::VoxtralLlama(_) => "stt-voxtral-llama",
             LocalModel::GgufLlm(_) => "llm",
         }
     }
@@ -149,7 +159,8 @@ impl LocalModel {
             LocalModel::Soniqo(_)
             | LocalModel::Whisper(_)
             | LocalModel::Am(_)
-            | LocalModel::ParakeetOnnx(_) => LocalModelKind::Stt,
+            | LocalModel::ParakeetOnnx(_)
+            | LocalModel::VoxtralLlama(_) => LocalModelKind::Stt,
             LocalModel::GgufLlm(_) => LocalModelKind::Llm,
         }
     }
@@ -168,6 +179,7 @@ impl LocalModel {
             LocalModel::Am(AmModel::ParakeetV3) => "am-parakeet-v3",
             LocalModel::Am(AmModel::WhisperLargeV3) => "am-whisper-large-v3",
             LocalModel::ParakeetOnnx(ParakeetOnnxModel::TdtV3Int8) => "parakeet-tdt-v3",
+            LocalModel::VoxtralLlama(VoxtralLlamaModel::Mini3bQ4KM) => "voxtral-mini-3b-q4km",
             LocalModel::GgufLlm(GgufLlmModel::Llama3p2_3bQ4) => "llm-llama3-2-3b-q4",
             LocalModel::GgufLlm(GgufLlmModel::HyprLLM) => "llm-hypr-llm",
             LocalModel::GgufLlm(GgufLlmModel::Gemma3_4bQ4) => "llm-gemma3-4b-q4",
@@ -180,6 +192,7 @@ impl LocalModel {
             LocalModel::Whisper(model) => models_base.join("stt").join(model.file_name()),
             LocalModel::Am(model) => models_base.join("stt").join(model.model_dir()),
             LocalModel::ParakeetOnnx(model) => models_base.join("stt").join(model.model_dir()),
+            LocalModel::VoxtralLlama(model) => models_base.join("stt").join(model.model_dir()),
             LocalModel::GgufLlm(model) => models_base.join("llm").join(model.file_name()),
         }
     }
@@ -190,6 +203,7 @@ impl LocalModel {
             LocalModel::Whisper(model) => model.display_name().to_string(),
             LocalModel::Am(model) => model.display_name().to_string(),
             LocalModel::ParakeetOnnx(model) => model.display_name().to_string(),
+            LocalModel::VoxtralLlama(model) => model.display_name().to_string(),
             LocalModel::GgufLlm(model) => model.display_name().to_string(),
         }
     }
@@ -200,12 +214,22 @@ impl LocalModel {
             LocalModel::Whisper(model) => model.description(),
             LocalModel::Am(model) => model.description().to_string(),
             LocalModel::ParakeetOnnx(model) => model.description(),
+            LocalModel::VoxtralLlama(model) => model.description(),
             LocalModel::GgufLlm(model) => model.description(),
         }
     }
 
     pub fn is_available_on_current_platform(&self) -> bool {
         let is_apple_silicon = cfg!(target_arch = "aarch64") && cfg!(target_os = "macos");
+        // CUDA machines are the intended target (see issue #16 Phase A);
+        // CPU-only x86_64 Windows/Linux is the supported fallback (slow, but
+        // the only Linux-testable path today). No macOS build (Apple
+        // Silicon has no CUDA), no Vulkan offload (llama.cpp's mtmd+Vulkan
+        // path heap-corrupts on RDNA2, ggml-org/llama.cpp#22128) — those are
+        // build-feature/GPU-offload concerns layered on top of this gate,
+        // same relationship whisper.cpp's GPU features have to `Whisper(_)`.
+        let is_x86_64_win_or_linux =
+            cfg!(target_arch = "x86_64") && (cfg!(target_os = "windows") || cfg!(target_os = "linux"));
 
         match self {
             LocalModel::Soniqo(model) => model.is_available_on_current_platform(),
@@ -215,6 +239,7 @@ impl LocalModel {
             LocalModel::Am(_) => is_apple_silicon,
             // ONNX Runtime CPU execution works on every desktop platform.
             LocalModel::ParakeetOnnx(_) => true,
+            LocalModel::VoxtralLlama(_) => is_x86_64_win_or_linux,
             LocalModel::GgufLlm(_) => cfg!(target_arch = "aarch64"),
         }
     }
@@ -272,6 +297,7 @@ impl DownloadableModel for LocalModel {
             LocalModel::Whisper(model) => format!("whisper:{}", model.file_name()),
             LocalModel::Am(model) => format!("am:{}", model.model_dir()),
             LocalModel::ParakeetOnnx(model) => format!("parakeet-onnx:{}", model.model_dir()),
+            LocalModel::VoxtralLlama(model) => format!("voxtral-llama:{}", model.model_dir()),
             LocalModel::GgufLlm(model) => model.download_key(),
         }
     }
@@ -283,6 +309,7 @@ impl DownloadableModel for LocalModel {
             LocalModel::Am(model) => Some(model.tar_url().to_string()),
             // Multi-file model: see `download_parts`.
             LocalModel::ParakeetOnnx(_) => None,
+            LocalModel::VoxtralLlama(_) => None,
             LocalModel::GgufLlm(model) => model.download_url(),
         }
     }
@@ -294,6 +321,7 @@ impl DownloadableModel for LocalModel {
             LocalModel::Am(model) => Some(model.tar_checksum()),
             // Per-part checksums live in `download_parts`.
             LocalModel::ParakeetOnnx(_) => None,
+            LocalModel::VoxtralLlama(_) => None,
             LocalModel::GgufLlm(model) => model.download_checksum(),
         }
     }
@@ -305,6 +333,7 @@ impl DownloadableModel for LocalModel {
             // AM installs as an unpacked directory; size applies to the tar only.
             LocalModel::Am(_) => None,
             LocalModel::ParakeetOnnx(model) => Some(model.model_size_bytes()),
+            LocalModel::VoxtralLlama(model) => Some(model.model_size_bytes()),
             LocalModel::GgufLlm(model) => model.expected_size(),
         }
     }
@@ -312,6 +341,18 @@ impl DownloadableModel for LocalModel {
     fn download_parts(&self) -> Option<Vec<DownloadPart>> {
         match self {
             LocalModel::ParakeetOnnx(model) => Some(
+                model
+                    .files()
+                    .iter()
+                    .map(|file| DownloadPart {
+                        url: model.file_url(file.name),
+                        relative_path: file.name.to_string(),
+                        checksum: Some(file.crc32),
+                        expected_size: Some(file.size_bytes),
+                    })
+                    .collect(),
+            ),
+            LocalModel::VoxtralLlama(model) => Some(
                 model
                     .files()
                     .iter()
@@ -336,6 +377,8 @@ impl DownloadableModel for LocalModel {
                 .join(format!("{}.tar", model.model_dir())),
             // Directory holding the individual ONNX/vocab files.
             LocalModel::ParakeetOnnx(model) => models_base.join("stt").join(model.model_dir()),
+            // Directory holding the GGUF weight + mmproj files.
+            LocalModel::VoxtralLlama(model) => models_base.join("stt").join(model.model_dir()),
             LocalModel::GgufLlm(model) => model.download_destination(models_base),
         }
     }
@@ -370,6 +413,19 @@ impl DownloadableModel for LocalModel {
                             .unwrap_or(false)
                 }))
             }
+            LocalModel::VoxtralLlama(model) => {
+                // Same rule: a truncated leftover must not count as
+                // installed, so require both the weight and mmproj files at
+                // their expected sizes.
+                let dir = models_base.join("stt").join(model.model_dir());
+                Ok(model.files().iter().all(|file| {
+                    let path = dir.join(file.name);
+                    path.is_file()
+                        && hypr_file::file_size(&path)
+                            .map(|size| size == file.size_bytes)
+                            .unwrap_or(false)
+                }))
+            }
             LocalModel::GgufLlm(model) => model.is_downloaded(models_base),
         }
     }
@@ -389,6 +445,7 @@ impl DownloadableModel for LocalModel {
             // Parts are downloaded and verified straight into the model
             // directory; nothing left to do.
             LocalModel::ParakeetOnnx(_) => Ok(()),
+            LocalModel::VoxtralLlama(_) => Ok(()),
             LocalModel::GgufLlm(model) => model.finalize_download(downloaded_path, models_base),
         }
     }
@@ -414,6 +471,14 @@ impl DownloadableModel for LocalModel {
                 Ok(())
             }
             LocalModel::ParakeetOnnx(model) => {
+                let model_dir = models_base.join("stt").join(model.model_dir());
+                if model_dir.exists() {
+                    std::fs::remove_dir_all(&model_dir)
+                        .map_err(|e| Error::DeleteFailed(e.to_string()))?;
+                }
+                Ok(())
+            }
+            LocalModel::VoxtralLlama(model) => {
                 let model_dir = models_base.join("stt").join(model.model_dir());
                 if model_dir.exists() {
                     std::fs::remove_dir_all(&model_dir)
@@ -487,6 +552,66 @@ mod tests {
         let dir = base.path().join("stt").join("parakeet-tdt-0.6b-v3-int8");
         std::fs::create_dir_all(&dir).unwrap();
         for file in ParakeetOnnxModel::TdtV3Int8.files() {
+            // right names, wrong sizes -> still not installed
+            std::fs::write(dir.join(file.name), b"stub").unwrap();
+        }
+        assert!(!model.is_downloaded(base.path()).unwrap());
+
+        model.delete_downloaded(base.path()).unwrap();
+        assert!(!dir.exists());
+    }
+
+    #[test]
+    fn voxtral_llama_untagged_serde_round_trips_without_collisions() {
+        let model = LocalModel::VoxtralLlama(VoxtralLlamaModel::Mini3bQ4KM);
+        let json = serde_json::to_string(&model).unwrap();
+        assert_eq!(json, "\"voxtral-mini-3b-2507-q4km\"");
+
+        let parsed: LocalModel = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed, model);
+
+        // Neighbouring wire values must still land on their own variants.
+        let parakeet: LocalModel = serde_json::from_str("\"parakeet-tdt-v3-int8\"").unwrap();
+        assert!(matches!(parakeet, LocalModel::ParakeetOnnx(_)));
+    }
+
+    #[test]
+    fn voxtral_llama_downloads_as_pinned_multi_part() {
+        let model = LocalModel::VoxtralLlama(VoxtralLlamaModel::Mini3bQ4KM);
+
+        assert_eq!(model.download_url(), None);
+        let parts = model.download_parts().expect("must be multi-part");
+        assert_eq!(parts.len(), 2);
+        assert!(parts.iter().all(|p| p.checksum.is_some()));
+        assert!(parts.iter().all(|p| p.expected_size.is_some()));
+        assert!(
+            parts
+                .iter()
+                .all(|p| p.url.contains("20616573013f28229fff61de74359d3eeff61f6a"))
+        );
+        assert_eq!(
+            model.expected_size(),
+            Some(parts.iter().map(|p| p.expected_size.unwrap()).sum())
+        );
+        assert!(!model.remove_destination_after_finalize());
+
+        let destination = model.download_destination(Path::new("/base"));
+        assert_eq!(
+            destination,
+            Path::new("/base/stt/voxtral-mini-3b-2507-q4km")
+        );
+        assert_eq!(destination, model.install_path(Path::new("/base")));
+    }
+
+    #[test]
+    fn voxtral_llama_is_downloaded_requires_all_files_at_expected_sizes() {
+        let model = LocalModel::VoxtralLlama(VoxtralLlamaModel::Mini3bQ4KM);
+        let base = tempfile::tempdir().unwrap();
+        assert!(!model.is_downloaded(base.path()).unwrap());
+
+        let dir = base.path().join("stt").join("voxtral-mini-3b-2507-q4km");
+        std::fs::create_dir_all(&dir).unwrap();
+        for file in VoxtralLlamaModel::Mini3bQ4KM.files() {
             // right names, wrong sizes -> still not installed
             std::fs::write(dir.join(file.name), b"stub").unwrap();
         }

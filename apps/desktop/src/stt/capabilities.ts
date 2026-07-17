@@ -46,6 +46,7 @@ export function isSupportedLocalSttModel(
     (model.startsWith("soniqo-") ||
       model.startsWith("am-") ||
       model.startsWith("parakeet-") ||
+      model.startsWith("voxtral-") ||
       model.startsWith("Quantized"))
   );
 }
@@ -56,6 +57,10 @@ export function isWhisperLocalSttModel(model?: string | null) {
 
 export function isParakeetLocalSttModel(model?: string | null) {
   return typeof model === "string" && model.startsWith("parakeet-");
+}
+
+export function isVoxtralLocalSttModel(model?: string | null) {
+  return typeof model === "string" && model.startsWith("voxtral-");
 }
 
 export function isHyprnoteCloudSttModel(

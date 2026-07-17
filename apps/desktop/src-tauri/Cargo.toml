@@ -117,13 +117,23 @@ automation = ["tauri-plugin-automation"]
 # build machine; default builds stay CPU-only and need no SDK. See
 # docs/BUILDING.md "GPU builds (Vulkan)".
 gpu-vulkan = ["tauri-plugin-local-stt/vulkan"]
+# CUDA offload for the Voxtral (llama.cpp) engine only (issue #16 Phase B).
+# NOT part of any default feature set and never enabled in release.yaml: it
+# requires the CUDA toolkit + matching driver/DLLs on the build+run machine,
+# which non-NVIDIA users don't have. Built only by the "voxtral-cuda" test-MSI
+# entry in .github/workflows/desktop_test_build.yaml for manual NVIDIA
+# validation. CPU Voxtral (the `voxtral-llama` feature above, always on for
+# Windows/Linux) ships to everyone. See docs/VOXTRAL.md.
+voxtral-cuda = ["tauri-plugin-local-stt/voxtral-llama-cuda"]
 
-# Compile the whisper.cpp and Parakeet (ONNX) engines on platforms that have
-# no Argmax/Soniqo runtime (those are Apple-Silicon-only). CPU inference by
-# default; opt into GPU offload with `--features gpu-vulkan` (see [features]
-# above).
+# Compile the whisper.cpp, Parakeet (ONNX) and Voxtral (llama.cpp) engines on
+# platforms that have no Argmax/Soniqo runtime (those are Apple-Silicon-only).
+# CPU inference by default; opt into GPU offload with `--features gpu-vulkan`
+# (see [features] above) for whisper.cpp, or `voxtral-llama-cuda` for Voxtral
+# (CUDA-only passthrough — see that feature's doc comment in
+# plugins/local-stt/Cargo.toml; never bundled into the default release MSI).
 [target.'cfg(any(target_os = "linux", target_os = "windows"))'.dependencies]
-tauri-plugin-local-stt = { workspace = true, features = ["whisper-cpp", "parakeet-onnx"] }
+tauri-plugin-local-stt = { workspace = true, features = ["whisper-cpp", "parakeet-onnx", "voxtral-llama"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 tauri-plugin-automation = { version = "0.1", optional = true }

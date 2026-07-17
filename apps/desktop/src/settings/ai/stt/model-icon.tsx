@@ -64,6 +64,14 @@ export function getLocalModelIcon(model: string): ModelIconSpec | null {
     };
   }
 
+  if (value.includes("voxtral")) {
+    return {
+      label: "V",
+      title: "Mistral Voxtral",
+      className: "border-primary/25 bg-primary/10 text-primary",
+    };
+  }
+
   if (value.includes("ggml") || value.includes("gguf")) {
     return {
       label: "G",

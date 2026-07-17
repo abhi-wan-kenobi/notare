@@ -587,12 +587,15 @@ function useConfiguredMapping(): Record<
   });
 
   const localModels = supportedModels.data ?? [];
-  // whisper.cpp and Parakeet (ONNX) models run everywhere; soniqo/argmax
-  // backends are Apple Silicon only.
+  // whisper.cpp, Parakeet (ONNX) and Voxtral (llama.cpp) models run
+  // everywhere the backend compiled them in (the backend's own
+  // `list_supported_models` already gates each on its Cargo feature);
+  // soniqo/argmax backends are Apple Silicon only.
   const visibleLocalModels = localModels.filter(
     (m) =>
       m.model_type === "whispercpp" ||
       m.model_type === "parakeetOnnx" ||
+      m.model_type === "voxtralLlama" ||
       isAppleSilicon,
   );
 
