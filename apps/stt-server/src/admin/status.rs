@@ -98,7 +98,7 @@ mod tests {
             .await
             .unwrap();
         let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
-        assert_eq!(json["loadedModel"].is_null());
+        assert!(json["loadedModel"].is_null());
         assert_eq!(json["modelIntegrity"]["state"], "notInstalled");
         assert_eq!(json["engine"], "whisper-local");
         assert!(json["backends"].is_array());
