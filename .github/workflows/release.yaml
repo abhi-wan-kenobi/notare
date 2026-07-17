@@ -1,8 +1,9 @@
 name: release
 
 # Signed stable releases with updater artifacts, published to GitHub Releases.
-# Triggered by pushing a v* tag. macOS is intentionally skipped for now
-# (no Apple signing certificates yet).
+# Triggered by pushing a v* tag. macOS builds are UNSIGNED (no Apple
+# certificates yet) and Apple Silicon only; updater artifacts are still
+# minisign-signed on every platform.
 on:
   push:
     tags: ["v*"]
@@ -122,8 +123,60 @@ jobs:
             apps/desktop/src-tauri/target/release/bundle/appimage/*.AppImage.sig
           if-no-files-found: error
 
+  # macos-latest runners are Apple Silicon (aarch64) — Intel is not built.
+  # No Apple code signing (unsigned by design for now); the minisign updater
+  # signing (TAURI_SIGNING_*) is separate and still applies. The macOS updater
+  # artifact is the .app.tar.gz (+ .sig) from bundle/macos/, NOT the .dmg.
+  # binaries/check-permissions is compiled automatically by build.rs (swiftc,
+  # preinstalled on macOS runners).
+  build-macos:
+    runs-on: macos-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - run: corepack enable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: release-macos
+
+      - run: pnpm install
+        env:
+          NODE_OPTIONS: ""
+
+      - run: pnpm exec turbo run build --filter=@hypr/ui
+
+      # bindgen (libsqlite3-sys, whisper-rs-sys) needs libclang.dylib from the
+      # Xcode toolchain; set it explicitly (and never to an empty string —
+      # clang-sys treats set-but-empty as "search nowhere").
+      - run: echo "LIBCLANG_PATH=$(dirname "$(dirname "$(xcrun --find clang)")")/lib" >> "$GITHUB_ENV"
+
+      # Tauri v2 merges --config files in order (later wins; arrays replaced),
+      # so the -macos overlay only swaps bundle.targets to ["app", "dmg"] while
+      # version/identifier/updater stay in tauri.conf.stable.json. No
+      # gpu-vulkan feature — whisper.cpp uses Metal/CPU on macOS.
+      - run: pnpm -F desktop tauri build --config ./src-tauri/tauri.conf.stable.json --config ./src-tauri/tauri.conf.stable-macos.json
+        env:
+          CI: false
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bundles-macos
+          path: |
+            apps/desktop/src-tauri/target/release/bundle/dmg/*.dmg
+            apps/desktop/src-tauri/target/release/bundle/macos/*.app.tar.gz
+            apps/desktop/src-tauri/target/release/bundle/macos/*.app.tar.gz.sig
+          if-no-files-found: error
+
   publish:
-    needs: [build-windows, build-linux]
+    needs: [build-windows, build-linux, build-macos]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
@@ -137,7 +190,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p release-assets
-          find artifacts -type f \( -name '*.msi' -o -name '*.msi.sig' -o -name '*.deb' -o -name '*.AppImage' -o -name '*.AppImage.sig' \) -exec cp {} release-assets/ \;
+          find artifacts -type f \( -name '*.msi' -o -name '*.msi.sig' -o -name '*.deb' -o -name '*.AppImage' -o -name '*.AppImage.sig' -o -name '*.dmg' -o -name '*.app.tar.gz' -o -name '*.app.tar.gz.sig' \) -exec cp {} release-assets/ \;
           ls -la release-assets/
 
           VERSION="${GITHUB_REF_NAME#v}"
@@ -147,12 +200,16 @@ jobs:
           cd release-assets
           MSI=$(ls *.msi)
           APPIMAGE=$(ls *.AppImage)
+          # macOS updater artifact = the .app.tar.gz (the .dmg is download-only).
+          MACTAR=$(ls *.app.tar.gz)
           [ -f "${MSI}.sig" ] || { echo "missing ${MSI}.sig"; exit 1; }
           [ -f "${APPIMAGE}.sig" ] || { echo "missing ${APPIMAGE}.sig"; exit 1; }
+          [ -f "${MACTAR}.sig" ] || { echo "missing ${MACTAR}.sig"; exit 1; }
 
           urlenc() { jq -rn --arg s "$1" '$s|@uri'; }
           MSI_URL="https://github.com/${REPO}/releases/download/${TAG}/$(urlenc "$MSI")"
           APPIMAGE_URL="https://github.com/${REPO}/releases/download/${TAG}/$(urlenc "$APPIMAGE")"
+          MACTAR_URL="https://github.com/${REPO}/releases/download/${TAG}/$(urlenc "$MACTAR")"
 
           jq -n \
             --arg version "$VERSION" \
@@ -161,13 +218,16 @@ jobs:
             --arg win_url "$MSI_URL" \
             --arg lin_sig "$(cat "${APPIMAGE}.sig")" \
             --arg lin_url "$APPIMAGE_URL" \
+            --arg mac_sig "$(cat "${MACTAR}.sig")" \
+            --arg mac_url "$MACTAR_URL" \
             '{
               version: $version,
               notes: "See the release notes on GitHub.",
               pub_date: $pub_date,
               platforms: {
                 "windows-x86_64": { signature: $win_sig, url: $win_url },
-                "linux-x86_64": { signature: $lin_sig, url: $lin_url }
+                "linux-x86_64": { signature: $lin_sig, url: $lin_url },
+                "darwin-aarch64": { signature: $mac_sig, url: $mac_url }
               }
             }' > latest.json
           cat latest.json
@@ -177,14 +237,21 @@ jobs:
           name: Notare ${{ github.ref_name }}
           generate_release_notes: true
           body: |
-            > **Note:** macOS builds are not part of this release yet (no Apple
-            > signing certificates). Windows builds are unsigned — SmartScreen
-            > will warn; choose "More info → Run anyway".
+            > **macOS (Apple Silicon only for now):** the `.dmg` is **unsigned**
+            > (no Apple certificates yet). Open the dmg, drag **Notare** to
+            > Applications, then on first launch **right-click the app → Open**
+            > to get past Gatekeeper — or run `xattr -cr /Applications/Notare.app`.
+            >
+            > **Windows:** builds are unsigned — SmartScreen will warn; choose
+            > "More info → Run anyway".
           files: |
             release-assets/*.msi
             release-assets/*.msi.sig
             release-assets/*.deb
             release-assets/*.AppImage
             release-assets/*.AppImage.sig
+            release-assets/*.dmg
+            release-assets/*.app.tar.gz
+            release-assets/*.app.tar.gz.sig
             release-assets/latest.json
           fail_on_unmatched_files: true

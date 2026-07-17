@@ -1,6 +1,6 @@
 # Notare
 
-**Open-source, local-first meeting notetaker + push-to-talk dictation for Windows and Linux (macOS coming).**
+**Open-source, local-first meeting notetaker + push-to-talk dictation for Windows, macOS, and Linux.**
 
 Notare records your meetings **locally** (system audio + microphone — no bots
 join your calls), transcribes them live on your GPU with whisper.cpp, and uses
@@ -21,12 +21,17 @@ Grab the latest installer from **[GitHub Releases](https://github.com/abhi-wan-k
 |---|---|
 | Windows 10/11 (x64) | `.msi` |
 | Linux (x64) | `.AppImage` or `.deb` |
-| macOS | *not yet — no signing certs; build from source* |
+| macOS (Apple Silicon) | `.dmg` — unsigned, see note below |
 
 Auto-updates are built in — install once and the app keeps itself current.
 
 > **Windows SmartScreen:** builds are not (yet) code-signed, so SmartScreen
 > will warn on first run. Click **More info → Run anyway**.
+
+> **macOS Gatekeeper:** builds are unsigned (no Apple certificates yet) and
+> Apple Silicon only. Open the `.dmg`, drag **Notare** to Applications, then
+> on first launch **right-click the app → Open** — or run
+> `xattr -cr /Applications/Notare.app`. Intel Macs: build from source.
 
 ## Highlights
 
@@ -57,11 +62,22 @@ Auto-updates are built in — install once and the app keeps itself current.
   on-disk reality (checksum-verified) on every launch; corrupt models are
   quarantined automatically.
 
+## Roadmap
+
+Development is planned in the open. See the
+[Notare Roadmap board](https://github.com/abhi-wan-kenobi/notare/projects)
+for what's up next, or browse the
+[v0.2 / v0.3 milestones](https://github.com/abhi-wan-kenobi/notare/milestones)
+and the [issue tracker](https://github.com/abhi-wan-kenobi/notare/issues).
+Feature requests and bug reports are welcome — issues labeled
+[`help wanted`](https://github.com/abhi-wan-kenobi/notare/labels/help%20wanted)
+are great places to jump in.
+
 ## Build from source
 
 See [`docs/BUILDING.md`](docs/BUILDING.md). Short version: Rust + pnpm +
-Tauri v2; `pnpm install && pnpm -F desktop tauri build`. macOS users can build
-and run locally today — only the signed distribution is pending.
+Tauri v2; `pnpm install && pnpm -F desktop tauri build`. Intel-Mac users must
+build from source for now — released macOS builds are Apple Silicon only.
 
 ## Lineage & credits
 
