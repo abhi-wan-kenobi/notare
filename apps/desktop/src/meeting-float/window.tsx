@@ -13,7 +13,13 @@ import {
 } from "@hypr/plugin-windows";
 import { cn } from "@hypr/utils";
 
-import { RecordingOrb } from "./orb";
+import { useConfigValues } from "~/shared/config";
+import {
+  DictationOrb,
+  normalizeOrbVariant,
+  ORB_VARIANT_SCALE,
+  type DictationOrbVariant,
+} from "~/dictation/orb";
 
 /**
  * Webview-based floating meeting widget used on Windows/Linux.
@@ -107,6 +113,18 @@ export function FloatingBarContent({
   const isError = state.status === "error";
   const captionsVisible = !state.liveCaptionMinimized;
 
+  const { dictation_orb_variant } = useConfigValues([
+    "dictation_orb_variant",
+  ] as const);
+  const variant = normalizeOrbVariant(dictation_orb_variant);
+
+  // Map the floating bar status to DictationPhase:
+  // - "error" status maps to "error" phase.
+  // - "recording" status maps to "listening" phase (as the bar doesn't have an idle or processing phase).
+  const phase = isError ? "error" : "listening";
+
+  const orbSize = getOrbSize(variant);
+
   const handleStop = () => {
     void windowsEvents.floatingBarStop.emit({});
   };
@@ -149,10 +167,11 @@ export function FloatingBarContent({
         }
       >
         <span data-tauri-drag-region className="pointer-events-none shrink-0">
-          <RecordingOrb
-            state={isError ? "error" : "listening"}
+          <DictationOrb
+            phase={phase}
             amplitude={state.amplitude}
-            size={32}
+            size={orbSize}
+            variant={variant}
           />
         </span>
         {!isError && (
@@ -304,4 +323,9 @@ function FloatingBarCaptions({
       )}
     </div>
   );
+}
+
+function getOrbSize(variant: DictationOrbVariant): number {
+  const scale = ORB_VARIANT_SCALE[variant] ?? 1;
+  return Math.round(32 / scale);
 }

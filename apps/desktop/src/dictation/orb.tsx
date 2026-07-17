@@ -69,7 +69,7 @@ export function normalizeOrbVariant(
  * so it renders 1.5x larger everywhere - orb window and settings previews
  * alike.
  */
-const ORB_VARIANT_SCALE: Record<DictationOrbVariant, number> = {
+export const ORB_VARIANT_SCALE: Record<DictationOrbVariant, number> = {
   cobalt: 1,
   particles: 1.5,
   waveform: 1,

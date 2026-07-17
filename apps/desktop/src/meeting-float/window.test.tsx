@@ -16,6 +16,12 @@ const mocks = vi.hoisted(() => ({
   emitOpenMain: vi.fn(async () => undefined),
   emitSettingsChange: vi.fn(async () => undefined),
   emitReady: vi.fn(async () => undefined),
+  config: {} as Record<string, string | undefined>,
+}));
+
+vi.mock("~/shared/config", () => ({
+  useConfigValues: (keys: readonly string[]) =>
+    Object.fromEntries(keys.map((key) => [key, mocks.config[key]])),
 }));
 
 vi.mock("@hypr/plugin-windows", () => ({
@@ -33,7 +39,7 @@ vi.mock("@hypr/plugin-windows", () => ({
   },
 }));
 
-import { FloatingBarWindow } from "./window";
+import { FloatingBarContent, FloatingBarWindow } from "./window";
 
 function makeState(
   overrides: Partial<FloatingBarState> = {},
@@ -67,6 +73,7 @@ describe("FloatingBarWindow", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.stateHandlers.length = 0;
+    mocks.config = {};
   });
 
   afterEach(() => {
@@ -228,5 +235,54 @@ describe("FloatingBarWindow", () => {
     expect(mocks.emitSettingsChange).toHaveBeenLastCalledWith(
       expect.objectContaining({ liveCaptionMinimized: true }),
     );
+  });
+});
+
+describe("FloatingBarContent orb variant", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.config = {};
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("renders the variant selected in settings", () => {
+    mocks.config["dictation_orb_variant"] = "particles";
+
+    render(<FloatingBarContent state={makeState()} />);
+
+    const orb = screen.getByTestId("dictation-orb");
+    expect(orb.getAttribute("data-dictation-variant")).toBe("particles");
+  });
+
+  it("falls back to the default variant when the setting is unset or invalid", () => {
+    const { rerender } = render(<FloatingBarContent state={makeState()} />);
+    expect(
+      screen.getByTestId("dictation-orb").getAttribute("data-dictation-variant"),
+    ).toBe("cobalt");
+
+    mocks.config["dictation_orb_variant"] = "not-a-variant";
+    rerender(<FloatingBarContent state={makeState()} />);
+    expect(
+      screen.getByTestId("dictation-orb").getAttribute("data-dictation-variant"),
+    ).toBe("cobalt");
+  });
+
+  it("maps the recording status to the listening phase", () => {
+    render(<FloatingBarContent state={makeState({ status: "recording" })} />);
+
+    expect(
+      screen.getByTestId("dictation-orb").getAttribute("data-dictation-phase"),
+    ).toBe("listening");
+  });
+
+  it("maps the error status to the error phase", () => {
+    render(<FloatingBarContent state={makeState({ status: "error" })} />);
+
+    expect(
+      screen.getByTestId("dictation-orb").getAttribute("data-dictation-phase"),
+    ).toBe("error");
   });
 });
