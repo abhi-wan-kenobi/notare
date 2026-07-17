@@ -278,6 +278,12 @@ pub(crate) async fn audio_import<R: tauri::Runtime>(
     })
 }
 
+// Extension for the temporary source file written by `audio_import_data`.
+// Decoding itself is content-sniffed (`rodio::Decoder::try_from(File)` probes
+// the bytes, not the path), but the extension must still be truthful: the
+// macOS `afconvert` fallback in hypr-audio-norm receives the path, and a
+// webm/aac payload mislabeled as ".mp3" would defeat it. Keep this list in
+// sync with `AUDIO_EXTENSIONS` in apps/desktop/src/stt/useUploadFile.ts.
 fn audio_import_source_extension(filename: &str) -> String {
     let extension = Path::new(filename)
         .extension()
@@ -285,8 +291,10 @@ fn audio_import_source_extension(filename: &str) -> String {
         .map(str::to_ascii_lowercase);
 
     match extension.as_deref() {
-        Some("wav" | "mp3" | "ogg" | "mp4" | "m4a" | "flac") => extension.unwrap(),
-        _ => "mp3".to_string(),
+        Some("wav" | "mp3" | "ogg" | "mp4" | "m4a" | "flac" | "webm" | "aac") => extension.unwrap(),
+        // Unknown or missing extension: keep a generic label. The decoder
+        // ignores it and probes the bytes.
+        _ => "bin".to_string(),
     }
 }
 
@@ -490,6 +498,50 @@ pub(crate) async fn attachment_remove<R: tauri::Runtime>(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn audio_import_source_extension_keeps_supported_extensions() {
+        for extension in ["wav", "mp3", "ogg", "mp4", "m4a", "flac", "webm", "aac"] {
+            assert_eq!(
+                audio_import_source_extension(&format!("recording.{extension}")),
+                extension,
+                "extension {extension} should be preserved"
+            );
+        }
+    }
+
+    #[test]
+    fn audio_import_source_extension_is_case_insensitive() {
+        assert_eq!(audio_import_source_extension("Recording.WEBM"), "webm");
+        assert_eq!(audio_import_source_extension("Recording.Mp3"), "mp3");
+    }
+
+    #[test]
+    fn audio_import_source_extension_uses_generic_label_for_unknown() {
+        assert_eq!(audio_import_source_extension("clip.opus"), "bin");
+        assert_eq!(audio_import_source_extension("noextension"), "bin");
+        assert_eq!(audio_import_source_extension(""), "bin");
+    }
+
+    #[test]
+    fn audio_import_source_path_uses_sanitized_extension() {
+        let session_dir = Path::new("/tmp/session");
+        let path = audio_import_source_path(session_dir, "drop.webm");
+        let name = path.file_name().unwrap().to_str().unwrap();
+
+        assert!(name.starts_with("audio-upload-"));
+        assert!(name.ends_with(".webm"));
+        assert!(path.starts_with(session_dir));
+    }
+
+    #[test]
+    fn audio_import_source_path_ignores_directory_components_in_filename() {
+        let session_dir = Path::new("/tmp/session");
+        let path = audio_import_source_path(session_dir, "../../evil/clip.aac");
+
+        assert!(path.starts_with(session_dir));
+        assert_eq!(path.extension().and_then(|e| e.to_str()), Some("aac"));
+    }
 
     #[test]
     fn create_parent_dir_error_includes_parent_and_target_paths() {

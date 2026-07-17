@@ -1,5 +1,11 @@
 import { useLingui } from "@lingui/react/macro";
 import {
+  Menu,
+  MenuItem,
+  PredefinedMenuItem,
+  Submenu,
+} from "@tauri-apps/api/menu";
+import {
   AlignLeftIcon,
   AudioLinesIcon,
   ChevronDownIcon,
@@ -28,7 +34,10 @@ import { useAITaskTask } from "~/ai/hooks";
 import * as AudioPlayer from "~/audio-player";
 import { getEnhancerService } from "~/services/enhancer";
 import { useEnhancedNoteActions } from "~/session/components/note-input/enhanced-actions";
-import { useRegenerateTranscript } from "~/session/components/note-input/transcript/actions";
+import {
+  useRegenerateTranscript,
+  useRegenerateTranscriptWithModel,
+} from "~/session/components/note-input/transcript/actions";
 import {
   buildTranscriptExportSegments,
   formatTranscriptExportSegments,
@@ -51,6 +60,7 @@ import { createTaskId } from "~/store/zustand/ai-task/task-configs";
 import { type Tab, useTabs } from "~/store/zustand/tabs";
 import { type EditorView } from "~/store/zustand/tabs/schema";
 import { useListener } from "~/stt/contexts";
+import { listDownloadedFinalSttModels } from "~/stt/final-model";
 import {
   COPY_FULL_LIVE_TRANSCRIPT_ACCELERATOR,
   COPY_LATEST_LIVE_CHUNK_ACCELERATOR,
@@ -753,6 +763,7 @@ function HeaderViewTranscriptActive({
 }) {
   const { t } = useLingui();
   const regenerate = useRegenerateTranscript(sessionId);
+  const regenerateWithModel = useRegenerateTranscriptWithModel(sessionId);
   const { request: transcriptExportRequest } =
     useSessionTranscriptRenderData(sessionId);
   const { audioExists, deleteRecording, isDeletingRecording } =
@@ -862,7 +873,65 @@ function HeaderViewTranscriptActive({
     sessionId,
     t,
   ]);
-  const showContextMenu = useNativeContextMenu(contextMenu);
+  // The shared useNativeContextMenu hook has no submenu support, so the
+  // transcript button builds its native menu here: the base items plus a
+  // "Re-transcribe with…" submenu listing downloaded models recommended for
+  // final-pass transcription (fetched fresh when the menu opens).
+  const showContextMenu = useCallback(
+    async (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const retranscribeModels = audioExists
+        ? await listDownloadedFinalSttModels()
+        : [];
+
+      const nativeItems: (MenuItem | Submenu | PredefinedMenuItem)[] = [];
+      for (const item of contextMenu) {
+        if ("separator" in item) {
+          nativeItems.push(await PredefinedMenuItem.new({ item: "Separator" }));
+          continue;
+        }
+
+        nativeItems.push(
+          await MenuItem.new({
+            id: item.id,
+            text: item.text,
+            enabled: !item.disabled,
+            accelerator: item.accelerator,
+            action: item.action,
+          }),
+        );
+
+        if (
+          item.id === `regenerate-transcript-${sessionId}` &&
+          retranscribeModels.length > 0
+        ) {
+          nativeItems.push(
+            await Submenu.new({
+              id: `regenerate-transcript-with-${sessionId}`,
+              text: t`Re-transcribe with`,
+              items: await Promise.all(
+                retranscribeModels.map((model) =>
+                  MenuItem.new({
+                    id: `regenerate-transcript-with-${sessionId}-${model.key}`,
+                    text: model.displayName,
+                    action: () => {
+                      void regenerateWithModel(model.key);
+                    },
+                  }),
+                ),
+              ),
+            }),
+          );
+        }
+      }
+
+      const menu = await Menu.new({ items: nativeItems });
+      await menu.popup();
+    },
+    [audioExists, contextMenu, regenerateWithModel, sessionId, t],
+  );
 
   return (
     <HeaderViewTranscriptButton

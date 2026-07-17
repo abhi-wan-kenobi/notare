@@ -9,6 +9,8 @@ const {
   audioImportDataMock,
   audioImportMock,
   audioImportListenMock,
+  audioSourceMetadataMock,
+  queueAutoEnhanceIfSummaryEmptyMock,
   parseSubtitleMock,
   createTranscriptMock,
   enhanceMock,
@@ -25,9 +27,11 @@ const {
   audioImportDataMock: vi.fn(),
   audioImportMock: vi.fn(),
   audioImportListenMock: vi.fn(),
+  audioSourceMetadataMock: vi.fn(),
   parseSubtitleMock: vi.fn(),
   createTranscriptMock: vi.fn(),
   enhanceMock: vi.fn(),
+  queueAutoEnhanceIfSummaryEmptyMock: vi.fn(),
   handleBatchFailedMock: vi.fn(),
   handleBatchStartedMock: vi.fn(),
   updateBatchProgressMock: vi.fn(),
@@ -55,7 +59,7 @@ vi.mock("@hypr/plugin-fs-sync", () => ({
   commands: {
     audioImport: audioImportMock,
     audioImportData: audioImportDataMock,
-    audioSourceMetadata: vi.fn(),
+    audioSourceMetadata: audioSourceMetadataMock,
   },
   events: {
     audioImportEvent: {
@@ -86,9 +90,7 @@ vi.mock("./useRunBatch", () => ({
 vi.mock("~/services/enhancer", () => ({
   getEnhancerService: vi.fn(() => ({
     enhance: enhanceMock,
-    queueAutoEnhanceIfSummaryEmpty: vi.fn().mockResolvedValue({
-      type: "queued",
-    }),
+    queueAutoEnhanceIfSummaryEmpty: queueAutoEnhanceIfSummaryEmptyMock,
   })),
 }));
 
@@ -123,6 +125,15 @@ describe("useUploadFile", () => {
       status: "ok",
       data: "/vault/sessions/session-1/audio.wav",
     });
+    audioImportMock.mockResolvedValue({
+      status: "ok",
+      data: "/vault/sessions/session-1/audio.mp3",
+    });
+    audioSourceMetadataMock.mockResolvedValue({
+      status: "error",
+      error: "not available",
+    });
+    queueAutoEnhanceIfSummaryEmptyMock.mockResolvedValue({ type: "queued" });
     audioImportListenMock.mockResolvedValue(vi.fn());
     runBatchMock.mockResolvedValue(undefined);
     createTranscriptMock.mockResolvedValue(undefined);
@@ -253,6 +264,225 @@ describe("useUploadFile", () => {
     );
     expect(createTranscriptMock.mock.invocationCallOrder[0]).toBeLessThan(
       enhanceMock.mock.invocationCallOrder[0],
+    );
+  });
+
+  test.each(["mp3", "m4a", "webm", "aac", "flac", "ogg"])(
+    "imports .%s paths through audioImport and runs the batch",
+    async (extension) => {
+      const { result } = renderHook(() => useUploadFile("session-1"), {
+        wrapper: createWrapper(),
+      });
+
+      act(() => {
+        result.current.processFile(`/tmp/recording.${extension}`, "audio");
+      });
+
+      await waitFor(() => {
+        expect(runBatchMock).toHaveBeenCalledWith(
+          "/vault/sessions/session-1/audio.mp3",
+        );
+      });
+      expect(audioImportMock).toHaveBeenCalledWith(
+        "session-1",
+        `/tmp/recording.${extension}`,
+      );
+      expect(audioImportDataMock).not.toHaveBeenCalled();
+    },
+  );
+
+  test("ignores paths with non-audio extensions", async () => {
+    const { result } = renderHook(() => useUploadFile("session-1"), {
+      wrapper: createWrapper(),
+    });
+
+    act(() => {
+      result.current.processFile("/tmp/notes.txt", "audio");
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(audioImportMock).not.toHaveBeenCalled();
+    expect(runBatchMock).not.toHaveBeenCalled();
+  });
+
+  test("queues auto-enhancement after the imported batch completes", async () => {
+    const { result } = renderHook(() => useUploadFile("session-1"), {
+      wrapper: createWrapper(),
+    });
+
+    act(() => {
+      result.current.processFile("/tmp/recording.mp3", "audio");
+    });
+
+    await waitFor(() => {
+      expect(queueAutoEnhanceIfSummaryEmptyMock).toHaveBeenCalledWith(
+        "session-1",
+      );
+    });
+    expect(runBatchMock.mock.invocationCallOrder[0]).toBeLessThan(
+      queueAutoEnhanceIfSummaryEmptyMock.mock.invocationCallOrder[0],
+    );
+    expect(handleBatchStartedMock).toHaveBeenCalledWith(
+      "session-1",
+      "importing",
+    );
+    expect(clearBatchSessionMock).toHaveBeenCalledWith("session-1");
+  });
+
+  test("estimates the note date from audio metadata for path imports", async () => {
+    audioSourceMetadataMock.mockResolvedValue({
+      status: "ok",
+      data: {
+        createdAt: "2026-03-26T12:00:00.000Z",
+        modifiedAt: null,
+        durationMs: 60_000,
+      },
+    });
+
+    const { result } = renderHook(() => useUploadFile("session-1"), {
+      wrapper: createWrapper(),
+    });
+
+    act(() => {
+      result.current.processFile("/tmp/recording.m4a", "audio");
+    });
+
+    await waitFor(() => {
+      expect(updateSessionMock).toHaveBeenCalledWith({
+        created_at: "2026-03-26T11:59:00.000Z",
+      });
+    });
+    // The date lands before the import starts so the session sorts correctly
+    // while the batch is still running.
+    expect(updateSessionMock.mock.invocationCallOrder[0]).toBeLessThan(
+      audioImportMock.mock.invocationCallOrder[0],
+    );
+  });
+
+  test("keeps the session date when it has calendar-event metadata", async () => {
+    useSessionMock.mockReturnValue({
+      id: "session-1",
+      user_id: "user-1",
+      raw_md: "",
+      event_json: '{"id":"event-1"}',
+    });
+    audioSourceMetadataMock.mockResolvedValue({
+      status: "ok",
+      data: {
+        createdAt: "2026-03-26T12:00:00.000Z",
+        modifiedAt: null,
+        durationMs: 60_000,
+      },
+    });
+
+    const { result } = renderHook(() => useUploadFile("session-1"), {
+      wrapper: createWrapper(),
+    });
+
+    act(() => {
+      result.current.processFile("/tmp/recording.m4a", "audio");
+    });
+
+    await waitFor(() => {
+      expect(runBatchMock).toHaveBeenCalled();
+    });
+    expect(updateSessionMock).not.toHaveBeenCalled();
+  });
+
+  test("uses the file's lastModified for pathless dropped audio", async () => {
+    const { result } = renderHook(() => useUploadFile("session-1"), {
+      wrapper: createWrapper(),
+    });
+    const lastModified = Date.parse("2026-03-26T10:00:00.000Z");
+    const file = new File([new Uint8Array([1, 2, 3])], "drop.webm", {
+      type: "audio/webm",
+      lastModified,
+    });
+    Object.defineProperty(file, "arrayBuffer", {
+      value: vi.fn().mockResolvedValue(new Uint8Array([1, 2, 3]).buffer),
+    });
+
+    act(() => {
+      result.current.processAudioFile(file);
+    });
+
+    await waitFor(() => {
+      expect(updateSessionMock).toHaveBeenCalledWith({
+        created_at: "2026-03-26T10:00:00.000Z",
+      });
+    });
+  });
+
+  test("reports import failures to the listener store", async () => {
+    audioImportMock.mockResolvedValue({
+      status: "error",
+      error: "decode failed",
+    });
+
+    const { result } = renderHook(() => useUploadFile("session-1"), {
+      wrapper: createWrapper(),
+    });
+
+    act(() => {
+      result.current.processFile("/tmp/recording.mp3", "audio");
+    });
+
+    await waitFor(() => {
+      expect(handleBatchFailedMock).toHaveBeenCalledWith(
+        "session-1",
+        "decode failed",
+      );
+    });
+    expect(runBatchMock).not.toHaveBeenCalled();
+  });
+
+  test("forwards import progress events for this session", async () => {
+    let emit:
+      | ((event: {
+          payload: {
+            type: string;
+            session_id: string;
+            percentage: number;
+          };
+        }) => void)
+      | undefined;
+    audioImportListenMock.mockImplementation(async (listener) => {
+      emit = listener;
+      return vi.fn();
+    });
+    audioImportMock.mockImplementation(async () => {
+      emit?.({
+        payload: {
+          type: "audioImportProgress",
+          session_id: "session-1",
+          percentage: 42,
+        },
+      });
+      emit?.({
+        payload: {
+          type: "audioImportProgress",
+          session_id: "other-session",
+          percentage: 99,
+        },
+      });
+      return { status: "ok", data: "/vault/sessions/session-1/audio.mp3" };
+    });
+
+    const { result } = renderHook(() => useUploadFile("session-1"), {
+      wrapper: createWrapper(),
+    });
+
+    act(() => {
+      result.current.processFile("/tmp/recording.mp3", "audio");
+    });
+
+    await waitFor(() => {
+      expect(runBatchMock).toHaveBeenCalled();
+    });
+    expect(updateBatchProgressMock).toHaveBeenCalledWith("session-1", 42);
+    expect(updateBatchProgressMock).not.toHaveBeenCalledWith(
+      "session-1",
+      99,
     );
   });
 });

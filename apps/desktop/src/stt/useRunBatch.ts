@@ -29,6 +29,12 @@ import type { SpeakerHintWithId, WordWithId } from "~/stt/types";
 type RunOptions = {
   handlePersist?: BatchPersistCallback;
   model?: string;
+  /**
+   * Provider the explicit `model` belongs to (e.g. "hyprnote" for the
+   * "Re-transcribe with…" picker). Falls back to the live connection's
+   * provider.
+   */
+  provider?: string;
   baseUrl?: string;
   apiKey?: string;
   keywords?: string[];
@@ -212,17 +218,20 @@ export const useRunBatch = (sessionId: string) => {
         options?.languages ??
         getTranscriptionLanguages(aiLanguage, spokenLanguages);
       const selectedModel = options?.model ?? finalTarget?.model ?? conn?.model;
+      const selectionProvider = options?.provider ?? conn?.provider;
       const selectedProvider =
-        conn && selectedModel
-          ? getBatchProvider(conn.provider, selectedModel)
+        selectionProvider && selectedModel
+          ? getBatchProvider(selectionProvider, selectedModel)
           : null;
+      const selectedBaseUrl =
+        options?.baseUrl ?? finalTarget?.baseUrl ?? conn?.baseUrl;
       const selectedTarget =
-        conn && selectedModel && selectedProvider
+        selectedModel && selectedProvider && selectedBaseUrl !== undefined
           ? {
               provider: selectedProvider,
               model: selectedModel,
-              baseUrl: options?.baseUrl ?? finalTarget?.baseUrl ?? conn.baseUrl,
-              apiKey: options?.apiKey ?? conn.apiKey,
+              baseUrl: selectedBaseUrl,
+              apiKey: options?.apiKey ?? conn?.apiKey ?? "",
               label: selectedModel,
             }
           : null;

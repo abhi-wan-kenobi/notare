@@ -18,6 +18,7 @@ const {
   useAuthMock,
   useBillingAccessMock,
   useConfigValueMock,
+  listSupportedModelsMock,
   isSupportedLanguagesBatchMock,
   sonnerToastMessageMock,
   deleteProcessedAudioForRetentionMock,
@@ -45,6 +46,7 @@ const {
   isModelDownloadedMock: vi.fn(),
   startServerMock: vi.fn(),
   stopServerMock: vi.fn(),
+  listSupportedModelsMock: vi.fn(),
 }));
 
 vi.mock("@hypr/plugin-local-stt", () => ({
@@ -52,6 +54,7 @@ vi.mock("@hypr/plugin-local-stt", () => ({
     isModelDownloaded: isModelDownloadedMock,
     startServer: startServerMock,
     stopServer: stopServerMock,
+    listSupportedModels: listSupportedModelsMock,
   },
 }));
 
@@ -274,6 +277,7 @@ describe("useRunBatch", () => {
       data: "http://127.0.0.1:6666",
     });
     stopServerMock.mockResolvedValue({ status: "ok", data: true });
+    listSupportedModelsMock.mockResolvedValue({ status: "ok", data: [] });
   });
 
   test("waits for streamed SQLite persists before retention", async () => {
@@ -606,6 +610,82 @@ describe("useRunBatch", () => {
         base_url: "http://127.0.0.1:5555",
       }),
       expect.any(Object),
+    );
+  });
+
+  test("an explicit local target overrides an external live connection", async () => {
+    // The "Re-transcribe with…" picker passes model/baseUrl/provider for a
+    // local model while the live connection may be an external provider.
+    startTranscriptionMock.mockResolvedValue(undefined);
+
+    const { result } = renderHook(() => useRunBatch("session-1"));
+
+    await act(async () => {
+      await result.current("/tmp/session.wav", {
+        model: "QuantizedSmall",
+        baseUrl: "http://127.0.0.1:6666",
+        provider: "hyprnote",
+      });
+    });
+
+    expect(startTranscriptionMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: "hyprnote",
+        model: "QuantizedSmall",
+        base_url: "http://127.0.0.1:6666",
+      }),
+      expect.any(Object),
+    );
+    // The caller owns the server swap for explicit targets.
+    expect(startServerMock).not.toHaveBeenCalled();
+    expect(sonnerToastMessageMock).not.toHaveBeenCalled();
+  });
+
+  test("an explicit target works without a live connection", async () => {
+    useSTTConnectionMock.mockReturnValue({ conn: null });
+    startTranscriptionMock.mockResolvedValue(undefined);
+
+    const { result } = renderHook(() => useRunBatch("session-1"));
+
+    await act(async () => {
+      await result.current("/tmp/session.wav", {
+        model: "QuantizedSmall",
+        baseUrl: "http://127.0.0.1:6666",
+        provider: "hyprnote",
+      });
+    });
+
+    expect(startTranscriptionMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: "hyprnote",
+        model: "QuantizedSmall",
+        base_url: "http://127.0.0.1:6666",
+        api_key: "",
+      }),
+      expect.any(Object),
+    );
+  });
+
+  test("persists the batch transcript with replaceSession", async () => {
+    startTranscriptionMock.mockImplementation(async (_params, options) => {
+      options.handlePersist(
+        [{ text: "hello", start_ms: 0, end_ms: 100, channel: 0 }],
+        [],
+      );
+    });
+
+    const { result } = renderHook(() => useRunBatch("session-1"));
+
+    await act(async () => {
+      await result.current("/tmp/session.wav");
+    });
+
+    expect(createTranscriptMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionId: "session-1",
+        source: "batch_transcription",
+        replaceSession: true,
+      }),
     );
   });
 
