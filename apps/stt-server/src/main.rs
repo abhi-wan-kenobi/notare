@@ -35,10 +35,21 @@ async fn main() -> anyhow::Result<()> {
     let host = config.host.clone();
     let port = config.port;
     let state = Arc::new(AppState::new(config));
+
+    // Startup reconciliation (design doc §8): verify every installed
+    // catalog model's on-disk reality before serving, so a half-written or
+    // bit-rotted model is quarantined (`*.corrupt`) and reflected in
+    // `/api/models` from the very first request instead of surfacing as a
+    // mysterious `model_load_failed` later.
+    state.reconcile_on_startup().await;
+
     let app = build_router(state);
 
     let listener = tokio::net::TcpListener::bind((host.as_str(), port)).await?;
-    tracing::info!(addr = %listener.local_addr()?, "listening (GET /health, GET /api/status, GET /api/models, POST+WS /v1/listen)");
+    tracing::info!(
+        addr = %listener.local_addr()?,
+        "listening (GET /health, GET /api/status, GET/POST /api/models*, POST+WS /v1/listen)"
+    );
 
     axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal())

@@ -1,15 +1,18 @@
-# notare-stt-server (Phase 1)
+# notare-stt-server (Phase 2)
 
 A standalone LAN transcription server: it hosts the same generic,
 engine-agnostic `hypr_transcribe_core::TranscribeService` router the Notare
 desktop app runs in-process for its local STT, bound to a configurable
 `host:port` instead of `LOCALHOST:0`. Design: `docs/stt-server-design.md`.
 
-Phase 1 scope only: serve `/health` + `/v1/listen` (batch + WebSocket) with
-the whisper.cpp CPU engine, plus a read-only `/api/status` and `/api/models`.
-Model download/delete/activate, the web admin page, and GPU images are later
-phases (see the design doc §11) — their `/api/*` routes exist now (frozen
-contract) but answer `501 Not Implemented`.
+Phase 1 shipped `/health` + `/v1/listen` (batch + WebSocket) with the
+whisper.cpp CPU engine, plus read-only `/api/status` and `/api/models`.
+**Phase 2 adds real model management**: download, delete, activate, download
+progress, and startup integrity reconciliation — all thin wrappers over the
+existing `hypr-model-downloader` (CRC32 + `.verified` sidecar integrity) and
+`hypr-model-manager`/`TranscribeService` (lazy load, background warmup)
+crates; see `docs/stt-server-design.md`'s Phase 2 addendum for exactly how.
+The web admin page and GPU images are still later phases (design doc §11).
 
 ## Run
 
@@ -44,42 +47,79 @@ defaults below.
 There is **no auth token and no TLS in Phase 1** (adopted decision — see the
 design doc §12 Q2). Treat the server as LAN-only; do not port-forward it.
 
-## Installing a model (Phase 1: manual)
+## Installing a model
 
-Model management (`/api/models/{id}/download` etc.) is Phase 2. For now,
-place a whisper.cpp ggml file yourself at the catalog path:
+Two ways:
 
-```sh
-mkdir -p ./data/models/stt
-curl -L -o ./data/models/stt/ggml-small-q8_0.bin \
-  https://hyprnote.s3.us-east-1.amazonaws.com/v0/ggerganov/whisper.cpp/main/ggml-small-q8_0.bin
-```
+1. **`POST /api/models/{id}/download`** (Phase 2, recommended — see below).
+2. Manually, placing a whisper.cpp ggml file yourself at the catalog path:
+
+   ```sh
+   mkdir -p ./data/models/stt
+   curl -L -o ./data/models/stt/ggml-small-q8_0.bin \
+     https://hyprnote.s3.us-east-1.amazonaws.com/v0/ggerganov/whisper.cpp/main/ggml-small-q8_0.bin
+   ```
 
 (File names + URLs + CRC32 per model: `crates/whisper-local-model/src/lib.rs`.)
 Without a model installed the server still starts and answers `/health` and
 `/api/status`; `/v1/listen` returns a `model_load_failed` JSON error until a
-model is present at the configured path.
+model is present at the configured path. On boot, every installed catalog
+model is re-verified (existence + size + CRC32) and quarantined to
+`*.corrupt` if it fails — see "Startup reconciliation" below.
 
 ## Endpoints
 
 - `GET /health` — liveness, always `"ok"` (no model required).
 - `POST /v1/listen?channels=&sample_rate=` — batch transcription. `Accept:
   text/event-stream` switches to SSE progress. Same contract as the
-  desktop's in-process server.
+  desktop's in-process server. Dispatches to whichever model was last
+  `activate`d (§ below) — no restart needed after an activation.
 - `GET /v1/listen?channels=&sample_rate=` (WebSocket upgrade) — live
   streaming transcription.
-- `GET /api/status` — version, engine, loaded model (or `null`), on-disk
+- `GET /api/status` — version, engine, `loadedModel` (the currently active
+  model, or `null` if it isn't installed/verified — see `activate`), on-disk
   model integrity, GPU backend list (empty on this CPU image / debug
   builds — `list_ggml_backends()` is release-build-only), uptime.
 - `GET /api/models` — the whisper.cpp catalog with per-model on-disk
-  integrity (`notInstalled` / `verified` / `presentUnverified` / `corrupt`).
-- `POST /api/models/{id}/download`, `GET /api/models/{id}/progress`,
-  `POST /api/models/{id}/cancel`, `DELETE /api/models/{id}`,
-  `POST /api/models/{id}/activate` — routes exist (contract frozen for
-  Phase 2/3/4 parallel work) but currently return `501` with the shared
-  error envelope: `{"error": "not_implemented", "detail": "..."}`. This is
-  the same shape `/v1/listen` already uses for its errors
-  (`hypr_transcribe_core::json_error_response`).
+  integrity (`notInstalled` / `verified` / `presentUnverified` / `corrupt`)
+  and a `progress` snapshot (see `.../progress` below).
+- `POST /api/models/{id}/download` — start an async download.
+  `404` unknown id · `409 already_downloading` if one is already in flight ·
+  `200 {"status":"alreadyInstalled"}` no-op if it's already installed ·
+  `202 {"status":"downloading"}` once a new download has started.
+- `GET /api/models/{id}/progress` — poll download/install status for one
+  model: `{"id", "progress": {"status": "idle"|"downloading"|"completed"|
+  "failed"|"corrupt", "percent"?, "detail"?}}`. `404` unknown id. This is a
+  **plain polled JSON endpoint, not the WS/SSE stream** originally sketched
+  in the design doc — see the Phase 2 addendum there for why polling was
+  chosen (same pattern `/api/status` already uses).
+- `POST /api/models/{id}/cancel` — cancel an in-flight download. `404`
+  unknown id · `409 not_downloading` if nothing is in flight ·
+  `200 {"status":"cancelled"}`.
+- `DELETE /api/models/{id}` — remove a model's files + `.verified` sidecar.
+  `404` unknown id · `409 model_in_use` if it's the currently active/loaded
+  model (activate a different one first) ·
+  `200 {"status":"notInstalled"}` no-op if it wasn't installed ·
+  `200 {"status":"deleted"}` on success.
+- `POST /api/models/{id}/activate` — make this the model `/v1/listen` serves
+  and `/api/status.loadedModel` reports. `404` unknown id ·
+  `409 model_not_installed` / `409 model_corrupt` if it fails integrity
+  verification (download it first) · `200 {"status":"activated","integrity":
+  ...}` on success.
+
+All error responses share `/v1/listen`'s envelope:
+`{"error": "<code>", "detail": "<message>"}`
+(`hypr_transcribe_core::json_error_response`).
+
+### Startup reconciliation
+
+On boot, before the listener binds, every installed catalog model is
+re-verified against disk (existence + size + CRC32, same discipline as the
+desktop's ADR-0002) via `hypr_model_downloader::ModelDownloadManager::
+reconcile`. Anything that fails is quarantined by renaming it to
+`<file>.corrupt` (sidecar `.verified` stamp removed) so a subsequent
+`GET /api/models` correctly reports it as `notInstalled` and a re-download
+via `POST /api/models/{id}/download` starts clean.
 
 ## curl examples
 
@@ -88,7 +128,19 @@ curl http://127.0.0.1:8383/health
 # ok
 
 curl http://127.0.0.1:8383/api/status | jq
-curl http://127.0.0.1:8383/api/models | jq '.models[] | {id, active, integrity}'
+curl http://127.0.0.1:8383/api/models | jq '.models[] | {id, active, integrity, progress}'
+
+# Download the smallest model, poll progress, activate it.
+curl -X POST http://127.0.0.1:8383/api/models/QuantizedTiny/download | jq
+watch -n1 'curl -s http://127.0.0.1:8383/api/models/QuantizedTiny/progress | jq'
+curl -X POST http://127.0.0.1:8383/api/models/QuantizedTiny/activate | jq
+curl http://127.0.0.1:8383/api/status | jq '.loadedModel'
+
+# While a download is still in flight, POST .../cancel instead of waiting.
+curl -X POST http://127.0.0.1:8383/api/models/QuantizedTiny/cancel | jq
+
+# activate a different model first if you want to delete the active one.
+curl -X DELETE http://127.0.0.1:8383/api/models/QuantizedTiny | jq
 
 curl -X POST "http://127.0.0.1:8383/v1/listen?channels=1&sample_rate=16000" \
   -H "content-type: audio/wav" --data-binary @audio.wav | jq

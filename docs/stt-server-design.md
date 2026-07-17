@@ -254,6 +254,93 @@ drifting from the code:
   lands as a diff against a stable route table instead of adding new routes.
 - `GET /` (static admin SPA) is **not implemented** in Phase 1 — Phase 3.
 
+### Phase 2 implementation notes (added when Phase 2 shipped)
+
+Phase 2 replaced the `501` stubs with real model management, as pure
+wrappers over the same reused crates named in §4
+(`hypr_model_downloader::{ModelDownloadManager, verify_model, ModelIntegrity}`
++ `hypr_transcribe_whisper_local::TranscribeService`'s internal
+`hypr_model_manager::ModelManager`) — no download, integrity, or model-load
+logic was reimplemented. Where the implementation deviates from the sketch
+in §6/§8, or from what a reader would assume, is recorded here:
+
+- **`GET /api/models/{id}/progress` is plain polled JSON, not the WS/SSE
+  stream sketched in §6's table.** A push channel needs something to push
+  *to*; the desktop has Tauri events, this server has neither Tauri nor an
+  existing WS/SSE infra for `/api/*` (only `/v1/listen` has a WebSocket, and
+  it's a different protocol entirely). Building a bespoke SSE stream for
+  Phase 2 would be new infrastructure, not reuse. Polling is also what
+  `/api/status` already does, so it's the established pattern for this
+  server, not a new one. Concretely: `hypr_model_downloader`'s
+  `ModelDownloaderRuntime::emit_progress` callback (normally a Tauri-event
+  emit on desktop, see `plugins/local-stt/src/ext.rs`) is implemented by
+  `state::ServerModelRuntime` to write into an in-memory
+  `Arc<Mutex<HashMap<String, DownloadStatus>>>` instead; both
+  `GET /api/models` (per-entry `progress` field) and the dedicated
+  `GET /api/models/{id}/progress` read from the same map, falling back to
+  on-disk `ModelIntegrity` when nothing has been observed yet this process
+  lifetime. Shape: `{"status": "idle"|"downloading"|"completed"|"failed"|
+  "corrupt", "percent"?: 0-100, "detail"?: string}`. A push-based stream is
+  future work if the admin SPA (Phase 3) ends up wanting it.
+- **`/api/models/{id}/cancel` was also implemented**, even though it wasn't
+  explicitly called out in the Phase 2 task list — it was already a routed,
+  frozen-contract stub, and `ModelDownloadManager::cancel_download` made it
+  a direct wrapper with no new logic.
+- **`activate` swaps a whole `TranscribeService`, not just a registration in
+  a shared `ModelManager<LoadedWhisper>`.** `TranscribeService` (built by
+  `TranscribeService::builder().model_path(...).build()`) owns its own
+  private `hypr_model_manager::ModelManager` internally and there is no
+  public API to redirect an already-built `TranscribeService` at a different
+  model path. So `AppState::active` holds `{ model: WhisperModel, core:
+  TranscribeService }` behind one `tokio::sync::RwLock`; `activate` verifies
+  integrity (`Verified`/`PresentUnverified` required, else `409`), builds a
+  **new** `TranscribeService` for the target model (which registers it with
+  a fresh `ModelManager` and kicks off the same background warmup load
+  Phase 1 already relies on at startup — satisfying both "load" and "lazy
+  load on first request", since `ModelManager::get` still loads on demand if
+  warmup hasn't finished or the model was evicted for inactivity), and swaps
+  it in under the write lock. `/v1/listen` no longer dispatches to one
+  `TranscribeService` built once at startup (Phase 1); `router::
+  DynamicListen` (a small `tower::Service`) now reads
+  `AppState::active.core.clone()` per request and dispatches to *that* —
+  same request/response contract as Phase 1's `TranscribeService::
+  into_router`, just re-targetable. **Unload is implicit, not a call**: the
+  previous `TranscribeService` (and the `ModelManager` + loaded whisper
+  context it owns) is dropped once no in-flight request still holds a clone
+  of it, which is how VRAM/RAM actually frees — Rust ownership does the
+  "unload" `ModelManager` would otherwise do via `inactivity_timeout`.
+- **Startup reconciliation runs once, awaited, before the listener binds**
+  (`main.rs`, `AppState::reconcile_on_startup` → `ModelDownloadManager::
+  reconcile`), not fire-and-forget the way the desktop plugin's `setup()`
+  hook does it. For a server, "the first request might race a size-7
+  catalog scan that's already cheap thanks to `.verified` stamps" is a worse
+  trade than "boot takes an extra few milliseconds so `/api/models` is
+  correct from request one."
+- **`ModelIntegrity::PresentUnverified` is unreachable for any
+  `WhisperModel`** — worth documenting because it shaped the test suite.
+  `verify_model` only reaches its own `destination.is_dir()` branch (the
+  source of `PresentUnverified`) if `model.is_downloaded()` already returned
+  true first, and `LocalModel::Whisper`'s `is_downloaded()` requires
+  `path.is_file()` — so a directory at the install path (the cheapest
+  network-free fixture for other model kinds) reads as plain
+  `NotInstalled` for a whisper model, not `PresentUnverified`. Every whisper
+  model in this catalog carries a checksum, so the only way to reach
+  `Verified` is a file whose CRC32 genuinely matches the catalog constant —
+  i.e. the real downloaded artifact. `cargo test -p stt-server` therefore
+  covers every status/error branch **except** "activation actually
+  succeeds" and "a freshly-downloaded model reads back as `Verified`",
+  which the live smoke test (real network, real catalog model) covers
+  instead — see the README's "Live smoke test" section.
+- `POST /api/models/{id}/download`'s `409`/`202`/`200`-no-op branches are
+  unit-tested for the id-unknown and already-installed cases (both
+  filesystem-only); the "download actually starts" (`202`) and "second call
+  while one is in flight" (`409`) branches are not exercised by `cargo test`
+  because `WhisperModel::model_url()` is a hardcoded real S3/HF URL with no
+  test-injection seam — starting a real `ModelDownloadManager::download()`
+  in a unit test would mean a real outbound HTTP request, which the task's
+  own test gates explicitly separate from the network-touching live smoke
+  test. Covered there instead.
+
 ## 7. GPU story
 
 ### Build matrix (three Dockerfiles, one crate)

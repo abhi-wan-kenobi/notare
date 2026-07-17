@@ -1,33 +1,88 @@
+use std::convert::Infallible;
+use std::future::Future;
+use std::pin::Pin;
 use std::sync::Arc;
+use std::task::{Context, Poll};
 
-use axum::http::StatusCode;
+use axum::body::Body;
+use axum::http::{Request, StatusCode};
+use axum::response::{IntoResponse, Response};
+use axum::routing::get;
+use tower::Service;
 use tower_http::cors::{self, CorsLayer};
 use tower_http::trace::TraceLayer;
 
 use crate::admin;
 use crate::state::AppState;
 
-/// Build the full server router: `/health` + `/v1/listen` (batch + WS) from
-/// the reused, engine-generic `hypr_transcribe_core::TranscribeService`,
-/// merged with the `/api/*` admin surface. Matches
-/// `docs/stt-server-design.md` §6 — the core router is served unchanged
-/// ("exactly as the desktop's internal server does"); only the bind address
-/// (`0.0.0.0` vs `LOCALHOST:0`) and the `/api/*` merge are new.
+/// Build the full server router: `/health` (static) + `/v1/listen` (dynamic,
+/// see [`DynamicListen`]) from the reused, engine-generic
+/// `hypr_transcribe_core::TranscribeService`, merged with the `/api/*` admin
+/// surface. Matches `docs/stt-server-design.md` §6 — the wire contract for
+/// `/health`/`/v1/listen` is unchanged from Phase 1; only *which*
+/// `TranscribeService` instance backs `/v1/listen` becomes swappable, so
+/// `POST /api/models/{id}/activate` (Phase 2) can take effect without a
+/// restart.
 pub fn build_router(state: Arc<AppState>) -> axum::Router {
-    let model_path = state.config.model_path();
-
-    let core = hypr_transcribe_whisper_local::TranscribeService::builder()
-        .model_path(model_path)
-        .build()
-        .into_router(|err: String| async move { (StatusCode::INTERNAL_SERVER_ERROR, err) });
+    let core = axum::Router::new()
+        .route(
+            hypr_transcribe_whisper_local::HEALTH_PATH,
+            get(|| async { "ok" }),
+        )
+        .route_service(
+            hypr_transcribe_whisper_local::LISTEN_PATH,
+            DynamicListen(state.clone()),
+        );
 
     core.merge(admin::router(state))
         .layer(cors_layer())
         .layer(TraceLayer::new_for_http())
 }
 
+/// Forwards `/v1/listen` to whichever `TranscribeService` is currently
+/// active (`AppState::active`), so an `activate` call takes effect on the
+/// very next request. This replaces Phase 1's "one `TranscribeService` built
+/// once at startup, turned into a router via `into_router`" with "read the
+/// current one under a lock, then dispatch it exactly as
+/// `TranscribeService::into_router`'s `HandleError` wrapper did" — same
+/// request/response contract, same error mapping
+/// (`(StatusCode::INTERNAL_SERVER_ERROR, err)`), just with the target
+/// swappable. `TranscribeService::call` is cheap to invoke on a clone: its
+/// `Clone` impl only clones a `PathBuf` + `Arc`-backed `ModelManager` +
+/// `ConnectionManager`, none of which are mutated by `poll_ready`/`call`
+/// (see `crates/transcribe-core/src/service/streaming.rs`).
+#[derive(Clone)]
+struct DynamicListen(Arc<AppState>);
+
+impl Service<Request<Body>> for DynamicListen {
+    type Response = Response;
+    type Error = Infallible;
+    type Future = Pin<Box<dyn Future<Output = Result<Response, Infallible>> + Send>>;
+
+    fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Infallible>> {
+        Poll::Ready(Ok(()))
+    }
+
+    fn call(&mut self, req: Request<Body>) -> Self::Future {
+        let state = self.0.clone();
+        Box::pin(async move {
+            let mut core = state.active.read().await.core.clone();
+            match core.call(req).await {
+                Ok(response) => Ok(response),
+                // Dead in practice today (every error path inside
+                // `TranscribeService::call` already converts to a JSON
+                // `Response` instead of returning `Err`), kept only so this
+                // wrapper's error handling matches Phase 1's `into_router`
+                // `on_error` closure exactly instead of silently dropping a
+                // hypothetical future error variant.
+                Err(error) => Ok((StatusCode::INTERNAL_SERVER_ERROR, error).into_response()),
+            }
+        })
+    }
+}
+
 /// Permissive CORS, matching `crates/local-stt-server`'s
-/// `cors_layer()` (LAN-only posture, no auth in Phase 1 — see
+/// `cors_layer()` (LAN-only posture, no auth in Phase 1/2 — see
 /// `docs/stt-server-design.md` §10).
 fn cors_layer() -> CorsLayer {
     CorsLayer::new()
@@ -82,7 +137,8 @@ mod tests {
     /// `model_load_failed` JSON error unchanged (see
     /// `crates/transcribe-whisper-local/src/lib.rs` tests for the upstream
     /// contract this mirrors) — this test only proves it is still reachable
-    /// once merged with `/api/*` behind our router + CORS/trace layers.
+    /// once merged with `/api/*` behind the dynamic dispatcher + CORS/trace
+    /// layers.
     #[tokio::test]
     async fn v1_listen_with_no_model_returns_a_clear_json_error() {
         let (_dir, state) = state_with_no_model();
