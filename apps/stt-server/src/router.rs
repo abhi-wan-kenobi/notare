@@ -163,4 +163,47 @@ mod tests {
         let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
         assert_eq!(json["error"], "model_load_failed");
     }
+
+    /// Proves the merged router — Phase 3's embedded admin page at `GET /`
+    /// plus Phase 2's *real* model-management mutations on `/api/models/*`
+    /// — serves both from one `build_router` call with no route-table
+    /// collision, and that the mutation route answers a real status code
+    /// (`202`), not the Phase 1 `501 not_implemented` stub these two
+    /// branches originally shipped against independently.
+    #[tokio::test]
+    async fn the_admin_page_and_real_model_mutations_share_one_router() {
+        let (_dir, state) = state_with_no_model();
+        let app = build_router(state);
+
+        let index_response = app
+            .clone()
+            .oneshot(Request::builder().uri("/").body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        assert_eq!(index_response.status(), StatusCode::OK);
+        let content_type = index_response
+            .headers()
+            .get(axum::http::header::CONTENT_TYPE)
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or_default()
+            .to_string();
+        assert!(content_type.starts_with("text/html"));
+
+        let download_response = app
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/models/QuantizedTiny/download")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(download_response.status(), StatusCode::ACCEPTED);
+        let body = axum::body::to_bytes(download_response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(json["status"], "downloading");
+    }
 }

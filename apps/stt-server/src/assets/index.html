@@ -484,37 +484,47 @@
     /* ================================================================ */
     /* CONFIG                                                            */
     /* ================================================================ */
+    // Steady-state poll cadence — used whenever nothing is downloading.
     var POLL_INTERVAL_MS = 4000;
+    // While any model's `progress.status === "downloading"`, poll faster so
+    // the progress bar visibly animates instead of jumping every 4s.
+    var DOWNLOAD_POLL_INTERVAL_MS = 500;
 
     /* ================================================================ */
     /* API — the fetch layer. Everything that knows an /api/* URL shape  */
-    /* lives here so Phase 2 landing for real only touches this block.   */
-    /* Endpoint table: docs/stt-server-design.md §6.                     */
+    /* lives here. Endpoint table + status codes: `docs/stt-server-design.md`,
+    /* Phase 2 addendum, and `apps/stt-server/README.md`'s Endpoints section.*/
     /* ================================================================ */
     var Api = {
       status: function () {
         return getJson("/api/status");
       },
+      // `GET /api/models` embeds a live `progress` snapshot per entry (same
+      // shape as the dedicated `GET /api/models/{id}/progress`), so the
+      // steady poll of this one endpoint doubles as the download-progress
+      // feed — no separate per-model progress poll loop needed.
       models: function () {
         return getJson("/api/models");
       },
+      // 202 once started, 200 `{"status":"alreadyInstalled"}` no-op, 404
+      // unknown id, 409 `already_downloading` if one is already in flight —
+      // all handled generically by `sendJson`/`reportApiError` below.
       download: function (id) {
         return sendJson("/api/models/" + encodeURIComponent(id) + "/download", "POST");
       },
+      // 200 on cancel, 404 unknown id, 409 `not_downloading`.
       cancel: function (id) {
         return sendJson("/api/models/" + encodeURIComponent(id) + "/cancel", "POST");
       },
+      // 200 on delete (or `notInstalled` no-op), 404 unknown id, 409
+      // `model_in_use` if it's the active/loaded model.
       remove: function (id) {
         return sendJson("/api/models/" + encodeURIComponent(id), "DELETE");
       },
+      // 200 on activate, 404 unknown id, 409 `model_not_installed` /
+      // `model_corrupt`.
       activate: function (id) {
         return sendJson("/api/models/" + encodeURIComponent(id) + "/activate", "POST");
-      },
-      // Not called automatically today: Phase 1/3 model mutations always
-      // answer 501, so a download never reaches the "in progress" state that
-      // would open this. Wired now so Phase 2 only has to start calling it.
-      progressUrl: function (id) {
-        return "/api/models/" + encodeURIComponent(id) + "/progress";
       },
     };
 
@@ -624,10 +634,9 @@
     }
 
     function reportApiError(err) {
-      if (err && err.status === 501) {
-        toast("soon", "Coming soon", err.detail || "This action lands in a later phase.");
-        return;
-      }
+      // Phase 2 landed for real — every /api/models/{id}/* mutation now
+      // answers a real status code (200/202/404/409), never 501, so there is
+      // no "Coming soon" branch to special-case here any more.
       toast("error", "Request failed", (err && err.detail) || (err && err.message) || "Unknown error");
     }
 
@@ -716,7 +725,7 @@
           integrityChip(integrity) +
           "</div>" +
           "</div>" +
-          '<p class="lm-hint">Install a model from the table below, then restart the server pointed at it (Phase 2 will do this live via Activate).</p>';
+          '<p class="lm-hint">Install a model from the table below, then click Activate — it takes effect immediately, no restart needed.</p>';
       }
     }
 
@@ -726,9 +735,21 @@
         modelsBody.innerHTML = '<tr><td colspan="5"><p class="empty-line">No models in the catalog.</p></td></tr>';
         return;
       }
+      var loadedModelId = status && status.loadedModel && status.loadedModel.id;
       modelsBody.innerHTML = models
         .map(function (model) {
           var installed = model.integrity && (model.integrity.state === "verified" || model.integrity.state === "presentUnverified");
+          var progress = model.progress || { status: "idle" };
+          var downloading = progress.status === "downloading";
+          // Active means "actually loaded/serving" — not merely "the
+          // configured default before it's ever been installed". Cross-check
+          // the per-model `active` flag (mirrors `AppState::active` as-is,
+          // true even for an uninstalled startup default) against this
+          // model's own installed state *and* `/api/status.loadedModel`,
+          // the authoritative record of what `/v1/listen` currently
+          // dispatches to. See `docs/stt-server-design.md`'s Phase 3
+          // addendum for why all three have to agree.
+          var isLoaded = Boolean(model.active) && installed && loadedModelId === model.id;
           var languages = Array.isArray(model.languages) && model.languages.length
             ? model.languages.join(", ")
             : model.englishOnly
@@ -736,15 +757,31 @@
               : "—";
 
           var buttons = [];
-          if (!installed) {
+          if (downloading) {
+            buttons.push(actionButton("btn-danger", "cancel", model.id, "Cancel"));
+          } else if (!installed) {
             buttons.push(actionButton("btn-primary", "download", model.id, "Install"));
           } else {
-            if (!model.active) buttons.push(actionButton("", "activate", model.id, "Activate"));
-            buttons.push(actionButton("btn-danger", "delete", model.id, "Delete"));
+            if (!isLoaded) buttons.push(actionButton("", "activate", model.id, "Activate"));
+            // Deleting the active/loaded model is a 409 `model_in_use` on
+            // the server — don't offer an action that can only fail.
+            if (!isLoaded) buttons.push(actionButton("btn-danger", "delete", model.id, "Delete"));
           }
 
+          var statusCell = integrityChip(model.integrity) + (isLoaded ? ' <span class="chip chip-accent">Active</span>' : "");
+          if (downloading) {
+            var pct = typeof progress.percent === "number" ? progress.percent : null;
+            statusCell =
+              '<span class="chip chip-accent">Downloading' + (pct != null ? " " + pct + "%" : "") + "</span>";
+          } else if (progress.status === "failed") {
+            statusCell += ' <span class="chip chip-rec" title="' + escapeHtml(progress.detail || "") + '">Download failed</span>';
+          }
+
+          var progressActive = downloading ? " is-active" : "";
+          var progressPct = downloading && typeof progress.percent === "number" ? progress.percent : 0;
+
           return (
-            '<tr data-model-id="' + escapeHtml(model.id) + '"' + (model.active ? ' class="is-active"' : "") + ">" +
+            '<tr data-model-id="' + escapeHtml(model.id) + '"' + (isLoaded ? ' class="is-active"' : "") + ">" +
             '<td class="cell-name"><span class="cell-name-main">' +
             escapeHtml(model.displayName || model.id) +
             "</span><span class=\"cell-name-sub mono\">" +
@@ -752,10 +789,12 @@
             "</span></td>" +
             '<td class="mono" data-label="Size">' + escapeHtml(model.description || formatBytes(model.sizeBytes)) + "</td>" +
             '<td class="cell-lang" data-label="Languages">' + escapeHtml(languages) + "</td>" +
-            '<td data-label="Status">' + integrityChip(model.integrity) + (model.active ? ' <span class="chip chip-accent">Active</span>' : "") + "</td>" +
+            '<td data-label="Status">' + statusCell + "</td>" +
             '<td class="cell-actions">' +
             '<div class="cell-actions-buttons">' + buttons.join("") + "</div>" +
-            '<div class="progress-track" id="progress-' + escapeHtml(model.id) + '"><div class="progress-fill"></div></div>' +
+            '<div class="progress-track' + progressActive + '" id="progress-' + escapeHtml(model.id) + '">' +
+            '<div class="progress-fill" style="width:' + progressPct + '%"></div>' +
+            "</div>" +
             "</td>" +
             "</tr>"
           );
@@ -797,21 +836,42 @@
     /* ================================================================ */
     /* INIT / POLL                                                       */
     /* ================================================================ */
+    // Adaptive interval, not a fixed setInterval: while any model is
+    // downloading, poll at DOWNLOAD_POLL_INTERVAL_MS so the progress bar
+    // (fed by the same /api/models response — see the Api.models doc
+    // comment) visibly animates; otherwise fall back to the slower
+    // steady-state POLL_INTERVAL_MS. Implemented as a setTimeout chain
+    // (via scheduleNext) rather than setInterval so the cadence can change
+    // between ticks and never overlaps a slow in-flight request.
+    var pollTimer = null;
+
+    function scheduleNext(delayMs) {
+      if (pollTimer) clearTimeout(pollTimer);
+      pollTimer = setTimeout(refresh, delayMs);
+    }
+
     function refresh() {
       return Promise.all([Api.status(), Api.models()])
         .then(function (results) {
           setHealth(true);
-          renderStatus(results[0]);
-          renderModels(results[1], results[0]);
+          var statusPayload = results[0];
+          var modelsPayload = results[1];
+          renderStatus(statusPayload);
+          renderModels(modelsPayload, statusPayload);
+
+          var downloading = ((modelsPayload && modelsPayload.models) || []).some(function (m) {
+            return m.progress && m.progress.status === "downloading";
+          });
+          scheduleNext(downloading ? DOWNLOAD_POLL_INTERVAL_MS : POLL_INTERVAL_MS);
         })
         .catch(function (err) {
           setHealth(false);
           reportApiError(err);
+          scheduleNext(POLL_INTERVAL_MS);
         });
     }
 
     refresh();
-    setInterval(refresh, POLL_INTERVAL_MS);
   })();
   </script>
 </body>
