@@ -8,7 +8,11 @@ use tauri_plugin_sidecar2::Sidecar2PluginExt;
 
 use hypr_model_downloader::{DownloadStatus, ModelDownloadManager, ModelDownloaderRuntime};
 
-#[cfg(any(feature = "whisper-cpp", feature = "parakeet-onnx"))]
+#[cfg(any(
+    feature = "whisper-cpp",
+    feature = "parakeet-onnx",
+    feature = "voxtral-llama"
+))]
 use crate::server::internal;
 use crate::{
     model::LocalModel,
@@ -146,19 +150,29 @@ impl<'a, R: Runtime, M: Manager<R>> LocalStt<'a, R, M> {
 
         let server_type = match &model {
             LocalModel::Am(_) => ServerType::External,
-            LocalModel::Whisper(_) | LocalModel::ParakeetOnnx(_) => ServerType::Internal,
-            // Catalogued and downloadable (Phase A, issue #16); starting a
-            // live llama.cpp session is Phase B (in-process actor wiring,
-            // mirroring `internal::InternalModel`).
-            LocalModel::Soniqo(_) | LocalModel::GgufLlm(_) | LocalModel::VoxtralLlama(_) => {
+            // Voxtral (llama.cpp) is served the same way as Parakeet ONNX:
+            // an in-process actor running `TranscribeService<E>` (Phase B,
+            // issue #16 — see `internal::InternalModel`).
+            LocalModel::Whisper(_) | LocalModel::ParakeetOnnx(_) | LocalModel::VoxtralLlama(_) => {
+                ServerType::Internal
+            }
+            LocalModel::Soniqo(_) | LocalModel::GgufLlm(_) => {
                 return Err(crate::Error::UnsupportedModelType);
             }
         };
 
         let current_info = match server_type {
-            #[cfg(any(feature = "whisper-cpp", feature = "parakeet-onnx"))]
+            #[cfg(any(
+                feature = "whisper-cpp",
+                feature = "parakeet-onnx",
+                feature = "voxtral-llama"
+            ))]
             ServerType::Internal => internal_health().await,
-            #[cfg(not(any(feature = "whisper-cpp", feature = "parakeet-onnx")))]
+            #[cfg(not(any(
+                feature = "whisper-cpp",
+                feature = "parakeet-onnx",
+                feature = "voxtral-llama"
+            )))]
             ServerType::Internal => None,
             ServerType::External => external_health().await,
         };
@@ -190,7 +204,11 @@ impl<'a, R: Runtime, M: Manager<R>> LocalStt<'a, R, M> {
 
         match server_type {
             ServerType::Internal => {
-                #[cfg(any(feature = "whisper-cpp", feature = "parakeet-onnx"))]
+                #[cfg(any(
+                    feature = "whisper-cpp",
+                    feature = "parakeet-onnx",
+                    feature = "voxtral-llama"
+                ))]
                 {
                     let cache_dir = self.models_dir();
                     let internal_model = match model {
@@ -198,11 +216,17 @@ impl<'a, R: Runtime, M: Manager<R>> LocalStt<'a, R, M> {
                         LocalModel::Whisper(m) => internal::InternalModel::Whisper(m),
                         #[cfg(feature = "parakeet-onnx")]
                         LocalModel::ParakeetOnnx(m) => internal::InternalModel::ParakeetOnnx(m),
+                        #[cfg(feature = "voxtral-llama")]
+                        LocalModel::VoxtralLlama(m) => internal::InternalModel::VoxtralLlama(m),
                         _ => return Err(crate::Error::UnsupportedModelType),
                     };
                     start_internal_server(&supervisor, cache_dir, internal_model).await
                 }
-                #[cfg(not(any(feature = "whisper-cpp", feature = "parakeet-onnx")))]
+                #[cfg(not(any(
+                    feature = "whisper-cpp",
+                    feature = "parakeet-onnx",
+                    feature = "voxtral-llama"
+                )))]
                 Err(crate::Error::UnsupportedModelType)
             }
             ServerType::External => {
@@ -264,17 +288,27 @@ impl<'a, R: Runtime, M: Manager<R>> LocalStt<'a, R, M> {
 
         let server_type = match model {
             LocalModel::Am(_) => ServerType::External,
-            LocalModel::Whisper(_) | LocalModel::ParakeetOnnx(_) => ServerType::Internal,
-            // Same Phase A/B split as `start_server` above.
-            LocalModel::Soniqo(_) | LocalModel::GgufLlm(_) | LocalModel::VoxtralLlama(_) => {
+            // Same split as `start_server` above.
+            LocalModel::Whisper(_) | LocalModel::ParakeetOnnx(_) | LocalModel::VoxtralLlama(_) => {
+                ServerType::Internal
+            }
+            LocalModel::Soniqo(_) | LocalModel::GgufLlm(_) => {
                 return Err(crate::Error::UnsupportedModelType);
             }
         };
 
         let info = match server_type {
-            #[cfg(any(feature = "whisper-cpp", feature = "parakeet-onnx"))]
+            #[cfg(any(
+                feature = "whisper-cpp",
+                feature = "parakeet-onnx",
+                feature = "voxtral-llama"
+            ))]
             ServerType::Internal => internal_health().await,
-            #[cfg(not(any(feature = "whisper-cpp", feature = "parakeet-onnx")))]
+            #[cfg(not(any(
+                feature = "whisper-cpp",
+                feature = "parakeet-onnx",
+                feature = "voxtral-llama"
+            )))]
             ServerType::Internal => None,
             ServerType::External => external_health().await,
         };
@@ -284,13 +318,21 @@ impl<'a, R: Runtime, M: Manager<R>> LocalStt<'a, R, M> {
 
     #[tracing::instrument(skip_all)]
     pub async fn get_servers(&self) -> Result<HashMap<ServerType, ServerInfo>, crate::Error> {
-        #[cfg(any(feature = "whisper-cpp", feature = "parakeet-onnx"))]
+        #[cfg(any(
+            feature = "whisper-cpp",
+            feature = "parakeet-onnx",
+            feature = "voxtral-llama"
+        ))]
         let internal_info = internal_health().await.unwrap_or(ServerInfo {
             url: None,
             status: ServerStatus::Unreachable,
             model: None,
         });
-        #[cfg(not(any(feature = "whisper-cpp", feature = "parakeet-onnx")))]
+        #[cfg(not(any(
+            feature = "whisper-cpp",
+            feature = "parakeet-onnx",
+            feature = "voxtral-llama"
+        )))]
         let internal_info = ServerInfo {
             url: None,
             status: ServerStatus::Unreachable,
@@ -482,7 +524,11 @@ impl<R: Runtime, T: Manager<R>> LocalSttPluginExt<R> for T {
     }
 }
 
-#[cfg(any(feature = "whisper-cpp", feature = "parakeet-onnx"))]
+#[cfg(any(
+    feature = "whisper-cpp",
+    feature = "parakeet-onnx",
+    feature = "voxtral-llama"
+))]
 async fn start_internal_server(
     supervisor: &supervisor::SupervisorRef,
     cache_dir: PathBuf,
@@ -552,7 +598,11 @@ async fn start_external_server<R: Runtime, T: Manager<R>>(
         .ok_or_else(|| crate::Error::ServerStartFailed("empty_health".to_string()))
 }
 
-#[cfg(any(feature = "whisper-cpp", feature = "parakeet-onnx"))]
+#[cfg(any(
+    feature = "whisper-cpp",
+    feature = "parakeet-onnx",
+    feature = "voxtral-llama"
+))]
 async fn internal_health() -> Option<ServerInfo> {
     match registry::where_is(internal::InternalSTTActor::name()) {
         Some(cell) => {

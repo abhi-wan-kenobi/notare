@@ -348,7 +348,7 @@ mod tests {
 
         let info = stt_model_info(&model);
         assert_eq!(info.key, model);
-        assert_eq!(info.display_name, "Voxtral Mini 3B (Multilingual)");
+        assert_eq!(info.display_name, "Voxtral Mini (Multilingual)");
         assert_eq!(info.engine, "Voxtral (llama.cpp)");
         assert!(matches!(info.model_type, SttModelType::VoxtralLlama));
         assert_eq!(info.languages, SttModelLanguages::Multilingual);

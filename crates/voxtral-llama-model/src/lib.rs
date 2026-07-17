@@ -97,9 +97,13 @@ impl VoxtralLlamaModel {
         self.files().iter().map(|file| file.size_bytes).sum()
     }
 
+    /// Follows the same "<Family> <Variant> (Multilingual/English)" naming
+    /// convention every other catalogued STT family uses (see
+    /// `WhisperModel::display_name`, `ParakeetOnnxModel::display_name`) —
+    /// parameter count/quant lives in `description()`, not here.
     pub fn display_name(&self) -> &'static str {
         match self {
-            VoxtralLlamaModel::Mini3bQ4KM => "Voxtral Mini 3B (Multilingual)",
+            VoxtralLlamaModel::Mini3bQ4KM => "Voxtral Mini (Multilingual)",
         }
     }
 

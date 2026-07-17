@@ -123,7 +123,7 @@ export type AmModel = "am-parakeet-v2" | "am-parakeet-v3" | "am-whisper-large-v3
 export type DownloadProgressPayload = { model: LocalModel; status: DownloadStatus }
 export type DownloadStatus = { downloading: number } | "completed" | { failed: string }
 export type GgufLlmModel = "Llama3p2_3bQ4" | "Gemma3_4bQ4" | "HyprLLM"
-export type LocalModel = SoniqoModel | WhisperModel | AmModel | ParakeetOnnxModel | GgufLlmModel
+export type LocalModel = SoniqoModel | WhisperModel | AmModel | ParakeetOnnxModel | VoxtralLlamaModel | GgufLlmModel
 export type ParakeetOnnxModel = "parakeet-tdt-v3-int8"
 export type ServerInfo = { url: string | null; status: ServerStatus; model: LocalModel | null }
 export type ServerStatus = "unreachable" | "loading" | "ready"
@@ -147,11 +147,12 @@ export type SttModelLanguages = "englishOnly" | "multilingual"
  * Quality/speed trade-off tier, ordered fastest -> most accurate.
  */
 export type SttModelTier = "fastest" | "fast" | "balanced" | "best"
-export type SttModelType = "soniqo" | "whispercpp" | "argmax" | "parakeetOnnx"
+export type SttModelType = "soniqo" | "whispercpp" | "argmax" | "parakeetOnnx" | "voxtralLlama"
 /**
  * What the model is the right pick for, given the live/final model split.
  */
 export type SttRecommendedUse = "live" | "final" | "liveAndFinal"
+export type VoxtralLlamaModel = "voxtral-mini-3b-2507-q4km"
 export type WhisperModel = "QuantizedTiny" | "QuantizedTinyEn" | "QuantizedBase" | "QuantizedBaseEn" | "QuantizedSmall" | "QuantizedSmallEn" | "QuantizedLargeTurbo"
 
 /** tauri-specta globals **/
