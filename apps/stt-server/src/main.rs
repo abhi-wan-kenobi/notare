@@ -48,7 +48,7 @@ async fn main() -> anyhow::Result<()> {
     let listener = tokio::net::TcpListener::bind((host.as_str(), port)).await?;
     tracing::info!(
         addr = %listener.local_addr()?,
-        "listening (GET /health, GET /api/status, GET/POST /api/models*, POST+WS /v1/listen)"
+        "listening (GET / admin page, GET /health, GET /api/status, GET/POST /api/models*, POST+WS /v1/listen)"
     );
 
     axum::serve(listener, app)

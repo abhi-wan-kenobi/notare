@@ -341,6 +341,60 @@ in §6/§8, or from what a reader would assume, is recorded here:
   own test gates explicitly separate from the network-touching live smoke
   test. Covered there instead.
 
+### Phase 3 implementation notes (added when Phase 3 shipped)
+
+- `GET /` serves a **single self-contained HTML document** (inline
+  `<style>` + inline vanilla `<script>`, no external requests, no
+  frameworks), embedded via `include_str!` (`apps/stt-server/src/assets.rs`
+  → `src/assets/index.html`) and mounted by `admin::web::index`. This
+  collapses the §9 sketch of `index.html`/`app.js`/`app.css` as three files
+  into one — the whole admin surface is three read-mostly panels, small
+  enough that a split buys nothing.
+- The page's fetch layer is a single `Api` object (see the `<script>`'s
+  `API` section). Phase 3 originally shipped this coded against the design
+  doc's stubbed `501` contract (a "Coming soon" toast for every mutation);
+  **merged with Phase 2, `Api` was adapted to the real endpoints**: `download`
+  reads its `202`/`200 alreadyInstalled` response, `cancel`/`activate`/`remove`
+  read their real `200`/`409`/`404` status+error-code envelopes, and a
+  `progress` poll (re-fetching `GET /api/models`, whose entries already embed
+  a `progress` snapshot per `docs/stt-server-design.md`'s Phase 2 addendum —
+  no separate `/api/models/{id}/progress` polling loop needed) drives the
+  progress bar while any model shows `progress.status === "downloading"`,
+  at a faster interval than the steady-state 4s status poll so the bar
+  visibly animates. The 501/"Coming soon" toast branch is gone; a mutation
+  failure now surfaces its real `error`/`detail` envelope.
+- The **Active chip is intentionally stricter than the raw `/api/models[].active`
+  flag.** That flag mirrors `AppState::active` as-is, which is true for the
+  server's *configured default model* from the moment it boots — even before
+  that model is ever installed. Showing "Active" on an uninstalled row would
+  misread as "this is loaded and serving". So the page only lights the chip
+  when `model.active` **and** the model's own `integrity.state` is
+  `verified`/`presentUnverified` **and** `/api/status.loadedModel.id` names
+  the same model — i.e. it cross-checks the per-model flag against the
+  status endpoint's authoritative "what `/v1/listen` is actually dispatching
+  to" field (`docs/stt-server-design.md`'s Phase 2 addendum) rather than
+  trusting either alone. An installed-but-not-currently-loaded model instead
+  shows an **Activate** action.
+- `/api/status`'s `backends: []` (Phase 1/debug-build reality, see above) is
+  rendered as an honest `chip-muted` **"CPU (debug build)"** badge rather
+  than a silent absence, per the design brief. When `backends` is non-empty
+  the page renders each backend's kind/name/description/VRAM and a green
+  "GPU offloaded" / red "CPU fallback" summary chip — verified with a
+  mocked `/api/status` response (real Vulkan/CUDA hardware is Phase 4).
+  Same treatment for `/api/models[].integrity` (`verified`/
+  `presentUnverified`/`notInstalled`/`corrupt` chips) and the per-row
+  install/delete/activate actions, which show/hide based on that state.
+  `languages` is read defensively (`model.languages`, not present in the
+  `/api/models` JSON today) — shown if the catalog ever exposes it, falls
+  back to "English"/"—" from `englishOnly` otherwise, never crashes on its
+  absence.
+- Visual language follows `docs/DESIGN-DIRECTION.md` §2 (dark-only "cobalt
+  on graphite"; no light variant — this is a LAN operator tool, not a
+  themed end-user surface): panels + one-line key/value rows + a table for
+  the model catalog (no card grids), state chips, glow reserved for the
+  health dot, hover states, the active-model row's accent bar, and the
+  download-progress fill.
+
 ## 7. GPU story
 
 ### Build matrix (three Dockerfiles, one crate)
