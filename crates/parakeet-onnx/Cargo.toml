@@ -1,0 +1,19 @@
+[package]
+name = "parakeet-onnx"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+hypr-language = { workspace = true }
+hypr-model-manager = { workspace = true }
+hypr-onnx = { workspace = true }
+hypr-transcribe-core = { workspace = true }
+
+regex = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+[dev-dependencies]
+hypr-audio-utils = { workspace = true }
+hypr-data = { workspace = true }
+tempfile = { workspace = true }

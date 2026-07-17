@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use crate::Error;
-use crate::model::DownloadableModel;
+use crate::model::{DownloadPart, DownloadableModel};
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "specta", derive(specta::Type))]
@@ -58,6 +58,12 @@ pub fn verify_model<M: DownloadableModel>(
         return Ok(ModelIntegrity::NotInstalled);
     }
 
+    // Multi-part models install as a directory of files, each individually
+    // verifiable against its catalog size + CRC32.
+    if let Some(parts) = model.download_parts() {
+        return verify_parts(&model.download_destination(models_base), &parts);
+    }
+
     // Models whose installed form differs from the downloaded artifact
     // (e.g. tar archives unpacked into a directory) can't be file-hash
     // verified against the download checksum.
@@ -87,20 +93,76 @@ pub fn verify_model<M: DownloadableModel>(
         return Ok(ModelIntegrity::PresentUnverified);
     };
 
-    let stamp = stamp_path(&destination);
+    match verify_file_with_stamp(&destination, size, mtime_secs, expected_crc)? {
+        None => Ok(ModelIntegrity::Verified),
+        Some(reason) => Ok(ModelIntegrity::Corrupt(reason)),
+    }
+}
+
+/// Verify every file of a multi-part model (existence + size + CRC32, with
+/// per-file `.verified` stamps as the re-hash fast path).
+fn verify_parts(destination_dir: &Path, parts: &[DownloadPart]) -> Result<ModelIntegrity, Error> {
+    let mut all_verified = true;
+
+    for part in parts {
+        let path = destination_dir.join(&part.relative_path);
+        if !path.is_file() {
+            return Ok(ModelIntegrity::NotInstalled);
+        }
+
+        let (size, mtime_secs) = file_meta(&path)?;
+
+        if let Some(expected) = part.expected_size
+            && size != expected
+        {
+            return Ok(ModelIntegrity::Corrupt(format!(
+                "{}: size mismatch: expected {expected} bytes, found {size}",
+                part.relative_path
+            )));
+        }
+
+        let Some(expected_crc) = part.checksum else {
+            all_verified = false;
+            continue;
+        };
+
+        if let Some(reason) = verify_file_with_stamp(&path, size, mtime_secs, expected_crc)? {
+            return Ok(ModelIntegrity::Corrupt(format!(
+                "{}: {reason}",
+                part.relative_path
+            )));
+        }
+    }
+
+    if all_verified {
+        Ok(ModelIntegrity::Verified)
+    } else {
+        Ok(ModelIntegrity::PresentUnverified)
+    }
+}
+
+/// CRC-check one file, honoring/refreshing its `.verified` sidecar stamp.
+/// Returns `None` when the file verifies, `Some(reason)` when corrupt.
+fn verify_file_with_stamp(
+    path: &Path,
+    size: u64,
+    mtime_secs: u64,
+    expected_crc: u32,
+) -> Result<Option<String>, Error> {
+    let stamp = stamp_path(path);
     if let Ok(bytes) = std::fs::read(&stamp)
         && let Ok(s) = serde_json::from_slice::<VerifiedStamp>(&bytes)
         && s.size == size
         && s.mtime_secs == mtime_secs
         && s.crc32 == expected_crc
     {
-        return Ok(ModelIntegrity::Verified);
+        return Ok(None);
     }
 
-    let actual = hypr_file::calculate_file_checksum(&destination)
+    let actual = hypr_file::calculate_file_checksum(path)
         .map_err(|e| Error::OperationFailed(e.to_string()))?;
     if actual != expected_crc {
-        return Ok(ModelIntegrity::Corrupt(format!(
+        return Ok(Some(format!(
             "checksum mismatch: expected {expected_crc}, found {actual}"
         )));
     }
@@ -114,7 +176,7 @@ pub fn verify_model<M: DownloadableModel>(
         })
         .unwrap_or_default(),
     );
-    Ok(ModelIntegrity::Verified)
+    Ok(None)
 }
 
 #[cfg(test)]

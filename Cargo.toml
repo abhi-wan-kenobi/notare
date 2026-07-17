@@ -144,6 +144,8 @@ hypr-opencode = { path = "crates/opencode", package = "opencode" }
 hypr-openrouter = { path = "crates/openrouter", package = "openrouter" }
 hypr-openstatus = { path = "crates/openstatus", package = "openstatus" }
 hypr-outlook-calendar = { path = "crates/outlook-calendar", package = "outlook-calendar" }
+hypr-parakeet-onnx = { path = "crates/parakeet-onnx", package = "parakeet-onnx" }
+hypr-parakeet-onnx-model = { path = "crates/parakeet-onnx-model", package = "parakeet-onnx-model" }
 hypr-porkbun = { path = "crates/porkbun", package = "porkbun" }
 hypr-power = { path = "crates/power", package = "power" }
 hypr-pyannote-cloud = { path = "crates/pyannote-cloud", package = "pyannote-cloud" }

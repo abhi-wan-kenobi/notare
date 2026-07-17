@@ -9,7 +9,7 @@ pub enum Error {
     Audio(#[from] hypr_audio_utils::Error),
 
     #[error(transparent)]
-    Whisper(#[from] hypr_whisper_local::Error),
+    Engine(#[from] crate::EngineError),
 
     #[error(transparent)]
     Chunking(#[from] hypr_audio_chunking::Error),

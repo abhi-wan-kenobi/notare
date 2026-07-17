@@ -1,6 +1,7 @@
 use std::{
     collections::VecDeque,
     future::Future,
+    marker::PhantomData,
     path::PathBuf,
     pin::Pin,
     sync::Arc,
@@ -17,12 +18,14 @@ use futures_util::{SinkExt, Stream, StreamExt, stream::poll_fn};
 use hypr_audio_chunking::{SpeechChunkExt, SpeechChunkingConfig};
 use hypr_audio_interface::AsyncSource;
 use hypr_model_manager::{ModelManager, ModelManagerBuilder};
-use hypr_transcribe_core::TARGET_SAMPLE_RATE;
 use hypr_ws_utils::ConnectionManager;
 use owhisper_interface::stream::StreamResponse;
 use owhisper_interface::{ControlMessage, ListenParams};
 use tokio::sync::mpsc;
 use tower::Service;
+
+use crate::TARGET_SAMPLE_RATE;
+use crate::engine::{SttEngine, SttEngineSession};
 
 use super::batch;
 use super::message::{AudioExtract, IncomingMessage, process_incoming_message};
@@ -30,22 +33,31 @@ use super::response::{
     TranscriptKind, build_transcript_response, format_timestamp_now, send_ws, send_ws_best_effort,
 };
 use super::{
-    build_metadata, build_model_with_languages, parse_listen_params, redemption_time,
+    build_metadata, build_session_with_languages, parse_listen_params, redemption_time,
     transcribe_chunk,
 };
 
 pub const LISTEN_PATH: &str = "/v1/listen";
 pub const HEALTH_PATH: &str = "/health";
 
-#[derive(Clone)]
-pub struct TranscribeService {
+pub struct TranscribeService<E: SttEngine> {
     model_path: PathBuf,
-    manager: ModelManager<hypr_whisper_local::LoadedWhisper>,
+    manager: ModelManager<E>,
     connection_manager: ConnectionManager,
 }
 
-impl TranscribeService {
-    pub fn builder() -> TranscribeServiceBuilder {
+impl<E: SttEngine> Clone for TranscribeService<E> {
+    fn clone(&self) -> Self {
+        Self {
+            model_path: self.model_path.clone(),
+            manager: self.manager.clone(),
+            connection_manager: self.connection_manager.clone(),
+        }
+    }
+}
+
+impl<E: SttEngine> TranscribeService<E> {
+    pub fn builder() -> TranscribeServiceBuilder<E> {
         TranscribeServiceBuilder::default()
     }
 
@@ -61,19 +73,29 @@ impl TranscribeService {
     }
 }
 
-#[derive(Default)]
-pub struct TranscribeServiceBuilder {
+pub struct TranscribeServiceBuilder<E: SttEngine> {
     model_path: Option<PathBuf>,
     connection_manager: Option<ConnectionManager>,
+    _engine: PhantomData<fn() -> E>,
 }
 
-impl TranscribeServiceBuilder {
+impl<E: SttEngine> Default for TranscribeServiceBuilder<E> {
+    fn default() -> Self {
+        Self {
+            model_path: None,
+            connection_manager: None,
+            _engine: PhantomData,
+        }
+    }
+}
+
+impl<E: SttEngine> TranscribeServiceBuilder<E> {
     pub fn model_path(mut self, model_path: PathBuf) -> Self {
         self.model_path = Some(model_path);
         self
     }
 
-    pub fn build(self) -> TranscribeService {
+    pub fn build(self) -> TranscribeService<E> {
         let model_path = self
             .model_path
             .expect("TranscribeServiceBuilder requires model_path");
@@ -85,8 +107,10 @@ impl TranscribeServiceBuilder {
         let warmup_manager = manager.clone();
         tokio::spawn(async move {
             match warmup_manager.get(None).await {
-                Ok(_) => tracing::info!("whisper_local_model_warmup_completed"),
-                Err(error) => tracing::warn!(error = %error, "whisper_local_model_warmup_failed"),
+                Ok(_) => tracing::info!(engine = E::arch(), "stt_model_warmup_completed"),
+                Err(error) => {
+                    tracing::warn!(engine = E::arch(), error = %error, "stt_model_warmup_failed")
+                }
             }
         });
 
@@ -98,7 +122,7 @@ impl TranscribeServiceBuilder {
     }
 }
 
-impl Service<Request<Body>> for TranscribeService {
+impl<E: SttEngine> Service<Request<Body>> for TranscribeService<E> {
     type Response = Response;
     type Error = String;
     type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send>>;
@@ -140,7 +164,7 @@ impl Service<Request<Body>> for TranscribeService {
                     }
                 };
 
-                let metadata = build_metadata(&model_path);
+                let metadata = build_metadata::<E>(&model_path);
                 let (mut parts, _body) = req.into_parts();
                 let ws_upgrade = match WebSocketUpgrade::from_request_parts(&mut parts, &()).await {
                     Ok(ws) => ws,
@@ -207,22 +231,19 @@ enum StopReason {
     Finalize,
 }
 
-async fn handle_websocket(
+async fn handle_websocket<E: SttEngine>(
     socket: axum::extract::ws::WebSocket,
     params: ListenParams,
     metadata: owhisper_interface::stream::Metadata,
     guard: hypr_ws_utils::ConnectionGuard,
-    model: Arc<hypr_whisper_local::LoadedWhisper>,
-    manager: ModelManager<hypr_whisper_local::LoadedWhisper>,
+    model: Arc<E>,
+    manager: ModelManager<E>,
 ) {
     let (mut ws_sender, mut ws_receiver) = socket.split();
     let total_channels = (params.channels as usize).max(1);
     let redemption_time = redemption_time(&params);
-    let languages: Vec<hypr_whisper::Language> = params
-        .languages
-        .iter()
-        .filter_map(|lang| lang.clone().try_into().ok())
-        .collect();
+    let languages: Vec<hypr_language::Language> = params.languages.clone();
+    let provider = E::arch();
     match build_transcription_streams(total_channels, model.as_ref(), &languages, redemption_time) {
         Ok((audio_txs, mut stream)) => {
             let mut audio_txs = audio_txs;
@@ -278,7 +299,7 @@ async fn handle_websocket(
                                     &StreamResponse::ErrorResponse {
                                         error_code: None,
                                         error_message: error.to_string(),
-                                        provider: "whisper-local".to_string(),
+                                        provider: provider.to_string(),
                                     },
                                 )
                                 .await;
@@ -307,7 +328,7 @@ async fn handle_websocket(
                                     &StreamResponse::ErrorResponse {
                                         error_code: None,
                                         error_message: format!("websocket receive error: {error}"),
-                                        provider: "whisper-local".to_string(),
+                                        provider: provider.to_string(),
                                     },
                                 )
                                 .await;
@@ -327,7 +348,7 @@ async fn handle_websocket(
                                         &StreamResponse::ErrorResponse {
                                             error_code: None,
                                             error_message: "audio pipeline closed unexpectedly".to_string(),
-                                            provider: "whisper-local".to_string(),
+                                            provider: provider.to_string(),
                                         },
                                     )
                                     .await;
@@ -344,7 +365,7 @@ async fn handle_websocket(
                                             &StreamResponse::ErrorResponse {
                                                 error_code: None,
                                                 error_message: "audio pipeline closed unexpectedly".to_string(),
-                                                provider: "whisper-local".to_string(),
+                                                provider: provider.to_string(),
                                             },
                                         )
                                         .await;
@@ -359,7 +380,7 @@ async fn handle_websocket(
                                             &StreamResponse::ErrorResponse {
                                                 error_code: None,
                                                 error_message: "audio pipeline closed unexpectedly".to_string(),
-                                                provider: "whisper-local".to_string(),
+                                                provider: provider.to_string(),
                                             },
                                         )
                                         .await;
@@ -390,7 +411,7 @@ async fn handle_websocket(
                                     &StreamResponse::ErrorResponse {
                                         error_code: None,
                                         error_message: error.to_string(),
-                                        provider: "whisper-local".to_string(),
+                                        provider: provider.to_string(),
                                     },
                                 )
                                 .await;
@@ -447,7 +468,7 @@ async fn handle_websocket(
                 &StreamResponse::ErrorResponse {
                     error_code: None,
                     error_message: error.to_string(),
-                    provider: "whisper-local".to_string(),
+                    provider: provider.to_string(),
                 },
             )
             .await;
@@ -460,10 +481,10 @@ type TranscriptionStream =
     Pin<Box<dyn Stream<Item = Result<(usize, crate::service::Segment), crate::Error>> + Send>>;
 
 #[allow(clippy::type_complexity)]
-fn build_transcription_streams(
+fn build_transcription_streams<E: SttEngine>(
     total_channels: usize,
-    loaded_model: &hypr_whisper_local::LoadedWhisper,
-    languages: &[hypr_whisper::Language],
+    engine: &E,
+    languages: &[hypr_language::Language],
     redemption_time: std::time::Duration,
 ) -> Result<
     (
@@ -479,13 +500,13 @@ fn build_transcription_streams(
         let (audio_tx, audio_rx) = mpsc::channel::<Vec<f32>>(8);
         audio_txs.push(audio_tx);
 
-        let model = build_model_with_languages(loaded_model, languages.to_vec())?;
+        let session = build_session_with_languages(engine, languages.to_vec())?;
         let chunk_stream = ChannelAudioSource::new(audio_rx)
             .speech_chunks(SpeechChunkingConfig::speech(redemption_time));
         let stream: TranscriptionStream = Box::pin(TranscribeChannelStream::new(
             channel_idx,
             chunk_stream,
-            model,
+            session,
         ));
         streams.push(stream);
     }
@@ -532,27 +553,28 @@ impl AsyncSource for ChannelAudioSource {
     }
 }
 
-struct TranscribeChannelStream<S> {
+struct TranscribeChannelStream<S, Sess> {
     channel_idx: usize,
     chunk_stream: S,
-    model: hypr_whisper_local::Whisper,
+    session: Sess,
     pending: VecDeque<crate::service::Segment>,
 }
 
-impl<S> TranscribeChannelStream<S> {
-    fn new(channel_idx: usize, chunk_stream: S, model: hypr_whisper_local::Whisper) -> Self {
+impl<S, Sess> TranscribeChannelStream<S, Sess> {
+    fn new(channel_idx: usize, chunk_stream: S, session: Sess) -> Self {
         Self {
             channel_idx,
             chunk_stream,
-            model,
+            session,
             pending: VecDeque::new(),
         }
     }
 }
 
-impl<S> Stream for TranscribeChannelStream<S>
+impl<S, Sess> Stream for TranscribeChannelStream<S, Sess>
 where
     S: Stream<Item = Result<hypr_audio_chunking::AudioChunk, hypr_audio_chunking::Error>> + Unpin,
+    Sess: SttEngineSession + Unpin,
 {
     type Item = Result<(usize, crate::service::Segment), crate::Error>;
 
@@ -565,11 +587,12 @@ where
             match Pin::new(&mut self.chunk_stream).poll_next(cx) {
                 Poll::Ready(Some(Ok(chunk))) => {
                     let start_sec = chunk.sample_start as f64 / TARGET_SAMPLE_RATE as f64;
-                    match transcribe_chunk(&mut self.model, &chunk.samples, start_sec) {
+                    let this = &mut *self;
+                    match transcribe_chunk(&mut this.session, &chunk.samples, start_sec) {
                         Ok(segments) => {
-                            self.pending.extend(segments);
-                            if let Some(segment) = self.pending.pop_front() {
-                                return Poll::Ready(Some(Ok((self.channel_idx, segment))));
+                            this.pending.extend(segments);
+                            if let Some(segment) = this.pending.pop_front() {
+                                return Poll::Ready(Some(Ok((this.channel_idx, segment))));
                             }
                         }
                         Err(error) => return Poll::Ready(Some(Err(error))),
@@ -588,17 +611,10 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::service::build_metadata;
 
     #[test]
     fn health_and_listen_paths_are_stable() {
         assert_eq!(HEALTH_PATH, "/health");
         assert_eq!(LISTEN_PATH, "/v1/listen");
-    }
-
-    #[test]
-    fn metadata_uses_model_info() {
-        let metadata = build_metadata(std::path::Path::new("/tmp/model.bin"));
-        assert_eq!(metadata.model_info.arch, "whisper-local");
     }
 }

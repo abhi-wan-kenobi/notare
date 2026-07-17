@@ -1,7 +1,8 @@
 use std::path::{Path, PathBuf};
 
 pub use hypr_am::AmModel;
-use hypr_model_downloader::{DownloadableModel, Error};
+use hypr_model_downloader::{DownloadPart, DownloadableModel, Error};
+pub use hypr_parakeet_onnx_model::ParakeetOnnxModel;
 pub use hypr_transcribe_soniqo::SoniqoModel;
 pub use hypr_whisper_local_model::WhisperModel;
 
@@ -81,6 +82,10 @@ pub enum LocalModel {
     Soniqo(SoniqoModel),
     Whisper(WhisperModel),
     Am(AmModel),
+    // Serialized as "parakeet-tdt-v3-int8"; collides with no Soniqo
+    // ("soniqo-*"), Am ("am-*"), Whisper ("Quantized*") or GgufLlm
+    // (variant-name) wire value under untagged deserialization.
+    ParakeetOnnx(ParakeetOnnxModel),
     GgufLlm(GgufLlmModel),
 }
 
@@ -90,6 +95,9 @@ impl std::fmt::Display for LocalModel {
             LocalModel::Soniqo(model) => write!(f, "{model}"),
             LocalModel::Whisper(model) => write!(f, "whisper-{model}"),
             LocalModel::Am(model) => write!(f, "am-{model}"),
+            // ParakeetOnnxModel's strum name already carries the
+            // "parakeet-" prefix.
+            LocalModel::ParakeetOnnx(model) => write!(f, "{model}"),
             LocalModel::GgufLlm(model) => write!(f, "llm-{model:?}"),
         }
     }
@@ -114,6 +122,7 @@ impl LocalModel {
             LocalModel::Am(AmModel::ParakeetV2),
             LocalModel::Am(AmModel::ParakeetV3),
             LocalModel::Am(AmModel::WhisperLargeV3),
+            LocalModel::ParakeetOnnx(ParakeetOnnxModel::TdtV3Int8),
         ]);
 
         models.extend([
@@ -130,15 +139,17 @@ impl LocalModel {
             LocalModel::Soniqo(_) => "stt-soniqo",
             LocalModel::Whisper(_) => "stt-whisper",
             LocalModel::Am(_) => "stt-am",
+            LocalModel::ParakeetOnnx(_) => "stt-parakeet-onnx",
             LocalModel::GgufLlm(_) => "llm",
         }
     }
 
     pub fn model_kind(&self) -> LocalModelKind {
         match self {
-            LocalModel::Soniqo(_) | LocalModel::Whisper(_) | LocalModel::Am(_) => {
-                LocalModelKind::Stt
-            }
+            LocalModel::Soniqo(_)
+            | LocalModel::Whisper(_)
+            | LocalModel::Am(_)
+            | LocalModel::ParakeetOnnx(_) => LocalModelKind::Stt,
             LocalModel::GgufLlm(_) => LocalModelKind::Llm,
         }
     }
@@ -156,6 +167,7 @@ impl LocalModel {
             LocalModel::Am(AmModel::ParakeetV2) => "am-parakeet-v2",
             LocalModel::Am(AmModel::ParakeetV3) => "am-parakeet-v3",
             LocalModel::Am(AmModel::WhisperLargeV3) => "am-whisper-large-v3",
+            LocalModel::ParakeetOnnx(ParakeetOnnxModel::TdtV3Int8) => "parakeet-tdt-v3",
             LocalModel::GgufLlm(GgufLlmModel::Llama3p2_3bQ4) => "llm-llama3-2-3b-q4",
             LocalModel::GgufLlm(GgufLlmModel::HyprLLM) => "llm-hypr-llm",
             LocalModel::GgufLlm(GgufLlmModel::Gemma3_4bQ4) => "llm-gemma3-4b-q4",
@@ -167,6 +179,7 @@ impl LocalModel {
             LocalModel::Soniqo(model) => models_base.join("soniqo").join(model.as_str()),
             LocalModel::Whisper(model) => models_base.join("stt").join(model.file_name()),
             LocalModel::Am(model) => models_base.join("stt").join(model.model_dir()),
+            LocalModel::ParakeetOnnx(model) => models_base.join("stt").join(model.model_dir()),
             LocalModel::GgufLlm(model) => models_base.join("llm").join(model.file_name()),
         }
     }
@@ -176,6 +189,7 @@ impl LocalModel {
             LocalModel::Soniqo(model) => model.display_name().to_string(),
             LocalModel::Whisper(model) => model.display_name().to_string(),
             LocalModel::Am(model) => model.display_name().to_string(),
+            LocalModel::ParakeetOnnx(model) => model.display_name().to_string(),
             LocalModel::GgufLlm(model) => model.display_name().to_string(),
         }
     }
@@ -185,6 +199,7 @@ impl LocalModel {
             LocalModel::Soniqo(model) => model.description().to_string(),
             LocalModel::Whisper(model) => model.description(),
             LocalModel::Am(model) => model.description().to_string(),
+            LocalModel::ParakeetOnnx(model) => model.description(),
             LocalModel::GgufLlm(model) => model.description(),
         }
     }
@@ -198,6 +213,8 @@ impl LocalModel {
             // GPU offload (Metal/Vulkan/CUDA) is a build-feature concern.
             LocalModel::Whisper(_) => true,
             LocalModel::Am(_) => is_apple_silicon,
+            // ONNX Runtime CPU execution works on every desktop platform.
+            LocalModel::ParakeetOnnx(_) => true,
             LocalModel::GgufLlm(_) => cfg!(target_arch = "aarch64"),
         }
     }
@@ -254,6 +271,7 @@ impl DownloadableModel for LocalModel {
             LocalModel::Soniqo(model) => format!("soniqo:{}", model.as_str()),
             LocalModel::Whisper(model) => format!("whisper:{}", model.file_name()),
             LocalModel::Am(model) => format!("am:{}", model.model_dir()),
+            LocalModel::ParakeetOnnx(model) => format!("parakeet-onnx:{}", model.model_dir()),
             LocalModel::GgufLlm(model) => model.download_key(),
         }
     }
@@ -263,6 +281,8 @@ impl DownloadableModel for LocalModel {
             LocalModel::Soniqo(_) => None,
             LocalModel::Whisper(model) => Some(model.model_url().to_string()),
             LocalModel::Am(model) => Some(model.tar_url().to_string()),
+            // Multi-file model: see `download_parts`.
+            LocalModel::ParakeetOnnx(_) => None,
             LocalModel::GgufLlm(model) => model.download_url(),
         }
     }
@@ -272,6 +292,8 @@ impl DownloadableModel for LocalModel {
             LocalModel::Soniqo(_) => None,
             LocalModel::Whisper(model) => Some(model.checksum()),
             LocalModel::Am(model) => Some(model.tar_checksum()),
+            // Per-part checksums live in `download_parts`.
+            LocalModel::ParakeetOnnx(_) => None,
             LocalModel::GgufLlm(model) => model.download_checksum(),
         }
     }
@@ -282,7 +304,26 @@ impl DownloadableModel for LocalModel {
             LocalModel::Whisper(model) => Some(model.model_size_bytes()),
             // AM installs as an unpacked directory; size applies to the tar only.
             LocalModel::Am(_) => None,
+            LocalModel::ParakeetOnnx(model) => Some(model.model_size_bytes()),
             LocalModel::GgufLlm(model) => model.expected_size(),
+        }
+    }
+
+    fn download_parts(&self) -> Option<Vec<DownloadPart>> {
+        match self {
+            LocalModel::ParakeetOnnx(model) => Some(
+                model
+                    .files()
+                    .iter()
+                    .map(|file| DownloadPart {
+                        url: model.file_url(file.name),
+                        relative_path: file.name.to_string(),
+                        checksum: Some(file.crc32),
+                        expected_size: Some(file.size_bytes),
+                    })
+                    .collect(),
+            ),
+            _ => None,
         }
     }
 
@@ -293,6 +334,8 @@ impl DownloadableModel for LocalModel {
             LocalModel::Am(model) => models_base
                 .join("stt")
                 .join(format!("{}.tar", model.model_dir())),
+            // Directory holding the individual ONNX/vocab files.
+            LocalModel::ParakeetOnnx(model) => models_base.join("stt").join(model.model_dir()),
             LocalModel::GgufLlm(model) => model.download_destination(models_base),
         }
     }
@@ -315,6 +358,18 @@ impl DownloadableModel for LocalModel {
             LocalModel::Am(model) => model
                 .is_downloaded(models_base.join("stt"))
                 .map_err(|e| Error::OperationFailed(e.to_string())),
+            LocalModel::ParakeetOnnx(model) => {
+                // Same rule as whisper: a truncated leftover must not count
+                // as installed, so require every file at its expected size.
+                let dir = models_base.join("stt").join(model.model_dir());
+                Ok(model.files().iter().all(|file| {
+                    let path = dir.join(file.name);
+                    path.is_file()
+                        && hypr_file::file_size(&path)
+                            .map(|size| size == file.size_bytes)
+                            .unwrap_or(false)
+                }))
+            }
             LocalModel::GgufLlm(model) => model.is_downloaded(models_base),
         }
     }
@@ -331,6 +386,9 @@ impl DownloadableModel for LocalModel {
                     .tar_unpack_and_cleanup(downloaded_path, &final_path)
                     .map_err(|e| Error::FinalizeFailed(e.to_string()))
             }
+            // Parts are downloaded and verified straight into the model
+            // directory; nothing left to do.
+            LocalModel::ParakeetOnnx(_) => Ok(()),
             LocalModel::GgufLlm(model) => model.finalize_download(downloaded_path, models_base),
         }
     }
@@ -355,6 +413,14 @@ impl DownloadableModel for LocalModel {
                 }
                 Ok(())
             }
+            LocalModel::ParakeetOnnx(model) => {
+                let model_dir = models_base.join("stt").join(model.model_dir());
+                if model_dir.exists() {
+                    std::fs::remove_dir_all(&model_dir)
+                        .map_err(|e| Error::DeleteFailed(e.to_string()))?;
+                }
+                Ok(())
+            }
             LocalModel::GgufLlm(model) => model.delete_downloaded(models_base),
         }
     }
@@ -367,6 +433,68 @@ impl DownloadableModel for LocalModel {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn parakeet_onnx_untagged_serde_round_trips_without_collisions() {
+        let model = LocalModel::ParakeetOnnx(ParakeetOnnxModel::TdtV3Int8);
+        let json = serde_json::to_string(&model).unwrap();
+        assert_eq!(json, "\"parakeet-tdt-v3-int8\"");
+
+        let parsed: LocalModel = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed, model);
+
+        // Neighbouring wire values must still land on their own variants.
+        let whisper: LocalModel = serde_json::from_str("\"QuantizedSmall\"").unwrap();
+        assert!(matches!(whisper, LocalModel::Whisper(_)));
+        let am: LocalModel = serde_json::from_str("\"am-parakeet-v3\"").unwrap();
+        assert!(matches!(am, LocalModel::Am(_)));
+    }
+
+    #[test]
+    fn parakeet_onnx_downloads_as_pinned_multi_part() {
+        let model = LocalModel::ParakeetOnnx(ParakeetOnnxModel::TdtV3Int8);
+
+        assert_eq!(model.download_url(), None);
+        let parts = model.download_parts().expect("must be multi-part");
+        assert_eq!(parts.len(), 4);
+        assert!(parts.iter().all(|p| p.checksum.is_some()));
+        assert!(parts.iter().all(|p| p.expected_size.is_some()));
+        assert!(
+            parts
+                .iter()
+                .all(|p| p.url.contains("8f23f0c03c8761650bdb5b40aaf3e40d2c15f1ce"))
+        );
+        assert_eq!(
+            model.expected_size(),
+            Some(parts.iter().map(|p| p.expected_size.unwrap()).sum())
+        );
+        assert!(!model.remove_destination_after_finalize());
+
+        let destination = model.download_destination(Path::new("/base"));
+        assert_eq!(
+            destination,
+            Path::new("/base/stt/parakeet-tdt-0.6b-v3-int8")
+        );
+        assert_eq!(destination, model.install_path(Path::new("/base")));
+    }
+
+    #[test]
+    fn parakeet_onnx_is_downloaded_requires_all_files_at_expected_sizes() {
+        let model = LocalModel::ParakeetOnnx(ParakeetOnnxModel::TdtV3Int8);
+        let base = tempfile::tempdir().unwrap();
+        assert!(!model.is_downloaded(base.path()).unwrap());
+
+        let dir = base.path().join("stt").join("parakeet-tdt-0.6b-v3-int8");
+        std::fs::create_dir_all(&dir).unwrap();
+        for file in ParakeetOnnxModel::TdtV3Int8.files() {
+            // right names, wrong sizes -> still not installed
+            std::fs::write(dir.join(file.name), b"stub").unwrap();
+        }
+        assert!(!model.is_downloaded(base.path()).unwrap());
+
+        model.delete_downloaded(base.path()).unwrap();
+        assert!(!dir.exists());
+    }
 
     #[test]
     fn soniqo_models_reject_generic_download_finalize() {

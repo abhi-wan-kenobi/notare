@@ -1,5 +1,5 @@
 pub mod external;
-#[cfg(feature = "whisper-cpp")]
+#[cfg(any(feature = "whisper-cpp", feature = "parakeet-onnx"))]
 pub mod internal;
 pub mod supervisor;
 

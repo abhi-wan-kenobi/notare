@@ -1,8 +1,19 @@
-mod error;
-mod service;
+mod engine;
 
-pub use error::*;
-pub use service::*;
+pub use engine::*;
+pub use hypr_transcribe_core::{Error, HEALTH_PATH, LISTEN_PATH};
+
+/// The whisper.cpp-backed transcription service, kept as a concrete alias so
+/// existing consumers (`plugins/local-stt`, `crates/local-stt-server`) keep
+/// compiling unchanged against the generic core service.
+pub type TranscribeService = hypr_transcribe_core::TranscribeService<LoadedWhisper>;
+
+pub fn process_recorded(
+    model_path: impl AsRef<std::path::Path>,
+    audio_path: impl AsRef<std::path::Path>,
+) -> Result<Vec<owhisper_interface::Word2>, Error> {
+    hypr_transcribe_core::process_recorded::<LoadedWhisper>(model_path, audio_path)
+}
 
 #[cfg(test)]
 // cargo test -p transcribe-whisper-local test_service -- --nocapture

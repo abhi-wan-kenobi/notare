@@ -114,11 +114,12 @@ automation = ["tauri-plugin-automation"]
 # docs/BUILDING.md "GPU builds (Vulkan)".
 gpu-vulkan = ["tauri-plugin-local-stt/vulkan"]
 
-# Compile the whisper.cpp engine on platforms that have no Argmax/Soniqo
-# runtime (those are Apple-Silicon-only). CPU inference by default; opt into
-# GPU offload with `--features gpu-vulkan` (see [features] above).
+# Compile the whisper.cpp and Parakeet (ONNX) engines on platforms that have
+# no Argmax/Soniqo runtime (those are Apple-Silicon-only). CPU inference by
+# default; opt into GPU offload with `--features gpu-vulkan` (see [features]
+# above).
 [target.'cfg(any(target_os = "linux", target_os = "windows"))'.dependencies]
-tauri-plugin-local-stt = { workspace = true, features = ["whisper-cpp"] }
+tauri-plugin-local-stt = { workspace = true, features = ["whisper-cpp", "parakeet-onnx"] }
 # Toggle hotkey for the dictation orb (the shortcut plugin's non-macOS
 # handler drives it; macOS uses its native event-tap path instead).
 tauri-plugin-global-shortcut = { workspace = true }

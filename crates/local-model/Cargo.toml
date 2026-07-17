@@ -7,8 +7,13 @@ edition = "2024"
 hypr-am = { workspace = true }
 hypr-file = { workspace = true }
 hypr-model-downloader = { workspace = true }
+hypr-parakeet-onnx-model = { workspace = true }
 hypr-transcribe-soniqo = { workspace = true }
 hypr-whisper-local-model = { workspace = true }
 
 serde = { workspace = true }
 specta = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }
+tempfile = { workspace = true }

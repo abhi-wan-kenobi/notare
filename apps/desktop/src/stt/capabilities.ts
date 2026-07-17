@@ -45,12 +45,17 @@ export function isSupportedLocalSttModel(
     typeof model === "string" &&
     (model.startsWith("soniqo-") ||
       model.startsWith("am-") ||
+      model.startsWith("parakeet-") ||
       model.startsWith("Quantized"))
   );
 }
 
 export function isWhisperLocalSttModel(model?: string | null) {
   return typeof model === "string" && model.startsWith("Quantized");
+}
+
+export function isParakeetLocalSttModel(model?: string | null) {
+  return typeof model === "string" && model.startsWith("parakeet-");
 }
 
 export function isHyprnoteCloudSttModel(
@@ -152,11 +157,11 @@ export function getOnDeviceTranscriptionConfig(
   model: string | null | undefined,
   languages: readonly string[],
 ): LiveTranscriptionConfig {
-  if (isWhisperLocalSttModel(model)) {
-    // The internal whisper server streams VAD-chunked final transcripts over
-    // the /v1/listen websocket, so whisper models support live transcription
-    // on every platform (falls back to batch automatically if the listener
-    // fails to connect).
+  if (isWhisperLocalSttModel(model) || isParakeetLocalSttModel(model)) {
+    // The internal whisper/parakeet server streams VAD-chunked final
+    // transcripts over the /v1/listen websocket, so these models support
+    // live transcription on every platform (falls back to batch
+    // automatically if the listener fails to connect).
     return {
       languages: [...languages],
       transcriptionMode: "live",

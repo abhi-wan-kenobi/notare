@@ -82,6 +82,14 @@ pub fn is_supported_languages_batch(
             return Ok(model.supports_languages(languages));
         }
 
+        // Parakeet TDT v3 (ONNX engine) covers 25 languages; warn instead of
+        // silently degrading when an unsupported language is requested.
+        if model == Some("parakeet-tdt-v3-int8") {
+            return Ok(languages
+                .iter()
+                .all(hypr_language::is_parakeet_tdt_v3_language));
+        }
+
         return Ok(true);
     }
 
