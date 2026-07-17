@@ -554,6 +554,10 @@ msgstr ""
 msgid "Copy message"
 msgstr ""
 
+#: src/settings/ai/stt/test-connection-button.tsx
+msgid "Could not connect."
+msgstr ""
+
 #: src/onboarding/account/after-login.tsx
 msgid "Could not start trial"
 msgstr ""
@@ -2269,6 +2273,10 @@ msgstr ""
 #: src/sidebar/surface-nav.tsx
 #: src/templates/template-sidebar.tsx
 msgid "Templates"
+msgstr ""
+
+#: src/settings/ai/stt/test-connection-button.tsx
+msgid "Test connection"
 msgstr ""
 
 #: src/settings/dictation/shortcut-recorder.tsx

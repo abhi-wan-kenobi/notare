@@ -512,9 +512,11 @@ const _PROVIDERS = [
     ),
     baseUrl: undefined,
     models: [],
-    requirements: [
-      { kind: "requires_config", fields: ["base_url", "api_key"] },
-    ],
+    // Only base_url is mandatory: this is also the seam a self-hosted
+    // Notare STT companion server plugs in through
+    // (docs/stt-server-design.md issue #14 Phase 5), and that server's
+    // bearer token is off by default — the API key is optional here.
+    requirements: [{ kind: "requires_config", fields: ["base_url"] }],
   },
   {
     disabled: true,
