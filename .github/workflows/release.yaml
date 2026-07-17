@@ -238,9 +238,13 @@ jobs:
           generate_release_notes: true
           body: |
             > **macOS (Apple Silicon only for now):** the `.dmg` is **unsigned**
-            > (no Apple certificates yet). Open the dmg, drag **Notare** to
-            > Applications, then on first launch **right-click the app → Open**
-            > to get past Gatekeeper — or run `xattr -cr /Applications/Notare.app`.
+            > (no Apple certificates yet). Drag **Notare** to Applications, then
+            > strip the quarantine flag before opening — otherwise macOS will
+            > claim the app is "damaged" and refuse to launch:
+            >
+            > ```
+            > xattr -cr /Applications/Notare.app
+            > ```
             >
             > **Windows:** builds are unsigned — SmartScreen will warn; choose
             > "More info → Run anyway".

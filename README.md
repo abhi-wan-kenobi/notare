@@ -28,10 +28,16 @@ Auto-updates are built in — install once and the app keeps itself current.
 > **Windows SmartScreen:** builds are not (yet) code-signed, so SmartScreen
 > will warn on first run. Click **More info → Run anyway**.
 
-> **macOS Gatekeeper:** builds are unsigned (no Apple certificates yet) and
-> Apple Silicon only. Open the `.dmg`, drag **Notare** to Applications, then
-> on first launch **right-click the app → Open** — or run
-> `xattr -cr /Applications/Notare.app`. Intel Macs: build from source.
+> **macOS Gatekeeper:** builds are unsigned (no Apple Developer certificate
+> yet) and Apple Silicon only. Drag **Notare** to Applications, then strip the
+> quarantine flag before opening — otherwise macOS will claim the app is
+> "damaged" and refuse to launch:
+>
+> ```sh
+> xattr -cr /Applications/Notare.app
+> ```
+>
+> Then open normally. Intel Macs: build from source.
 
 ## Highlights
 
