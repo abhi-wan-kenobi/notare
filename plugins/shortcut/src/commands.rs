@@ -46,3 +46,13 @@ pub(crate) async fn unregister_global_hotkey<R: tauri::Runtime>(
         .unregister_global()
         .map_err(|e| e.to_string())
 }
+
+/// Parse-validate a global-hotkey accelerator string (e.g. "ctrl+alt+space")
+/// WITHOUT registering it, so the settings recorder can show inline feedback
+/// before committing the `dictation_shortcut` setting. Always Ok on macOS,
+/// which keeps its native push-to-talk path and never parses these strings.
+#[tauri::command]
+#[specta::specta]
+pub(crate) async fn parse_global_hotkey(shortcut: String) -> Result<(), String> {
+    crate::handler::parse_global(&shortcut).map_err(|e| e.to_string())
+}

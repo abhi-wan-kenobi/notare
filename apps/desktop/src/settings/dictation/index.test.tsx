@@ -1,7 +1,8 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { DictationHistoryEntry } from "~/dictation/history";
+import { ORB_VARIANT_ORDER } from "~/dictation/orb";
 
 import {
   CleanupGroup,
@@ -58,6 +59,18 @@ describe("OrbVariantGroup", () => {
     cleanup();
   });
 
+  it("renders one preview card per registry variant in a radiogroup", () => {
+    render(<OrbVariantGroup value="cobalt" onChange={vi.fn()} />);
+
+    expect(screen.getByRole("radiogroup")).toBeTruthy();
+    for (const variant of ORB_VARIANT_ORDER) {
+      expect(screen.getByTestId(`orb-preview-card-${variant}`)).toBeTruthy();
+    }
+    expect(screen.getAllByRole("radio")).toHaveLength(
+      ORB_VARIANT_ORDER.length,
+    );
+  });
+
   it("switches between the cobalt, particle and Pulse orbs", () => {
     const onChange = vi.fn();
     render(<OrbVariantGroup value="cobalt" onChange={onChange} />);
@@ -79,16 +92,57 @@ describe("OrbVariantGroup", () => {
 
     expect(screen.getByTestId("recording-orb")).not.toBeNull();
     expect(screen.getByTestId("dictation-waveform-orb")).not.toBeNull();
+    expect(screen.getByTestId("dictation-ring-orb")).not.toBeNull();
+    expect(screen.getByTestId("dictation-aurora-orb")).not.toBeNull();
+    expect(screen.getByTestId("dictation-mono-orb")).not.toBeNull();
 
-    // The particle preview reflects the 1.5x scale (28 -> 42px).
+    // The particle preview reflects the 1.5x scale (64 -> 96px).
     const particleCanvas = screen.getByTestId("dictation-particle-orb");
-    expect(particleCanvas.style.width).toBe("42px");
-    expect(particleCanvas.style.height).toBe("42px");
+    expect(particleCanvas.style.width).toBe("96px");
+    expect(particleCanvas.style.height).toBe("96px");
+  });
+
+  it("runs the selected card live and the rest idle", () => {
+    render(<OrbVariantGroup value="waveform" onChange={vi.fn()} />);
+
+    const selected = screen.getByTestId("orb-preview-card-waveform");
+    expect(selected.dataset.selected).toBe("true");
+    expect(
+      selected.querySelector('[data-dictation-phase="listening"]'),
+    ).not.toBeNull();
+
+    const idle = screen.getByTestId("orb-preview-card-cobalt");
+    expect(idle.dataset.selected).toBeUndefined();
+    expect(idle.querySelector('[data-dictation-phase="idle"]')).not.toBeNull();
+  });
+
+  it("wakes a card to listening on hover", () => {
+    render(<OrbVariantGroup value="cobalt" onChange={vi.fn()} />);
+
+    const card = screen.getByTestId("orb-preview-card-mono");
+    expect(card.querySelector('[data-dictation-phase="idle"]')).not.toBeNull();
+
+    fireEvent.mouseEnter(card);
+    expect(
+      card.querySelector('[data-dictation-phase="listening"]'),
+    ).not.toBeNull();
+
+    fireEvent.mouseLeave(card);
+    expect(card.querySelector('[data-dictation-phase="idle"]')).not.toBeNull();
   });
 });
 
 describe("DictationHistoryList", () => {
+  // Pin the clock so the relative-timestamp assertions are deterministic and
+  // don't flake under CI load (the entries use absolute offsets from `now`).
+  const NOW = new Date("2026-07-17T12:00:00.000Z").getTime();
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+  });
   afterEach(() => {
+    vi.useRealTimers();
     cleanup();
   });
 
@@ -98,14 +152,14 @@ describe("DictationHistoryList", () => {
       text: "First dictation",
       mode: "type",
       cleaned: true,
-      createdAt: new Date().toISOString(),
+      createdAt: new Date(NOW - 30_000).toISOString(),
     },
     {
       id: "two",
       text: "Second dictation",
       mode: "batch",
       cleaned: false,
-      createdAt: new Date(Date.now() - 60_000).toISOString(),
+      createdAt: new Date(NOW - 90_000).toISOString(),
     },
   ];
 

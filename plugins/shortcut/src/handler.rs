@@ -11,6 +11,25 @@ pub use self::macos::Handler;
 #[cfg(not(target_os = "macos"))]
 pub use self::stub::Handler;
 
+/// Parse-validate an accelerator string in `tauri-plugin-global-shortcut`
+/// syntax ("ctrl+alt+space") without registering anything. Backs the
+/// `parse_global_hotkey` command; the settings recorder uses it for inline
+/// feedback before committing a new shortcut.
+#[cfg(not(target_os = "macos"))]
+pub fn parse_global(shortcut: &str) -> Result<(), Error> {
+    shortcut
+        .parse::<tauri_plugin_global_shortcut::Shortcut>()
+        .map(|_| ())
+        .map_err(|e| Error::InvalidShortcut(format!("{shortcut}: {e}")))
+}
+
+/// macOS keeps its native push-to-talk path and never registers these
+/// toggle-style accelerators, so every string "parses".
+#[cfg(target_os = "macos")]
+pub fn parse_global(_shortcut: &str) -> Result<(), Error> {
+    Ok(())
+}
+
 #[cfg(target_os = "macos")]
 mod macos {
     use std::{sync::Mutex, time::Duration};

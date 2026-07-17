@@ -42,6 +42,20 @@ async unregisterGlobalHotkey() : Promise<Result<null, string>> {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
+},
+/**
+ * Parse-validate a global-hotkey accelerator string (e.g. "ctrl+alt+space")
+ * WITHOUT registering it, so the settings recorder can show inline feedback
+ * before committing the `dictation_shortcut` setting. Always Ok on macOS,
+ * which keeps its native push-to-talk path and never parses these strings.
+ */
+async parseGlobalHotkey(shortcut: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:shortcut|parse_global_hotkey", { shortcut }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 }
 }
 

@@ -34,6 +34,18 @@ pub const WINDOW_LABEL: &str = "dictation";
 const ORB_SIZE: f64 = 56.0;
 const BOTTOM_MARGIN: f64 = 32.0;
 
+/// The live-caption window that floats just above the orb: label, logical
+/// size and the gap to the orb. It is a SEPARATE window (instead of an
+/// enlarged orb window) because wry has no per-pixel hit testing - a bigger
+/// transparent orb window would swallow clicks around the orb. The caption
+/// window is marked `set_ignore_cursor_events(true)`, so it can never
+/// intercept anything; its webview shows/hides it around live text
+/// (`apps/desktop/src/dictation/caption.tsx`).
+pub const CAPTION_WINDOW_LABEL: &str = "dictation-caption";
+const CAPTION_WIDTH: f64 = 320.0;
+const CAPTION_HEIGHT: f64 = 84.0;
+const CAPTION_GAP: f64 = 10.0;
+
 /// store2 scope + key holding the persisted orb position (logical pixels).
 const STORE_SCOPE: &str = "dictation";
 const STORE_KEY_ORB_POSITION: &str = "orb_position";
@@ -55,6 +67,10 @@ static SAVE_TASK_RUNNING: AtomicBool = AtomicBool::new(false);
 const WINDOW_URL: &str = "/app/dictation";
 /// Same route, telling the webview to render its solid-surface variant.
 const SOLID_WINDOW_URL: &str = "/app/dictation?solid=1";
+/// Same route rendering the live-caption variant (second webview).
+const CAPTION_WINDOW_URL: &str = "/app/dictation?caption=1";
+/// Caption variant on an opaque window (transparency fallback).
+const CAPTION_SOLID_WINDOW_URL: &str = "/app/dictation?caption=1&solid=1";
 
 /// `bg` token of the dark theme (`#0B0D12`, docs/DESIGN-DIRECTION.md §2),
 /// used as the window background of the solid fallback.
@@ -80,11 +96,26 @@ pub fn show() -> Result<(), Error> {
         Error::OrbWindow(error.to_string())
     })?;
     let _ = window.set_always_on_top(true);
+
+    // The caption window rides along hidden; its webview shows it only while
+    // live text is on screen. A caption failure never blocks the orb.
+    if let Err(error) = ensure_caption_window(app, &window) {
+        tracing::warn!(
+            %error,
+            label = CAPTION_WINDOW_LABEL,
+            "failed to create the dictation caption window; dictation \
+             continues without the live caption"
+        );
+    }
+
     Ok(())
 }
 
 pub fn hide() -> Result<(), Error> {
     let app = app_handle()?;
+    if let Some(caption) = app.get_webview_window(CAPTION_WINDOW_LABEL) {
+        let _ = caption.hide();
+    }
     if let Some(window) = app.get_webview_window(WINDOW_LABEL) {
         window
             .hide()
@@ -244,6 +275,20 @@ fn destroy_and_wait_unregistered(
     );
 }
 
+/// Actual logical size of `window`, falling back to the creation size. The
+/// orb webview resizes the window per orb variant (1.5x for particles), so
+/// positioning/clamping math must never assume the 56px creation constant.
+fn window_logical_size(window: &tauri::WebviewWindow<tauri::Wry>) -> (f64, f64) {
+    let scale = window.scale_factor().unwrap_or(1.0);
+    window
+        .outer_size()
+        .map(|size| {
+            let logical = size.to_logical::<f64>(scale);
+            (logical.width, logical.height)
+        })
+        .unwrap_or((ORB_SIZE, ORB_SIZE))
+}
+
 fn position_bottom_center(
     app: &tauri::AppHandle<tauri::Wry>,
     window: &tauri::WebviewWindow<tauri::Wry>,
@@ -257,11 +302,12 @@ fn position_bottom_center(
         return;
     };
 
+    let (orb_width, orb_height) = window_logical_size(window);
     let scale = monitor.scale_factor();
     let position = monitor.position().to_logical::<f64>(scale);
     let size = monitor.size().to_logical::<f64>(scale);
-    let x = position.x + ((size.width - ORB_SIZE) / 2.0);
-    let y = position.y + size.height - ORB_SIZE - BOTTOM_MARGIN;
+    let x = position.x + ((size.width - orb_width) / 2.0);
+    let y = position.y + size.height - orb_height - BOTTOM_MARGIN;
     let _ = window.set_position(tauri::LogicalPosition::new(x, y));
 }
 
@@ -291,16 +337,19 @@ fn load_saved_position(app: &tauri::AppHandle<tauri::Wry>) -> Option<OrbPosition
 }
 
 /// Clamp `saved` so the orb lands fully inside the monitor its center falls
-/// on. Returns `None` when the center is on no current monitor (unplugged
+/// on, using the window's ACTUAL logical size (the webview may have resized
+/// it per orb variant - 84px for particles, not the 56px creation constant).
+/// Returns `None` when the center is on no current monitor (unplugged
 /// screen, changed layout) - the caller then uses the default position.
 fn clamp_to_visible_monitor(
     window: &tauri::WebviewWindow<tauri::Wry>,
     saved: OrbPosition,
 ) -> Option<OrbPosition> {
     let monitors = window.available_monitors().ok()?;
+    let (orb_width, orb_height) = window_logical_size(window);
 
-    let center_x = saved.x + ORB_SIZE / 2.0;
-    let center_y = saved.y + ORB_SIZE / 2.0;
+    let center_x = saved.x + orb_width / 2.0;
+    let center_y = saved.y + orb_height / 2.0;
 
     for monitor in monitors {
         let scale = monitor.scale_factor();
@@ -318,10 +367,10 @@ fn clamp_to_visible_monitor(
         return Some(OrbPosition {
             x: saved
                 .x
-                .clamp(position.x, position.x + size.width - ORB_SIZE),
+                .clamp(position.x, position.x + size.width - orb_width),
             y: saved
                 .y
-                .clamp(position.y, position.y + size.height - ORB_SIZE),
+                .clamp(position.y, position.y + size.height - orb_height),
         });
     }
 
@@ -329,25 +378,235 @@ fn clamp_to_visible_monitor(
 }
 
 /// Persist the window position (debounced) whenever the OS moves it - which
-/// includes the user dragging the orb via `startDragging()`.
+/// includes the user dragging the orb via `startDragging()` - and keep the
+/// caption window glued above the orb on every move/resize (the webview
+/// resizes the orb window per orb variant).
 fn watch_moves(window: &tauri::WebviewWindow<tauri::Wry>) {
     let app = window.app_handle().clone();
     let win = window.clone();
 
     window.on_window_event(move |event| {
-        let tauri::WindowEvent::Moved(position) = event else {
-            return;
+        match event {
+            tauri::WindowEvent::Moved(position) => {
+                let scale = win.scale_factor().unwrap_or(1.0);
+                let logical = position.to_logical::<f64>(scale);
+                schedule_position_save(
+                    &app,
+                    OrbPosition {
+                        x: logical.x,
+                        y: logical.y,
+                    },
+                );
+                sync_caption_position(&app, &win);
+            }
+            tauri::WindowEvent::Resized(_) => {
+                sync_caption_position(&app, &win);
+            }
+            _ => {}
         };
-        let scale = win.scale_factor().unwrap_or(1.0);
-        let logical = position.to_logical::<f64>(scale);
-        schedule_position_save(
-            &app,
-            OrbPosition {
-                x: logical.x,
-                y: logical.y,
-            },
-        );
     });
+}
+
+/// Create the (hidden) live-caption window next to the orb if it does not
+/// exist yet: transparent with the same solid fallback as the orb,
+/// non-focusable AND fully click-through (`set_ignore_cursor_events`), so no
+/// screen area around the orb ever swallows a click. Visibility is driven by
+/// its webview (`caption.tsx`): shown while live words are on screen, hidden
+/// again after the fade.
+fn ensure_caption_window(
+    app: &tauri::AppHandle<tauri::Wry>,
+    orb: &tauri::WebviewWindow<tauri::Wry>,
+) -> Result<(), Error> {
+    let caption = match app.get_webview_window(CAPTION_WINDOW_LABEL) {
+        Some(existing) => match existing.is_visible() {
+            Ok(_) => existing,
+            Err(error) => {
+                tracing::warn!(
+                    %error,
+                    label = CAPTION_WINDOW_LABEL,
+                    "existing dictation caption window is not backed by an \
+                     OS window; destroying the ghost and recreating"
+                );
+                destroy_and_wait_unregistered_label(app, &existing, CAPTION_WINDOW_LABEL);
+                build_caption_window(app)?
+            }
+        },
+        None => build_caption_window(app)?,
+    };
+
+    // Click-through is the whole point of the second window; without it the
+    // caption area would intercept clicks meant for whatever is behind it.
+    if let Err(error) = caption.set_ignore_cursor_events(true) {
+        tracing::warn!(
+            %error,
+            label = CAPTION_WINDOW_LABEL,
+            "failed to make the dictation caption window click-through; \
+             hiding it rather than letting it swallow clicks"
+        );
+        let _ = caption.destroy();
+        return Err(Error::OrbWindow(error.to_string()));
+    }
+
+    sync_caption_position(app, orb);
+    Ok(())
+}
+
+fn build_caption_window(
+    app: &tauri::AppHandle<tauri::Wry>,
+) -> Result<tauri::WebviewWindow<tauri::Wry>, Error> {
+    match build_secondary_window(
+        app,
+        CAPTION_WINDOW_LABEL,
+        CAPTION_WINDOW_URL,
+        (CAPTION_WIDTH, CAPTION_HEIGHT),
+        true,
+    ) {
+        Ok(window) => Ok(window),
+        Err(error) => {
+            tracing::warn!(
+                %error,
+                label = CAPTION_WINDOW_LABEL,
+                "transparent dictation caption window failed to create; \
+                 retrying with a solid background"
+            );
+            if let Some(ghost) = app.get_webview_window(CAPTION_WINDOW_LABEL) {
+                destroy_and_wait_unregistered_label(app, &ghost, CAPTION_WINDOW_LABEL);
+            }
+            build_secondary_window(
+                app,
+                CAPTION_WINDOW_LABEL,
+                CAPTION_SOLID_WINDOW_URL,
+                (CAPTION_WIDTH, CAPTION_HEIGHT),
+                false,
+            )
+        }
+    }
+}
+
+/// Shared builder for the plugin's auxiliary windows (currently only the
+/// caption): same chassis flags as the orb, created hidden.
+fn build_secondary_window(
+    app: &tauri::AppHandle<tauri::Wry>,
+    label: &str,
+    url: &str,
+    (width, height): (f64, f64),
+    transparent: bool,
+) -> Result<tauri::WebviewWindow<tauri::Wry>, Error> {
+    use tauri::{WebviewUrl, WebviewWindow};
+
+    let mut builder = WebviewWindow::builder(app, label, WebviewUrl::App(url.into()))
+        .title(
+            app.config()
+                .product_name
+                .clone()
+                .unwrap_or_else(|| "Notare".to_string()),
+        )
+        .decorations(false)
+        .resizable(false)
+        .maximizable(false)
+        .minimizable(false)
+        .always_on_top(true)
+        .visible_on_all_workspaces(true)
+        .skip_taskbar(true)
+        .shadow(false)
+        .transparent(transparent)
+        .focused(false)
+        .focusable(false)
+        .visible(false)
+        .inner_size(width, height)
+        .disable_drag_drop_handler();
+    if !transparent {
+        builder = builder.background_color(SOLID_BACKGROUND);
+    }
+
+    let window = builder.build().map_err(|error| {
+        tracing::error!(%error, label, url, transparent, "failed to build dictation window");
+        Error::OrbWindow(format!(
+            "failed to create dictation window `{label}` (url `{url}`): {error}"
+        ))
+    })?;
+
+    // Same materialization probe as the orb window: `build()` off the main
+    // thread cannot report OS-side creation failures directly.
+    if let Err(error) = window.is_visible() {
+        tracing::error!(
+            %error,
+            label,
+            url,
+            transparent,
+            "dictation window did not materialize after build"
+        );
+        let _ = window.destroy();
+        return Err(Error::OrbWindow(format!(
+            "dictation window `{label}` was not created by the OS event loop: {error}"
+        )));
+    }
+
+    tracing::info!(label, url, transparent, "created dictation window");
+
+    Ok(window)
+}
+
+/// Keep the caption window centered above the orb (or below it when the orb
+/// sits at the very top of its monitor), clamped to the monitor edges.
+fn sync_caption_position(
+    app: &tauri::AppHandle<tauri::Wry>,
+    orb: &tauri::WebviewWindow<tauri::Wry>,
+) {
+    let Some(caption) = app.get_webview_window(CAPTION_WINDOW_LABEL) else {
+        return;
+    };
+
+    let scale = orb.scale_factor().unwrap_or(1.0);
+    let Ok(orb_position) = orb.outer_position() else {
+        return;
+    };
+    let orb_position = orb_position.to_logical::<f64>(scale);
+    let (orb_width, orb_height) = window_logical_size(orb);
+
+    let mut x = orb_position.x + (orb_width - CAPTION_WIDTH) / 2.0;
+    let mut y = orb_position.y - CAPTION_HEIGHT - CAPTION_GAP;
+
+    if let Ok(Some(monitor)) = orb.current_monitor() {
+        let monitor_scale = monitor.scale_factor();
+        let monitor_position = monitor.position().to_logical::<f64>(monitor_scale);
+        let monitor_size = monitor.size().to_logical::<f64>(monitor_scale);
+
+        x = x.clamp(
+            monitor_position.x,
+            (monitor_position.x + monitor_size.width - CAPTION_WIDTH)
+                .max(monitor_position.x),
+        );
+        if y < monitor_position.y {
+            // No room above (orb at the top edge): drop below the orb.
+            y = orb_position.y + orb_height + CAPTION_GAP;
+        }
+    }
+
+    let _ = caption.set_position(tauri::LogicalPosition::new(x, y));
+}
+
+/// Label-parameterized twin of `destroy_and_wait_unregistered` (which is
+/// hard-wired to the orb label).
+fn destroy_and_wait_unregistered_label(
+    app: &tauri::AppHandle<tauri::Wry>,
+    window: &tauri::WebviewWindow<tauri::Wry>,
+    label: &str,
+) {
+    let _ = window.destroy();
+
+    for _ in 0..25 {
+        if app.get_webview_window(label).is_none() {
+            return;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    }
+
+    tracing::warn!(
+        label,
+        "dictation window still registered after destroy; a rebuild with \
+         the same label may fail with a duplicate-label error"
+    );
 }
 
 fn schedule_position_save(app: &tauri::AppHandle<tauri::Wry>, position: OrbPosition) {

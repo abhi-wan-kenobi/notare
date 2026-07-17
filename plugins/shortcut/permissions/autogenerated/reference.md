@@ -8,6 +8,7 @@ Default permissions for the plugin
 - `allow-unregister-hotkey`
 - `allow-register-global-hotkey`
 - `allow-unregister-global-hotkey`
+- `allow-parse-global-hotkey`
 
 ## Permission Table
 
@@ -17,6 +18,32 @@ Default permissions for the plugin
 <th>Description</th>
 </tr>
 
+
+<tr>
+<td>
+
+`shortcut:allow-parse-global-hotkey`
+
+</td>
+<td>
+
+Enables the parse_global_hotkey command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`shortcut:deny-parse-global-hotkey`
+
+</td>
+<td>
+
+Denies the parse_global_hotkey command without any pre-configured scope.
+
+</td>
+</tr>
 
 <tr>
 <td>
