@@ -1,0 +1,818 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="color-scheme" content="dark" />
+<title>Notare STT Server</title>
+<style>
+  /* ------------------------------------------------------------------ */
+  /* Tokens — docs/DESIGN-DIRECTION.md §2 "cobalt on graphite" (dark-    */
+  /* first; this admin page is a LAN operator tool, so it renders dark   */
+  /* only — no light variant, no prefers-color-scheme branch).           */
+  /* ------------------------------------------------------------------ */
+  :root {
+    --bg: #0b0d12;
+    --surface: #12151d;
+    --surface-raised: #1a1e29;
+    --border: #232837;
+    --border-soft: #1b2029;
+    --text: #e8eaf0;
+    --text-muted: #8b92a6;
+    --text-faint: #565d70;
+    --accent: #4d5cff;
+    --accent-soft: rgba(77, 92, 255, 0.14);
+    --accent-glow-a: #6ee7ff;
+    --accent-glow-b: #a78bfa;
+    --rec: #ff4d5e;
+    --rec-soft: rgba(255, 77, 94, 0.14);
+    --ok: #3dd68c;
+    --ok-soft: rgba(61, 214, 140, 0.14);
+    --radius-control: 6px;
+    --radius-panel: 10px;
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+  }
+
+  body {
+    font-family: "Inter", "Inter var", -apple-system, BlinkMacSystemFont,
+      "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-size: 13px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .mono {
+    font-family: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo,
+      Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* ------------------------------------------------------------------ */
+  /* Shell / layout                                                      */
+  /* ------------------------------------------------------------------ */
+  .shell {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 28px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+
+  .brand-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--text-faint);
+    flex: none;
+    transition: background 160ms var(--ease-out), box-shadow 160ms var(--ease-out);
+  }
+  .brand-dot.is-live {
+    background: var(--ok);
+    box-shadow: 0 0 0 1px rgba(61, 214, 140, 0.4) inset, 0 0 18px rgba(61, 214, 140, 0.45);
+  }
+  .brand-dot.is-down {
+    background: var(--rec);
+    box-shadow: 0 0 0 1px rgba(255, 77, 94, 0.4) inset, 0 0 18px rgba(255, 77, 94, 0.45);
+  }
+
+  .brand-name { font-weight: 600; font-size: 15px; letter-spacing: -0.01em; }
+  .brand-sub { color: var(--text-muted); font-size: 12.5px; }
+
+  .topbar-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--text-muted);
+    font-size: 12.5px;
+    flex: none;
+  }
+  .topbar-meta .meta-sep { color: var(--text-faint); }
+  .topbar-meta .mono { color: var(--text); }
+
+  .content {
+    flex: 1;
+    width: 100%;
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 24px 28px 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-panel);
+    padding: 18px 20px 6px;
+  }
+
+  .panel-header-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+
+  .panel-title {
+    margin: 0 0 10px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .panel-header-row .panel-title { margin-bottom: 0; }
+
+  .panel-hint { font-size: 12px; color: var(--text-faint); }
+
+  /* ------------------------------------------------------------------ */
+  /* Key/value rows — one line high, no card grids (DESIGN-DIRECTION §2) */
+  /* ------------------------------------------------------------------ */
+  .row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--border-soft);
+  }
+  .row:last-child { border-bottom: none; }
+  .row[hidden] { display: none; }
+
+  .row-label { color: var(--text-muted); flex: none; }
+  .row-value {
+    text-align: right;
+    color: var(--text);
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .row-value.multi { white-space: normal; text-align: right; }
+
+  .backend-line {
+    display: block;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+  .backend-line + .backend-line { margin-top: 2px; }
+  .backend-line .mono { color: var(--text); }
+
+  /* ------------------------------------------------------------------ */
+  /* Chips (state pills) — glow only on live/verified states             */
+  /* ------------------------------------------------------------------ */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 2px 9px;
+    border-radius: 999px;
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    line-height: 18px;
+    white-space: nowrap;
+    border: 1px solid transparent;
+  }
+  .chip-ok { color: var(--ok); background: var(--ok-soft); border-color: rgba(61, 214, 140, 0.35); }
+  .chip-rec { color: var(--rec); background: var(--rec-soft); border-color: rgba(255, 77, 94, 0.35); }
+  .chip-accent { color: #b7bfff; background: var(--accent-soft); border-color: rgba(77, 92, 255, 0.4); }
+  .chip-muted { color: var(--text-muted); background: rgba(139, 146, 166, 0.1); border-color: var(--border); }
+
+  /* ------------------------------------------------------------------ */
+  /* Loaded model panel                                                   */
+  /* ------------------------------------------------------------------ */
+  .loaded-model-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 6px 0 14px;
+    flex-wrap: wrap;
+  }
+  .lm-main { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .lm-name { font-size: 14px; font-weight: 600; }
+  .lm-meta { display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 12px; }
+  .lm-sep { color: var(--text-faint); }
+  .lm-hint { margin: 0 0 14px; color: var(--text-muted); font-size: 12.5px; }
+
+  /* ------------------------------------------------------------------ */
+  /* Models table                                                         */
+  /* ------------------------------------------------------------------ */
+  .models-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  .models-table th {
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    padding: 0 10px 8px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .models-table th:first-child { padding-left: 14px; }
+  .models-table td {
+    padding: 10px 10px 10px 0;
+    border-bottom: 1px solid var(--border-soft);
+    vertical-align: middle;
+  }
+  .models-table tr:last-child td { border-bottom: none; }
+  .models-table tr.is-active { background: rgba(77, 92, 255, 0.05); }
+  .models-table tr.is-active td:first-child {
+    position: relative;
+    padding-left: 14px;
+  }
+  .models-table tr.is-active td:first-child::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 8px;
+    bottom: 8px;
+    width: 2px;
+    border-radius: 2px;
+    background: var(--accent);
+    box-shadow: 0 0 10px rgba(77, 92, 255, 0.6);
+  }
+
+  .cell-name { display: flex; flex-direction: column; gap: 2px; }
+  .cell-name-main { font-weight: 500; }
+  .cell-name-sub { font-size: 11.5px; color: var(--text-faint); }
+  .cell-lang { color: var(--text-muted); font-size: 12px; }
+  .cell-actions { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
+  .cell-actions-buttons { display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap; }
+
+  .btn {
+    appearance: none;
+    border: 1px solid var(--border);
+    background: var(--surface-raised);
+    color: var(--text);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 5px 11px;
+    border-radius: var(--radius-control);
+    cursor: pointer;
+    transition: border-color 140ms var(--ease-out), box-shadow 140ms var(--ease-out),
+      color 140ms var(--ease-out), background 140ms var(--ease-out);
+  }
+  .btn:hover {
+    border-color: rgba(77, 92, 255, 0.55);
+    box-shadow: 0 0 0 1px rgba(77, 92, 255, 0.25) inset, 0 0 16px rgba(77, 92, 255, 0.18);
+  }
+  .btn:active { transform: translateY(1px); }
+  .btn:disabled { opacity: 0.45; cursor: default; box-shadow: none; border-color: var(--border); }
+
+  .btn-primary { color: #cfd4ff; border-color: rgba(77, 92, 255, 0.45); }
+  .btn-danger { color: #ffb4bc; }
+  .btn-danger:hover {
+    border-color: rgba(255, 77, 94, 0.55);
+    box-shadow: 0 0 0 1px rgba(255, 77, 94, 0.25) inset, 0 0 16px rgba(255, 77, 94, 0.16);
+  }
+
+  .progress-track {
+    width: 160px;
+    height: 4px;
+    border-radius: 999px;
+    background: var(--border-soft);
+    overflow: hidden;
+    display: none;
+  }
+  .progress-track.is-active { display: block; }
+  .progress-fill {
+    height: 100%;
+    width: 0%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--accent-glow-a), var(--accent-glow-b));
+    box-shadow: 0 0 10px rgba(110, 231, 255, 0.5);
+    transition: width 200ms var(--ease-out);
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Footer                                                               */
+  /* ------------------------------------------------------------------ */
+  .footer {
+    padding: 16px 28px 26px;
+    text-align: center;
+    color: var(--text-faint);
+    font-size: 11.5px;
+  }
+  .footer-sep { margin: 0 6px; }
+
+  /* ------------------------------------------------------------------ */
+  /* Toasts                                                               */
+  /* ------------------------------------------------------------------ */
+  .toast-stack {
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 50;
+    max-width: 320px;
+  }
+  .toast {
+    background: var(--surface-raised);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 12.5px;
+    color: var(--text);
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 160ms var(--ease-out), transform 160ms var(--ease-out);
+  }
+  .toast.is-visible { opacity: 1; transform: translateY(0); }
+  .toast.is-soon { border-left-color: var(--text-faint); }
+  .toast.is-error { border-left-color: var(--rec); }
+  .toast.is-ok { border-left-color: var(--ok); }
+  .toast-title { font-weight: 600; margin-bottom: 2px; }
+  .toast-body { color: var(--text-muted); }
+
+  /* ------------------------------------------------------------------ */
+  /* Empty states — one line + one action, no hero graphics               */
+  /* ------------------------------------------------------------------ */
+  .empty-line { color: var(--text-muted); padding: 10px 0 16px; }
+
+  @media (max-width: 720px) {
+    .topbar { padding: 16px 18px; }
+    .content { padding: 18px 16px 32px; }
+    .models-table thead { display: none; }
+    .models-table, .models-table tbody, .models-table tr, .models-table td {
+      display: block;
+      width: 100%;
+    }
+    .models-table tr {
+      border-bottom: 1px solid var(--border);
+      padding: 12px 0;
+    }
+    .models-table tr:last-child { border-bottom: none; }
+    .models-table td { border-bottom: none; padding: 3px 0; }
+    .models-table td.cell-name { display: flex; flex-direction: column; gap: 2px; }
+    .models-table td.cell-actions {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 6px;
+      margin-top: 4px;
+    }
+    .cell-actions-buttons { justify-content: flex-start; }
+    .models-table td[data-label]::before {
+      content: attr(data-label);
+      display: inline-block;
+      min-width: 84px;
+      color: var(--text-faint);
+      font-size: 10.5px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+  }
+</style>
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-dot" id="healthDot" title="Server reachability"></span>
+        <span class="brand-name">Notare</span>
+        <span class="brand-sub">STT Server</span>
+      </div>
+      <div class="topbar-meta">
+        <span>v<span class="mono" id="versionValue">—</span></span>
+        <span class="meta-sep">·</span>
+        <span id="uptimeValue" class="mono">—</span>
+      </div>
+    </header>
+
+    <main class="content">
+      <section class="panel" aria-labelledby="system-title">
+        <h2 class="panel-title" id="system-title">System</h2>
+        <div class="row">
+          <span class="row-label">Engine</span>
+          <span class="row-value mono" id="engineValue">—</span>
+        </div>
+        <div class="row">
+          <span class="row-label">GPU offload</span>
+          <span class="row-value" id="gpuValue">—</span>
+        </div>
+        <div class="row" id="backendsRow" hidden>
+          <span class="row-label">Backends</span>
+          <span class="row-value multi" id="backendsValue"></span>
+        </div>
+        <div class="row">
+          <span class="row-label">Require GPU</span>
+          <span class="row-value" id="requireGpuValue">—</span>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="loaded-model-title">
+        <h2 class="panel-title" id="loaded-model-title">Loaded model</h2>
+        <div id="loadedModelBody">
+          <p class="empty-line">Loading…</p>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="models-title">
+        <div class="panel-header-row">
+          <h2 class="panel-title" id="models-title">Models</h2>
+          <span class="panel-hint">whisper.cpp catalog</span>
+        </div>
+        <div style="overflow-x: auto;">
+          <table class="models-table">
+            <thead>
+              <tr>
+                <th>Model</th>
+                <th>Size</th>
+                <th>Languages</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="modelsBody">
+              <tr><td colspan="5"><p class="empty-line">Loading…</p></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <span>Notare STT companion server</span>
+      <span class="footer-sep">·</span>
+      <a href="/api/status" target="_blank" rel="noopener">/api/status</a>
+      <span class="footer-sep">·</span>
+      <a href="https://github.com/abhi-wan-kenobi/notare" target="_blank" rel="noopener">source</a>
+    </footer>
+  </div>
+
+  <div class="toast-stack" id="toastStack" aria-live="polite"></div>
+
+  <script>
+  (function () {
+    "use strict";
+
+    /* ================================================================ */
+    /* CONFIG                                                            */
+    /* ================================================================ */
+    var POLL_INTERVAL_MS = 4000;
+
+    /* ================================================================ */
+    /* API — the fetch layer. Everything that knows an /api/* URL shape  */
+    /* lives here so Phase 2 landing for real only touches this block.   */
+    /* Endpoint table: docs/stt-server-design.md §6.                     */
+    /* ================================================================ */
+    var Api = {
+      status: function () {
+        return getJson("/api/status");
+      },
+      models: function () {
+        return getJson("/api/models");
+      },
+      download: function (id) {
+        return sendJson("/api/models/" + encodeURIComponent(id) + "/download", "POST");
+      },
+      cancel: function (id) {
+        return sendJson("/api/models/" + encodeURIComponent(id) + "/cancel", "POST");
+      },
+      remove: function (id) {
+        return sendJson("/api/models/" + encodeURIComponent(id), "DELETE");
+      },
+      activate: function (id) {
+        return sendJson("/api/models/" + encodeURIComponent(id) + "/activate", "POST");
+      },
+      // Not called automatically today: Phase 1/3 model mutations always
+      // answer 501, so a download never reaches the "in progress" state that
+      // would open this. Wired now so Phase 2 only has to start calling it.
+      progressUrl: function (id) {
+        return "/api/models/" + encodeURIComponent(id) + "/progress";
+      },
+    };
+
+    function ApiError(status, code, detail) {
+      this.status = status;
+      this.code = code;
+      this.detail = detail;
+    }
+    ApiError.prototype = Object.create(Error.prototype);
+
+    function parseErrorEnvelope(status, body) {
+      // Shared envelope from hypr_transcribe_core::json_error_response:
+      // {"error": "<code>", "detail": "<message>"}.
+      try {
+        var json = JSON.parse(body);
+        return new ApiError(status, json.error || "error", json.detail || "");
+      } catch (_e) {
+        return new ApiError(status, "error", body || ("HTTP " + status));
+      }
+    }
+
+    function getJson(url) {
+      return fetch(url, { headers: { accept: "application/json" } }).then(function (res) {
+        return res.text().then(function (text) {
+          if (!res.ok) throw parseErrorEnvelope(res.status, text);
+          return text ? JSON.parse(text) : null;
+        });
+      });
+    }
+
+    function sendJson(url, method) {
+      return fetch(url, { method: method, headers: { accept: "application/json" } }).then(
+        function (res) {
+          return res.text().then(function (text) {
+            if (!res.ok) throw parseErrorEnvelope(res.status, text);
+            return text ? JSON.parse(text) : null;
+          });
+        }
+      );
+    }
+
+    /* ================================================================ */
+    /* FORMAT helpers                                                    */
+    /* ================================================================ */
+    function formatBytes(bytes) {
+      if (bytes == null) return "—";
+      var mb = bytes / (1024 * 1024);
+      if (mb >= 1024) return (mb / 1024).toFixed(1) + " GB";
+      return Math.round(mb) + " MB";
+    }
+
+    function pad2(n) {
+      return n < 10 ? "0" + n : "" + n;
+    }
+
+    // Weighted timer trick (docs/DESIGN-DIRECTION.md §2 "Typography" / R2
+    // reference): the seconds column reads as "alive", the rest is context.
+    function formatUptime(totalSecs) {
+      if (totalSecs == null) return "—";
+      var h = Math.floor(totalSecs / 3600);
+      var m = Math.floor((totalSecs % 3600) / 60);
+      var s = Math.floor(totalSecs % 60);
+      var head = h > 0 ? h + ":" + pad2(m) + ":" : m + ":";
+      return '<span style="color:var(--text-muted)">' + head + '</span><span>' + pad2(s) + "</span>";
+    }
+
+    function integrityChip(integrity) {
+      var state = (integrity && integrity.state) || "notInstalled";
+      var map = {
+        verified: ["chip-ok", "Verified"],
+        presentUnverified: ["chip-accent", "Unverified"],
+        notInstalled: ["chip-muted", "Not installed"],
+        corrupt: ["chip-rec", "Corrupt"],
+      };
+      var entry = map[state] || ["chip-muted", state];
+      var title = state === "corrupt" && integrity.detail ? ' title="' + escapeHtml(integrity.detail) + '"' : "";
+      return '<span class="chip ' + entry[0] + '"' + title + ">" + entry[1] + "</span>";
+    }
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, function (ch) {
+        return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch];
+      });
+    }
+
+    /* ================================================================ */
+    /* TOASTS                                                            */
+    /* ================================================================ */
+    var toastStack = document.getElementById("toastStack");
+
+    function toast(kind, title, body) {
+      var el = document.createElement("div");
+      el.className = "toast is-" + kind;
+      el.innerHTML =
+        '<div class="toast-title">' + escapeHtml(title) + "</div>" +
+        (body ? '<div class="toast-body">' + escapeHtml(body) + "</div>" : "");
+      toastStack.appendChild(el);
+      requestAnimationFrame(function () {
+        el.classList.add("is-visible");
+      });
+      setTimeout(function () {
+        el.classList.remove("is-visible");
+        setTimeout(function () {
+          if (el.parentNode) el.parentNode.removeChild(el);
+        }, 200);
+      }, 4200);
+    }
+
+    function reportApiError(err) {
+      if (err && err.status === 501) {
+        toast("soon", "Coming soon", err.detail || "This action lands in a later phase.");
+        return;
+      }
+      toast("error", "Request failed", (err && err.detail) || (err && err.message) || "Unknown error");
+    }
+
+    /* ================================================================ */
+    /* RENDER                                                            */
+    /* ================================================================ */
+    var healthDot = document.getElementById("healthDot");
+    var versionValue = document.getElementById("versionValue");
+    var uptimeValue = document.getElementById("uptimeValue");
+    var engineValue = document.getElementById("engineValue");
+    var gpuValue = document.getElementById("gpuValue");
+    var backendsRow = document.getElementById("backendsRow");
+    var backendsValue = document.getElementById("backendsValue");
+    var requireGpuValue = document.getElementById("requireGpuValue");
+    var loadedModelBody = document.getElementById("loadedModelBody");
+    var modelsBody = document.getElementById("modelsBody");
+
+    function setHealth(isLive) {
+      healthDot.classList.toggle("is-live", isLive === true);
+      healthDot.classList.toggle("is-down", isLive === false);
+      healthDot.title = isLive === false ? "Server unreachable" : "Server reachable";
+    }
+
+    function renderStatus(status) {
+      versionValue.textContent = status.version || "—";
+      uptimeValue.innerHTML = formatUptime(status.uptimeSecs);
+      engineValue.textContent = status.engine || "—";
+      requireGpuValue.innerHTML = status.requireGpu
+        ? '<span class="chip chip-accent">on</span>'
+        : '<span class="chip chip-muted">off</span>';
+
+      var backends = status.backends || [];
+      if (backends.length === 0) {
+        gpuValue.innerHTML =
+          '<span class="chip chip-muted" title="list_ggml_backends() only reports in release builds with a GPU feature compiled in (crates/whisper-local/src/ggml.rs). This image cannot see a GPU either way.">CPU (debug build)</span>';
+        backendsRow.hidden = true;
+      } else {
+        var hasGpu = backends.some(function (b) {
+          return b.kind === "GPU" || b.kind === "ACCEL";
+        });
+        gpuValue.innerHTML = hasGpu
+          ? '<span class="chip chip-ok">GPU offloaded</span>'
+          : '<span class="chip chip-rec">CPU fallback</span>';
+        backendsRow.hidden = false;
+        backendsValue.innerHTML = backends
+          .map(function (b) {
+            var mem = b.total_memory_mb
+              ? " · " + b.free_memory_mb + "/" + b.total_memory_mb + " MB free"
+              : "";
+            return (
+              '<span class="backend-line"><span class="mono">' +
+              escapeHtml(b.kind) +
+              " " +
+              escapeHtml(b.name) +
+              "</span> — " +
+              escapeHtml(b.description) +
+              mem +
+              "</span>"
+            );
+          })
+          .join("");
+      }
+
+      renderLoadedModel(status);
+    }
+
+    function renderLoadedModel(status) {
+      var loaded = status.loadedModel;
+      var integrity = status.modelIntegrity;
+      if (loaded) {
+        loadedModelBody.innerHTML =
+          '<div class="loaded-model-row">' +
+          '<div class="lm-main"><span class="lm-name">' +
+          escapeHtml(loaded.id) +
+          "</span>" +
+          integrityChip(integrity) +
+          "</div>" +
+          '<div class="lm-meta"><span class="mono">' +
+          escapeHtml(loaded.file) +
+          "</span></div>" +
+          "</div>";
+      } else {
+        loadedModelBody.innerHTML =
+          '<div class="loaded-model-row">' +
+          '<div class="lm-main"><span class="lm-name" style="color:var(--text-muted); font-weight:500;">No model loaded</span>' +
+          integrityChip(integrity) +
+          "</div>" +
+          "</div>" +
+          '<p class="lm-hint">Install a model from the table below, then restart the server pointed at it (Phase 2 will do this live via Activate).</p>';
+      }
+    }
+
+    function renderModels(payload, status) {
+      var models = (payload && payload.models) || [];
+      if (models.length === 0) {
+        modelsBody.innerHTML = '<tr><td colspan="5"><p class="empty-line">No models in the catalog.</p></td></tr>';
+        return;
+      }
+      modelsBody.innerHTML = models
+        .map(function (model) {
+          var installed = model.integrity && (model.integrity.state === "verified" || model.integrity.state === "presentUnverified");
+          var languages = Array.isArray(model.languages) && model.languages.length
+            ? model.languages.join(", ")
+            : model.englishOnly
+              ? "English"
+              : "—";
+
+          var buttons = [];
+          if (!installed) {
+            buttons.push(actionButton("btn-primary", "download", model.id, "Install"));
+          } else {
+            if (!model.active) buttons.push(actionButton("", "activate", model.id, "Activate"));
+            buttons.push(actionButton("btn-danger", "delete", model.id, "Delete"));
+          }
+
+          return (
+            '<tr data-model-id="' + escapeHtml(model.id) + '"' + (model.active ? ' class="is-active"' : "") + ">" +
+            '<td class="cell-name"><span class="cell-name-main">' +
+            escapeHtml(model.displayName || model.id) +
+            "</span><span class=\"cell-name-sub mono\">" +
+            escapeHtml(model.id) +
+            "</span></td>" +
+            '<td class="mono" data-label="Size">' + escapeHtml(model.description || formatBytes(model.sizeBytes)) + "</td>" +
+            '<td class="cell-lang" data-label="Languages">' + escapeHtml(languages) + "</td>" +
+            '<td data-label="Status">' + integrityChip(model.integrity) + (model.active ? ' <span class="chip chip-accent">Active</span>' : "") + "</td>" +
+            '<td class="cell-actions">' +
+            '<div class="cell-actions-buttons">' + buttons.join("") + "</div>" +
+            '<div class="progress-track" id="progress-' + escapeHtml(model.id) + '"><div class="progress-fill"></div></div>' +
+            "</td>" +
+            "</tr>"
+          );
+        })
+        .join("");
+    }
+
+    function actionButton(cls, action, id, label) {
+      return (
+        '<button class="btn ' + cls + '" data-action="' + action + '" data-model-id="' + escapeHtml(id) + '">' +
+        escapeHtml(label) +
+        "</button>"
+      );
+    }
+
+    /* ================================================================ */
+    /* EVENTS                                                            */
+    /* ================================================================ */
+    modelsBody.addEventListener("click", function (event) {
+      var button = event.target.closest("button[data-action]");
+      if (!button) return;
+      var action = button.getAttribute("data-action");
+      var id = button.getAttribute("data-model-id");
+      var call = { download: Api.download, cancel: Api.cancel, delete: Api.remove, activate: Api.activate }[action];
+      if (!call) return;
+
+      button.disabled = true;
+      call(id)
+        .then(function () {
+          toast("ok", "Done", action + " succeeded for " + id + ".");
+          return refresh();
+        })
+        .catch(reportApiError)
+        .then(function () {
+          button.disabled = false;
+        });
+    });
+
+    /* ================================================================ */
+    /* INIT / POLL                                                       */
+    /* ================================================================ */
+    function refresh() {
+      return Promise.all([Api.status(), Api.models()])
+        .then(function (results) {
+          setHealth(true);
+          renderStatus(results[0]);
+          renderModels(results[1], results[0]);
+        })
+        .catch(function (err) {
+          setHealth(false);
+          reportApiError(err);
+        });
+    }
+
+    refresh();
+    setInterval(refresh, POLL_INTERVAL_MS);
+  })();
+  </script>
+</body>
+</html>

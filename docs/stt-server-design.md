@@ -254,6 +254,40 @@ drifting from the code:
   lands as a diff against a stable route table instead of adding new routes.
 - `GET /` (static admin SPA) is **not implemented** in Phase 1 — Phase 3.
 
+### Phase 3 implementation notes (added when Phase 3 shipped)
+
+- `GET /` serves a **single self-contained HTML document** (inline
+  `<style>` + inline vanilla `<script>`, no external requests, no
+  frameworks), embedded via `include_str!` (`apps/stt-server/src/assets.rs`
+  → `src/assets/index.html`) and mounted by `admin::web::index`. This
+  collapses the §9 sketch of `index.html`/`app.js`/`app.css` as three files
+  into one — the whole admin surface is three read-mostly panels, small
+  enough that a split buys nothing.
+- The page's fetch layer is a single `Api` object (see the `<script>`'s
+  `API` section) so the Phase 2 contract lighting up for real only touches
+  that block. All `/api/models/{id}/*` mutation calls treat a `501`
+  response as an expected, non-error outcome — a "Coming soon" toast, not a
+  failure banner — so the page is fully functional standalone today.
+- `/api/status`'s `backends: []` (Phase 1/debug-build reality, see above) is
+  rendered as an honest `chip-muted` **"CPU (debug build)"** badge rather
+  than a silent absence, per the design brief. When `backends` is non-empty
+  the page renders each backend's kind/name/description/VRAM and a green
+  "GPU offloaded" / red "CPU fallback" summary chip — verified with a
+  mocked `/api/status` response (real Vulkan/CUDA hardware is Phase 4).
+  Same treatment for `/api/models[].integrity` (`verified`/
+  `presentUnverified`/`notInstalled`/`corrupt` chips) and the per-row
+  install/delete/activate actions, which show/hide based on that state.
+  `languages` is read defensively (`model.languages`, not present in the
+  Phase 1 `/api/models` JSON today) — shown if the catalog ever exposes it,
+  falls back to "English"/"—" from `englishOnly` otherwise, never crashes on
+  its absence.
+- Visual language follows `docs/DESIGN-DIRECTION.md` §2 (dark-only "cobalt
+  on graphite"; no light variant — this is a LAN operator tool, not a
+  themed end-user surface): panels + one-line key/value rows + a table for
+  the model catalog (no card grids), state chips, glow reserved for the
+  health dot, hover states, the active-model row's accent bar, and the
+  download-progress fill.
+
 ## 7. GPU story
 
 ### Build matrix (three Dockerfiles, one crate)

@@ -1,15 +1,23 @@
-# notare-stt-server (Phase 1)
+# notare-stt-server (Phase 1 + Phase 3)
 
 A standalone LAN transcription server: it hosts the same generic,
 engine-agnostic `hypr_transcribe_core::TranscribeService` router the Notare
 desktop app runs in-process for its local STT, bound to a configurable
 `host:port` instead of `LOCALHOST:0`. Design: `docs/stt-server-design.md`.
 
-Phase 1 scope only: serve `/health` + `/v1/listen` (batch + WebSocket) with
+Phase 1 scope: serve `/health` + `/v1/listen` (batch + WebSocket) with
 the whisper.cpp CPU engine, plus a read-only `/api/status` and `/api/models`.
-Model download/delete/activate, the web admin page, and GPU images are later
-phases (see the design doc §11) — their `/api/*` routes exist now (frozen
-contract) but answer `501 Not Implemented`.
+Model download/delete/activate and GPU images are later phases (see the
+design doc §11) — their `/api/*` routes exist now (frozen contract) but
+answer `501 Not Implemented`.
+
+Phase 3 scope (this crate now also serves): `GET /` — a single
+self-contained, embedded web admin page (no Node/build step, vanilla
+HTML+CSS+JS via `include_str!`, see `src/assets/index.html`). It polls
+`/api/status` + `/api/models` and drives the Phase 2 mutation routes; any
+`501` from those routes surfaces as a "Coming soon" toast instead of an
+error, so the page works standalone today and lights up once Phase 2 lands
+for real.
 
 ## Run
 
@@ -62,6 +70,10 @@ model is present at the configured path.
 
 ## Endpoints
 
+- `GET /` — embedded web admin page (Phase 3): server identity/version/
+  uptime, engine + GPU backend list + offload state, loaded model, and the
+  models table (size, languages if the catalog exposes them, integrity,
+  install/delete/activate actions + download progress bar).
 - `GET /health` — liveness, always `"ok"` (no model required).
 - `POST /v1/listen?channels=&sample_rate=` — batch transcription. `Accept:
   text/event-stream` switches to SSE progress. Same contract as the

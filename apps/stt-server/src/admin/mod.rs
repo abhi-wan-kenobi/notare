@@ -5,6 +5,7 @@
 
 mod models;
 mod status;
+mod web;
 
 use std::sync::Arc;
 
@@ -15,6 +16,7 @@ use crate::state::AppState;
 
 pub fn router(state: Arc<AppState>) -> Router {
     Router::new()
+        .route("/", get(web::index))
         .route("/api/status", get(status::status_handler))
         .route("/api/models", get(models::list_models))
         .route("/api/models/{id}/download", post(models::not_implemented))
