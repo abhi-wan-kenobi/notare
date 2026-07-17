@@ -4,13 +4,18 @@ import type { ComponentType, ReactNode } from "react";
 import type { DictationPhase } from "@hypr/plugin-dictation";
 import { cn } from "@hypr/utils";
 
-import { RecordingOrb } from "~/meeting-float/orb";
-
 import { AuroraOrb } from "./aurora-orb";
+import { BloomOrb } from "./bloom-orb";
+import { EmberOrb } from "./ember-orb";
+import { HaloOrb } from "./halo-orb";
 import { MonoOrb } from "./mono-orb";
 import { ParticleOrb } from "./particle-orb";
+import { PipOrb } from "./pip-orb";
 import { RingOrb } from "./ring-orb";
+import { SilkOrb } from "./silk-orb";
 import { WaveformOrb } from "./waveform-orb";
+
+import { RecordingOrb } from "~/meeting-float/orb";
 
 /**
  * Available orb looks, selected by the `dictation_orb_variant` setting:
@@ -20,7 +25,16 @@ import { WaveformOrb } from "./waveform-orb";
  *   chassis (`waveform-orb.tsx`);
  * - "ring": a thin cobalt ring, amplitude = stroke pulse (`ring-orb.tsx`);
  * - "aurora": soft drifting gradient blobs (`aurora-orb.tsx`);
- * - "mono": a near-static graphite disc + state dot (`mono-orb.tsx`).
+ * - "mono": a near-static graphite disc + state dot (`mono-orb.tsx`);
+ * - "bloom": warm amber petals that swell with your voice (`bloom-orb.tsx`);
+ * - "halo": a neon cyan-magenta rim ringed with voice-reactive beads
+ *   (`halo-orb.tsx`);
+ * - "ember": a dark glass sphere with a hot magenta caustic band
+ *   (`ember-orb.tsx`);
+ * - "silk": a soft lavender ball with turning combed striations
+ *   (`silk-orb.tsx`);
+ * - "pip": a friendly squishy blob that reacts through expression
+ *   (`pip-orb.tsx`).
  *
  * Adding a variant here (union + `ORB_VARIANT_REGISTRY` entry) is all it
  * takes: the settings picker (`OrbVariantGroup`) renders from the registry.
@@ -31,7 +45,12 @@ export type DictationOrbVariant =
   | "waveform"
   | "ring"
   | "aurora"
-  | "mono";
+  | "mono"
+  | "bloom"
+  | "halo"
+  | "ember"
+  | "silk"
+  | "pip";
 
 export const DEFAULT_ORB_VARIANT: DictationOrbVariant = "cobalt";
 
@@ -50,13 +69,18 @@ export function normalizeOrbVariant(
  * so it renders 1.5x larger everywhere - orb window and settings previews
  * alike.
  */
-const ORB_VARIANT_SCALE: Record<DictationOrbVariant, number> = {
+export const ORB_VARIANT_SCALE: Record<DictationOrbVariant, number> = {
   cobalt: 1,
   particles: 1.5,
   waveform: 1,
   ring: 1,
   aurora: 1,
   mono: 1,
+  bloom: 1,
+  halo: 1,
+  ember: 1,
+  silk: 1,
+  pip: 1,
 };
 
 /** Orb pixel size for `variant`, scaled from the caller's base size. */
@@ -172,6 +196,39 @@ export const ORB_VARIANT_REGISTRY: Record<DictationOrbVariant, OrbVariantInfo> =
       title: <Trans>Mono</Trans>,
       description: (
         <Trans>A quiet graphite disc with a single state dot.</Trans>
+      ),
+    },
+    bloom: {
+      component: BloomOrb,
+      title: <Trans>Bloom</Trans>,
+      description: (
+        <Trans>Warm petals that bloom and breathe with your voice.</Trans>
+      ),
+    },
+    halo: {
+      component: HaloOrb,
+      title: <Trans>Halo</Trans>,
+      description: <Trans>A neon rim ringed with voice-reactive beads.</Trans>,
+    },
+    ember: {
+      component: EmberOrb,
+      title: <Trans>Ember</Trans>,
+      description: (
+        <Trans>A dark glass sphere lit by a hot caustic band.</Trans>
+      ),
+    },
+    silk: {
+      component: SilkOrb,
+      title: <Trans>Silk</Trans>,
+      description: (
+        <Trans>Soft lavender striations turning over a sphere.</Trans>
+      ),
+    },
+    pip: {
+      component: PipOrb,
+      title: <Trans>Pip</Trans>,
+      description: (
+        <Trans>A friendly blob that listens through its face.</Trans>
       ),
     },
   };
