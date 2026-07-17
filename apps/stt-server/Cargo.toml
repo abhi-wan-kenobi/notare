@@ -1,0 +1,32 @@
+[package]
+name = "stt-server"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "stt-server"
+path = "src/main.rs"
+
+[dependencies]
+hypr-local-model = { workspace = true }
+hypr-model-downloader = { workspace = true }
+hypr-transcribe-core = { workspace = true }
+hypr-transcribe-whisper-local = { workspace = true }
+hypr-whisper-local = { workspace = true }
+
+anyhow = { workspace = true }
+clap = { workspace = true, features = ["derive", "env"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true, features = ["env-filter"] }
+
+axum = { workspace = true }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "net", "signal"] }
+tower-http = { workspace = true, features = ["cors", "trace"] }
+
+[dev-dependencies]
+reqwest = { workspace = true, features = ["json"] }
+tempfile = { workspace = true }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "net", "signal", "time"] }
+tower = { workspace = true, features = ["util"] }

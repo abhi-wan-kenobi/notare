@@ -17026,6 +17026,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "stt-server"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "axum 0.8.9",
+ "clap",
+ "local-model",
+ "model-downloader",
+ "reqwest 0.13.2",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
+ "tower 0.5.3",
+ "tower-http 0.6.8",
+ "tracing",
+ "tracing-subscriber",
+ "transcribe-core",
+ "transcribe-whisper-local",
+ "whisper-local",
+]
+
+[[package]]
 name = "subsetter"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"

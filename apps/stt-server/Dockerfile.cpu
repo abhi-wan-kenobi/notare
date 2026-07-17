@@ -1,0 +1,71 @@
+# Notare STT companion server — CPU image.
+#
+# UNTESTED: no Docker available on the box this was built on (see the
+# session notes in the PR/commit this ships with). Reviewed by hand against
+# the same apt package list the Linux CI build uses
+# (.github/workflows/desktop_test_build.yaml) and the crate's actual
+# dependency graph (whisper-rs -> bindgen -> libclang, whisper.cpp -> cmake).
+# Build and run it once before relying on it:
+#
+#   docker build -f apps/stt-server/Dockerfile.cpu -t notare-stt-server:cpu .
+#   docker run --rm -p 8383:8383 -v notare-stt-models:/data/models \
+#     -e NOTARE_STT_MODEL_DIR=/data/models notare-stt-server:cpu
+#
+# Vulkan/CUDA images (Dockerfile.vulkan / Dockerfile.cuda) are Phase 4
+# (docs/stt-server-design.md §7) — not built here.
+
+# --- builder -----------------------------------------------------------
+FROM rust:1.94-bookworm AS builder
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    cmake \
+    clang \
+    libclang-dev \
+    pkg-config \
+    libssl-dev \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /workspace
+
+# Build context is the whole workspace (see docs/stt-server-design.md §3 —
+# path-dependency reuse is the point; .dockerignore already excludes
+# target/node_modules/dist so this stays reasonably small).
+COPY . .
+
+RUN cargo build --release -p stt-server && \
+    cp target/release/stt-server /usr/local/bin/stt-server
+
+# --- runtime -------------------------------------------------------------
+FROM debian:bookworm-slim AS runtime
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    libssl3 \
+    curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd --system --create-home --uid 10001 notare
+
+COPY --from=builder /usr/local/bin/stt-server /usr/local/bin/stt-server
+
+# Storage layout mirrors docs/stt-server-design.md §8:
+#   /data/models/stt/<file>            model catalog
+#   /data/models/stt/<file>.verified   CRC32 sidecar stamp
+RUN mkdir -p /data/models && chown -R notare:notare /data
+VOLUME ["/data"]
+USER notare
+
+ENV NOTARE_STT_HOST=0.0.0.0 \
+    NOTARE_STT_PORT=8383 \
+    NOTARE_STT_MODEL_DIR=/data/models \
+    NOTARE_STT_MODEL=QuantizedSmall \
+    NOTARE_STT_REQUIRE_GPU=false \
+    RUST_LOG=info
+
+EXPOSE 8383
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s \
+    CMD curl -f "http://localhost:${NOTARE_STT_PORT}/health" || exit 1
+
+ENTRYPOINT ["/usr/local/bin/stt-server"]
