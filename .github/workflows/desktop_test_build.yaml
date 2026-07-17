@@ -95,21 +95,34 @@ jobs:
         env:
           CI: false
 
+      # Windows Vulkan build emits its bundle under D:\nb (the
+      # CARGO_TARGET_DIR MAX_PATH workaround above), which is on a different
+      # drive root than the repo. upload-artifact@v4 rejects a path list
+      # whose entries share only a drive root ("rootDirectory ... is not a
+      # parent directory of the file"), so stage the D:\nb bundle into the
+      # in-repo target bundle dir first — then the upload sees one root
+      # tree. No-op for non-Vulkan builds (their bundle is already in-repo).
+      - if: inputs.os == 'windows' && inputs.gpu == 'vulkan'
+        shell: pwsh
+        run: |
+          $src = 'D:\nb\release\bundle'
+          $dst = 'apps\desktop\src-tauri\target\release\bundle'
+          if (Test-Path $src) {
+            New-Item -ItemType Directory -Force -Path $dst | Out-Null
+            Copy-Item -Path "$src\*" -Destination $dst -Recurse -Force
+          }
+
       - uses: actions/upload-artifact@v4
         with:
           name: notare-${{ inputs.os }}${{ inputs.gpu == 'vulkan' && '-vulkan' || '' }}
-          # The Windows Vulkan build sets CARGO_TARGET_DIR=D:\nb (MAX_PATH
-          # workaround above), so its bundles land under D:\nb\release\bundle
-          # instead of the in-repo target dir. List both; the build step
-          # itself is the compile gate, so a missing path set must not fail
-          # the run (warn, not error).
+          # All bundle files are staged under the in-repo target bundle dir
+          # (see the copy step above for the Windows Vulkan case), so a
+          # single root tree is uploaded. The build step itself is the
+          # compile gate, so a missing path set must not fail the run
+          # (warn, not error).
           path: |
             apps/desktop/src-tauri/target/release/bundle/msi/*.msi
             apps/desktop/src-tauri/target/release/bundle/dmg/*.dmg
             apps/desktop/src-tauri/target/release/bundle/deb/*.deb
             apps/desktop/src-tauri/target/release/bundle/appimage/*.AppImage
-            D:\nb\release\bundle\msi\*.msi
-            D:\nb\release\bundle\dmg\*.dmg
-            D:\nb\release\bundle\deb\*.deb
-            D:\nb\release\bundle\appimage\*.AppImage
           if-no-files-found: warn
