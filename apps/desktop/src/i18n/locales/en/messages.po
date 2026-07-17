@@ -59,15 +59,23 @@ msgstr "1 week"
 msgid "3 days"
 msgstr "3 days"
 
+#: src/dictation/orb.tsx
+msgid "A quiet graphite disc with a single state dot."
+msgstr "A quiet graphite disc with a single state dot."
+
+#: src/dictation/orb.tsx
+msgid "A thin cobalt ring that pulses as you speak."
+msgstr "A thin cobalt ring that pulses as you speak."
+
 #: src/templates/template-sidebar.tsx
 msgid "A to Z"
 msgstr "A to Z"
 
-#: src/settings/dictation/index.tsx
+#: src/dictation/orb.tsx
 msgid "A voice-reactive particle sphere."
 msgstr "A voice-reactive particle sphere."
 
-#: src/settings/dictation/index.tsx
+#: src/dictation/orb.tsx
 msgid "A waveform of bars that dance as you speak."
 msgstr "A waveform of bars that dance as you speak."
 
@@ -229,6 +237,10 @@ msgstr "Audio"
 msgid "Audio file retention"
 msgstr "Audio file retention"
 
+#: src/dictation/orb.tsx
+msgid "Aurora"
+msgstr "Aurora"
+
 #: src/instruction/index.tsx
 msgid "Authorize access in your browser, then return to Notare."
 msgstr "Authorize access in your browser, then return to Notare."
@@ -308,9 +320,17 @@ msgstr "Cancel date edit"
 msgid "Change"
 msgstr "Change"
 
+#: src/settings/dictation/shortcut-recorder.tsx
+msgid "Change shortcut"
+msgstr "Change shortcut"
+
 #: src/chat/components/toolbar-controls.tsx
 msgid "Chat history"
 msgstr "Chat history"
+
+#: src/settings/general/app-settings.tsx
+msgid "Check for updates"
+msgstr "Check for updates"
 
 #: src/settings/general/storage/legacy-cleanup.tsx
 msgid "Checking migration..."
@@ -319,6 +339,10 @@ msgstr "Checking migration..."
 #: src/onboarding/account/after-login.tsx
 msgid "Checking trial eligibility..."
 msgstr "Checking trial eligibility..."
+
+#: src/settings/general/app-settings.tsx
+msgid "Checking…"
+msgstr "Checking…"
 
 #: src/session/components/outer-header/overflow/export-modal.tsx
 msgid "Choose a file format and what to include."
@@ -391,13 +415,17 @@ msgstr "Close chat"
 msgid "Closed"
 msgstr "Closed"
 
-#: src/settings/dictation/index.tsx
+#: src/dictation/orb.tsx
 msgid "Cobalt"
 msgstr "Cobalt"
 
 #: src/settings/dictation/index.tsx
 msgid "Collect and deliver when you stop"
 msgstr "Collect and deliver when you stop"
+
+#: src/settings/dictation/shortcut-recorder.tsx
+msgid "Combine at least one of Ctrl, Alt, Shift or Super with a key."
+msgstr "Combine at least one of Ctrl, Alt, Shift or Super with a key."
 
 #: src/task/resource-view.tsx
 msgid "comment"
@@ -461,14 +489,6 @@ msgstr "Connect calendar"
 msgid "Connect GitHub for private repos."
 msgstr "Connect GitHub for private repos."
 
-#: src/onboarding/calendar.tsx
-#~ msgid "Connect Google Calendar"
-#~ msgstr "Connect Google Calendar"
-
-#: src/onboarding/calendar.tsx
-#~ msgid "Connect Outlook"
-#~ msgstr "Connect Outlook"
-
 #: src/instruction/index.tsx
 msgid "Connect your integration"
 msgstr "Connect your integration"
@@ -526,10 +546,6 @@ msgstr "Could not start trial"
 msgid "Create a project in the Google Cloud console (any name, it's free)."
 msgstr "Create a project in the Google Cloud console (any name, it's free)."
 
-#: src/onboarding/index.tsx
-#~ msgid "Create account"
-#~ msgstr "Create account"
-
 #: src/templates/details.tsx
 msgid "Create template"
 msgstr "Create template"
@@ -538,9 +554,9 @@ msgstr "Create template"
 msgid "Created"
 msgstr "Created"
 
-#: src/settings/dictation/index.tsx
-msgid "ctrl+alt+space"
-msgstr "ctrl+alt+space"
+#: src/settings/general/app-settings.tsx
+msgid "Current version"
+msgstr "Current version"
 
 #: src/settings/general/theme.tsx
 msgid "Dark"
@@ -640,6 +656,7 @@ msgstr "Don't show notifications when Do-Not-Disturb is enabled on your system"
 
 #: src/onboarding/transcription.tsx
 #: src/settings/ai/stt/select.tsx
+#: src/settings/general/app-settings.tsx
 msgid "Download"
 msgstr "Download"
 
@@ -654,6 +671,27 @@ msgstr "Download the JSON, then select it here."
 #: src/onboarding/transcription.tsx
 msgid "Downloaded"
 msgstr "Downloaded"
+
+#. placeholder {0}: update.version ?? ""
+#: src/settings/general/app-settings.tsx
+msgid "Downloading version {0}…"
+msgstr "Downloading version {0}…"
+
+#. placeholder {0}: update.version ?? ""
+#. placeholder {1}: Math.round( (update.progress ?? 0) * 100, )
+#: src/settings/general/app-settings.tsx
+msgid "Downloading version {0}… {1}%"
+msgstr "Downloading version {0}… {1}%"
+
+#: src/main/update-banner.tsx
+#: src/settings/general/app-settings.tsx
+msgid "Downloading…"
+msgstr "Downloading…"
+
+#. placeholder {0}: Math.round(update.progress * 100)
+#: src/main/update-banner.tsx
+msgid "Downloading… {0}%"
+msgstr "Downloading… {0}%"
 
 #: src/templates/details.tsx
 #: src/templates/template-form.tsx
@@ -717,9 +755,17 @@ msgstr "Enter your API key"
 msgid "Enter your API key (optional)"
 msgstr "Enter your API key (optional)"
 
+#: src/calendar/components/ics/content.tsx
+msgid "event"
+msgstr "event"
+
 #: src/settings/general/notification.tsx
 msgid "Event notifications"
 msgstr "Event notifications"
+
+#: src/calendar/components/ics/content.tsx
+msgid "events"
+msgstr "events"
 
 #: src/settings/personalization/index.tsx
 msgid "Example: Start with a two-sentence overview, then list decisions and action items with owners. Do not use headings."
@@ -738,9 +784,9 @@ msgstr "Export"
 msgid "Exporting..."
 msgstr "Exporting..."
 
-#: src/onboarding/calendar.tsx
-#~ msgid "Failed to load Google Calendar"
-#~ msgstr "Failed to load Google Calendar"
+#: src/calendar/components/ics/content.tsx
+msgid "Failed to load imported calendar files"
+msgstr "Failed to load imported calendar files"
 
 #: src/settings/todo/provider-content.tsx
 msgid "Failed to load integration status"
@@ -749,10 +795,6 @@ msgstr "Failed to load integration status"
 #: src/task/resource-view.tsx
 msgid "Failed to load issue"
 msgstr "Failed to load issue"
-
-#: src/onboarding/calendar.tsx
-#~ msgid "Failed to load Outlook Calendar"
-#~ msgstr "Failed to load Outlook Calendar"
 
 #: src/task/resource-view.tsx
 msgid "Failed to load pull request"
@@ -782,10 +824,6 @@ msgstr "File format"
 #: src/settings/todo/provider-content.tsx
 msgid "Filter synced items by {0}."
 msgstr "Filter synced items by {0}."
-
-#: src/settings/ai/stt/select.tsx
-#~ msgid "Final & re-transcription model"
-#~ msgstr "Final & re-transcription model"
 
 #: src/settings/ai/stt/select.tsx
 msgid "Final pass & re-transcription"
@@ -864,9 +902,9 @@ msgstr "Get started"
 msgid "Get started for free"
 msgstr "Get started for free"
 
-#: src/settings/dictation/index.tsx
-msgid "Global shortcut that starts or stops dictation, e.g. ctrl+alt+space. Combine ctrl, alt, shift and super with a key."
-msgstr "Global shortcut that starts or stops dictation, e.g. ctrl+alt+space. Combine ctrl, alt, shift and super with a key."
+#: src/settings/dictation/shortcut-recorder.tsx
+msgid "Global shortcut that starts or stops dictation. Click the combo, then press the keys you want - at least one of Ctrl, Alt, Shift or Super plus a key."
+msgstr "Global shortcut that starts or stops dictation. Click the combo, then press the keys you want - at least one of Ctrl, Alt, Shift or Super plus a key."
 
 #: src/sidebar/timeline/index.tsx
 msgid "Go back to now"
@@ -951,6 +989,14 @@ msgstr "If the browser does not reopen Notare, use the paste-link fallback in th
 #: src/calendar/components/google/content.tsx
 msgid "If you see redirect URI / JavaScript origin fields, you picked Web — choose Desktop app instead."
 msgstr "If you see redirect URI / JavaScript origin fields, you picked Web — choose Desktop app instead."
+
+#: src/calendar/components/ics/content.tsx
+msgid "Import a calendar exported as an .ics file. The file is copied into Notare, so the original can be moved or deleted."
+msgstr "Import a calendar exported as an .ics file. The file is copied into Notare, so the original can be moved or deleted."
+
+#: src/calendar/components/ics/content.tsx
+msgid "Import calendar file (.ics)…"
+msgstr "Import calendar file (.ics)…"
 
 #: src/sidebar/timeline/upcoming-meeting.ts
 msgid "In {minutes}m {seconds}s"
@@ -1051,10 +1097,6 @@ msgstr "Live transcript copied"
 msgid "Live transcription"
 msgstr "Live transcription"
 
-#: src/settings/ai/stt/select.tsx
-#~ msgid "Live transcription model"
-#~ msgstr "Live transcription model"
-
 #: src/onboarding/transcription.tsx
 msgid "Loading available models…"
 msgstr "Loading available models…"
@@ -1071,6 +1113,10 @@ msgstr "Loading models..."
 #: src/task/resource-view.tsx
 msgid "Loading..."
 msgstr "Loading..."
+
+#: src/calendar/components/ics/content.tsx
+msgid "Loading…"
+msgstr "Loading…"
 
 #: src/onboarding/account/before-login.tsx
 msgid "Login with existing account"
@@ -1129,6 +1175,7 @@ msgid "Metadata"
 msgstr "Metadata"
 
 #: src/onboarding/permissions.tsx
+#: src/settings/general/app-settings.tsx
 #: src/settings/general/permissions.tsx
 msgid "Microphone"
 msgstr "Microphone"
@@ -1140,6 +1187,10 @@ msgstr "Microphone access turned on"
 #: src/settings/general/notification.tsx
 msgid "Microphone detection"
 msgstr "Microphone detection"
+
+#: src/settings/general/app-settings.tsx
+msgid "Microphone noise suppression (experimental)"
+msgstr "Microphone noise suppression (experimental)"
 
 #: src/settings/general/storage/legacy-cleanup.tsx
 msgid "Migration complete"
@@ -1164,6 +1215,10 @@ msgstr "Model being used"
 #: src/settings/general/week-start.tsx
 msgid "Monday"
 msgstr "Monday"
+
+#: src/dictation/orb.tsx
+msgid "Mono"
+msgstr "Mono"
 
 #: src/session/components/floating/options-menu.tsx
 msgid "More options"
@@ -1329,6 +1384,10 @@ msgstr "No templates yet"
 msgid "None"
 msgstr "None"
 
+#: src/settings/dictation/shortcut-recorder.tsx
+msgid "Not set"
+msgstr "Not set"
+
 #: src/onboarding/permissions.tsx
 msgid "Notare can hear others"
 msgstr "Notare can hear others"
@@ -1373,10 +1432,6 @@ msgstr "Nothing here yet - finished dictations appear here so you can copy them 
 #: src/settings/dictation/index.tsx
 msgid "Nothing is typed while you talk; stopping cleans up the transcript and copies it. Best for terminals."
 msgstr "Nothing is typed while you talk; stopping cleans up the transcript and copies it. Best for terminals."
-
-#: src/settings/dictation/index.tsx
-#~ msgid "Nothing is typed while you talk; stopping cleans up the transcript, copies it, and pastes it once. Best for terminals."
-#~ msgstr "Nothing is typed while you talk; stopping cleans up the transcript, copies it, and pastes it once. Best for terminals."
 
 #: src/session/components/note-input/header.tsx
 #: src/stt/useLiveTranscriptCopyShortcuts.ts
@@ -1497,7 +1552,7 @@ msgstr "Override the timezone used for the sidebar timeline"
 msgid "Participants"
 msgstr "Participants"
 
-#: src/settings/dictation/index.tsx
+#: src/dictation/orb.tsx
 msgid "Particles"
 msgstr "Particles"
 
@@ -1512,10 +1567,6 @@ msgstr "Paste the browser URL here if the browser button did not reopen Notare."
 #: src/settings/dictation/index.tsx
 msgid "Paste the transcript into the focused app when you stop. When off it is only copied to the clipboard, so you paste it yourself."
 msgstr "Paste the transcript into the focused app when you stop. When off it is only copied to the clipboard, so you paste it yourself."
-
-#: src/settings/dictation/index.tsx
-#~ msgid "Paste when you stop"
-#~ msgstr "Paste when you stop"
 
 #: src/contacts/organization-details.tsx
 #: src/session/components/note-input/transcript/renderer/speaker-assign.tsx
@@ -1556,6 +1607,14 @@ msgstr "Plans"
 msgid "Preparing transcript..."
 msgstr "Preparing transcript..."
 
+#: src/settings/dictation/shortcut-recorder.tsx
+msgid "Press shortcut…"
+msgstr "Press shortcut…"
+
+#: src/settings/dictation/shortcut-recorder.tsx
+msgid "Press the shortcut, Esc cancels"
+msgstr "Press the shortcut, Esc cancels"
+
 #: src/session/components/note-input/search/bar.tsx
 msgid "Previous match"
 msgstr "Previous match"
@@ -1572,9 +1631,13 @@ msgstr "Pro"
 msgid "Pro trial"
 msgstr "Pro trial"
 
-#: src/settings/dictation/index.tsx
+#: src/dictation/orb.tsx
 msgid "Pulse"
 msgstr "Pulse"
+
+#: src/session/components/note-input/header.tsx
+msgid "Re-transcribe with"
+msgstr "Re-transcribe with"
 
 #: src/onboarding/index.tsx
 msgid "Ready to go"
@@ -1597,6 +1660,10 @@ msgstr "Reconnect required"
 msgid "Record"
 msgstr "Record"
 
+#: src/settings/general/app-settings.tsx
+msgid "Reduce background noise on your microphone before transcription. Applies to new sessions only; recordings are always saved unprocessed."
+msgstr "Reduce background noise on your microphone before transcription. Applies to new sessions only; recordings are always saved unprocessed."
+
 #: src/settings/general/account.tsx
 msgid "Refresh billing status"
 msgstr "Refresh billing status"
@@ -1616,6 +1683,15 @@ msgstr "Related Notes"
 #: src/settings/todo/provider-content.tsx
 msgid "Reminders"
 msgstr "Reminders"
+
+#: src/calendar/components/ics/content.tsx
+msgid "Remove"
+msgstr "Remove"
+
+#. placeholder {0}: file.title
+#: src/calendar/components/ics/content.tsx
+msgid "Remove {0}"
+msgstr "Remove {0}"
 
 #: src/settings/personalization/index.tsx
 msgid "Remove {term}"
@@ -1691,9 +1767,18 @@ msgstr "Reset"
 msgid "Reset to default"
 msgstr "Reset to default"
 
+#: src/settings/dictation/shortcut-recorder.tsx
+msgid "Reset to the default shortcut"
+msgstr "Reset to the default shortcut"
+
 #: src/settings/general/notification.tsx
 msgid "Respect Do-Not-Disturb mode"
 msgstr "Respect Do-Not-Disturb mode"
+
+#: src/main/update-banner.tsx
+#: src/settings/general/app-settings.tsx
+msgid "Restart to update"
+msgstr "Restart to update"
 
 #: src/session/components/outer-header/index.tsx
 msgid "Resume"
@@ -1709,9 +1794,21 @@ msgstr "Resume listening"
 msgid "Retry"
 msgstr "Retry"
 
+#: src/settings/general/app-settings.tsx
+msgid "Retry download"
+msgstr "Retry download"
+
+#: src/main/update-banner.tsx
+msgid "Retry update"
+msgstr "Retry update"
+
 #: src/settings/ai/stt/select.tsx
 msgid "Reuses the live model for the accurate pass."
 msgstr "Reuses the live model for the accurate pass."
+
+#: src/dictation/orb.tsx
+msgid "Ring"
+msgstr "Ring"
 
 #: src/settings/ai/shared/index.tsx
 #: src/settings/ai/stt/select.tsx
@@ -1908,9 +2005,9 @@ msgstr "Show in {0}"
 msgid "Show in file manager"
 msgstr "Show in file manager"
 
-#: src/sidebar/timeline/item.tsx
-#~ msgid "Show in Finder"
-#~ msgstr "Show in Finder"
+#: src/settings/dictation/index.tsx
+msgid "Show live caption over orb"
+msgstr "Show live caption over orb"
 
 #: src/settings/general/app-settings.tsx
 msgid "Show Notare in the Dock and app switcher."
@@ -1919,6 +2016,10 @@ msgstr "Show Notare in the Dock and app switcher."
 #: src/settings/general/app-settings.tsx
 msgid "Show the compact floating control while listening."
 msgstr "Show the compact floating control while listening."
+
+#: src/settings/dictation/index.tsx
+msgid "Show the last few recognized words in a small caption above the orb while you dictate. It fades out when you pause."
+msgstr "Show the last few recognized words in a small caption above the orb while you dictate. It fades out when you pause."
 
 #: src/sidebar/timeline/item.tsx
 msgid "Show This Event"
@@ -1940,10 +2041,6 @@ msgstr "Sign in for private repo access."
 msgid "Sign in for Pro"
 msgstr "Sign in for Pro"
 
-#: src/onboarding/calendar.tsx
-#~ msgid "Sign in to connect"
-#~ msgstr "Sign in to connect"
-
 #. placeholder {0}: config.displayName
 #: src/settings/todo/provider-content.tsx
 msgid "Sign in to connect {0}"
@@ -1956,10 +2053,6 @@ msgstr "Sign in to Notare"
 #: src/settings/general/account.tsx
 msgid "Sign in to unlock cloud transcription and AI models, plus Pro features like sharing."
 msgstr "Sign in to unlock cloud transcription and AI models, plus Pro features like sharing."
-
-#: src/onboarding/index.tsx
-#~ msgid "Sign in to unlock powerful AI models, sync across devices, and personalization."
-#~ msgstr "Sign in to unlock powerful AI models, sync across devices, and personalization."
 
 #: src/instruction/index.tsx
 msgid "Sign in to your account"
@@ -1982,13 +2075,13 @@ msgstr "Signing out..."
 msgid "Skip"
 msgstr "Skip"
 
-#: src/onboarding/index.tsx
-#~ msgid "Skipped"
-#~ msgstr "Skipped"
-
 #: src/templates/template-icon-picker.tsx
 msgid "Smileys & People"
 msgstr "Smileys & People"
+
+#: src/dictation/orb.tsx
+msgid "Soft drifting color that brightens with your voice."
+msgstr "Soft drifting color that brightens with your voice."
 
 #: src/contacts/details.tsx
 msgid "Software Engineer"
@@ -2142,6 +2235,10 @@ msgstr "Template content with Jinja2: {{ variable }}, {% if condition %}"
 msgid "Templates"
 msgstr "Templates"
 
+#: src/settings/dictation/shortcut-recorder.tsx
+msgid "That key cannot be part of a global shortcut."
+msgstr "That key cannot be part of a global shortcut."
+
 #: src/onboarding/folder-location.tsx
 #: src/settings/general/storage/notes-location.tsx
 msgid "The app will restart after onboarding to apply your storage changes"
@@ -2151,13 +2248,17 @@ msgstr "The app will restart after onboarding to apply your storage changes"
 msgid "The main language is always included for transcription"
 msgstr "The main language is always included for transcription"
 
-#: src/settings/dictation/index.tsx
+#: src/dictation/orb.tsx
 msgid "The minimal glowing orb."
 msgstr "The minimal glowing orb."
 
 #: src/settings/general/storage/notes-location.tsx
 msgid "The new folder already contained files, so your notes were copied there. The originals were left at the old location."
 msgstr "The new folder already contained files, so your notes were copied there. The originals were left at the old location."
+
+#: src/settings/general/app-settings.tsx
+msgid "The update failed to download."
+msgstr "The update failed to download."
 
 #: src/settings/personalization/index.tsx
 msgid "These instructions take priority over the selected template when they conflict. Clear them to use templates as written."
@@ -2166,6 +2267,10 @@ msgstr "These instructions take priority over the selected template when they co
 #: src/chat/components/message/loading.tsx
 msgid "Thinking..."
 msgstr "Thinking..."
+
+#: src/settings/dictation/shortcut-recorder.tsx
+msgid "This combination cannot be used as a global shortcut. Try another one."
+msgstr "This combination cannot be used as a global shortcut. Try another one."
 
 #. placeholder {0}: status.fileCount
 #. placeholder {1}: formatBytes(status.totalBytes)
@@ -2189,7 +2294,7 @@ msgstr "Timezone"
 msgid "Tip: The Notare team loves our users!"
 msgstr "Tip: The Notare team loves our users!"
 
-#: src/settings/dictation/index.tsx
+#: src/settings/dictation/shortcut-recorder.tsx
 msgid "Toggle shortcut"
 msgstr "Toggle shortcut"
 
@@ -2261,6 +2366,32 @@ msgstr "Untitled"
 msgid "Untitled Note"
 msgstr "Untitled Note"
 
+#. placeholder {0}: file.title
+#: src/calendar/components/ics/content.tsx
+msgid "Update {0} from a new file"
+msgstr "Update {0} from a new file"
+
+#: src/main/update-banner.tsx
+#: src/settings/general/app-settings.tsx
+msgid "Update available"
+msgstr "Update available"
+
+#: src/settings/general/app-settings.tsx
+msgid "Update failed"
+msgstr "Update failed"
+
+#: src/calendar/components/ics/content.tsx
+msgid "Update from a new file"
+msgstr "Update from a new file"
+
+#: src/settings/general/app-settings.tsx
+msgid "Update ready"
+msgstr "Update ready"
+
+#: src/settings/general/app-settings.tsx
+msgid "Updates"
+msgstr "Updates"
+
 #: src/settings/todo/github.tsx
 msgid "Upgrade for private repos."
 msgstr "Upgrade for private repos."
@@ -2309,6 +2440,16 @@ msgstr "Used for the accurate pass after a recording ends and when re-transcribi
 msgid "Verifying the SQLite migration status"
 msgstr "Verifying the SQLite migration status"
 
+#. placeholder {0}: update.version ?? ""
+#: src/settings/general/app-settings.tsx
+msgid "Version {0} is available."
+msgstr "Version {0} is available."
+
+#. placeholder {0}: update.version ?? ""
+#: src/settings/general/app-settings.tsx
+msgid "Version {0} is ready to install."
+msgstr "Version {0} is ready to install."
+
 #: src/contacts/organization-details.tsx
 msgid "View LinkedIn profile"
 msgstr "View LinkedIn profile"
@@ -2332,6 +2473,10 @@ msgstr "Where your notes and recordings are stored"
 #: src/task/tab-content.tsx
 msgid "Work on this task"
 msgstr "Work on this task"
+
+#: src/settings/general/app-settings.tsx
+msgid "You are up to date."
+msgstr "You are up to date."
 
 #: src/calendar/components/apple/permission.tsx
 msgid "You can"
