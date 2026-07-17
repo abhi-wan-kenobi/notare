@@ -217,6 +217,32 @@ pub trait CallbackSttAdapter: Clone + Default + Send + Sync + 'static {
     ) -> CallbackProcessFuture<'a>;
 }
 
+/// Decides whether the wire scheme should be the secure family (`wss`/
+/// `https`) or the plaintext one (`ws`/`http`).
+///
+/// docs/stt-server-design.md §5/§10 ("wire-scheme gotcha"): a self-hosted LAN
+/// STT server (e.g. a Notare companion server, issue #14) typically has no
+/// TLS. Previously this decision was made purely from the host — any
+/// non-loopback host was force-upgraded to the secure scheme, which silently
+/// rewrote a plaintext `http://homeserver:8080` live session to
+/// `wss://homeserver:8080/…` and broke it against a non-TLS server.
+///
+/// The fix: an EXPLICIT plaintext scheme (`http://` / `ws://`) is honored
+/// verbatim for **any** host — the user typed it deliberately, LAN IP or
+/// domain alike. An explicit secure scheme (`https://` / `wss://`) stays
+/// secure. Only a scheme this function doesn't recognize falls back to the
+/// old host-based heuristic (loopback stays plaintext, everything else is
+/// upgraded) — in practice `url::Url` always carries one of the four schemes
+/// above by the time it reaches here, so that branch is a defensive
+/// fallback, not a normal path.
+fn should_use_secure_scheme(scheme: &str, is_local: bool) -> bool {
+    match scheme {
+        "http" | "ws" => false,
+        "https" | "wss" => true,
+        _ => !is_local,
+    }
+}
+
 pub(crate) fn build_url_with_scheme(
     parsed: &url::Url,
     default_host: &str,
@@ -225,11 +251,12 @@ pub(crate) fn build_url_with_scheme(
 ) -> url::Url {
     let host = parsed.host_str().unwrap_or(default_host);
     let is_local = is_local_host(host);
-    let scheme = match (use_ws, is_local) {
-        (true, true) => "ws",
-        (true, false) => "wss",
-        (false, true) => "http",
-        (false, false) => "https",
+    let secure = should_use_secure_scheme(parsed.scheme(), is_local);
+    let scheme = match (use_ws, secure) {
+        (true, false) => "ws",
+        (true, true) => "wss",
+        (false, false) => "http",
+        (false, true) => "https",
     };
     let host_with_port = match parsed.port() {
         Some(port) => format!("{host}:{port}"),
@@ -242,11 +269,9 @@ pub(crate) fn build_url_with_scheme(
 
 pub fn set_scheme_from_host(url: &mut url::Url) {
     if let Some(host) = url.host_str() {
-        if is_local_host(host) {
-            let _ = url.set_scheme("ws");
-        } else {
-            let _ = url.set_scheme("wss");
-        }
+        let is_local = is_local_host(host);
+        let secure = should_use_secure_scheme(url.scheme(), is_local);
+        let _ = url.set_scheme(if secure { "wss" } else { "ws" });
     }
 }
 
@@ -335,8 +360,23 @@ fn is_local_argmax(base_url: &str) -> bool {
 /// single websocket) rather than the Argmax adapter, whose split dual mode
 /// opens two connections that the internal server's single-connection
 /// manager would cancel.
+///
+/// The same `Quantized*` model catalog is also served by a self-hosted LAN
+/// companion server (docs/stt-server-design.md, issue #14 Phase 5's "Custom"
+/// STT provider) — same `transcribe-core`-based `/v1/listen` wire contract,
+/// just reachable over the network instead of loopback. It must be routed to
+/// the Hyprnote adapter for the same reason (and specifically NOT the
+/// Deepgram-compatible fallback below, whose query-building adds Deepgram-
+/// specific multi-language collapsing and keyword-param naming that
+/// `transcribe-core`'s raw `ListenParams` parsing doesn't speak). Since only
+/// this catalog ever produces a `Quantized`-prefixed model id, it's safe to
+/// recognize it on any host that isn't a *known* cloud STT vendor domain —
+/// no legitimate remote endpoint would otherwise send that model name.
 fn is_local_whisper(base_url: &str, model: Option<&str>) -> bool {
-    model.is_some_and(|m| m.starts_with("Quantized")) && host_matches(base_url, is_local_host)
+    model.is_some_and(|m| m.starts_with("Quantized"))
+        && host_matches(base_url, |host| {
+            is_local_host(host) || crate::providers::Provider::from_host(host).is_none()
+        })
 }
 
 pub(crate) fn build_ws_url_from_base_with(
@@ -593,6 +633,128 @@ impl From<crate::providers::Provider> for AdapterKind {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// docs/stt-server-design.md §5/§10 wire-scheme gotcha matrix: loopback /
+    /// LAN-IP / domain hosts crossed with explicit-http / explicit-https /
+    /// explicit-ws / explicit-wss schemes. An explicit plaintext scheme is
+    /// honored verbatim on ANY host; an explicit secure scheme stays secure.
+    #[test]
+    fn test_should_use_secure_scheme_matrix() {
+        let hosts_and_locality = [
+            ("127.0.0.1", true),
+            ("localhost", true),
+            ("0.0.0.0", true),
+            ("::1", true),
+            ("192.168.0.91", false),
+            ("10.0.0.5", false),
+            ("coruscant.lan", false),
+            ("stt.example.com", false),
+        ];
+
+        for (host, is_local) in hosts_and_locality {
+            assert!(
+                !should_use_secure_scheme("http", is_local),
+                "explicit http must stay plaintext for host={host}",
+            );
+            assert!(
+                !should_use_secure_scheme("ws", is_local),
+                "explicit ws must stay plaintext for host={host}",
+            );
+            assert!(
+                should_use_secure_scheme("https", is_local),
+                "explicit https must stay secure for host={host}",
+            );
+            assert!(
+                should_use_secure_scheme("wss", is_local),
+                "explicit wss must stay secure for host={host}",
+            );
+        }
+
+        // Fallback branch (no explicit scheme recognized): preserves the old
+        // host-based heuristic — loopback defaults plaintext, everything
+        // else upgrades.
+        assert!(!should_use_secure_scheme("other", true));
+        assert!(should_use_secure_scheme("other", false));
+    }
+
+    #[test]
+    fn test_set_scheme_from_host_lan_scheme_relaxation() {
+        let cases: &[(&str, &str)] = &[
+            // loopback: unaffected by this change, ws either way
+            ("http://127.0.0.1:8787/stt", "ws"),
+            ("http://localhost:8787/stt", "ws"),
+            // LAN IP, explicit http -> stays plaintext (the coruscant case)
+            ("http://192.168.0.91:8383/stt", "ws"),
+            // LAN IP, explicit https -> stays secure
+            ("https://192.168.0.91:8383/stt", "wss"),
+            // domain, explicit http -> stays plaintext ("any host", not just LAN IPs)
+            ("http://stt.example.com/stt", "ws"),
+            // domain, explicit https -> stays secure (existing behavior)
+            ("https://api.hyprnote.com/stt", "wss"),
+            // hostname with no dots (bare LAN name), explicit http
+            ("http://coruscant:8383/stt", "ws"),
+        ];
+
+        for (input, expected_scheme) in cases {
+            let mut url: url::Url = input.parse().unwrap();
+            set_scheme_from_host(&mut url);
+            assert_eq!(url.scheme(), *expected_scheme, "input={input}");
+        }
+    }
+
+    #[test]
+    fn test_build_url_with_scheme_lan_scheme_relaxation() {
+        // (input_base, path, use_ws, expected_url)
+        let cases: &[(&str, &str, bool, &str)] = &[
+            (
+                "http://192.168.0.91:8383/v1",
+                "/listen",
+                true,
+                "ws://192.168.0.91:8383/listen",
+            ),
+            (
+                "https://192.168.0.91:8383/v1",
+                "/listen",
+                true,
+                "wss://192.168.0.91:8383/listen",
+            ),
+            (
+                "http://192.168.0.91:8383/v1",
+                "/listen",
+                false,
+                "http://192.168.0.91:8383/listen",
+            ),
+            (
+                "http://localhost:8787/v1",
+                "/listen",
+                true,
+                "ws://localhost:8787/listen",
+            ),
+            (
+                "https://api.example.com/v1",
+                "/listen",
+                true,
+                "wss://api.example.com/listen",
+            ),
+        ];
+
+        for (base, path, use_ws, expected) in cases {
+            let parsed: url::Url = base.parse().unwrap();
+            let built = build_url_with_scheme(&parsed, "example.com", path, *use_ws);
+            assert_eq!(built.as_str(), *expected, "base={base}");
+        }
+    }
+
+    /// Integration reality-check target (verified live against
+    /// coruscant, 2026-07-17): a plaintext LAN companion server's batch base
+    /// URL must build the exact `/v1/listen` endpoint with no https/wss
+    /// upgrade.
+    #[test]
+    fn test_coruscant_batch_base_stays_plaintext() {
+        let parsed: url::Url = "http://192.168.0.91:8383/v1".parse().unwrap();
+        let built = build_url_with_scheme(&parsed, "192.168.0.91", "/v1/listen", false);
+        assert_eq!(built.as_str(), "http://192.168.0.91:8383/v1/listen");
+    }
 
     #[test]
     fn test_normalize_languages_deduplicates_same_base() {
@@ -1050,6 +1212,53 @@ mod tests {
         assert_eq!(
             AdapterKind::from_url_and_languages("http://localhost:50060/v1", &en, None),
             AdapterKind::Argmax,
+        );
+    }
+
+    /// docs/stt-server-design.md Phase 5: a self-hosted LAN companion server
+    /// (e.g. the "Custom" STT provider pointed at a coruscant-style box)
+    /// reuses the in-process server's `Quantized*` whisper model catalog and
+    /// must be routed to the Hyprnote adapter, not the Deepgram fallback —
+    /// same as the loopback case, just reachable over the LAN instead.
+    #[test]
+    fn test_lan_companion_server_routes_to_hyprnote_adapter() {
+        use hypr_language::ISO639::En;
+
+        let en: Vec<hypr_language::Language> = vec![En.into()];
+
+        for base in [
+            "http://192.168.0.91:8383/v1",
+            "https://192.168.0.91:8383/v1",
+            "http://coruscant.lan:8383/v1",
+            "http://coruscant:8383/v1",
+        ] {
+            assert_eq!(
+                AdapterKind::from_url_and_languages(base, &en, Some("QuantizedLargeTurbo")),
+                AdapterKind::Hyprnote,
+                "base={base}",
+            );
+        }
+
+        // A model name that happens to not be one of ours never gets the
+        // special-case treatment, even on the same host.
+        assert_eq!(
+            AdapterKind::from_url_and_languages(
+                "http://192.168.0.91:8383/v1",
+                &en,
+                Some("some-other-model"),
+            ),
+            AdapterKind::Deepgram,
+        );
+
+        // A recognized cloud STT vendor host is never misrouted, even if
+        // (implausibly) it reported a "Quantized"-named model.
+        assert_eq!(
+            AdapterKind::from_url_and_languages(
+                "https://api.deepgram.com/v1",
+                &en,
+                Some("QuantizedSmall"),
+            ),
+            AdapterKind::Deepgram,
         );
     }
 

@@ -209,6 +209,30 @@ mod tests {
         assert!(url.scheme() == "wss");
     }
 
+    /// docs/stt-server-design.md Phase 5 wire-scheme gotcha: a self-hosted
+    /// LAN companion server with an explicit `http://` base must NOT be
+    /// force-upgraded to `wss://` — that's what broke plaintext LAN servers
+    /// before the fix. Verified live against a real companion server on
+    /// coruscant (192.168.0.91:8383) during this change.
+    #[test]
+    fn test_lan_server_explicit_http_stays_plaintext() {
+        let adapter = HyprnoteAdapter::default();
+        let params = owhisper_interface::ListenParams {
+            model: Some("QuantizedLargeTurbo".to_string()),
+            languages: vec![ISO639::En.into()],
+            ..Default::default()
+        };
+
+        let url = adapter.build_ws_url("http://192.168.0.91:8383/v1", &params, 1);
+        assert_eq!(url.scheme(), "ws", "explicit http on a LAN IP must stay ws");
+        assert_eq!(url.host_str(), Some("192.168.0.91"));
+        assert_eq!(url.port(), Some(8383));
+
+        // An explicit https base to the same LAN host (TLS-fronted) stays secure.
+        let url = adapter.build_ws_url("https://192.168.0.91:8383/v1", &params, 1);
+        assert_eq!(url.scheme(), "wss");
+    }
+
     #[test]
     fn test_meta_model_passed_through_without_resolution() {
         let adapter = HyprnoteAdapter::default();

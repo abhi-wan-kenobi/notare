@@ -8,6 +8,26 @@ use crate::adapter::http::mime_type_from_extension;
 use crate::adapter::{BatchFuture, BatchSttAdapter, ClientWithMiddleware, append_path_if_missing};
 use crate::error::Error;
 
+#[cfg(test)]
+mod tests {
+    use super::append_path_if_missing;
+
+    /// Batch transcription (`do_transcribe_file`) never calls
+    /// `set_scheme_from_host` — it uses whatever scheme the caller's
+    /// `api_base` carries. Confirms the LAN companion server's batch base
+    /// (verified live against coruscant, 192.168.0.91:8383, during this
+    /// change) yields the exact `/v1/listen` URL with no https upgrade —
+    /// same URL-building `do_transcribe_file` performs before the network
+    /// call.
+    #[test]
+    fn test_coruscant_batch_url_stays_plaintext() {
+        let mut url: url::Url = "http://192.168.0.91:8383/v1".parse().unwrap();
+        append_path_if_missing(&mut url, "listen");
+
+        assert_eq!(url.as_str(), "http://192.168.0.91:8383/v1/listen");
+    }
+}
+
 impl BatchSttAdapter for HyprnoteAdapter {
     fn provider_name(&self) -> &'static str {
         "hyprnote"
