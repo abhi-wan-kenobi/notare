@@ -27,8 +27,10 @@ for variant in "${VARIANTS[@]}"; do
 
   mkdir -p "$output_dir"
 
-  if [[ -f "$output_dir/Assets.car" ]]; then
-    echo "Skipping $variant (Assets.car already exists)"
+  car_file="$output_dir/Assets.car"
+
+  if [[ -f "$car_file" ]] && [[ "$icon_path" -ot "$car_file" ]]; then
+    echo "Skipping $variant (Assets.car is newer than $icon_path source)"
     continue
   fi
 
