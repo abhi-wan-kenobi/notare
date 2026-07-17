@@ -11,6 +11,8 @@ use tower_http::cors::{self, CorsLayer};
 use super::{ServerInfo, ServerStatus};
 #[cfg(feature = "parakeet-onnx")]
 use hypr_parakeet_onnx_model::ParakeetOnnxModel;
+#[cfg(feature = "voxtral-llama")]
+use hypr_voxtral_llama_model::VoxtralLlamaModel;
 #[cfg(feature = "whisper-cpp")]
 use hypr_whisper_local_model::WhisperModel;
 
@@ -28,6 +30,8 @@ pub enum InternalModel {
     Whisper(WhisperModel),
     #[cfg(feature = "parakeet-onnx")]
     ParakeetOnnx(ParakeetOnnxModel),
+    #[cfg(feature = "voxtral-llama")]
+    VoxtralLlama(VoxtralLlamaModel),
 }
 
 impl InternalModel {
@@ -37,17 +41,22 @@ impl InternalModel {
             InternalModel::Whisper(model) => crate::LocalModel::Whisper(model.clone()),
             #[cfg(feature = "parakeet-onnx")]
             InternalModel::ParakeetOnnx(model) => crate::LocalModel::ParakeetOnnx(model.clone()),
+            #[cfg(feature = "voxtral-llama")]
+            InternalModel::VoxtralLlama(model) => crate::LocalModel::VoxtralLlama(model.clone()),
         }
     }
 
     /// Path handed to the engine's `TranscribeService`: the model *file*
-    /// for whisper.cpp, the model *directory* for Parakeet ONNX.
+    /// for whisper.cpp, the model *directory* for Parakeet ONNX and Voxtral
+    /// (llama.cpp) — both ship as a directory of fixed-name files.
     fn model_path(&self, model_cache_dir: &std::path::Path) -> PathBuf {
         match self {
             #[cfg(feature = "whisper-cpp")]
             InternalModel::Whisper(model) => model_cache_dir.join(model.file_name()),
             #[cfg(feature = "parakeet-onnx")]
             InternalModel::ParakeetOnnx(model) => model_cache_dir.join(model.model_dir()),
+            #[cfg(feature = "voxtral-llama")]
+            InternalModel::VoxtralLlama(model) => model_cache_dir.join(model.model_dir()),
         }
     }
 }
@@ -112,6 +121,34 @@ impl Actor for InternalSTTActor {
                 let service = HandleError::new(
                     hypr_transcribe_core::TranscribeService::<
                         hypr_parakeet_onnx::LoadedParakeet,
+                    >::builder()
+                    .model_path(model_path)
+                    .build(),
+                    on_error,
+                );
+                Router::new().route_service("/v1/listen", service)
+            }
+            // Voxtral has no incremental/streaming decode state (it's an
+            // LLM decode loop over `libmtmd`'s audio embeddings, not a
+            // frame-synchronous ASR model) — but it needs none here. The
+            // shared `TranscribeService` machinery in `transcribe-core`
+            // already VAD-chunks the incoming audio into speech utterances
+            // (`hypr_audio_chunking::SpeechChunkingConfig::speech`) and
+            // calls `SttEngineSession::transcribe` once per completed
+            // utterance for *every* engine, batch or "live". Voxtral just
+            // plugs into that same batch-per-utterance seam Parakeet uses:
+            // each VAD-detected utterance becomes one full `llama_decode`
+            // pass, and the segment is emitted once that pass returns.
+            // Practical effect for `/v1/listen`: transcripts arrive per
+            // utterance (after `redemption_time`, default 400ms of
+            // trailing silence), not per word/token — expect multi-second
+            // latency bursts at Voxtral's ~0.9 RTF on CPU rather than
+            // Parakeet's near-instant per-utterance turnaround.
+            #[cfg(feature = "voxtral-llama")]
+            InternalModel::VoxtralLlama(_) => {
+                let service = HandleError::new(
+                    hypr_transcribe_core::TranscribeService::<
+                        hypr_transcribe_voxtral_llama::LoadedVoxtral,
                     >::builder()
                     .model_path(model_path)
                     .build(),
