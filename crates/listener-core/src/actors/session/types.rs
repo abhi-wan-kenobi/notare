@@ -28,6 +28,10 @@ pub struct SessionParams {
     pub participant_human_ids: Vec<String>,
     #[serde(default)]
     pub self_human_id: Option<String>,
+    /// Opt-in noise suppression for the transcription-bound mic copy.
+    /// Applied at session start only (no mid-session toggle).
+    #[serde(default)]
+    pub mic_denoise: bool,
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -103,6 +107,7 @@ mod tests {
             keywords: vec![],
             participant_human_ids: vec![],
             self_human_id: None,
+            mic_denoise: false,
         }
     }
 

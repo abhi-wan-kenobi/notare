@@ -62,6 +62,7 @@ export function useStartListening(sessionId: string) {
   const aiLanguage = useConfigValue("ai_language");
   const spokenLanguages = useConfigValue("spoken_languages");
   const dictionaryTerms = useConfigValue("personalization_dictionary_terms");
+  const micDenoise = useConfigValue("mic_denoise");
   const audioRetention = normalizeAudioRetention(
     useConfigValue("audio_retention"),
   );
@@ -187,6 +188,7 @@ export function useStartListening(sessionId: string) {
         transcription_mode: liveTranscriptionConfig.transcriptionMode,
         participant_human_ids: participantHumanIds,
         self_human_id: session?.user_id || null,
+        mic_denoise: micDenoise === true,
       },
       {
         handlePersist,
@@ -223,6 +225,7 @@ export function useStartListening(sessionId: string) {
     conn,
     dictionaryTerms,
     hadTranscriptBeforeStart,
+    micDenoise,
     participantHumanIds,
     session,
     sessionId,

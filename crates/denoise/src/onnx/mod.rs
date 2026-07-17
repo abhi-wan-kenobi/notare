@@ -3,9 +3,11 @@ mod context;
 mod denoiser;
 mod error;
 pub mod model;
+mod stream;
 
 pub use denoiser::Denoiser;
 pub use error::*;
+pub use stream::StreamDenoiser;
 
 // cargo test -p denoise --features onnx
 //

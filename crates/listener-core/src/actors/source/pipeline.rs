@@ -11,6 +11,7 @@ use crate::{
     actors::{ChannelMode, ListenerMsg, RecMsg, SAMPLE_RATE},
 };
 use hypr_audio_utils::{LoudnessNormalizer, f32_to_i16_bytes};
+use hypr_denoise::onnx::StreamDenoiser;
 use hypr_vad_masking::VadMask;
 
 use super::{ListenerRefreshReplay, ListenerRouting, SourceFrame};
@@ -46,13 +47,24 @@ pub(in crate::actors) struct Pipeline {
     /// Loudness normalization applied ONLY to the transcription-bound copy of
     /// the mic track (the recorder always receives the unprocessed samples).
     stt_mic_norm: Option<LoudnessNormalizer>,
+    /// Whether the session opted in to mic noise suppression.
+    mic_denoise_enabled: bool,
+    /// Opt-in DTLN noise suppression, applied ONLY to the transcription-bound
+    /// copy of the mic track, BEFORE `stt_mic_norm` (the cleaned signal is
+    /// what gets normalized). The recorder always receives the raw samples.
+    /// `None` when disabled or when the denoiser failed to initialize.
+    stt_mic_denoise: Option<StreamDenoiser>,
 }
 
 impl Pipeline {
     const BACKLOG_QUOTA_INCREMENT: f32 = 0.25;
     const MAX_BACKLOG_QUOTA: f32 = 2.0;
 
-    pub(super) fn new(runtime: Arc<dyn ListenerRuntime>, session_id: String) -> Self {
+    pub(super) fn new(
+        runtime: Arc<dyn ListenerRuntime>,
+        session_id: String,
+        mic_denoise: bool,
+    ) -> Self {
         Self {
             amplitude: AmplitudeEmitter::new(runtime, session_id),
             audio_buffer: AudioBuffer::new(MAX_BUFFER_CHUNKS),
@@ -60,6 +72,8 @@ impl Pipeline {
             backlog_quota: 0.0,
             vad_mask: VadMask::default(),
             stt_mic_norm: build_stt_mic_norm(),
+            mic_denoise_enabled: mic_denoise,
+            stt_mic_denoise: build_stt_mic_denoise(mic_denoise),
         }
     }
 
@@ -70,6 +84,7 @@ impl Pipeline {
         self.backlog_quota = 0.0;
         self.vad_mask = VadMask::default();
         self.stt_mic_norm = build_stt_mic_norm();
+        self.stt_mic_denoise = build_stt_mic_denoise(self.mic_denoise_enabled);
     }
 
     pub(super) fn dispatch_frame(
@@ -203,12 +218,29 @@ impl Pipeline {
     }
 
     fn listener_mic_bytes(&mut self, mic: &Arc<[f32]>) -> bytes::Bytes {
+        // Denoise first, then normalize the cleaned signal. Note the denoiser
+        // consumes whole 128-sample blocks and carries the remainder, so the
+        // output length may trail the input chunk by <128 samples — fine, the
+        // listener consumes a continuous byte stream.
+        let denoised = match self.stt_mic_denoise.as_mut() {
+            Some(denoiser) => match denoiser.process(mic) {
+                Ok(samples) => Some(samples),
+                Err(error) => {
+                    tracing::warn!(?error, "stt_mic_denoise_failed_falling_back_to_passthrough");
+                    self.stt_mic_denoise = None;
+                    None
+                }
+            },
+            None => None,
+        };
+        let samples: &[f32] = denoised.as_deref().unwrap_or(mic);
+
         match self.stt_mic_norm.as_mut() {
             Some(normalizer) => {
-                let normalized = normalizer.process(mic);
+                let normalized = normalizer.process(samples);
                 f32_to_i16_bytes(normalized.into_iter())
             }
-            None => f32_to_i16_bytes(mic.iter().copied()),
+            None => f32_to_i16_bytes(samples.iter().copied()),
         }
     }
 
@@ -238,6 +270,22 @@ fn build_stt_mic_norm() -> Option<LoudnessNormalizer> {
         return None;
     }
     Some(LoudnessNormalizer::new(SAMPLE_RATE))
+}
+
+/// Opt-in DTLN noise suppression for the transcription-bound mic track
+/// (embedded ONNX weights, 16 kHz native — matches `SAMPLE_RATE`). Failure to
+/// initialize must never fail the session: warn and run passthrough instead.
+fn build_stt_mic_denoise(enabled: bool) -> Option<StreamDenoiser> {
+    if !enabled {
+        return None;
+    }
+    match StreamDenoiser::new() {
+        Ok(denoiser) => Some(denoiser),
+        Err(error) => {
+            tracing::warn!(?error, "stt_mic_denoise_init_failed_running_passthrough");
+            None
+        }
+    }
 }
 
 struct AudioBuffer {
@@ -530,7 +578,11 @@ mod tests {
     }
 
     fn test_pipeline() -> Pipeline {
-        Pipeline::new(Arc::new(TestRuntime), "session".to_string())
+        Pipeline::new(Arc::new(TestRuntime), "session".to_string(), false)
+    }
+
+    fn test_pipeline_with_denoise() -> Pipeline {
+        Pipeline::new(Arc::new(TestRuntime), "session".to_string(), true)
     }
 
     fn capture_frame() -> CaptureFrame {
@@ -727,6 +779,220 @@ mod tests {
         assert!(
             last_peak > quiet_amplitude * 2.0,
             "transcription-bound mic should be boosted, last_peak = {last_peak}"
+        );
+    }
+
+    /// Deterministic noisy speech-band fixture: tone + pseudo-random noise.
+    fn noisy_chunk(chunk_idx: usize, chunk_len: usize) -> Vec<f32> {
+        let mut state = (chunk_idx as u32).wrapping_mul(2_654_435_761).max(1);
+        (0..chunk_len)
+            .map(|i| {
+                state = state.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
+                let noise = (state >> 8) as f32 / (1u32 << 24) as f32 - 0.5;
+                let t = (chunk_idx * chunk_len + i) as f32 / SAMPLE_RATE as f32;
+                let tone = (2.0 * std::f32::consts::PI * 220.0 * t).sin();
+                0.25 * tone + 0.2 * noise
+            })
+            .collect()
+    }
+
+    #[test]
+    fn listener_mic_bytes_denoise_changes_stt_bytes_on_noisy_mic() {
+        let mut with_denoise = test_pipeline_with_denoise();
+        let mut without_denoise = test_pipeline();
+
+        assert!(
+            with_denoise.stt_mic_denoise.is_some(),
+            "denoiser should initialize from embedded weights"
+        );
+        assert!(without_denoise.stt_mic_denoise.is_none());
+
+        // 512 is a multiple of the denoiser's 128-sample hop, so both
+        // pipelines emit chunk-length output and stay sample-aligned.
+        let chunk_len = 512;
+        let chunks = 8;
+
+        let mut denoised_stream = Vec::new();
+        let mut raw_stream = Vec::new();
+        for chunk_idx in 0..chunks {
+            let mic = Arc::<[f32]>::from(noisy_chunk(chunk_idx, chunk_len));
+
+            let denoised = decode_i16_bytes(&with_denoise.listener_mic_bytes(&mic));
+            let raw = decode_i16_bytes(&without_denoise.listener_mic_bytes(&mic));
+
+            assert_eq!(denoised.len(), chunk_len);
+            assert_eq!(raw.len(), chunk_len);
+
+            denoised_stream.extend(denoised);
+            raw_stream.extend(raw);
+        }
+
+        let max_diff = denoised_stream
+            .iter()
+            .zip(raw_stream.iter())
+            .fold(0.0_f32, |m, (a, b)| m.max((a - b).abs()));
+        assert!(
+            max_diff > 0.01,
+            "denoised transcription-bound bytes should differ from raw, max_diff = {max_diff}"
+        );
+    }
+
+    struct CapturingRecorderProbe(tokio::sync::mpsc::UnboundedSender<Vec<f32>>);
+
+    #[ractor::async_trait]
+    impl Actor for CapturingRecorderProbe {
+        type Msg = RecMsg;
+        type State = ();
+        type Arguments = ();
+
+        async fn pre_start(
+            &self,
+            _myself: ActorRef<Self::Msg>,
+            _args: Self::Arguments,
+        ) -> Result<Self::State, ActorProcessingErr> {
+            Ok(())
+        }
+
+        async fn handle(
+            &self,
+            _myself: ActorRef<Self::Msg>,
+            message: Self::Msg,
+            _state: &mut Self::State,
+        ) -> Result<(), ActorProcessingErr> {
+            match message {
+                RecMsg::AudioSingle(samples) => {
+                    let _ = self.0.send(samples.to_vec());
+                }
+                RecMsg::AudioDual(mic, _) => {
+                    let _ = self.0.send(mic.to_vec());
+                }
+            }
+            Ok(())
+        }
+    }
+
+    struct CapturingListenerProbe(tokio::sync::mpsc::UnboundedSender<bytes::Bytes>);
+
+    #[ractor::async_trait]
+    impl Actor for CapturingListenerProbe {
+        type Msg = ListenerMsg;
+        type State = ();
+        type Arguments = ();
+
+        async fn pre_start(
+            &self,
+            _myself: ActorRef<Self::Msg>,
+            _args: Self::Arguments,
+        ) -> Result<Self::State, ActorProcessingErr> {
+            Ok(())
+        }
+
+        async fn handle(
+            &self,
+            _myself: ActorRef<Self::Msg>,
+            message: Self::Msg,
+            _state: &mut Self::State,
+        ) -> Result<(), ActorProcessingErr> {
+            match message {
+                ListenerMsg::AudioSingle(bytes) => {
+                    let _ = self.0.send(bytes);
+                }
+                ListenerMsg::AudioDual(mic, _) => {
+                    let _ = self.0.send(mic);
+                }
+                _ => {}
+            }
+            Ok(())
+        }
+    }
+
+    /// Runs `frames` noisy mic-only frames through a pipeline with the given
+    /// denoise flag; returns (recorder samples, listener bytes) per frame.
+    async fn run_noisy_frames(
+        mic_denoise: bool,
+        frames: usize,
+        chunk_len: usize,
+    ) -> (Vec<Vec<f32>>, Vec<bytes::Bytes>) {
+        let mut pipeline =
+            Pipeline::new(Arc::new(TestRuntime), "session".to_string(), mic_denoise);
+
+        let (rec_tx, mut rec_rx) = tokio::sync::mpsc::unbounded_channel();
+        let (recorder_ref, rec_handle) = Actor::spawn(None, CapturingRecorderProbe(rec_tx), ())
+            .await
+            .unwrap();
+
+        let (lis_tx, mut lis_rx) = tokio::sync::mpsc::unbounded_channel();
+        let (listener_ref, lis_handle) = Actor::spawn(None, CapturingListenerProbe(lis_tx), ())
+            .await
+            .unwrap();
+        let routing = ListenerRouting::Attached(listener_ref);
+
+        for chunk_idx in 0..frames {
+            let mic: Arc<[f32]> = Arc::from(noisy_chunk(chunk_idx, chunk_len));
+            let frame = SourceFrame {
+                capture: CaptureFrame {
+                    raw_mic: Arc::clone(&mic),
+                    raw_speaker: Arc::from(vec![0.0_f32; chunk_len]),
+                    aec_mic: None,
+                },
+                mic_muted: false,
+            };
+            pipeline.dispatch_frame(frame, ChannelMode::MicOnly, &routing, Some(&recorder_ref));
+        }
+
+        let mut recorded = Vec::with_capacity(frames);
+        let mut listened = Vec::with_capacity(frames);
+        for _ in 0..frames {
+            recorded.push(
+                tokio::time::timeout(std::time::Duration::from_secs(1), rec_rx.recv())
+                    .await
+                    .unwrap()
+                    .unwrap(),
+            );
+            listened.push(
+                tokio::time::timeout(std::time::Duration::from_secs(1), lis_rx.recv())
+                    .await
+                    .unwrap()
+                    .unwrap(),
+            );
+        }
+
+        rec_handle.abort();
+        lis_handle.abort();
+
+        (recorded, listened)
+    }
+
+    #[tokio::test]
+    async fn recorder_bytes_identical_with_denoise_on_and_off() {
+        // Few enough frames that the VAD's start-in-speech hangover keeps the
+        // noisy fixture unmasked, so we compare real (nonzero) audio.
+        let frames = 4;
+        let chunk_len = 512;
+
+        let (recorded_on, listened_on) = run_noisy_frames(true, frames, chunk_len).await;
+        let (recorded_off, listened_off) = run_noisy_frames(false, frames, chunk_len).await;
+
+        assert!(
+            recorded_on.iter().flatten().any(|&s| s != 0.0),
+            "recorder fixture should contain nonzero audio"
+        );
+        assert_eq!(
+            recorded_on, recorded_off,
+            "recorder samples must be bit-identical regardless of denoise"
+        );
+
+        let stt_on: Vec<u8> = listened_on.iter().flat_map(|b| b.iter().copied()).collect();
+        let stt_off: Vec<u8> = listened_off
+            .iter()
+            .flat_map(|b| b.iter().copied())
+            .collect();
+        let compare_len = stt_on.len().min(stt_off.len());
+        assert!(compare_len > 0);
+        assert_ne!(
+            stt_on[..compare_len],
+            stt_off[..compare_len],
+            "transcription-bound bytes should differ when denoise is enabled"
         );
     }
 

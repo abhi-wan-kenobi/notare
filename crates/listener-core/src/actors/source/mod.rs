@@ -54,6 +54,7 @@ pub enum ListenerRouting {
 pub struct SourceArgs {
     pub mic_device: Option<String>,
     pub onboarding: bool,
+    pub mic_denoise: bool,
     pub runtime: Arc<dyn ListenerRuntime>,
     pub audio: Arc<dyn AudioProvider>,
     pub session_id: String,
@@ -145,7 +146,11 @@ impl Actor for SourceActor {
                 .or_else(|| Some(args.audio.default_device_name()));
             tracing::info!(mic_device = ?mic_device);
 
-            let pipeline = Pipeline::new(args.runtime.clone(), args.session_id.clone());
+            let pipeline = Pipeline::new(
+                args.runtime.clone(),
+                args.session_id.clone(),
+                args.mic_denoise,
+            );
 
             let mut st = SourceState {
                 runtime: args.runtime,
