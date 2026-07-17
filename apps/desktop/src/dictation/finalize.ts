@@ -64,6 +64,16 @@ export interface FinalizeDictationDeps {
   }) => Promise<void>;
   /** "llm" cleanup fell back to basic (no model / error). */
   onLlmFallback: (error: unknown) => void;
+  /**
+   * Batch-mode finalize can be slow (LLM cleanup) and the Rust session has
+   * already gone idle by the time it runs, so the orb would sit idle while
+   * the paste is still on its way. When provided, this is called with
+   * "processing" before cleanup starts and "idle" once delivery finished
+   * (or failed), so the orb reflects the whole cleanup-then-paste window.
+   * Only invoked for clean (non-failed) batch sessions - a failed session
+   * keeps the error state the Rust side emitted.
+   */
+  signalPhase?: (phase: "processing" | "idle") => void;
 }
 
 export async function finalizeDictation(
@@ -75,25 +85,36 @@ export async function finalizeDictation(
     return;
   }
 
-  const { text, cleaned } = await cleanTranscript(raw, input.cleanup, deps);
-  if (!text) {
-    // Cleanup stripped everything (pure non-speech artifacts): nothing worth
-    // delivering or remembering.
-    return;
-  }
+  // Keep the orb in "processing" across cleanup + delivery: the paste can
+  // trail the session end by seconds on the LLM path and must not land
+  // while the orb already claims to be idle.
+  const signalPhase =
+    input.mode === "batch" && !input.failed ? deps.signalPhase : undefined;
+  signalPhase?.("processing");
 
-  if (input.mode === "batch") {
-    try {
-      // A failed session degrades to copy-only: the text survives on the
-      // clipboard without pasting into whatever happens to be focused.
-      await deps.deliver(text, input.pasteAtCursor && !input.failed);
-    } catch (error) {
-      console.error("[dictation] failed to deliver the transcript", error);
-      // Fall through: the history entry below still preserves the text.
+  try {
+    const { text, cleaned } = await cleanTranscript(raw, input.cleanup, deps);
+    if (!text) {
+      // Cleanup stripped everything (pure non-speech artifacts): nothing
+      // worth delivering or remembering.
+      return;
     }
-  }
 
-  await deps.saveHistory({ text, mode: input.mode, cleaned });
+    if (input.mode === "batch") {
+      try {
+        // A failed session degrades to copy-only: the text survives on the
+        // clipboard without pasting into whatever happens to be focused.
+        await deps.deliver(text, input.pasteAtCursor && !input.failed);
+      } catch (error) {
+        console.error("[dictation] failed to deliver the transcript", error);
+        // Fall through: the history entry below still preserves the text.
+      }
+    }
+
+    await deps.saveHistory({ text, mode: input.mode, cleaned });
+  } finally {
+    signalPhase?.("idle");
+  }
 }
 
 async function cleanTranscript(

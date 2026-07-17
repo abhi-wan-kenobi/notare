@@ -4,6 +4,8 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   DictationOrb,
   normalizeOrbVariant,
+  ORB_VARIANT_ORDER,
+  ORB_VARIANT_REGISTRY,
   orbSizeForVariant,
   orbWindowSizeForVariant,
 } from "./orb";
@@ -84,11 +86,67 @@ describe("DictationOrb", () => {
   });
 });
 
+describe("new orb variants", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("renders the Ring variant", () => {
+    render(<DictationOrb phase="listening" amplitude={0.5} variant="ring" />);
+
+    expect(screen.getByTestId("dictation-orb").dataset.dictationVariant).toBe(
+      "ring",
+    );
+    expect(screen.getByTestId("dictation-ring-orb")).not.toBeNull();
+    expect(screen.queryByTestId("recording-orb")).toBeNull();
+  });
+
+  it("renders the Aurora variant", () => {
+    render(<DictationOrb phase="idle" variant="aurora" />);
+
+    expect(screen.getByTestId("dictation-orb").dataset.dictationVariant).toBe(
+      "aurora",
+    );
+    expect(screen.getByTestId("dictation-aurora-orb")).not.toBeNull();
+  });
+
+  it("renders the Mono variant", () => {
+    render(<DictationOrb phase="idle" variant="mono" />);
+
+    expect(screen.getByTestId("dictation-orb").dataset.dictationVariant).toBe(
+      "mono",
+    );
+    expect(screen.getByTestId("dictation-mono-orb")).not.toBeNull();
+  });
+});
+
+describe("orb variant registry", () => {
+  it("lists every variant for the settings picker", () => {
+    expect(ORB_VARIANT_ORDER).toEqual([
+      "cobalt",
+      "particles",
+      "waveform",
+      "ring",
+      "aurora",
+      "mono",
+    ]);
+    for (const variant of ORB_VARIANT_ORDER) {
+      const info = ORB_VARIANT_REGISTRY[variant];
+      expect(info.component).toBeTypeOf("function");
+      expect(info.title).toBeTruthy();
+      expect(info.description).toBeTruthy();
+    }
+  });
+});
+
 describe("normalizeOrbVariant", () => {
   it("maps stored strings onto known variants", () => {
     expect(normalizeOrbVariant("particles")).toBe("particles");
     expect(normalizeOrbVariant("waveform")).toBe("waveform");
     expect(normalizeOrbVariant("cobalt")).toBe("cobalt");
+    expect(normalizeOrbVariant("ring")).toBe("ring");
+    expect(normalizeOrbVariant("aurora")).toBe("aurora");
+    expect(normalizeOrbVariant("mono")).toBe("mono");
     expect(normalizeOrbVariant(undefined)).toBe("cobalt");
     expect(normalizeOrbVariant("garbage")).toBe("cobalt");
   });
@@ -98,6 +156,9 @@ describe("orb variant sizing", () => {
   it("scales the orb 1.5x for particles only", () => {
     expect(orbSizeForVariant("cobalt", 40)).toBe(40);
     expect(orbSizeForVariant("waveform", 40)).toBe(40);
+    expect(orbSizeForVariant("ring", 40)).toBe(40);
+    expect(orbSizeForVariant("aurora", 40)).toBe(40);
+    expect(orbSizeForVariant("mono", 40)).toBe(40);
     expect(orbSizeForVariant("particles", 40)).toBe(60);
     expect(orbSizeForVariant("particles", 28)).toBe(42);
   });
@@ -106,5 +167,8 @@ describe("orb variant sizing", () => {
     expect(orbWindowSizeForVariant("cobalt")).toBe(56);
     expect(orbWindowSizeForVariant("waveform")).toBe(56);
     expect(orbWindowSizeForVariant("particles")).toBe(84);
+    expect(orbWindowSizeForVariant("ring")).toBe(56);
+    expect(orbWindowSizeForVariant("aurora")).toBe(56);
+    expect(orbWindowSizeForVariant("mono")).toBe(56);
   });
 });

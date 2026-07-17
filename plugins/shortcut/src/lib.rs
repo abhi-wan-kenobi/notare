@@ -21,6 +21,7 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
             commands::unregister_hotkey::<tauri::Wry>,
             commands::register_global_hotkey::<tauri::Wry>,
             commands::unregister_global_hotkey::<tauri::Wry>,
+            commands::parse_global_hotkey,
         ])
         .events(tauri_specta::collect_events![
             ShortcutEvent,

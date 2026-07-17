@@ -5,4 +5,5 @@ permissions = [
   "allow-unregister-hotkey",
   "allow-register-global-hotkey",
   "allow-unregister-global-hotkey",
+  "allow-parse-global-hotkey",
 ]

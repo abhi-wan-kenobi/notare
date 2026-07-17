@@ -178,17 +178,53 @@ describe("SidebarTimelineUpdateButton", () => {
       name: "Download update",
     });
 
+    // Labeled cobalt pill (design tokens, not raw palette classes) with the
+    // state text and the version.
     expect(button.className.split(" ")).toEqual(
-      expect.arrayContaining(["h-7", "w-7", "min-h-7", "min-w-7", "p-0"]),
+      expect.arrayContaining(["rounded-full", "bg-primary"]),
     );
-    expect(button.className.split(" ")).toEqual(
-      expect.arrayContaining(["bg-blue-500", "hover:bg-blue-600"]),
-    );
-    expect(button.className.split(" ")).not.toContain("bg-primary");
+    expect(button.className.split(" ")).not.toContain("bg-blue-500");
+    expect(button.className.split(" ")).not.toContain("w-7");
+    expect(button.textContent).toContain("Update available");
+    expect(button.textContent).toContain("v1.0.34");
 
     fireEvent.click(button);
 
     await waitFor(() => expect(downloadMock).toHaveBeenCalledWith("1.0.34"));
+  });
+
+  it("labels the pill per state", async () => {
+    renderSidebarUpdateButton();
+
+    await waitFor(() =>
+      expect(eventHandlers.updateDownloadProgress).toBeTypeOf("function"),
+    );
+
+    act(() => {
+      eventHandlers.updateDownloading?.({ payload: { version: "1.0.34" } });
+      eventHandlers.updateDownloadProgress?.({
+        payload: { version: "1.0.34", chunk_length: 25, content_length: 100 },
+      });
+    });
+    expect(screen.getByTestId("sidebar-update-pill").textContent).toContain(
+      "Downloading… 25%",
+    );
+
+    act(() => {
+      eventHandlers.updateReady?.({ payload: { version: "1.0.34" } });
+    });
+    expect(screen.getByTestId("sidebar-update-pill").textContent).toContain(
+      "Restart to update",
+    );
+
+    act(() => {
+      eventHandlers.updateDownloadFailed?.({
+        payload: { version: "1.0.34" },
+      });
+    });
+    expect(screen.getByTestId("sidebar-update-pill").textContent).toContain(
+      "Retry update",
+    );
   });
 
   it("shows download when an external update check reports an available version", async () => {

@@ -4,7 +4,6 @@ import { Trash2Icon } from "lucide-react";
 import { type ReactNode, useEffect, useId, useState } from "react";
 
 import { Button } from "@hypr/ui/components/ui/button";
-import { Input } from "@hypr/ui/components/ui/input";
 import { Switch } from "@hypr/ui/components/ui/switch";
 import { sonnerToast } from "@hypr/ui/components/ui/toast";
 import { cn, formatDistanceToNow } from "@hypr/utils";
@@ -19,11 +18,15 @@ import {
   DictationOrb,
   type DictationOrbVariant,
   normalizeOrbVariant,
+  ORB_VARIANT_ORDER,
+  ORB_VARIANT_REGISTRY,
 } from "~/dictation/orb";
 import { normalizeOutputMode } from "~/dictation/output-mode";
 import { normalizeCleanupMode } from "~/dictation/finalize";
+import { ShortcutRecorderRow } from "~/settings/dictation/shortcut-recorder";
 import { SettingsPageTitle } from "~/settings/page-title";
 import { useSetSettingValue } from "~/settings/queries";
+import { SETTING_DEFINITIONS } from "~/settings/schema";
 import { useConfigValues } from "~/shared/config";
 import { useSTTConnection } from "~/stt/useSTTConnection";
 
@@ -40,6 +43,7 @@ export function SettingsDictation() {
     dictation_paste_at_cursor,
     dictation_cleanup,
     dictation_orb_variant,
+    dictation_caption,
   } = useConfigValues([
     "dictation_enabled",
     "dictation_shortcut",
@@ -47,6 +51,7 @@ export function SettingsDictation() {
     "dictation_paste_at_cursor",
     "dictation_cleanup",
     "dictation_orb_variant",
+    "dictation_caption",
   ] as const);
   const setEnabled = useSetSettingValue("dictation_enabled");
   const setShortcut = useSetSettingValue("dictation_shortcut");
@@ -54,6 +59,7 @@ export function SettingsDictation() {
   const setPasteAtCursor = useSetSettingValue("dictation_paste_at_cursor");
   const setCleanup = useSetSettingValue("dictation_cleanup");
   const setOrbVariant = useSetSettingValue("dictation_orb_variant");
+  const setCaption = useSetSettingValue("dictation_caption");
 
   const outputMode = normalizeOutputMode(dictation_output_mode);
 
@@ -77,7 +83,22 @@ export function SettingsDictation() {
             checked={dictation_enabled}
             onChange={setEnabled}
           />
-          <ShortcutRow value={dictation_shortcut} onCommit={setShortcut} />
+          <ShortcutRecorderRow
+            value={dictation_shortcut}
+            defaultValue={SETTING_DEFINITIONS.dictation_shortcut.default}
+            onCommit={setShortcut}
+          />
+          <SettingRow
+            title={<Trans>Show live caption over orb</Trans>}
+            description={
+              <Trans>
+                Show the last few recognized words in a small caption above
+                the orb while you dictate. It fades out when you pause.
+              </Trans>
+            }
+            checked={dictation_caption}
+            onChange={setCaption}
+          />
         </div>
       </section>
 
@@ -292,10 +313,19 @@ export function CleanupGroup({
 }
 
 /**
- * Orb look, previewed live next to each option. Previews share the same base
- * size; `DictationOrb` applies the per-variant scale on top (the particle
- * sphere previews proportionally bigger, exactly like the real orb). The
- * Pulse preview uses a steady listening level so the sticks actually dance.
+ * Base preview size: cobalt-scale variants render at 64px, the particle
+ * sphere at its usual 1.5x (96px) - `DictationOrb` applies the per-variant
+ * scale exactly like the real orb window does.
+ */
+const ORB_PREVIEW_BASE_SIZE = 64;
+/** Fixed preview slot height so every card row lines up (fits 1.5x = 96px). */
+const ORB_PREVIEW_SLOT_PX = 96;
+
+/**
+ * Orb look picker: a grid of live preview cards driven by
+ * `ORB_VARIANT_REGISTRY`, so new variants show up automatically. The
+ * selected card - and any hovered card - runs its orb in the listening
+ * phase with a gentle synthetic amplitude loop; the rest stay idle.
  */
 export function OrbVariantGroup({
   value,
@@ -304,43 +334,145 @@ export function OrbVariantGroup({
   value: DictationOrbVariant;
   onChange: (next: string) => void;
 }) {
+  const groupName = useId();
+  const [hovered, setHovered] = useState<DictationOrbVariant | null>(null);
+
   return (
-    <RadioCardGroup
-      value={value}
-      onChange={onChange}
-      options={[
-        {
-          value: "cobalt",
-          title: <Trans>Cobalt</Trans>,
-          description: <Trans>The minimal glowing orb.</Trans>,
-          preview: <DictationOrb phase="idle" size={28} variant="cobalt" />,
-        },
-        {
-          value: "particles",
-          title: <Trans>Particles</Trans>,
-          description: (
-            <Trans>A voice-reactive particle sphere.</Trans>
-          ),
-          preview: <DictationOrb phase="idle" size={28} variant="particles" />,
-        },
-        {
-          value: "waveform",
-          title: <Trans>Pulse</Trans>,
-          description: (
-            <Trans>A waveform of bars that dance as you speak.</Trans>
-          ),
-          preview: (
-            <DictationOrb
-              phase="listening"
-              amplitude={0.55}
-              size={28}
-              variant="waveform"
-            />
-          ),
-        },
-      ]}
-    />
+    <div
+      role="radiogroup"
+      data-testid="orb-variant-group"
+      className="grid grid-cols-2 gap-3 sm:grid-cols-3"
+    >
+      {ORB_VARIANT_ORDER.map((variant) => {
+        const info = ORB_VARIANT_REGISTRY[variant];
+        const selected = value === variant;
+        const live = selected || hovered === variant;
+
+        return (
+          <OrbPreviewCard
+            key={variant}
+            groupName={groupName}
+            variant={variant}
+            title={info.title}
+            description={info.description}
+            selected={selected}
+            live={live}
+            onSelect={() => onChange(variant)}
+            onHoverChange={(hovering) =>
+              setHovered((current) =>
+                hovering ? variant : current === variant ? null : current,
+              )
+            }
+          />
+        );
+      })}
+    </div>
   );
+}
+
+function OrbPreviewCard({
+  groupName,
+  variant,
+  title,
+  description,
+  selected,
+  live,
+  onSelect,
+  onHoverChange,
+}: {
+  groupName: string;
+  variant: DictationOrbVariant;
+  title: ReactNode;
+  description: ReactNode;
+  selected: boolean;
+  live: boolean;
+  onSelect: () => void;
+  onHoverChange: (hovering: boolean) => void;
+}) {
+  const amplitude = useSyntheticAmplitude(live);
+
+  return (
+    <label
+      data-testid={`orb-preview-card-${variant}`}
+      data-selected={selected || undefined}
+      onMouseEnter={() => onHoverChange(true)}
+      onMouseLeave={() => onHoverChange(false)}
+      className={cn([
+        "flex cursor-pointer flex-col items-center gap-2 rounded-lg border p-3 pt-4 text-center",
+        "transition-colors duration-(--motion-duration-state)",
+        "focus-within:ring-ring focus-within:ring-2",
+        selected
+          ? "border-primary/60 ring-primary/50 bg-accent/40 ring-1"
+          : "border-border hover:bg-accent/20",
+      ])}
+    >
+      <input
+        type="radio"
+        name={groupName}
+        value={variant}
+        checked={selected}
+        onChange={onSelect}
+        className="sr-only"
+      />
+      <span
+        aria-hidden
+        className="flex items-center justify-center"
+        style={{ height: ORB_PREVIEW_SLOT_PX }}
+      >
+        <DictationOrb
+          phase={live ? "listening" : "idle"}
+          amplitude={amplitude}
+          size={ORB_PREVIEW_BASE_SIZE}
+          variant={variant}
+        />
+      </span>
+      <span className="flex flex-col gap-0.5">
+        <span className="text-sm font-medium">{title}</span>
+        <span className="text-muted-foreground text-xs">{description}</span>
+      </span>
+    </label>
+  );
+}
+
+/**
+ * Gentle looping fake voice level for the live previews: two slow sines sum
+ * to something breath-like in ~[0.15, 0.8]. Returns 0 when inactive; a
+ * steady mid level under `prefers-reduced-motion` (no animation loop).
+ */
+function useSyntheticAmplitude(active: boolean): number {
+  const [amplitude, setAmplitude] = useState(0);
+
+  useEffect(() => {
+    if (!active) {
+      setAmplitude(0);
+      return;
+    }
+
+    if (
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      setAmplitude(0.5);
+      return;
+    }
+
+    let raf = 0;
+    const start = performance.now();
+    const tick = (now: number) => {
+      const t = (now - start) / 1000;
+      const level =
+        0.45 + 0.22 * Math.sin(t * 2.3) + 0.16 * Math.sin(t * 3.9 + 1.3);
+      setAmplitude(Math.min(Math.max(level, 0), 1));
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+
+    return () => {
+      cancelAnimationFrame(raf);
+    };
+  }, [active]);
+
+  return amplitude;
 }
 
 /**
@@ -449,64 +581,6 @@ function formatRelativeTime(createdAt: string): string {
     return "";
   }
   return formatDistanceToNow(date, { addSuffix: true });
-}
-
-function ShortcutRow({
-  value,
-  onCommit,
-}: {
-  value: string;
-  onCommit: (next: string) => void;
-}) {
-  const { t } = useLingui();
-  const titleId = useId();
-  const descriptionId = useId();
-  const [draft, setDraft] = useState(value);
-
-  // Reflect external changes (another window, defaults) into the input.
-  useEffect(() => {
-    setDraft(value);
-  }, [value]);
-
-  const commit = () => {
-    const next = draft.trim().toLowerCase();
-    if (!next || next === value) {
-      setDraft(value);
-      return;
-    }
-    onCommit(next);
-  };
-
-  return (
-    <div className="flex items-center justify-between gap-4">
-      <div className="flex-1">
-        <h3 id={titleId} className="mb-1 text-sm font-medium">
-          <Trans>Toggle shortcut</Trans>
-        </h3>
-        <p id={descriptionId} className="text-muted-foreground text-xs">
-          <Trans>
-            Global shortcut that starts or stops dictation, e.g. ctrl+alt+space.
-            Combine ctrl, alt, shift and super with a key.
-          </Trans>
-        </p>
-      </div>
-      <Input
-        value={draft}
-        onChange={(event) => setDraft(event.target.value)}
-        onBlur={commit}
-        onKeyDown={(event) => {
-          if (event.key === "Enter") {
-            event.currentTarget.blur();
-          }
-        }}
-        aria-labelledby={titleId}
-        aria-describedby={descriptionId}
-        placeholder={t`ctrl+alt+space`}
-        className="w-48 font-mono text-xs"
-        spellCheck={false}
-      />
-    </div>
-  );
 }
 
 function SettingRow({

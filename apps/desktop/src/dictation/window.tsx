@@ -1,6 +1,7 @@
 import { useLingui } from "@lingui/react/macro";
 import { LogicalPosition, LogicalSize } from "@tauri-apps/api/dpi";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
+import { currentMonitor } from "@tauri-apps/api/window";
 import { useEffect, useRef, useState } from "react";
 
 import {
@@ -171,6 +172,9 @@ export function DictationOrbWindow({ solid = false }: { solid?: boolean }) {
  * the same webview-drives-the-window pattern as the floating bar's `update`.
  * The window grows/shrinks around its center so the orb never jumps, and the
  * resulting `Moved` event lets the Rust side persist the adjusted position.
+ * The re-centered spot is clamped to the current monitor with the TARGET
+ * size (the Rust restore clamp ran at the creation size, so a variant that
+ * grows near a screen edge would otherwise end up partly offscreen).
  */
 async function syncOrbWindowSize(variant: DictationOrbVariant) {
   try {
@@ -186,17 +190,30 @@ async function syncOrbWindowSize(variant: DictationOrbVariant) {
     }
 
     const position = (await window.outerPosition()).toLogical(scale);
+    let x = Math.round(position.x + (inner.width - target) / 2);
+    let y = Math.round(position.y + (inner.height - target) / 2);
+
+    const monitor = await currentMonitor().catch(() => null);
+    if (monitor) {
+      const monitorScale = monitor.scaleFactor || 1;
+      const monitorX = monitor.position.x / monitorScale;
+      const monitorY = monitor.position.y / monitorScale;
+      const monitorWidth = monitor.size.width / monitorScale;
+      const monitorHeight = monitor.size.height / monitorScale;
+      x = clamp(x, monitorX, monitorX + monitorWidth - target);
+      y = clamp(y, monitorY, monitorY + monitorHeight - target);
+    }
+
     await window.setSize(new LogicalSize(target, target));
-    await window.setPosition(
-      new LogicalPosition(
-        Math.round(position.x + (inner.width - target) / 2),
-        Math.round(position.y + (inner.height - target) / 2),
-      ),
-    );
+    await window.setPosition(new LogicalPosition(Math.round(x), Math.round(y)));
   } catch {
     // Not running inside the orb webview (tests/storybook) or the window API
     // is unavailable - keep whatever size the window was created with.
   }
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), Math.max(min, max));
 }
 
 function useDictationState() {

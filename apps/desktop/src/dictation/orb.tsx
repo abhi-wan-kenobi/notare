@@ -1,11 +1,15 @@
-import type { ComponentType } from "react";
+import { Trans } from "@lingui/react/macro";
+import type { ComponentType, ReactNode } from "react";
 
 import type { DictationPhase } from "@hypr/plugin-dictation";
 import { cn } from "@hypr/utils";
 
 import { RecordingOrb } from "~/meeting-float/orb";
 
+import { AuroraOrb } from "./aurora-orb";
+import { MonoOrb } from "./mono-orb";
 import { ParticleOrb } from "./particle-orb";
+import { RingOrb } from "./ring-orb";
 import { WaveformOrb } from "./waveform-orb";
 
 /**
@@ -13,9 +17,21 @@ import { WaveformOrb } from "./waveform-orb";
  * - "cobalt": the mini meeting orb (Cobalt-on-graphite);
  * - "particles": the voice-reactive particle sphere (`particle-orb.tsx`);
  * - "waveform": "Pulse" - the dancing-sticks amplitude waveform in a round
- *   chassis (`waveform-orb.tsx`).
+ *   chassis (`waveform-orb.tsx`);
+ * - "ring": a thin cobalt ring, amplitude = stroke pulse (`ring-orb.tsx`);
+ * - "aurora": soft drifting gradient blobs (`aurora-orb.tsx`);
+ * - "mono": a near-static graphite disc + state dot (`mono-orb.tsx`).
+ *
+ * Adding a variant here (union + `ORB_VARIANT_REGISTRY` entry) is all it
+ * takes: the settings picker (`OrbVariantGroup`) renders from the registry.
  */
-export type DictationOrbVariant = "cobalt" | "particles" | "waveform";
+export type DictationOrbVariant =
+  | "cobalt"
+  | "particles"
+  | "waveform"
+  | "ring"
+  | "aurora"
+  | "mono";
 
 export const DEFAULT_ORB_VARIANT: DictationOrbVariant = "cobalt";
 
@@ -23,8 +39,8 @@ export const DEFAULT_ORB_VARIANT: DictationOrbVariant = "cobalt";
 export function normalizeOrbVariant(
   raw: string | undefined,
 ): DictationOrbVariant {
-  return raw === "particles" || raw === "waveform"
-    ? raw
+  return raw != null && raw in ORB_VARIANT_REGISTRY
+    ? (raw as DictationOrbVariant)
     : DEFAULT_ORB_VARIANT;
 }
 
@@ -38,6 +54,9 @@ const ORB_VARIANT_SCALE: Record<DictationOrbVariant, number> = {
   cobalt: 1,
   particles: 1.5,
   waveform: 1,
+  ring: 1,
+  aurora: 1,
+  mono: 1,
 };
 
 /** Orb pixel size for `variant`, scaled from the caller's base size. */
@@ -106,14 +125,71 @@ export function DictationOrb({
   );
 }
 
+export interface OrbVariantInfo {
+  component: ComponentType<DictationOrbVariantProps>;
+  /** Display name in the settings picker. */
+  title: ReactNode;
+  /** One-line descriptor in the settings picker. */
+  description: ReactNode;
+}
+
+/**
+ * The single source of truth for orb variants: rendering (`DictationOrb`)
+ * and the settings picker both read from here, so a new entry shows up in
+ * the picker automatically.
+ */
+export const ORB_VARIANT_REGISTRY: Record<DictationOrbVariant, OrbVariantInfo> =
+  {
+    cobalt: {
+      component: CobaltOrb,
+      title: <Trans>Cobalt</Trans>,
+      description: <Trans>The minimal glowing orb.</Trans>,
+    },
+    particles: {
+      component: ParticleOrb,
+      title: <Trans>Particles</Trans>,
+      description: <Trans>A voice-reactive particle sphere.</Trans>,
+    },
+    waveform: {
+      component: WaveformOrb,
+      title: <Trans>Pulse</Trans>,
+      description: <Trans>A waveform of bars that dance as you speak.</Trans>,
+    },
+    ring: {
+      component: RingOrb,
+      title: <Trans>Ring</Trans>,
+      description: <Trans>A thin cobalt ring that pulses as you speak.</Trans>,
+    },
+    aurora: {
+      component: AuroraOrb,
+      title: <Trans>Aurora</Trans>,
+      description: (
+        <Trans>Soft drifting color that brightens with your voice.</Trans>
+      ),
+    },
+    mono: {
+      component: MonoOrb,
+      title: <Trans>Mono</Trans>,
+      description: (
+        <Trans>A quiet graphite disc with a single state dot.</Trans>
+      ),
+    },
+  };
+
+/** Picker order (matches the registry's declaration order). */
+export const ORB_VARIANT_ORDER = Object.keys(
+  ORB_VARIANT_REGISTRY,
+) as DictationOrbVariant[];
+
 const ORB_VARIANTS: Record<
   DictationOrbVariant,
   ComponentType<DictationOrbVariantProps>
-> = {
-  cobalt: CobaltOrb,
-  particles: ParticleOrb,
-  waveform: WaveformOrb,
-};
+> = Object.fromEntries(
+  Object.entries(ORB_VARIANT_REGISTRY).map(([variant, info]) => [
+    variant,
+    info.component,
+  ]),
+) as Record<DictationOrbVariant, ComponentType<DictationOrbVariantProps>>;
 
 function CobaltOrb({ phase, amplitude, size }: DictationOrbVariantProps) {
   const orbState =

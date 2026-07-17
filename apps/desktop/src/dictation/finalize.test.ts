@@ -164,6 +164,93 @@ describe("finalizeDictation delivery matrix", () => {
   });
 });
 
+describe("finalizeDictation phase signaling", () => {
+  it("holds processing across cleanup and delivery for a clean batch", async () => {
+    const order: string[] = [];
+    const deps = makeDeps({
+      cleanLlm: vi.fn(async (text: string) => {
+        order.push("clean");
+        return `llm(${text})`;
+      }),
+      deliver: vi.fn(async () => {
+        order.push("deliver");
+      }),
+      saveHistory: vi.fn(async () => {
+        order.push("history");
+      }),
+      signalPhase: vi.fn((phase: "processing" | "idle") => {
+        order.push(`phase:${phase}`);
+      }),
+    });
+
+    await finalizeDictation(makeInput({ cleanup: "llm" }), deps);
+
+    expect(order).toEqual([
+      "phase:processing",
+      "clean",
+      "deliver",
+      "history",
+      "phase:idle",
+    ]);
+  });
+
+  it("returns the orb to idle even when delivery throws", async () => {
+    const signalPhase = vi.fn();
+    const errorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    try {
+      await finalizeDictation(
+        makeInput(),
+        makeDeps({
+          deliver: vi.fn(async () => Promise.reject(new Error("no paste"))),
+          signalPhase,
+        }),
+      );
+    } finally {
+      errorSpy.mockRestore();
+    }
+
+    expect(signalPhase).toHaveBeenNthCalledWith(1, "processing");
+    expect(signalPhase).toHaveBeenLastCalledWith("idle");
+  });
+
+  it("returns the orb to idle when cleanup strips everything", async () => {
+    const signalPhase = vi.fn();
+    await finalizeDictation(
+      makeInput({ rawText: "[BLANK_AUDIO]" }),
+      makeDeps({ cleanBasic: vi.fn(async () => ""), signalPhase }),
+    );
+
+    expect(signalPhase).toHaveBeenNthCalledWith(1, "processing");
+    expect(signalPhase).toHaveBeenLastCalledWith("idle");
+  });
+
+  it("never signals for type mode or failed sessions", async () => {
+    const signalPhase = vi.fn();
+    await finalizeDictation(
+      makeInput({ mode: "type" }),
+      makeDeps({ signalPhase }),
+    );
+    await finalizeDictation(
+      makeInput({ failed: true }),
+      makeDeps({ signalPhase }),
+    );
+
+    expect(signalPhase).not.toHaveBeenCalled();
+  });
+
+  it("never signals for empty raw text", async () => {
+    const signalPhase = vi.fn();
+    await finalizeDictation(
+      makeInput({ rawText: "   " }),
+      makeDeps({ signalPhase }),
+    );
+
+    expect(signalPhase).not.toHaveBeenCalled();
+  });
+});
+
 describe("finalizeDictation empty transcripts", () => {
   it("does nothing for empty or whitespace-only raw text", async () => {
     const deps = makeDeps();

@@ -3,6 +3,7 @@ const COMMANDS: &[&str] = &[
     "unregister_hotkey",
     "register_global_hotkey",
     "unregister_global_hotkey",
+    "parse_global_hotkey",
 ];
 
 fn main() {

@@ -161,6 +161,19 @@ export function DictationOrbHost() {
               unwrap(await dictationCommands.deliverText(text, pasteAtCursor));
             },
             saveHistory: addDictationHistoryEntry,
+            // Keep the orb (and phaseRef, via the state listener) in
+            // "processing" while cleanup + paste run: the Rust session
+            // already emitted idle before the finished event was handled.
+            signalPhase: (phase) => {
+              dictationEvents.dictationStateEvent
+                .emit({ phase, amplitude: 0, mode: event.mode })
+                .catch((error) => {
+                  console.warn(
+                    "[dictation] failed to broadcast the finalize phase",
+                    error,
+                  );
+                });
+            },
             onLlmFallback: (error) => {
               if (error != null) {
                 console.warn("[dictation] LLM cleanup failed", error);
