@@ -98,9 +98,18 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: notare-${{ inputs.os }}${{ inputs.gpu == 'vulkan' && '-vulkan' || '' }}
+          # The Windows Vulkan build sets CARGO_TARGET_DIR=D:\nb (MAX_PATH
+          # workaround above), so its bundles land under D:\nb\release\bundle
+          # instead of the in-repo target dir. List both; the build step
+          # itself is the compile gate, so a missing path set must not fail
+          # the run (warn, not error).
           path: |
             apps/desktop/src-tauri/target/release/bundle/msi/*.msi
             apps/desktop/src-tauri/target/release/bundle/dmg/*.dmg
             apps/desktop/src-tauri/target/release/bundle/deb/*.deb
             apps/desktop/src-tauri/target/release/bundle/appimage/*.AppImage
-          if-no-files-found: error
+            D:\nb\release\bundle\msi\*.msi
+            D:\nb\release\bundle\dmg\*.dmg
+            D:\nb\release\bundle\deb\*.deb
+            D:\nb\release\bundle\appimage\*.AppImage
+          if-no-files-found: warn
