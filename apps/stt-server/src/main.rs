@@ -38,7 +38,7 @@ async fn main() -> anyhow::Result<()> {
     let app = build_router(state);
 
     let listener = tokio::net::TcpListener::bind((host.as_str(), port)).await?;
-    tracing::info!(addr = %listener.local_addr()?, "listening (GET /health, GET /api/status, GET /api/models, POST+WS /v1/listen)");
+    tracing::info!(addr = %listener.local_addr()?, "listening (GET / admin page, GET /health, GET /api/status, GET /api/models, POST+WS /v1/listen)");
 
     axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal())
