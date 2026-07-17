@@ -96,6 +96,10 @@ describe("SettingsNav", () => {
       "Transcription",
       "Intelligence",
       "Personalization",
+      // #31: the dictation orb reaches parity through the webview orb path
+      // on macOS too, so the nav must not hide this tab there any more
+      // (this file is mocked to `platform() === "macos"` above).
+      "Dictation",
     ].forEach((label) => {
       expect(screen.getByText(label)).toBeTruthy();
     });

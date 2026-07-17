@@ -113,15 +113,14 @@ export function SettingsNav() {
       icon: LockIcon,
     });
   }
-  // The dictation orb is the Windows/Linux path; macOS keeps its native
-  // dictation flow, so the section is hidden there.
-  if (!isMacos) {
-    groups[2].items.push({
-      id: "dictation" as const,
-      label: t`Dictation`,
-      icon: MicIcon,
-    });
-  }
+  // The dictation orb runs on every platform since #31 - macOS reaches
+  // parity through the same webview orb instead of its unfinished native
+  // panel.
+  groups[2].items.push({
+    id: "dictation" as const,
+    label: t`Dictation`,
+    icon: MicIcon,
+  });
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden">
