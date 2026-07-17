@@ -15,4 +15,8 @@ permissions = [
     "allow-google-connect",
     "allow-google-disconnect",
     "allow-google-reset",
+    "allow-ics-list-files",
+    "allow-ics-import-files",
+    "allow-ics-replace-file",
+    "allow-ics-remove-file",
 ]

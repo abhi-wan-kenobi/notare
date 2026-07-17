@@ -13,6 +13,10 @@ const COMMANDS: &[&str] = &[
     "google_connect",
     "google_disconnect",
     "google_reset",
+    "ics_list_files",
+    "ics_import_files",
+    "ics_replace_file",
+    "ics_remove_file",
 ];
 
 fn main() {

@@ -2,6 +2,7 @@ mod commands;
 mod error;
 mod events;
 mod google;
+mod ics;
 mod runtime;
 
 pub use error::Error;
@@ -32,6 +33,10 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
             commands::google_connect::<tauri::Wry>,
             commands::google_disconnect::<tauri::Wry>,
             commands::google_reset::<tauri::Wry>,
+            commands::ics_list_files::<tauri::Wry>,
+            commands::ics_import_files::<tauri::Wry>,
+            commands::ics_replace_file::<tauri::Wry>,
+            commands::ics_remove_file::<tauri::Wry>,
         ])
         .events(tauri_specta::collect_events![CalendarChangedEvent])
         .error_handling(tauri_specta::ErrorHandlingMode::Result)

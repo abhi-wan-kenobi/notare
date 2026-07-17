@@ -18,6 +18,10 @@ Default permissions for the plugin
 - `allow-google-connect`
 - `allow-google-disconnect`
 - `allow-google-reset`
+- `allow-ics-list-files`
+- `allow-ics-import-files`
+- `allow-ics-replace-file`
+- `allow-ics-remove-file`
 
 ## Permission Table
 
@@ -232,6 +236,110 @@ Enables the google_reset command without any pre-configured scope.
 <td>
 
 Denies the google_reset command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`calendar:allow-ics-import-files`
+
+</td>
+<td>
+
+Enables the ics_import_files command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`calendar:deny-ics-import-files`
+
+</td>
+<td>
+
+Denies the ics_import_files command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`calendar:allow-ics-list-files`
+
+</td>
+<td>
+
+Enables the ics_list_files command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`calendar:deny-ics-list-files`
+
+</td>
+<td>
+
+Denies the ics_list_files command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`calendar:allow-ics-remove-file`
+
+</td>
+<td>
+
+Enables the ics_remove_file command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`calendar:deny-ics-remove-file`
+
+</td>
+<td>
+
+Denies the ics_remove_file command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`calendar:allow-ics-replace-file`
+
+</td>
+<td>
+
+Enables the ics_replace_file command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`calendar:deny-ics-replace-file`
+
+</td>
+<td>
+
+Denies the ics_replace_file command without any pre-configured scope.
 
 </td>
 </tr>

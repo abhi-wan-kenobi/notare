@@ -11,6 +11,9 @@ description = ""
 hypr-calendar = { workspace = true, features = ["specta"] }
 hypr-calendar-interface = { workspace = true }
 hypr-google-oauth = { workspace = true }
+# Not in [workspace.dependencies] yet (root Cargo.toml is owned by another
+# track); direct path dep until an `hypr-ics-calendar` entry lands there.
+hypr-ics-calendar = { path = "../../crates/ics-calendar", package = "ics-calendar" }
 
 tauri = { workspace = true, features = ["test"] }
 tauri-plugin-auth = { workspace = true }

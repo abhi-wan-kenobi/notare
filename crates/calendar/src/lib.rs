@@ -35,16 +35,24 @@ pub struct ProviderConnectionIds {
 /// integration. There is exactly one Google connection at a time.
 pub const GOOGLE_DIRECT_CONNECTION_ID: &str = "google-direct";
 
+/// The single synthetic connection id for imported `.ics` calendar files.
+pub const ICS_CONNECTION_ID: &str = "ics";
+
 pub fn available_providers() -> Vec<CalendarProviderType> {
     #[cfg(target_os = "macos")]
     let providers = vec![
         CalendarProviderType::Apple,
         CalendarProviderType::Google,
         CalendarProviderType::Outlook,
+        CalendarProviderType::Ics,
     ];
 
     #[cfg(not(target_os = "macos"))]
-    let providers = vec![CalendarProviderType::Google, CalendarProviderType::Outlook];
+    let providers = vec![
+        CalendarProviderType::Google,
+        CalendarProviderType::Outlook,
+        CalendarProviderType::Ics,
+    ];
 
     providers
 }
@@ -54,6 +62,7 @@ pub async fn list_connection_ids(
     access_token: Option<&str>,
     apple_authorized: bool,
     google_connected: bool,
+    ics_connected: bool,
 ) -> Result<Vec<ProviderConnectionIds>, Error> {
     use std::collections::HashMap;
 
@@ -78,6 +87,16 @@ pub async fn list_connection_ids(
         map.insert(
             CalendarProviderType::Google,
             vec![GOOGLE_DIRECT_CONNECTION_ID.to_string()],
+        );
+    }
+
+    // Imported .ics files are fully local; a single synthetic connection
+    // carries all of them (each file = one calendar).
+    map.entry(CalendarProviderType::Ics).or_default();
+    if ics_connected {
+        map.insert(
+            CalendarProviderType::Ics,
+            vec![ICS_CONNECTION_ID.to_string()],
         );
     }
 
@@ -132,10 +151,17 @@ pub async fn is_provider_enabled(
     access_token: Option<&str>,
     apple_authorized: bool,
     google_connected: bool,
+    ics_connected: bool,
     provider: CalendarProviderType,
 ) -> Result<bool, Error> {
-    let all =
-        list_connection_ids(api_base_url, access_token, apple_authorized, google_connected).await?;
+    let all = list_connection_ids(
+        api_base_url,
+        access_token,
+        apple_authorized,
+        google_connected,
+        ics_connected,
+    )
+    .await?;
     Ok(all
         .iter()
         .any(|p| p.provider == provider && !p.connection_ids.is_empty()))
@@ -146,6 +172,7 @@ pub async fn list_calendars(
     access_token: &str,
     provider: CalendarProviderType,
     connection_id: &str,
+    ics_dir: Option<&std::path::Path>,
 ) -> Result<Vec<CalendarListItem>, Error> {
     match provider {
         CalendarProviderType::Apple => {
@@ -165,6 +192,11 @@ pub async fn list_calendars(
                 fetch::list_outlook_calendars(api_base_url, access_token, connection_id).await?;
             Ok(convert::convert_outlook_calendars(calendars))
         }
+        CalendarProviderType::Ics => {
+            let store = hypr_ics_calendar::IcsStore::new(ics_dir.ok_or(Error::MissingIcsDir)?);
+            let files = store.list()?;
+            Ok(convert::convert_ics_calendars(files))
+        }
     }
 }
 
@@ -174,6 +206,7 @@ pub async fn list_events(
     provider: CalendarProviderType,
     connection_id: &str,
     filter: EventFilter,
+    ics_dir: Option<&std::path::Path>,
 ) -> Result<Vec<CalendarEvent>, Error> {
     match provider {
         CalendarProviderType::Apple => {
@@ -194,6 +227,19 @@ pub async fn list_events(
                 fetch::list_outlook_events(api_base_url, access_token, connection_id, filter)
                     .await?;
             Ok(convert::convert_outlook_events(events, &calendar_id))
+        }
+        CalendarProviderType::Ics => {
+            let store = hypr_ics_calendar::IcsStore::new(ics_dir.ok_or(Error::MissingIcsDir)?);
+            let calendar_id = filter.calendar_tracking_id.clone();
+            let calendar = store.read_calendar(&calendar_id)?;
+            let occurrences = hypr_ics_calendar::expand_events(
+                &calendar,
+                hypr_ics_calendar::ExpandOptions {
+                    from: filter.from,
+                    to: filter.to,
+                },
+            );
+            Ok(convert::convert_ics_events(occurrences, &calendar_id))
         }
     }
 }
@@ -246,6 +292,11 @@ pub fn parse_meeting_link(text: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn ics_is_available_on_every_platform() {
+        assert!(available_providers().contains(&CalendarProviderType::Ics));
+    }
 
     #[test]
     fn detects_local_api_base_urls() {

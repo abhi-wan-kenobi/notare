@@ -16,6 +16,7 @@ import { cn } from "@hypr/utils";
 import { AppleCalendarSelection } from "./apple/calendar-selection";
 import { AccessPermissionRow, TroubleShootingLink } from "./apple/permission";
 import { GoogleDirectContent } from "./google/content";
+import { IcsContent } from "./ics/content";
 import { OAuthProviderContent } from "./oauth/provider-content";
 import { type CalendarProvider, PROVIDERS } from "./shared";
 
@@ -345,6 +346,7 @@ function ProviderAccordionItem({
             </div>
           )}
           {provider.direct && <GoogleDirectContent config={provider} />}
+          {provider.ics && <IcsContent config={provider} />}
           {provider.nangoIntegrationId && (
             <OAuthProviderContent config={provider} returnTo={returnTo} />
           )}

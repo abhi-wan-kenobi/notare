@@ -12,6 +12,7 @@ import {
 } from "~/calendar/components/calendar-selection";
 import { SyncProvider, useSync } from "~/calendar/components/context";
 import { GoogleDirectContent } from "~/calendar/components/google/content";
+import { IcsContent } from "~/calendar/components/ics/content";
 import { PROVIDERS } from "~/calendar/components/shared";
 import { useEnabledCalendars } from "~/calendar/hooks";
 import { useMountEffect } from "~/shared/hooks/useMountEffect";
@@ -22,6 +23,7 @@ import { usePermission } from "~/shared/hooks/usePermissions";
 // PROVIDERS in ~/calendar/components/shared) until a direct BYO-OAuth path
 // exists.
 const GOOGLE_PROVIDER = PROVIDERS.find((provider) => provider.id === "google");
+const ICS_PROVIDER = PROVIDERS.find((provider) => provider.id === "ics");
 
 function getCalendarSelectionKey(groups: CalendarGroup[]) {
   return groups.length === 0
@@ -107,6 +109,25 @@ function GoogleCalendarProvider() {
   );
 }
 
+function IcsCalendarProvider() {
+  if (!ICS_PROVIDER) {
+    return null;
+  }
+
+  // Local imported .ics files — no account or network involved.
+  return (
+    <div className="border-border/45 bg-card/28 w-full max-w-md rounded-xl border p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_8px_24px_-20px_rgba(87,83,78,0.35)] backdrop-blur-md backdrop-saturate-150">
+      <div className="mb-1 flex items-center gap-2">
+        {ICS_PROVIDER.icon}
+        <span className="text-md text-foreground font-normal">
+          {ICS_PROVIDER.displayName}
+        </span>
+      </div>
+      <IcsContent config={ICS_PROVIDER} />
+    </div>
+  );
+}
+
 function CalendarSectionContent({ onContinue }: { onContinue: () => void }) {
   const isMacos = platform() === "macos";
   const calendar = usePermission("calendar");
@@ -131,6 +152,7 @@ function CalendarSectionContent({ onContinue }: { onContinue: () => void }) {
           )}
           <div className="flex flex-wrap items-center gap-4">
             <GoogleCalendarProvider />
+            <IcsCalendarProvider />
           </div>
           {hasConnectedCalendar && (
             <OnboardingButton onClick={onContinue}>
@@ -151,6 +173,7 @@ function CalendarSectionContent({ onContinue }: { onContinue: () => void }) {
           )}
 
           <GoogleCalendarProvider />
+          <IcsCalendarProvider />
         </div>
       )}
 

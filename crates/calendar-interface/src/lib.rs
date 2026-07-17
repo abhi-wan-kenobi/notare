@@ -8,6 +8,8 @@ pub enum CalendarProviderType {
     Apple,
     Google,
     Outlook,
+    /// Imported `.ics` calendar files (local, available on all platforms).
+    Ics,
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, specta::Type)]
