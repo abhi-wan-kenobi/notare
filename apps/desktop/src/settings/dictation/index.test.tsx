@@ -1,15 +1,15 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { DictationHistoryEntry } from "~/dictation/history";
-import { ORB_VARIANT_ORDER } from "~/dictation/orb";
-
 import {
   CleanupGroup,
   DictationHistoryList,
   OrbVariantGroup,
   OutputModeGroup,
 } from "./index";
+
+import type { DictationHistoryEntry } from "~/dictation/history";
+import { ORB_VARIANT_ORDER } from "~/dictation/orb";
 
 describe("OutputModeGroup", () => {
   afterEach(() => {
@@ -66,9 +66,7 @@ describe("OrbVariantGroup", () => {
     for (const variant of ORB_VARIANT_ORDER) {
       expect(screen.getByTestId(`orb-preview-card-${variant}`)).toBeTruthy();
     }
-    expect(screen.getAllByRole("radio")).toHaveLength(
-      ORB_VARIANT_ORDER.length,
-    );
+    expect(screen.getAllByRole("radio")).toHaveLength(ORB_VARIANT_ORDER.length);
   });
 
   it("switches between the cobalt, particle and Pulse orbs", () => {
@@ -95,6 +93,11 @@ describe("OrbVariantGroup", () => {
     expect(screen.getByTestId("dictation-ring-orb")).not.toBeNull();
     expect(screen.getByTestId("dictation-aurora-orb")).not.toBeNull();
     expect(screen.getByTestId("dictation-mono-orb")).not.toBeNull();
+    expect(screen.getByTestId("dictation-bloom-orb")).not.toBeNull();
+    expect(screen.getByTestId("dictation-halo-orb")).not.toBeNull();
+    expect(screen.getByTestId("dictation-ember-orb")).not.toBeNull();
+    expect(screen.getByTestId("dictation-silk-orb")).not.toBeNull();
+    expect(screen.getByTestId("dictation-pip-orb")).not.toBeNull();
 
     // The particle preview reflects the 1.5x scale (64 -> 96px).
     const particleCanvas = screen.getByTestId("dictation-particle-orb");

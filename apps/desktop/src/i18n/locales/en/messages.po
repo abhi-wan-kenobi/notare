@@ -60,6 +60,18 @@ msgid "3 days"
 msgstr "3 days"
 
 #: src/dictation/orb.tsx
+msgid "A dark glass sphere lit by a hot caustic band."
+msgstr "A dark glass sphere lit by a hot caustic band."
+
+#: src/dictation/orb.tsx
+msgid "A friendly blob that listens through its face."
+msgstr "A friendly blob that listens through its face."
+
+#: src/dictation/orb.tsx
+msgid "A neon rim ringed with voice-reactive beads."
+msgstr "A neon rim ringed with voice-reactive beads."
+
+#: src/dictation/orb.tsx
 msgid "A quiet graphite disc with a single state dot."
 msgstr "A quiet graphite disc with a single state dot."
 
@@ -282,6 +294,10 @@ msgstr "Basic"
 #: src/settings/ai/stt/shared.tsx
 msgid "Best quality"
 msgstr "Best quality"
+
+#: src/dictation/orb.tsx
+msgid "Bloom"
+msgstr "Bloom"
 
 #: src/instruction/index.tsx
 msgid "Browser handoff not working? Paste the callback link instead"
@@ -714,6 +730,10 @@ msgstr "Eligible for free trial"
 msgid "Email"
 msgstr "Email"
 
+#: src/dictation/orb.tsx
+msgid "Ember"
+msgstr "Ember"
+
 #: src/templates/template-icon-picker.tsx
 msgid "Emojis"
 msgstr "Emojis"
@@ -933,6 +953,10 @@ msgstr "Go to recent"
 #: src/settings/ai/stt/shared.tsx
 msgid "Good accuracy at a moderate speed."
 msgstr "Good accuracy at a moderate speed."
+
+#: src/dictation/orb.tsx
+msgid "Halo"
+msgstr "Halo"
 
 #: src/calendar/components/apple/permission.tsx
 msgid "Having trouble?"
@@ -1595,6 +1619,10 @@ msgstr "Personalization"
 msgid "Phone"
 msgstr "Phone"
 
+#: src/dictation/orb.tsx
+msgid "Pip"
+msgstr "Pip"
+
 #: src/settings/general/account.tsx
 msgid "Plan & Billing"
 msgstr "Plan & Billing"
@@ -2071,6 +2099,10 @@ msgstr "Signed in"
 msgid "Signing out..."
 msgstr "Signing out..."
 
+#: src/dictation/orb.tsx
+msgid "Silk"
+msgstr "Silk"
+
 #: src/onboarding/shared.tsx
 msgid "Skip"
 msgstr "Skip"
@@ -2082,6 +2114,10 @@ msgstr "Smileys & People"
 #: src/dictation/orb.tsx
 msgid "Soft drifting color that brightens with your voice."
 msgstr "Soft drifting color that brightens with your voice."
+
+#: src/dictation/orb.tsx
+msgid "Soft lavender striations turning over a sphere."
+msgstr "Soft lavender striations turning over a sphere."
 
 #: src/contacts/details.tsx
 msgid "Software Engineer"
@@ -2453,6 +2489,10 @@ msgstr "Version {0} is ready to install."
 #: src/contacts/organization-details.tsx
 msgid "View LinkedIn profile"
 msgstr "View LinkedIn profile"
+
+#: src/dictation/orb.tsx
+msgid "Warm petals that bloom and breathe with your voice."
+msgstr "Warm petals that bloom and breathe with your voice."
 
 #: src/settings/general/week-start.tsx
 msgid "Week starts on"
