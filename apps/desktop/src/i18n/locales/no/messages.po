@@ -60,6 +60,18 @@ msgid "3 days"
 msgstr ""
 
 #: src/dictation/orb.tsx
+msgid "A dark glass sphere lit by a hot caustic band."
+msgstr ""
+
+#: src/dictation/orb.tsx
+msgid "A friendly blob that listens through its face."
+msgstr ""
+
+#: src/dictation/orb.tsx
+msgid "A neon rim ringed with voice-reactive beads."
+msgstr ""
+
+#: src/dictation/orb.tsx
 msgid "A quiet graphite disc with a single state dot."
 msgstr ""
 
@@ -281,6 +293,10 @@ msgstr ""
 
 #: src/settings/ai/stt/shared.tsx
 msgid "Best quality"
+msgstr ""
+
+#: src/dictation/orb.tsx
+msgid "Bloom"
 msgstr ""
 
 #: src/instruction/index.tsx
@@ -714,6 +730,10 @@ msgstr ""
 msgid "Email"
 msgstr ""
 
+#: src/dictation/orb.tsx
+msgid "Ember"
+msgstr ""
+
 #: src/templates/template-icon-picker.tsx
 msgid "Emojis"
 msgstr ""
@@ -932,6 +952,10 @@ msgstr ""
 
 #: src/settings/ai/stt/shared.tsx
 msgid "Good accuracy at a moderate speed."
+msgstr ""
+
+#: src/dictation/orb.tsx
+msgid "Halo"
 msgstr ""
 
 #: src/calendar/components/apple/permission.tsx
@@ -1595,6 +1619,10 @@ msgstr ""
 msgid "Phone"
 msgstr ""
 
+#: src/dictation/orb.tsx
+msgid "Pip"
+msgstr ""
+
 #: src/settings/general/account.tsx
 msgid "Plan & Billing"
 msgstr ""
@@ -2071,6 +2099,10 @@ msgstr ""
 msgid "Signing out..."
 msgstr ""
 
+#: src/dictation/orb.tsx
+msgid "Silk"
+msgstr ""
+
 #: src/onboarding/shared.tsx
 msgid "Skip"
 msgstr ""
@@ -2081,6 +2113,10 @@ msgstr ""
 
 #: src/dictation/orb.tsx
 msgid "Soft drifting color that brightens with your voice."
+msgstr ""
+
+#: src/dictation/orb.tsx
+msgid "Soft lavender striations turning over a sphere."
 msgstr ""
 
 #: src/contacts/details.tsx
@@ -2452,6 +2488,10 @@ msgstr ""
 
 #: src/contacts/organization-details.tsx
 msgid "View LinkedIn profile"
+msgstr ""
+
+#: src/dictation/orb.tsx
+msgid "Warm petals that bloom and breathe with your voice."
 msgstr ""
 
 #: src/settings/general/week-start.tsx
