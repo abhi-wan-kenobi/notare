@@ -1,4 +1,4 @@
-# notare-stt-server (Phase 2)
+# notare-stt-server (Phase 1 + Phase 2 + Phase 3)
 
 A standalone LAN transcription server: it hosts the same generic,
 engine-agnostic `hypr_transcribe_core::TranscribeService` router the Notare
@@ -12,7 +12,13 @@ progress, and startup integrity reconciliation — all thin wrappers over the
 existing `hypr-model-downloader` (CRC32 + `.verified` sidecar integrity) and
 `hypr-model-manager`/`TranscribeService` (lazy load, background warmup)
 crates; see `docs/stt-server-design.md`'s Phase 2 addendum for exactly how.
-The web admin page and GPU images are still later phases (design doc §11).
+**Phase 3 adds `GET /`** — a single self-contained, embedded web admin page
+(no Node/build step, vanilla HTML+CSS+JS via `include_str!`, see
+`src/assets/index.html`). It polls `/api/status` + `/api/models` and drives
+the real Phase 2 mutation routes directly (install/cancel/delete/activate,
+live progress bar) — there is no "Coming soon" placeholder state in this
+merged tree, since Phase 2 landed alongside it. GPU images are still a later
+phase (design doc §11).
 
 ## Run
 
@@ -69,6 +75,10 @@ model is re-verified (existence + size + CRC32) and quarantined to
 
 ## Endpoints
 
+- `GET /` — embedded web admin page (Phase 3): server identity/version/
+  uptime, engine + GPU backend list + offload state, loaded model, and the
+  models table (size, languages if the catalog exposes them, integrity,
+  install/delete/activate actions + download progress bar).
 - `GET /health` — liveness, always `"ok"` (no model required).
 - `POST /v1/listen?channels=&sample_rate=` — batch transcription. `Accept:
   text/event-stream` switches to SSE progress. Same contract as the
