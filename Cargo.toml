@@ -174,6 +174,7 @@ hypr-tiptap = { path = "crates/tiptap", package = "tiptap" }
 hypr-transcribe-core = { path = "crates/transcribe-core", package = "transcribe-core" }
 hypr-transcribe-proxy = { path = "crates/transcribe-proxy", package = "transcribe-proxy" }
 hypr-transcribe-soniqo = { path = "crates/transcribe-soniqo", package = "transcribe-soniqo" }
+hypr-transcribe-voxtral-llama = { path = "crates/transcribe-voxtral-llama", package = "transcribe-voxtral-llama" }
 hypr-transcribe-whisper-local = { path = "crates/transcribe-whisper-local", package = "transcribe-whisper-local" }
 hypr-transcript = { path = "crates/transcript", package = "transcript" }
 hypr-transcription-core = { path = "crates/transcription-core", package = "transcription-core" }
@@ -181,6 +182,7 @@ hypr-updater-core = { path = "crates/updater-core", package = "updater-core" }
 hypr-vad = { path = "crates/vad", package = "vad" }
 hypr-vad-masking = { path = "crates/vad-masking", package = "vad-masking" }
 hypr-version = { path = "crates/version", package = "version" }
+hypr-voxtral-llama-model = { path = "crates/voxtral-llama-model", package = "voxtral-llama-model" }
 hypr-whisper = { path = "crates/whisper", package = "whisper" }
 hypr-whisper-local = { path = "crates/whisper-local", package = "whisper-local" }
 hypr-whisper-local-model = { path = "crates/whisper-local-model", package = "whisper-local-model" }

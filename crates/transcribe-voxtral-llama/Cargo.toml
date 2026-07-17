@@ -1,0 +1,30 @@
+[package]
+name = "transcribe-voxtral-llama"
+version = "0.1.0"
+edition = "2024"
+
+# CUDA offload for both the LLM decoder and the mtmd audio encoder. No
+# `vulkan` feature is exposed on purpose: llama.cpp's Vulkan backend
+# heap-corrupts on RDNA2 when mtmd (multimodal/audio) is in play
+# (ggml-org/llama.cpp#22128, reproduced on the same GPU family as Notare's
+# target hardware, closed upstream without a fix) — CPU is the only
+# supported fallback until that's resolved.
+[features]
+default = []
+cuda = ["llama-cpp-2/cuda"]
+
+[dependencies]
+hypr-language = { workspace = true }
+hypr-model-manager = { workspace = true }
+hypr-transcribe-core = { workspace = true }
+
+encoding_rs = "0.8"
+llama-cpp-2 = { version = "0.1.151", features = ["mtmd"] }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+[dev-dependencies]
+hypr-audio-utils = { workspace = true }
+hypr-data = { workspace = true }
+tempfile = { workspace = true }
+tracing-subscriber = { workspace = true }

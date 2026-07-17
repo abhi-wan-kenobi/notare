@@ -56,6 +56,7 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
         ])
         .typ::<hypr_whisper_local_model::WhisperModel>()
         .typ::<hypr_parakeet_onnx_model::ParakeetOnnxModel>()
+        .typ::<hypr_voxtral_llama_model::VoxtralLlamaModel>()
         .error_handling(tauri_specta::ErrorHandlingMode::Result)
 }
 

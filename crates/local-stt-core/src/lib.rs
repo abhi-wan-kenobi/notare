@@ -1,4 +1,6 @@
-pub use hypr_local_model::{AmModel, LocalModel, ParakeetOnnxModel, SoniqoModel, WhisperModel};
+pub use hypr_local_model::{
+    AmModel, LocalModel, ParakeetOnnxModel, SoniqoModel, VoxtralLlamaModel, WhisperModel,
+};
 
 pub static SUPPORTED_MODELS: &[LocalModel] = &[
     LocalModel::Soniqo(SoniqoModel::ParakeetStreaming),
@@ -7,6 +9,7 @@ pub static SUPPORTED_MODELS: &[LocalModel] = &[
     LocalModel::Am(AmModel::ParakeetV3),
     LocalModel::Am(AmModel::WhisperLargeV3),
     LocalModel::ParakeetOnnx(ParakeetOnnxModel::TdtV3Int8),
+    LocalModel::VoxtralLlama(VoxtralLlamaModel::Mini3bQ4KM),
     LocalModel::Whisper(WhisperModel::QuantizedTiny),
     LocalModel::Whisper(WhisperModel::QuantizedTinyEn),
     LocalModel::Whisper(WhisperModel::QuantizedBase),
@@ -24,6 +27,7 @@ pub enum SttModelType {
     Whispercpp,
     Argmax,
     ParakeetOnnx,
+    VoxtralLlama,
 }
 
 /// Language coverage summary for a model.
@@ -116,6 +120,14 @@ fn parakeet_onnx_traits(_model: &ParakeetOnnxModel) -> (SttModelTier, SttRecomme
     (SttModelTier::Fast, SttRecommendedUse::LiveAndFinal)
 }
 
+fn voxtral_llama_traits(_model: &VoxtralLlamaModel) -> (SttModelTier, SttRecommendedUse) {
+    // A 3B-parameter LLM decode loop (batch-only today, see
+    // ggml-org/llama.cpp#20914) is far slower than a dedicated ASR model on
+    // CPU; it earns its keep on quality/language coverage (incl. Hindi) on
+    // CUDA hardware, so it's a final-pass pick, not a live one.
+    (SttModelTier::Best, SttRecommendedUse::Final)
+}
+
 fn am_traits(model: &AmModel) -> (SttModelTier, SttRecommendedUse) {
     match model {
         AmModel::ParakeetV2 | AmModel::ParakeetV3 => {
@@ -194,6 +206,25 @@ pub fn stt_model_info(model: &LocalModel) -> SttModelInfo {
                 description: value.description(),
                 size_bytes: Some(value.model_size_bytes()),
                 model_type: SttModelType::ParakeetOnnx,
+                engine: value.engine().to_string(),
+                languages,
+                language_count,
+                tier,
+                recommended_use,
+            }
+        }
+        LocalModel::VoxtralLlama(value) => {
+            let (languages, language_count) = language_summary(
+                value.is_english_only(),
+                Some(value.supported_languages().len() as u32),
+            );
+            let (tier, recommended_use) = voxtral_llama_traits(value);
+            SttModelInfo {
+                key: model.clone(),
+                display_name: value.display_name().to_string(),
+                description: value.description(),
+                size_bytes: Some(value.model_size_bytes()),
+                model_type: SttModelType::VoxtralLlama,
                 engine: value.engine().to_string(),
                 languages,
                 language_count,
@@ -308,6 +339,29 @@ mod tests {
     fn parakeet_onnx_model_type_serializes_camel_case() {
         let json = serde_json::to_string(&SttModelType::ParakeetOnnx).unwrap();
         assert_eq!(json, "\"parakeetOnnx\"");
+    }
+
+    #[test]
+    fn voxtral_llama_model_is_supported_with_catalog_metadata() {
+        let model = LocalModel::VoxtralLlama(VoxtralLlamaModel::Mini3bQ4KM);
+        assert!(SUPPORTED_MODELS.contains(&model));
+
+        let info = stt_model_info(&model);
+        assert_eq!(info.key, model);
+        assert_eq!(info.display_name, "Voxtral Mini 3B (Multilingual)");
+        assert_eq!(info.engine, "Voxtral (llama.cpp)");
+        assert!(matches!(info.model_type, SttModelType::VoxtralLlama));
+        assert_eq!(info.languages, SttModelLanguages::Multilingual);
+        assert_eq!(info.language_count, Some(8));
+        assert_eq!(info.tier, SttModelTier::Best);
+        assert_eq!(info.recommended_use, SttRecommendedUse::Final);
+        assert_eq!(info.size_bytes, Some(3_188_716_000));
+    }
+
+    #[test]
+    fn voxtral_llama_model_type_serializes_camel_case() {
+        let json = serde_json::to_string(&SttModelType::VoxtralLlama).unwrap();
+        assert_eq!(json, "\"voxtralLlama\"");
     }
 
     #[test]
