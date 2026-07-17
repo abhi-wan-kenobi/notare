@@ -1,58 +1,126 @@
-use std::path::Path;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
-use hypr_whisper_local::LoadedWhisper;
+/// Generates a 1.0-second 16kHz mono silence WAV file in memory.
+fn create_silence_wav() -> Vec<u8> {
+    let subchunk2_size: u32 = 32000; // 16000 samples * 2 bytes/sample (16-bit PCM)
+    let chunk_size: u32 = 36 + subchunk2_size;
 
-/// Runs a short transcription probe to verify GPU offload and measure performance.
+    let mut wav = Vec::with_capacity(44 + 32000);
+    let mut header = [0u8; 44];
+    header[0..4].copy_from_slice(b"RIFF");
+    header[4..8].copy_from_slice(&chunk_size.to_le_bytes());
+    header[8..12].copy_from_slice(b"WAVE");
+    header[12..16].copy_from_slice(b"fmt ");
+    header[16..20].copy_from_slice(&16u32.to_le_bytes());
+    header[20..22].copy_from_slice(&1u16.to_le_bytes()); // PCM format (1)
+    header[22..24].copy_from_slice(&1u16.to_le_bytes()); // Mono channel (1)
+    header[24..28].copy_from_slice(&16000u32.to_le_bytes()); // Sample rate (16000)
+    header[28..32].copy_from_slice(&32000u32.to_le_bytes()); // Byte rate (16000 * 1 channel * 2 bytes/sample)
+    header[32..34].copy_from_slice(&2u16.to_le_bytes()); // Block align (1 channel * 2 bytes/sample)
+    header[34..36].copy_from_slice(&16u16.to_le_bytes()); // Bits per sample (16)
+    header[36..40].copy_from_slice(b"data");
+    header[40..44].copy_from_slice(&subchunk2_size.to_le_bytes());
+
+    wav.extend_from_slice(&header);
+    wav.extend(std::iter::repeat(0).take(32000));
+    wav
+}
+
+/// Runs a short transcription probe via an HTTP self-request to verify GPU offload and measure performance.
 ///
-/// It loads the model, transcribes a 1.0-second silent audio segment, and returns
-/// the calculated realtime factor (audio duration / elapsed time). Returns `None`
-/// if the model path is not a file or if loading/transcribing fails.
-pub fn run_probe(model_path: &Path) -> Option<f32> {
-    if !model_path.is_file() {
-        return None;
-    }
+/// It sends a 1.0-second silent WAV segment to the local `/v1/listen` endpoint.
+/// If the request succeeds, it returns the calculated realtime factor (audio duration / elapsed time).
+/// If the server is starting up and not yet accepting connections, it retries briefly.
+/// Returns `None` if the request fails or if the server returns an error.
+pub async fn run_probe(port: u16) -> Option<f32> {
+    let client = reqwest::Client::new();
+    let url = format!("http://127.0.0.1:{}/v1/listen?channels=1&sample_rate=16000", port);
+    let wav_data = create_silence_wav();
 
-    let loaded = match LoadedWhisper::builder()
-        .model_path(model_path.to_string_lossy().into_owned())
-        .build()
-    {
-        Ok(l) => l,
-        Err(error) => {
-            tracing::warn!(%error, "probe: failed to load whisper model");
-            return None;
+    let mut attempts = 0;
+    let max_attempts = 30;
+    let retry_delay = Duration::from_millis(100);
+
+    loop {
+        attempts += 1;
+        let start = Instant::now();
+        match client
+            .post(&url)
+            .header("content-type", "audio/wav")
+            .body(wav_data.clone())
+            .send()
+            .await
+        {
+            Ok(resp) => {
+                let elapsed = start.elapsed().as_secs_f32();
+                if resp.status().is_success() {
+                    let elapsed = if elapsed <= 0.0 { 0.0001 } else { elapsed };
+                    let factor = 1.0 / elapsed;
+                    tracing::info!(
+                        elapsed_secs = elapsed,
+                        realtime_factor = factor,
+                        status = %resp.status(),
+                        "probe: completed successfully"
+                    );
+                    return Some(factor);
+                } else {
+                    tracing::warn!(
+                        status = %resp.status(),
+                        "probe: request succeeded but server returned error status"
+                    );
+                    return None;
+                }
+            }
+            Err(error) => {
+                if attempts >= max_attempts {
+                    tracing::warn!(
+                        url = %url,
+                        attempts = attempts,
+                        %error,
+                        "probe: connection failed after max attempts"
+                    );
+                    return None;
+                }
+                tracing::debug!(
+                    url = %url,
+                    attempt = attempts,
+                    %error,
+                    "probe: connection failed, retrying..."
+                );
+                tokio::time::sleep(retry_delay).await;
+            }
         }
-    };
-
-    let mut session = match loaded.session(vec![]) {
-        Ok(s) => s,
-        Err(error) => {
-            tracing::warn!(%error, "probe: failed to build whisper session");
-            return None;
-        }
-    };
-
-    // 1.0 seconds of silence (16,000 float samples at 16kHz)
-    let audio_len_secs = 1.0f32;
-    let samples = vec![0.0f32; 16000];
-
-    let start = Instant::now();
-    if let Err(error) = session.transcribe(&samples) {
-        tracing::warn!(%error, "probe: whisper transcription failed");
-        return None;
     }
-    let elapsed = start.elapsed().as_secs_f32();
+}
 
-    if elapsed <= 0.0 {
-        return Some(999.0); // Safe fallback to avoid division by zero or NaN
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rodio::Source;
+
+    #[test]
+    fn test_create_silence_wav_valid() {
+        let wav_data = create_silence_wav();
+        assert_eq!(wav_data.len(), 44 + 32000);
+        assert_eq!(&wav_data[0..4], b"RIFF");
+        assert_eq!(&wav_data[8..12], b"WAVE");
+        assert_eq!(&wav_data[12..16], b"fmt ");
+        assert_eq!(&wav_data[36..40], b"data");
+
+        // Verify with rodio that it parses as a valid WAV
+        let cursor = std::io::Cursor::new(wav_data);
+        let decoder = rodio::Decoder::try_from(cursor);
+        assert!(decoder.is_ok());
+        let decoder = decoder.unwrap();
+        assert_eq!(decoder.channels(), std::num::NonZero::new(1).unwrap());
+        assert_eq!(decoder.sample_rate(), std::num::NonZero::new(16000).unwrap());
     }
 
-    let factor = audio_len_secs / elapsed;
-    tracing::info!(
-        elapsed_secs = elapsed,
-        realtime_factor = factor,
-        "probe: completed successfully"
-    );
-
-    Some(factor)
+    #[tokio::test]
+    async fn test_run_probe_closed_port_returns_none() {
+        // Port 0 is an invalid target port, causing an immediate or eventual connection failure.
+        // Verify it retries and returns None without panicking.
+        let result = run_probe(0).await;
+        assert!(result.is_none());
+    }
 }
