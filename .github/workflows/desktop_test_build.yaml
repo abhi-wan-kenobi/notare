@@ -62,10 +62,20 @@ jobs:
       # not build workspace packages the app imports (e.g. @hypr/ui).
       - run: pnpm exec turbo run build --filter=@hypr/ui
 
+      # bindgen (libsqlite3-sys, whisper-rs-sys) needs libclang. On Windows
+      # point at the preinstalled LLVM. On macOS point inside the Xcode
+      # toolchain. NEVER set LIBCLANG_PATH to an empty string — clang-sys then
+      # searches only "" and skips its default paths (broke the first macOS
+      # build: "couldn't find any valid shared libraries ... (invalid: [])").
+      - if: inputs.os == 'windows'
+        shell: pwsh
+        run: Add-Content $env:GITHUB_ENV 'LIBCLANG_PATH=C:\Program Files\LLVM\bin'
+      - if: inputs.os == 'macos'
+        run: echo "LIBCLANG_PATH=$(dirname "$(dirname "$(xcrun --find clang)")")/lib" >> "$GITHUB_ENV"
+
       - run: pnpm -F desktop tauri build --config ./src-tauri/tauri.conf.citest.json ${{ inputs.gpu == 'vulkan' && inputs.os != 'macos' && '--features gpu-vulkan' || '' }}
         env:
           CI: false
-          LIBCLANG_PATH: ${{ inputs.os == 'windows' && 'C:\Program Files\LLVM\bin' || '' }}
 
       - uses: actions/upload-artifact@v4
         with:

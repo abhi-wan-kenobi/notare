@@ -1,7 +1,7 @@
 # Building Notare
 
-Verified on Linux (Ubuntu 24.04 / WSL2) 2026-07-14. macOS/Windows instructions
-will follow as those pipelines are exercised.
+Verified on Linux (Ubuntu 24.04 / WSL2) 2026-07-14. Windows gotchas and macOS
+notes are in their own sections below.
 
 ## Prerequisites
 
@@ -138,3 +138,85 @@ matches GPU expectations before trusting the build.
 
 Verified working recipe (2026-07-16, RTX 4080 machine): VS dev shell +
 Ninja + `CARGO_TARGET_DIR=C:\nb` + `CC=cl CXX=cl` + `--features gpu-vulkan`.
+
+## macOS builds (Apple Silicon, unsigned)
+
+Released macOS builds are **Apple Silicon only** (GitHub's `macos-latest`
+runners are arm64) and **unsigned** — there are no Apple Developer
+certificates yet. Intel Macs must build from source
+(`tauri.conf.macos-intel.json` exists for local Intel quirks).
+
+### Prerequisites
+
+- **Xcode** (full toolchain, not just CLT) — `swiftc` compiles the
+  `binaries/check-permissions-<triple>` external binary via
+  `src-tauri/build.rs` (source: `plugins/permissions/swift/check-permissions.swift`;
+  gitignored, rebuilt automatically, nothing to fetch), and
+  `crates/transcribe-soniqo` builds its Swift package (mlx-swift et al.)
+  through `xcrun`/`swift build`.
+- **bindgen needs `libclang.dylib`** (for `libsqlite3-sys` via the mac-only
+  legacy importer). If the build panics with "Unable to find libclang", set
+  `LIBCLANG_PATH="$(dirname "$(dirname "$(xcrun --find clang)")")/lib"`.
+  Never export `LIBCLANG_PATH=""` — a set-but-empty value makes clang-sys
+  skip its default search paths entirely (this broke the first macOS CI run).
+- **No `--features gpu-vulkan` on macOS.** The default macOS dependency graph
+  does not compile whisper.cpp at all: `tauri-plugin-local-stt` gets its
+  `whisper-cpp` feature only on Linux/Windows targets (see
+  `apps/desktop/src-tauri/Cargo.toml`); macOS uses the upstream Apple-Silicon
+  STT runtime (Soniqo/Argmax, Metal via mlx-swift) instead.
+- Rust (stable) + Node 22 + pnpm via corepack, as on other platforms.
+
+### Build
+
+```sh
+pnpm install
+pnpm exec turbo run build --filter=@hypr/ui
+pnpm -F desktop tauri build \
+  --config ./src-tauri/tauri.conf.stable.json \
+  --config ./src-tauri/tauri.conf.stable-macos.json
+```
+
+Config layering (tauri v2 merges in order, later wins, arrays replaced):
+`tauri.conf.json` → `tauri.macos.conf.json` (auto-merged platform file; adds
+the `check-permissions` externalBin) → `tauri.conf.stable.json` (version,
+identifier, updater endpoint/pubkey) → `tauri.conf.stable-macos.json`
+(only swaps `bundle.targets` to `["app", "dmg"]`).
+
+Outputs land in `apps/desktop/src-tauri/target/release/bundle/`:
+
+- `dmg/Notare_<version>_aarch64.dmg` — what users download.
+- `macos/Notare.app` — the bundle itself.
+- `macos/Notare.app.tar.gz` + `.sig` — the **updater** artifact (with
+  `createUpdaterArtifacts` on and `TAURI_SIGNING_PRIVATE_KEY[_PASSWORD]` set).
+  `latest.json` on the release must reference the `.app.tar.gz`, never the
+  `.dmg`, under the `darwin-aarch64` platform key.
+
+### Unsigned status, Gatekeeper, and microphone permission
+
+- Because the app is unsigned, Gatekeeper quarantines downloads: first launch
+  needs **right-click → Open**, or `xattr -cr /Applications/Notare.app`.
+- Microphone (and calendar/contacts) prompts still work unsigned: macOS TCC
+  keys off the `Info.plist` usage strings (`NSMicrophoneUsageDescription`,
+  `NSAudioCaptureUsageDescription`, …), which Tauri merges from
+  `src-tauri/Info.plist` into the bundled app regardless of signing.
+- `src-tauri/Entitlements.plist` (audio-input, calendars, addressbook, JIT)
+  is only *applied* when the bundle is codesigned with an identity; for the
+  unsigned build it is effectively inert. That is fine — entitlements of this
+  kind only gate sandboxed / hardened-runtime apps.
+
+### Future signing checklist (when certificates exist)
+
+1. Join the Apple Developer Program; create a **Developer ID Application**
+   certificate; export as `.p12`.
+2. CI env: `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`,
+   `APPLE_SIGNING_IDENTITY` (or set `bundle.macOS.signingIdentity` in the
+   stable config).
+3. Enable hardened runtime + notarization: `APPLE_ID`,
+   `APPLE_PASSWORD` (app-specific), `APPLE_TEAM_ID` — or an App Store Connect
+   API key (`APPLE_API_ISSUER`/`APPLE_API_KEY`). Tauri notarizes + staples
+   automatically when these are present.
+4. Re-check `Entitlements.plist` — once signing with hardened runtime, the
+   `com.apple.security.device.audio-input` and JIT entitlements become live
+   and required for mic capture and the WebView.
+5. Drop the Gatekeeper caveats from README + release body.
+
