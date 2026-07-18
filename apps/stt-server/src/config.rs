@@ -48,6 +48,20 @@ pub struct Config {
     /// offload-verification probe.
     #[arg(long, env = "NOTARE_STT_REQUIRE_GPU", default_value_t = false)]
     pub require_gpu: bool,
+
+    /// Optional shared-secret gate (`src/auth.rs`; SEC hardening, see
+    /// `docs/stt-server-design.md` §10 / `SECURITY-REVIEW.md`) enforced on
+    /// `/v1/listen` and the `/api/models/*` mutation routes. Unset (`None`)
+    /// by default — this server is LAN-only and unauthenticated **by
+    /// design** (see the README's security warning); set this only if you
+    /// want an extra shared-secret gate on top of that (e.g. a shared
+    /// flat/office LAN). No desktop-side code change is needed to use it:
+    /// the existing "Custom" STT provider's optional `api_key` field
+    /// already sends `Authorization: Bearer <api_key>` on every request
+    /// (batch, live, and the Test-connection probe) — set the same value in
+    /// both places.
+    #[arg(long, env = "NOTARE_STT_TOKEN")]
+    pub token: Option<String>,
 }
 
 impl Default for Config {
@@ -58,6 +72,7 @@ impl Default for Config {
             model_dir: PathBuf::from("./data/models"),
             model: DEFAULT_MODEL,
             require_gpu: false,
+            token: None,
         }
     }
 }
@@ -85,6 +100,18 @@ mod tests {
         assert_eq!(config.model, WhisperModel::QuantizedSmall);
         assert!(!config.require_gpu);
         assert_eq!(config.model_dir, PathBuf::from("./data/models"));
+        // Off by default: this server is LAN-only/unauthenticated by
+        // design, not "auth required until configured".
+        assert!(config.token.is_none());
+    }
+
+    #[test]
+    fn token_flag_and_env_both_set_it() {
+        let config = Config::parse_from(["stt-server", "--token", "s3cr3t"]);
+        assert_eq!(config.token.as_deref(), Some("s3cr3t"));
+
+        let config = Config::try_parse_from(["stt-server"]).unwrap();
+        assert!(config.token.is_none());
     }
 
     #[test]
@@ -140,6 +167,7 @@ mod tests {
             ("model_dir", "NOTARE_STT_MODEL_DIR"),
             ("model", "NOTARE_STT_MODEL"),
             ("require_gpu", "NOTARE_STT_REQUIRE_GPU"),
+            ("token", "NOTARE_STT_TOKEN"),
         ];
 
         for (id, env_var) in expected {

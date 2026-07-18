@@ -297,6 +297,14 @@ pub async fn activate_model(State(state): State<Arc<AppState>>, Path(id): Path<S
     match state.activate(model.clone()).await {
         Ok(integrity) => {
             let state_clone = state.clone();
+            // SEC-04 (known, accepted race): the probe HTTP-self-requests
+            // `/v1/listen`, which always dispatches to whatever model is
+            // *currently* active — if another `activate` lands before this
+            // probe's request completes, it measures the newer model's
+            // speed but caches it under this one's id. Deferred (post-
+            // release, see SECURITY-REVIEW.md SEC-04): it only skews the
+            // displayed `probeRealtimeFactor`/`gpuOffload` in `/api/status`,
+            // never transcription correctness.
             tokio::spawn(async move {
                 state_clone.run_probe_for_model(model).await;
             });

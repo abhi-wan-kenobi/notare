@@ -1,5 +1,6 @@
 pub mod admin;
 pub mod assets;
+pub mod auth;
 pub mod config;
 pub mod probe;
 pub mod router;

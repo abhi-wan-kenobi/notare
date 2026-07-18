@@ -6,13 +6,15 @@ use std::task::{Context, Poll};
 
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
+use axum::middleware::from_fn;
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 use tower::Service;
-use tower_http::cors::{self, CorsLayer};
+use tower_http::cors::{self, AllowOrigin, CorsLayer};
 use tower_http::trace::TraceLayer;
 
 use crate::admin;
+use crate::auth::require_bearer_token;
 use crate::state::AppState;
 
 /// Build the full server router: `/health` (static) + `/v1/listen` (dynamic,
@@ -24,14 +26,23 @@ use crate::state::AppState;
 /// `POST /api/models/{id}/activate` (Phase 2) can take effect without a
 /// restart.
 pub fn build_router(state: Arc<AppState>) -> axum::Router {
+    let listen_auth_state = state.clone();
     let core = axum::Router::new()
-        .route(
-            hypr_transcribe_whisper_local::HEALTH_PATH,
-            get(|| async { "ok" }),
-        )
         .route_service(
             hypr_transcribe_whisper_local::LISTEN_PATH,
             DynamicListen(state.clone()),
+        )
+        // Optional `NOTARE_STT_TOKEN` gate (no-op unless configured, see
+        // `crate::auth`). Registered *before* `/health` is added below, so
+        // `.layer()` here only ever wraps `/v1/listen` — liveness checks
+        // must stay reachable even when a token is configured.
+        .layer(from_fn(move |req: Request<Body>, next| {
+            let state = listen_auth_state.clone();
+            async move { require_bearer_token(state, req, next).await }
+        }))
+        .route(
+            hypr_transcribe_whisper_local::HEALTH_PATH,
+            get(|| async { "ok" }),
         );
 
     core.merge(admin::router(state))
@@ -81,12 +92,41 @@ impl Service<Request<Body>> for DynamicListen {
     }
 }
 
-/// Permissive CORS, matching `crates/local-stt-server`'s
-/// `cors_layer()` (LAN-only posture, no auth in Phase 1/2 — see
-/// `docs/stt-server-design.md` §10).
+/// CORS allowlist (SEC-01 fix — this used to be `cors::Any`, letting *any*
+/// website a user happened to have open in a tab POST/DELETE to this
+/// LAN-bound server, e.g. `POST /api/models/{id}/activate` or
+/// `DELETE /api/models/{id}`). Shares
+/// `hypr_transcribe_core::is_allowed_origin` with the `/v1/listen`
+/// WS-Origin check (SEC-02, `crates/transcribe-core/src/service/
+/// streaming.rs`) so the two allowlists can never drift apart — see that
+/// function's doc comment for exactly which origins are on it and why.
+///
+/// In practice neither of this server's real cross-origin callers actually
+/// needs a CORS grant at all: the desktop's "Test connection" button
+/// (`apps/desktop/src/settings/ai/stt/connection-test.ts`) calls
+/// `@tauri-apps/plugin-http`'s `fetch`, which runs the HTTP request from the
+/// Rust backend and is never subject to browser CORS; the real
+/// transcription client (`crates/owhisper-client`) is plain `reqwest`/a
+/// native WS client, also not CORS-bound; the embedded admin page
+/// (`assets/index.html`) only ever calls same-origin, which browsers never
+/// send a CORS preflight for. This allowlist is therefore defense-in-depth
+/// against a *future* plain `window.fetch`/`new WebSocket(...)` from the
+/// webview — it must never widen back to `cors::Any`.
+///
+/// Residual gap worth knowing: CORS does not stop a browser from *sending*
+/// a same-site-cookie-free "simple" cross-origin `POST` with no custom
+/// headers (only from letting the calling page *read* the response) — so a
+/// malicious page could still blind-POST
+/// `/api/models/{id}/{download,activate,cancel}` even with this allowlist
+/// in place (though it can't read the result, and `DELETE` *is* blocked,
+/// since non-simple methods always get a preflight the disallowed origin
+/// will fail). `NOTARE_STT_TOKEN` (`crate::auth`) is the real mitigation for
+/// that residual gap, not CORS — see the README's security section.
 fn cors_layer() -> CorsLayer {
     CorsLayer::new()
-        .allow_origin(cors::Any)
+        .allow_origin(AllowOrigin::predicate(|origin, _request_parts| {
+            hypr_transcribe_core::is_allowed_origin(origin)
+        }))
         .allow_methods(cors::Any)
         .allow_headers(cors::Any)
 }
@@ -205,5 +245,172 @@ mod tests {
             .unwrap();
         let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
         assert_eq!(json["status"], "downloading");
+    }
+
+    /// SEC-01: a disallowed origin must not get an
+    /// `Access-Control-Allow-Origin` grant — this is what stops a malicious
+    /// page's script from reading the response (the request itself may
+    /// still reach the server for "simple" methods; see `cors_layer`'s doc
+    /// comment on that residual gap).
+    #[tokio::test]
+    async fn cors_rejects_a_disallowed_origin() {
+        let (_dir, state) = state_with_no_model();
+        let app = build_router(state);
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/api/status")
+                    .header(axum::http::header::ORIGIN, "https://malicious-site.com")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        assert!(
+            response
+                .headers()
+                .get(axum::http::header::ACCESS_CONTROL_ALLOW_ORIGIN)
+                .is_none(),
+            "a disallowed origin must not receive an ACAO grant"
+        );
+    }
+
+    /// SEC-01: an allowlisted Tauri origin gets the ACAO grant mirrored
+    /// back, matching how the desktop's webview would need it if it ever
+    /// called this server via plain `window.fetch` instead of
+    /// `@tauri-apps/plugin-http` (see `cors_layer`'s doc comment).
+    #[tokio::test]
+    async fn cors_allows_a_tauri_origin() {
+        let (_dir, state) = state_with_no_model();
+        let app = build_router(state);
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/api/status")
+                    .header(axum::http::header::ORIGIN, "tauri://localhost")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(
+            response
+                .headers()
+                .get(axum::http::header::ACCESS_CONTROL_ALLOW_ORIGIN)
+                .and_then(|v| v.to_str().ok()),
+            Some("tauri://localhost")
+        );
+    }
+
+    /// SEC-01: a dev-mode localhost origin at a non-default port (Vite,
+    /// other dev tooling) also gets the grant.
+    #[tokio::test]
+    async fn cors_allows_a_localhost_dev_origin() {
+        let (_dir, state) = state_with_no_model();
+        let app = build_router(state);
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/api/status")
+                    .header(axum::http::header::ORIGIN, "http://localhost:5173")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(
+            response
+                .headers()
+                .get(axum::http::header::ACCESS_CONTROL_ALLOW_ORIGIN)
+                .and_then(|v| v.to_str().ok()),
+            Some("http://localhost:5173")
+        );
+    }
+
+    fn state_with_token(token: &str) -> (tempfile::TempDir, Arc<AppState>) {
+        let dir = tempfile::tempdir().unwrap();
+        let config = Config {
+            model_dir: dir.path().to_path_buf(),
+            token: Some(token.to_string()),
+            ..Default::default()
+        };
+        let state = Arc::new(AppState::new(config));
+        (dir, state)
+    }
+
+    /// `NOTARE_STT_TOKEN`, once configured, gates `/v1/listen`...
+    #[tokio::test]
+    async fn listen_requires_the_token_once_configured() {
+        let (_dir, state) = state_with_token("s3cr3t");
+        let app = build_router(state);
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/v1/listen?channels=1&sample_rate=16000")
+                    .header("content-type", "audio/wav")
+                    .body(Body::from(vec![0u8; 16]))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+    }
+
+    /// ...but `/health` stays reachable with no token at all, so liveness
+    /// checks never break just because an operator turned the gate on.
+    #[tokio::test]
+    async fn health_stays_open_even_with_a_token_configured() {
+        let (_dir, state) = state_with_token("s3cr3t");
+        let app = build_router(state);
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/health")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+    }
+
+    /// The correct bearer token gets through.
+    #[tokio::test]
+    async fn listen_accepts_the_correct_bearer_token() {
+        let (_dir, state) = state_with_token("s3cr3t");
+        let app = build_router(state);
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/v1/listen?channels=1&sample_rate=16000")
+                    .header("content-type", "audio/wav")
+                    .header(axum::http::header::AUTHORIZATION, "Bearer s3cr3t")
+                    .body(Body::from(vec![0u8; 16]))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        // Not 401 — it gets past the auth gate and fails downstream for the
+        // unrelated reason this fixture has no model installed (same
+        // `model_load_failed` contract as
+        // `v1_listen_with_no_model_returns_a_clear_json_error`).
+        assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
     }
 }
