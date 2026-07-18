@@ -13,10 +13,16 @@ import { isSupportedLocalSttModel } from "~/stt/capabilities";
 export type FinalBatchTarget = {
   model: string;
   /**
-   * Only set for local models: the URL of the local STT server started for
-   * the final model. External providers reuse the live connection's base URL.
+   * Base URL for the batch request. For local models this is the URL of the
+   * local STT server started for the final model; for external/custom
+   * providers it is the provider's configured base URL.
    */
   baseUrl?: string;
+  /**
+   * API key for the batch request. Only set for external/custom providers;
+   * local models use the loopback server (no key).
+   */
+  apiKey?: string;
   /**
    * Restores the live transcription server. Only meaningful for local
    * models (a single local STT server runs at a time, so preparing the final
@@ -121,7 +127,10 @@ export function pickFinalSttModel({
 /**
  * Prepares the batch-transcription target for the final model.
  *
- * - External providers: same base URL / API key, different model id.
+ * - External/custom providers: the caller supplies the provider's configured
+ *   base URL / API key (independent of the live connection, so batch can run
+ *   on a remote/custom server while live stays local); a different model id
+ *   is used.
  * - Local ("hyprnote") models: verifies the model is downloaded and starts
  *   the local STT server for it (this stops the live model's server; the
  *   returned `restore` brings it back).
@@ -133,13 +142,22 @@ export async function resolveFinalBatchTarget({
   provider,
   liveModel,
   finalModel,
+  finalBaseUrl,
+  finalApiKey,
 }: {
   provider: string;
   liveModel: string | null | undefined;
   finalModel: string;
+  finalBaseUrl?: string;
+  finalApiKey?: string;
 }): Promise<FinalBatchTarget | null> {
   if (provider !== "hyprnote") {
-    return { model: finalModel, restore: noopRestore };
+    return {
+      model: finalModel,
+      baseUrl: finalBaseUrl,
+      apiKey: finalApiKey,
+      restore: noopRestore,
+    };
   }
 
   if (finalModel === "cloud" || !(await isKnownLocalSttModel(finalModel))) {
@@ -157,9 +175,7 @@ export async function resolveFinalBatchTarget({
       return null;
     }
 
-    const server = await localSttCommands.startServer(
-      finalModel as LocalModel,
-    );
+    const server = await localSttCommands.startServer(finalModel as LocalModel);
     if (server.status !== "ok") {
       console.warn(
         `[stt] failed to start server for final model "${finalModel}"; using the live model instead`,

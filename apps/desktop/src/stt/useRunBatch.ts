@@ -1,3 +1,4 @@
+import { platform } from "@tauri-apps/plugin-os";
 import { useCallback } from "react";
 
 import type { TranscriptionParams } from "@hypr/plugin-transcription";
@@ -16,12 +17,16 @@ import {
   normalizeAudioRetention,
 } from "~/services/audio-retention";
 import { useSession, useSessionParticipants } from "~/session/queries";
+import { useAiProvider } from "~/settings/providers";
 import { useConfigValue } from "~/shared/config";
 import { id } from "~/shared/utils";
 import type { BatchPersistCallback } from "~/store/zustand/listener/transcript";
 import {
   getTranscriptionLanguages,
+  isHyprnoteLocalSttModel,
+  isParakeetLocalSttModel,
   isSupportedLanguagesBatch,
+  isWhisperLocalSttModel,
 } from "~/stt/capabilities";
 import { appendTranscriptWordsAndHints, createTranscript } from "~/stt/queries";
 import type { SpeakerHintWithId, WordWithId } from "~/stt/types";
@@ -88,6 +93,15 @@ export function getBatchProvider(
     if (model.startsWith("am-")) return "am";
     return "hyprnote";
   }
+
+  // A "custom" provider points at a self-hosted companion server that speaks
+  // the same /v1/listen protocol as the local hyprnote server, so it routes
+  // through the hyprnote batch adapter (carrying the custom base URL/API key
+  // on the BatchTarget).
+  if (provider === "custom") {
+    return "hyprnote";
+  }
+
   if (DIRECT_BATCH_PROVIDERS.has(provider as TranscriptionParams["provider"])) {
     return provider as TranscriptionParams["provider"];
   }
@@ -101,15 +115,60 @@ export function canRunBatchTranscription(
   return true;
 }
 
+export const NO_BATCH_PROVIDER_ERROR =
+  "No batch transcription provider is available. Configure a speech-to-text provider in Settings.";
+
+/**
+ * Builds a local batch fallback from the live connection when it is a
+ * downloaded local whisper/parakeet model — those servers handle batch on
+ * every platform. Returns null when the live model can't serve batch (e.g.
+ * a macOS-only streaming model, or a non-local connection).
+ */
+export function getLocalBatchFallbackFromConn(
+  conn: { provider: string; model: string; baseUrl: string } | null,
+): BatchTarget | null {
+  if (!conn || !isHyprnoteLocalSttModel(conn.provider, conn.model)) {
+    return null;
+  }
+
+  if (
+    isWhisperLocalSttModel(conn.model) ||
+    isParakeetLocalSttModel(conn.model)
+  ) {
+    return {
+      provider: "hyprnote",
+      model: conn.model,
+      baseUrl: conn.baseUrl,
+      apiKey: "",
+      label: "Local transcription",
+    };
+  }
+
+  return null;
+}
+
+/**
+ * Picks the safety-net batch target when the selected target can't be used.
+ *
+ * - Paid users with a session: hosted cloud transcription.
+ * - macOS: the Soniqo batch target (Apple-Silicon-only backend).
+ * - Windows/Linux: a downloaded local whisper/parakeet batch model from the
+ *   live connection, when one is available. Returns null when there is none
+ *   — callers must surface a clear error rather than silently no-op'ing.
+ */
 export function getBatchFallbackTarget({
   isPaid,
   accessToken,
   apiBaseUrl,
+  platform = "macos",
+  localBatchFallback,
 }: {
   isPaid: boolean;
   accessToken?: string | null;
   apiBaseUrl: string;
-}): BatchTarget {
+  platform?: string;
+  localBatchFallback?: BatchTarget | null;
+}): BatchTarget | null {
   if (isPaid && accessToken) {
     return {
       provider: "hyprnote",
@@ -120,7 +179,11 @@ export function getBatchFallbackTarget({
     };
   }
 
-  return LOCAL_SONIQO_BATCH_TARGET;
+  if (platform === "macos") {
+    return LOCAL_SONIQO_BATCH_TARGET;
+  }
+
+  return localBatchFallback ?? null;
 }
 
 async function canUseBatchTarget(
@@ -144,9 +207,9 @@ function selectedProviderLabel(
 
 function sameBatchTarget(
   a: Pick<BatchTarget, "provider" | "model"> | null,
-  b: Pick<BatchTarget, "provider" | "model">,
+  b: Pick<BatchTarget, "provider" | "model"> | null,
 ) {
-  return a?.provider === b.provider && a.model === b.model;
+  return a?.provider === b?.provider && a?.model === b?.model;
 }
 
 export function isStoppedTranscriptionError(error: unknown) {
@@ -183,6 +246,14 @@ export const useRunBatch = (sessionId: string) => {
   const spokenLanguages = useConfigValue("spoken_languages");
   const dictionaryTerms = useConfigValue("personalization_dictionary_terms");
   const finalSttModel = useConfigValue("final_stt_model");
+  const finalSttProvider = useConfigValue("final_stt_provider");
+  // Batch may run on a different provider than the local-only live
+  // connection (e.g. a custom companion server or cloud). Resolve the final
+  // provider's configured base URL/API key so the BatchTarget carries it.
+  const finalProviderConfig = useAiProvider(
+    "stt",
+    finalSttProvider || undefined,
+  );
   const audioRetention = normalizeAudioRetention(
     useConfigValue("audio_retention"),
   );
@@ -198,19 +269,31 @@ export const useRunBatch = (sessionId: string) => {
       // Post-meeting passes prefer the configured final model; an explicit
       // options.model always wins, and everything falls back to the live
       // model (today's behavior) when no usable final model is configured.
+      // Batch may target a different provider than the live connection when
+      // `final_stt_provider` is set (e.g. custom server / cloud); otherwise it
+      // reuses the live provider.
+      const batchProviderSetting =
+        typeof finalSttProvider === "string" ? finalSttProvider.trim() : "";
+      const effectiveBatchProvider = batchProviderSetting || conn?.provider;
       const finalModelPick =
-        options?.model === undefined && conn
+        options?.model === undefined
           ? pickFinalSttModel({
               finalSetting: finalSttModel,
-              liveModel: conn.model,
+              liveModel: conn?.model,
             })
           : null;
       const finalTarget =
-        finalModelPick && conn
+        finalModelPick && effectiveBatchProvider
           ? await resolveFinalBatchTarget({
-              provider: conn.provider,
-              liveModel: conn.model,
+              provider: effectiveBatchProvider,
+              liveModel: conn?.model,
               finalModel: finalModelPick,
+              finalBaseUrl: batchProviderSetting
+                ? finalProviderConfig?.base_url?.trim() || undefined
+                : undefined,
+              finalApiKey: batchProviderSetting
+                ? finalProviderConfig?.api_key?.trim() || undefined
+                : undefined,
             })
           : null;
 
@@ -218,7 +301,7 @@ export const useRunBatch = (sessionId: string) => {
         options?.languages ??
         getTranscriptionLanguages(aiLanguage, spokenLanguages);
       const selectedModel = options?.model ?? finalTarget?.model ?? conn?.model;
-      const selectionProvider = options?.provider ?? conn?.provider;
+      const selectionProvider = options?.provider ?? effectiveBatchProvider;
       const selectedProvider =
         selectionProvider && selectedModel
           ? getBatchProvider(selectionProvider, selectedModel)
@@ -231,7 +314,8 @@ export const useRunBatch = (sessionId: string) => {
               provider: selectedProvider,
               model: selectedModel,
               baseUrl: selectedBaseUrl,
-              apiKey: options?.apiKey ?? conn?.apiKey ?? "",
+              apiKey:
+                options?.apiKey ?? finalTarget?.apiKey ?? conn?.apiKey ?? "",
               label: selectedModel,
             }
           : null;
@@ -246,6 +330,8 @@ export const useRunBatch = (sessionId: string) => {
         isPaid: billing.isPaid,
         accessToken: auth?.session?.access_token,
         apiBaseUrl: env.VITE_API_URL,
+        platform: platform(),
+        localBatchFallback: getLocalBatchFallbackFromConn(conn),
       });
       const shouldUseSelectedTarget =
         selectedTargetSupported ||
@@ -253,6 +339,10 @@ export const useRunBatch = (sessionId: string) => {
       const target = shouldUseSelectedTarget
         ? (selectedTarget ?? fallbackTarget)
         : fallbackTarget;
+
+      if (!target) {
+        throw new Error(NO_BATCH_PROVIDER_ERROR);
+      }
 
       if (!shouldUseSelectedTarget) {
         sonnerToast.message("Using a batch transcription provider", {
@@ -414,6 +504,8 @@ export const useRunBatch = (sessionId: string) => {
       billing.isPaid,
       dictionaryTerms,
       finalSttModel,
+      finalSttProvider,
+      finalProviderConfig,
       session,
       participants,
       spokenLanguages,

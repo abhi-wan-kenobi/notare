@@ -255,5 +255,13 @@ export async function isLiveTranscriptionSupported(
     return false;
   }
 
+  // Live transcription runs on the on-device loopback /v1/listen server, so
+  // only local ("hyprnote") models can do it. Remote/custom/cloud providers
+  // are batch-only — never report them as live-capable, even if they speak a
+  // Deepgram-compatible protocol (those go through the batch adapter).
+  if (!isHyprnoteLocalSttModel(provider, model)) {
+    return false;
+  }
+
   return isSupportedLanguagesLive(provider, model, []);
 }

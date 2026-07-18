@@ -40,7 +40,7 @@ msgid "<0>Language model</0> is needed to make Notare summarize and chat about y
 msgstr ""
 
 #: src/settings/ai/stt/select.tsx
-msgid "<0>Transcription model</0> is needed to make Notare listen to your conversations."
+msgid "<0>Live transcription</0> needs a downloaded on-device model. Remote, custom, and cloud providers can't transcribe live — pick one below, or use them for the batch pass instead."
 msgstr ""
 
 #: src/settings/general/storage/index.tsx
@@ -289,6 +289,14 @@ msgstr ""
 
 #: src/settings/dictation/index.tsx
 msgid "Basic"
+msgstr ""
+
+#: src/settings/ai/stt/select.tsx
+msgid "Batch & final-pass model"
+msgstr ""
+
+#: src/settings/ai/stt/select.tsx
+msgid "Batch transcription uses the live model. Pick a provider above to run the final pass on a different model."
 msgstr ""
 
 #: src/settings/ai/stt/shared.tsx
@@ -641,6 +649,10 @@ msgstr ""
 msgid "Dictation"
 msgstr ""
 
+#: src/dictation/host.tsx
+msgid "Dictation needs a downloaded local model — choose one in Settings."
+msgstr ""
+
 #: src/settings/dictation/index.tsx
 msgid "Dictation needs a local transcription model. Select and download one in the Transcription settings first."
 msgstr ""
@@ -847,10 +859,6 @@ msgstr ""
 #. placeholder {0}: (config.filterLabel ?? "repository").toLowerCase()
 #: src/settings/todo/provider-content.tsx
 msgid "Filter synced items by {0}."
-msgstr ""
-
-#: src/settings/ai/stt/select.tsx
-msgid "Final pass & re-transcription"
 msgstr ""
 
 #: src/shared/open-note-dialog.tsx
@@ -1126,7 +1134,7 @@ msgid "Live transcript copied"
 msgstr ""
 
 #: src/settings/ai/stt/select.tsx
-msgid "Live transcription"
+msgid "Live transcription model"
 msgstr ""
 
 #: src/onboarding/transcription.tsx
@@ -1847,7 +1855,7 @@ msgid "Retry update"
 msgstr ""
 
 #: src/settings/ai/stt/select.tsx
-msgid "Reuses the live model for the accurate pass."
+msgid "Reuses the live model for batch transcription."
 msgstr ""
 
 #: src/dictation/orb.tsx
@@ -2359,7 +2367,7 @@ msgid "Transcribes English only."
 msgstr ""
 
 #: src/settings/ai/stt/select.tsx
-msgid "Transcribes while the meeting is happening. Pick a provider, then the model that listens live."
+msgid "Transcribes while the meeting is happening and powers the dictation orb. Only downloaded on-device models can listen live."
 msgstr ""
 
 #: src/session/components/note-input/header.tsx
@@ -2489,7 +2497,7 @@ msgid "Use"
 msgstr ""
 
 #: src/settings/ai/stt/select.tsx
-msgid "Used for the accurate pass after a recording ends and when re-transcribing a note. Pick a larger model than the live one for better quality, or keep it the same as the live model."
+msgid "Used for the accurate pass after a recording ends, imported files, and re-transcription. Pick a larger on-device model, a custom self-hosted server, or a cloud provider — independent of the live model."
 msgstr ""
 
 #: src/settings/general/storage/legacy-cleanup.tsx
