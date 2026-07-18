@@ -28,6 +28,7 @@ import {
   useEnsureDefaultSummaryFromState,
 } from "./hooks/useEnhancedNotes";
 import { shouldShowSessionTopAudioPlayer } from "./top-audio-player";
+import { useInvalidateAudioOnRecordingFinish } from "./use-invalidate-audio-on-finish";
 
 import * as AudioPlayer from "~/audio-player";
 import { useSession } from "~/session/queries";
@@ -45,6 +46,7 @@ export function TabContentNote({
   standaloneWindow?: boolean;
   tab: Extract<Tab, { type: "sessions" }>;
 }) {
+  useInvalidateAudioOnRecordingFinish(tab.id);
   const sessionMode = useListener((state) => state.getSessionMode(tab.id));
   const audioExists = AudioPlayer.useAudioExists(tab.id);
 
