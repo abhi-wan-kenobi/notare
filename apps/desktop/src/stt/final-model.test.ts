@@ -115,6 +115,27 @@ describe("resolveFinalBatchTarget", () => {
     expect(stopServerMock).not.toHaveBeenCalled();
   });
 
+  test("carries the configured base URL/API key for a custom batch provider", async () => {
+    // Batch may target a custom server independent of the local live model;
+    // the caller supplies the provider's configured base URL/API key.
+    const target = await resolveFinalBatchTarget({
+      provider: "custom",
+      liveModel: "QuantizedTiny",
+      finalModel: "whisper-large-v3",
+      finalBaseUrl: "https://custom.test",
+      finalApiKey: "custom-key",
+    });
+
+    expect(target).not.toBeNull();
+    expect(target!.model).toBe("whisper-large-v3");
+    expect(target!.baseUrl).toBe("https://custom.test");
+    expect(target!.apiKey).toBe("custom-key");
+
+    await target!.restore();
+    expect(startServerMock).not.toHaveBeenCalled();
+    expect(stopServerMock).not.toHaveBeenCalled();
+  });
+
   test("rejects non-local model ids for the local provider", async () => {
     const target = await resolveFinalBatchTarget({
       provider: "hyprnote",

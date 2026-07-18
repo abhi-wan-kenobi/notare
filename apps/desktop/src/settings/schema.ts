@@ -200,6 +200,15 @@ export const SETTING_DEFINITIONS = {
     path: ["ai", "final_stt_model"],
     default: "" as string,
   },
+  // Provider for the batch/final-pass model. Empty/undefined = use the live
+  // provider (current_stt_provider), i.e. the pre-split behavior. Set to a
+  // batch-capable provider id ("custom", "deepgram", "hyprnote", …) to route
+  // batch transcription independently of the local-only live selection.
+  final_stt_provider: {
+    type: "string",
+    path: ["ai", "final_stt_provider"],
+    default: "" as string,
+  },
   timezone: {
     type: "string",
     path: ["general", "timezone"],

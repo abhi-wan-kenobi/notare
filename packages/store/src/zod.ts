@@ -312,6 +312,10 @@ export const generalSchema = z.object({
   current_llm_model: z.string().optional(),
   current_stt_provider: z.string().optional(),
   current_stt_model: z.string().optional(),
+  // Provider for the batch/final-pass model. Empty/undefined = use the live
+  // provider. Decouples batch (which may be a remote/custom server) from the
+  // local-only live selection.
+  final_stt_provider: z.string().optional(),
   on_device_transcription_mode: z.string().default("realtime"),
   timezone: z.string().optional(),
   week_start: z.string().optional(),

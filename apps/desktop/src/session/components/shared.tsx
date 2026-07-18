@@ -15,6 +15,7 @@ import type { SessionMode } from "~/store/zustand/listener/general";
 import type { Tab } from "~/store/zustand/tabs/schema";
 import { type EditorView } from "~/store/zustand/tabs/schema";
 import { useListener } from "~/stt/contexts";
+import { useSTTConnection } from "~/stt/useSTTConnection";
 
 export { computeCurrentNoteTab } from "./compute-note-tab";
 
@@ -125,17 +126,26 @@ export function RecordingIcon() {
 export function useListenButtonState(sessionId: string) {
   const sessionMode = useListener((state) => state.getSessionMode(sessionId));
   const lastError = useListener((state) => state.live.lastError);
+  // Live capture runs on the local on-device server, so it needs a downloaded
+  // local live model. When none is ready, surface a disabled state instead of
+  // letting Start silently degrade to a no-op (the regression this split
+  // fixes). Batch/final passes are unaffected — they run via useRunBatch.
+  const { isLocalModel, local } = useSTTConnection();
+  const liveReady = isLocalModel && local.data?.status === "ready";
   const active = sessionMode === "active" || sessionMode === "finalizing";
   const batching = sessionMode === "running_batch";
 
   const shouldRender = !active;
-  const isDisabled = batching;
+  const isDisabled = batching || !liveReady;
 
   let warningMessage = "";
   if (lastError) {
     warningMessage = `Session failed: ${lastError}`;
   } else if (batching) {
     warningMessage = "Batch transcription in progress.";
+  } else if (!liveReady) {
+    warningMessage =
+      "Live transcription needs a downloaded local model — choose one in Settings.";
   }
 
   return {
