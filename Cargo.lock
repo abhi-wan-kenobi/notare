@@ -17256,7 +17256,7 @@ dependencies = [
  "clap",
  "local-model",
  "model-downloader",
- "reqwest 0.13.2",
+ "reqwest 0.13.4",
  "rodio",
  "serde",
  "serde_json",
