@@ -37,6 +37,10 @@ NOTARE_STT_REQUIRE_GPU=false \
 cargo run -p stt-server
 ```
 
+Add `NOTARE_STT_TOKEN=<some-secret>` to any of the above to turn on the
+optional bearer-token gate (see "Security" below) — omit it (the default)
+to leave the server unauthenticated on the LAN.
+
 CLI flags take precedence over env vars, which take precedence over the
 defaults below.
 
@@ -49,9 +53,54 @@ defaults below.
 | `--model-dir` | `NOTARE_STT_MODEL_DIR` | `./data/models` | Base dir; a model installs at `<model-dir>/stt/<file>`, matching the desktop's `models_base` layout. |
 | `--model` | `NOTARE_STT_MODEL` | `QuantizedSmall` | One of the `WhisperModel` catalog ids: `QuantizedTiny`, `QuantizedTinyEn`, `QuantizedBase`, `QuantizedBaseEn`, `QuantizedSmall`, `QuantizedSmallEn`, `QuantizedLargeTurbo`. |
 | `--require-gpu` | `NOTARE_STT_REQUIRE_GPU` | `false` | Flag; reserved for Phase 4's GPU offload-verification refusal policy. No-op today — this image only ever serves on CPU. |
+| `--token` | `NOTARE_STT_TOKEN` | unset | Optional shared-secret gate on `/v1/listen` + the four `/api/models/*` mutation routes (`download`/`cancel`/`activate`/`DELETE`). Off by default — see "Security" below. |
 
-There is **no auth token and no TLS in Phase 1** (adopted decision — see the
-design doc §12 Q2). Treat the server as LAN-only; do not port-forward it.
+## Security — read this before exposing the port to anything but your own LAN
+
+> ⚠ **This server is plaintext HTTP with no authentication by default, and
+> binds `0.0.0.0` (every network interface) out of the box.** That is a
+> deliberate v1 tradeoff, not an oversight — see the design doc §10/§12 Q2 —
+> but it means **you** are the one keeping it isolated, not the server:
+>
+> - **Never port-forward this to the internet.** Keep it on a trusted home/
+>   office LAN or a tailnet (Tailscale etc.) only.
+> - If you need it reachable from outside your LAN, put it behind Tailscale
+>   or another VPN/mesh network — do not open the port on your router.
+> - `--host 127.0.0.1` restricts it to loopback if you never need another
+>   device on the LAN to reach it.
+
+An independent security review (`SECURITY-REVIEW.md`) found and this release
+fixed two pre-release issues that undermined even that LAN-only isolation:
+
+- **CORS used to be wide open (`cors::Any`)** and the `/v1/listen` WebSocket
+  upgrade didn't check the `Origin` header at all — meaning *any website a
+  user had open in a browser tab* could activate/delete models or open a
+  live-transcription session against this server, from JavaScript, with no
+  interaction. Both are now gated by one shared allowlist (Tauri's desktop
+  webview origins + localhost dev origins; see
+  `apps/stt-server/src/router.rs::cors_layer` and
+  `crates/transcribe-core/src/origin.rs`) — not arbitrary origins.
+- **`/api/status` used to return the model's absolute filesystem path**
+  (leaking the host's home-dir path, OS username, and OS type to anything
+  that could reach it, which the CORS bug above made "any webpage"). Fixed
+  — the response only carries `id`/`file` now.
+
+**Optional extra hardening: `NOTARE_STT_TOKEN`.** Set this env var (or
+`--token`) to require `Authorization: Bearer <token>` on `/v1/listen` and
+the mutation routes. It's off by default and does not change the LAN-only
+posture above — think of it as a second gate for a shared-LAN scenario (a
+flat, an office), not a substitute for network isolation. No desktop-side
+change is needed: the "Custom" STT provider's optional `api_key` field
+already sends `Authorization: Bearer <api_key>` on every request — set the
+same value in both places.
+
+**Known, deferred (not fixed in this pass — see `SECURITY-REVIEW.md`):** a
+same-LAN client can still force-disconnect the one active `/v1/listen`
+session by opening a new one (SEC-03, DoS via the intentional single-session
+design — origin/token gates above cut off the *browser* vector for this,
+not a same-LAN native client); nothing caps how many of the 7 catalog
+models can download concurrently (SEC-06, low severity, small catalog).
+Both are tracked for a later pass, not release blockers.
 
 ## Installing a model
 

@@ -506,23 +506,98 @@ screens (Status, Models, Logs) driven entirely by the `/api/*` JSON. So:
 
 ## 10. Security
 
-- **LAN-only posture.** Bind `0.0.0.0:<port>` but document that the box must sit
-  behind the home firewall / not be port-forwarded. `SECURITY.md` conventions
-  apply.
-- **Optional bearer token.** `NOTARE_STT_TOKEN` (or `config.json`) enables an
-  axum middleware requiring `Authorization: Bearer <token>` on `/api/*` and
-  (optionally) `/v1/*`. The desktop's `Connection`/`ExternalSTTArgs` already
-  carry an `api_key`, so the client side is ready. Token is shown in the admin UI
-  on first boot.
+> ⚠ **This server is plaintext HTTP with no authentication by default, and
+> binds `0.0.0.0` (every network interface) out of the box.** It is designed
+> to sit on a **trusted LAN or tailnet only**. **Never port-forward it to the
+> internet.** If you need remote access, put it behind Tailscale (or another
+> VPN/mesh network) instead of exposing the port directly — see "LAN-only
+> posture" below. This is a deliberate v1 tradeoff (§12 open question 2:
+> "plaintext + token-off-by-default"), not an oversight, but it means the
+> operator is the one enforcing network isolation, not the server.
+
+- **LAN-only posture.** Binds `0.0.0.0:<port>` by default and **that default
+  is intentionally not being changed** — the coruscant deployment (and any
+  other multi-machine LAN setup) needs `0.0.0.0` to be reachable from other
+  devices at all; a `127.0.0.1`-only default would break every non-loopback
+  use case this server exists for. The tradeoff is entirely on the operator:
+  keep this box on a home/office LAN or tailnet behind a firewall, never
+  forward the port to the internet. `--host 127.0.0.1` is available if you
+  only ever want loopback access.
+- **Optional bearer token — implemented.** `NOTARE_STT_TOKEN` / `--token`
+  (`apps/stt-server/src/auth.rs`) enables an axum middleware requiring
+  `Authorization: Bearer <token>` on `/v1/listen` and the four
+  state-mutating `/api/models/*` routes (`download`/`cancel`/`activate`/
+  `DELETE`). Off by default — this server stays LAN-only-and-unauthenticated
+  by design; the token is an *extra* gate for operators who want one (e.g. a
+  shared flat/office LAN). `GET /health`, `GET /api/status`, `GET
+  /api/models`, and `GET /api/models/{id}/progress` are deliberately left
+  open even with a token configured — they're read-only status pings the
+  desktop's Test-connection probe and the admin page need reachable, and
+  `/api/status` no longer leaks anything sensitive (see SEC-05 below). No
+  desktop-side code change was needed: the "Custom" STT provider's existing
+  optional `api_key` field already sends `Authorization: Bearer <api_key>`
+  on every batch/live call and on the Test-connection probe (commit
+  203bff832) — set the same value as `NOTARE_STT_TOKEN` on the server.
 - **No TLS in v1** (documented) — **but note the client wire-scheme gotcha
   (§5):** `owhisper-client` upgrades non-loopback hosts to `wss`/`https`. Plaintext
   v1 therefore requires the small desktop-side scheme relaxation (recognize LAN
   hosts / honor explicit `http://`); the TLS alternative is to front with
   Caddy/nginx (the repo already has a `otel/caddy/Dockerfile` to copy). This is a
   v1 decision, not a v2 nicety (open question 2).
-- **CORS**: reuse the permissive `cors_layer()` shape from
-  `local-stt-server/src/lib.rs` for `/v1` (desktop clients from any origin), and
-  same-origin for the admin page; expose an allowed-origins config for tightening.
+- **CORS — restricted allowlist, not permissive.** An independent security
+  review (`SECURITY-REVIEW.md`, SEC-01/SEC-02) found the originally-shipped
+  `cors_layer()` (mirroring `local-stt-server`'s permissive `cors::Any`
+  shape) and the `/v1/listen` WebSocket upgrade both accepted *any* browser
+  origin — meaning any website a user had open in a tab could
+  activate/delete models or open a live-transcription WS session against
+  this LAN server from their browser (CSRF / Cross-Site WebSocket
+  Hijacking). Fixed pre-release: both now share one allowlist
+  (`hypr_transcribe_core::is_allowed_origin`,
+  `crates/transcribe-core/src/origin.rs`) — the Tauri v2 webview origins
+  (`tauri://localhost` macOS/Linux, `http://tauri.localhost` Windows) plus
+  `http://localhost`/`http://127.0.0.1` at any port for dev tooling. Neither
+  of the server's actual cross-origin callers strictly needs this grant
+  (the desktop's Test-connection button uses `@tauri-apps/plugin-http`,
+  which runs the HTTP call from the Rust backend and is never subject to
+  browser CORS at all; the real transcription client is a native
+  `reqwest`/WS client) — the allowlist exists as defense-in-depth and to
+  make sure `cors::Any` never comes back. See `apps/stt-server/src/
+  router.rs::cors_layer` for the full origin list and its residual-gap note
+  (CORS alone does not block a browser from *sending* a cookie-free simple
+  cross-origin `POST`, only from letting the page *read* the response —
+  `NOTARE_STT_TOKEN` above is the actual mitigation for that gap on the
+  mutation routes; `DELETE` is unaffected since non-simple methods always
+  preflight).
+- **`/api/status` no longer leaks the absolute model path (SEC-05,
+  fixed).** It used to return `state.model_path_for(...).display()` —
+  the host's home-dir path (and therefore OS username/OS type) to anything
+  that could reach the endpoint. The response now only carries `id`/`file`;
+  nothing in the desktop client (`connection-test.ts`) or the admin page
+  ever read `path` anyway.
+- **Deferred to post-release (see `SECURITY-REVIEW.md` for full writeups):**
+  - **SEC-03 — WS connection-replace DoS.** `hypr_ws_utils::ConnectionManager`
+    cancels the previous `/v1/listen` connection whenever a new one opens
+    (by design — one active session at a time), which means a
+    repeatedly-reconnecting client (malicious or just buggy) can boot the
+    legitimate session on a loop. The origin/token gates above cut off the
+    *browser* vector; a same-LAN native client could still do this on
+    purpose. Fix (409/429-reject-the-new-connection instead of killing the
+    old one) is a real behavior change to the single-session model, not a
+    quick patch — tracked for a later pass, not blocking this release.
+  - **SEC-06 — no cap on concurrent catalog downloads.** `download_model`
+    only checks whether *that specific* model id is already downloading,
+    not how many downloads are in flight across the whole catalog; a script
+    could kick off all 7 at once and saturate bandwidth/disk. Low severity
+    (bounded by the 7-model catalog, ~1.6GB total, and now gated behind
+    `NOTARE_STT_TOKEN` if configured) — deferred, not blocking.
+  - **SEC-04 — probe race on rapid re-activation, accepted as a known
+    limitation, not deferred-as-a-fix.** See the code comment at the probe
+    dispatch site (`apps/stt-server/src/admin/models.rs::activate_model`):
+    activating two models in quick succession can cross-attribute one
+    model's realtime-factor probe result to the other in `/api/status`.
+    This only skews a *displayed diagnostic number*
+    (`probeRealtimeFactor`/`gpuOffload`), never transcription correctness,
+    so it isn't being fixed as part of this hardening pass.
 - Reaffirm Notare's **no-telemetry** principle (ADR-0002): the server links no
   analytics; the only outbound traffic is model downloads from the catalog URLs.
 

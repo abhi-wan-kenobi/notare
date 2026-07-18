@@ -152,6 +152,29 @@ impl<E: SttEngine> Service<Request<Body>> for TranscribeService<E> {
             };
 
             if is_ws {
+                // SEC-02 (Cross-Site WebSocket Hijacking): reject a WS
+                // handshake whose `Origin` header is present but not on the
+                // shared allowlist (`crate::is_allowed_origin` — the exact
+                // same list `apps/stt-server/src/router.rs::cors_layer` uses
+                // for CORS, so the two checks can't drift apart).
+                //
+                // Policy for a *missing* `Origin` header: allow. Browsers
+                // always send `Origin` on a cross-origin (and same-origin)
+                // WebSocket handshake, so its absence means the caller isn't
+                // a browser at all — e.g. the desktop's native
+                // `owhisper-client` WS client, `curl`/smoke-test tooling, or
+                // `apps/stt-server/src/probe.rs`'s self-request (which is a
+                // batch POST anyway, not this branch). Treating "no Origin"
+                // as trusted is what keeps this from breaking the existing
+                // coruscant deployment's live desktop clients or the manual
+                // `transcribe-whisper-local::examples::serve` smoke test —
+                // none of them ever set an `Origin` header.
+                if let Some(origin) = req.headers().get(axum::http::header::ORIGIN) {
+                    if !crate::is_allowed_origin(origin) {
+                        return Ok((StatusCode::FORBIDDEN, "invalid_origin").into_response());
+                    }
+                }
+
                 let model = match manager.get(None).await {
                     Ok(model) => model,
                     Err(error) => {
@@ -611,10 +634,75 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::service::mock::MockEngine;
 
     #[test]
     fn health_and_listen_paths_are_stable() {
         assert_eq!(HEALTH_PATH, "/health");
         assert_eq!(LISTEN_PATH, "/v1/listen");
+    }
+
+    /// `MockEngine::load` ignores the path entirely, so this never touches
+    /// disk — same trick the rest of this crate's mock-backed tests use.
+    fn mock_service() -> TranscribeService<MockEngine> {
+        TranscribeService::builder()
+            .model_path(std::path::PathBuf::from("/nonexistent/mock.bin"))
+            .build()
+    }
+
+    fn ws_upgrade_request(origin: Option<&str>) -> Request<Body> {
+        let mut builder = Request::builder()
+            .method("GET")
+            .uri("/v1/listen?channels=1&sample_rate=16000")
+            .header("upgrade", "websocket");
+        if let Some(origin) = origin {
+            builder = builder.header("origin", origin);
+        }
+        builder.body(Body::empty()).unwrap()
+    }
+
+    /// SEC-02: a WS upgrade whose `Origin` is present but not on the shared
+    /// allowlist must be rejected before any WS-specific handshake parsing
+    /// (or model loading) happens at all — proven by getting `403` even
+    /// though this request has none of the `sec-websocket-*` headers a real
+    /// handshake would need, and even though `mock_service`'s model path
+    /// does not exist on disk.
+    #[tokio::test]
+    async fn ws_upgrade_rejects_a_disallowed_origin() {
+        let mut service = mock_service();
+        let request = ws_upgrade_request(Some("https://malicious-site.com"));
+
+        let response = service.call(request).await.unwrap();
+        assert_eq!(response.status(), StatusCode::FORBIDDEN);
+    }
+
+    /// A missing `Origin` header (native, non-browser clients — the
+    /// desktop's WS client, curl, `probe.rs`) must pass the origin gate.
+    /// This request is built directly (not through a real hyper
+    /// connection), so it carries no `OnUpgrade` extension and
+    /// `WebSocketUpgrade`'s extractor always rejects it with `500` a step
+    /// later regardless of headers — the point of this test is only that it
+    /// is a `500` (rejected further downstream, for an unrelated protocol
+    /// reason) and specifically **not** the `403` the origin gate itself
+    /// would produce.
+    #[tokio::test]
+    async fn ws_upgrade_allows_a_missing_origin() {
+        let mut service = mock_service();
+        let request = ws_upgrade_request(None);
+
+        let response = service.call(request).await.unwrap();
+        assert_ne!(response.status(), StatusCode::FORBIDDEN);
+        assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+    }
+
+    /// Same reasoning as above, for an explicitly allowlisted origin.
+    #[tokio::test]
+    async fn ws_upgrade_allows_a_tauri_origin() {
+        let mut service = mock_service();
+        let request = ws_upgrade_request(Some("tauri://localhost"));
+
+        let response = service.call(request).await.unwrap();
+        assert_ne!(response.status(), StatusCode::FORBIDDEN);
+        assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
     }
 }

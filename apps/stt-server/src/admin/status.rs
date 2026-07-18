@@ -25,10 +25,17 @@ pub async fn status_handler(State(state): State<Arc<AppState>>) -> impl IntoResp
         );
 
     let loaded_model = match &integrity {
+        // SEC-05: no absolute filesystem path in this public response — it
+        // used to leak the host's home-dir path (and therefore OS username
+        // and OS type) to anything that could reach `/api/status`, which
+        // permissive CORS made reachable from any webpage a user had open
+        // (SEC-01). `id`/`file` are all any caller (the desktop's
+        // Test-connection probe, the admin page) actually reads; the
+        // on-disk path is still available server-side via
+        // `AppState::model_path_for` for logging/debugging.
         ModelIntegrity::Verified | ModelIntegrity::PresentUnverified => Some(json!({
             "id": active_model.to_string(),
             "file": active_model.file_name(),
-            "path": state.model_path_for(&active_model).display().to_string(),
             "integrity": integrity,
         })),
         ModelIntegrity::NotInstalled | ModelIntegrity::Corrupt(_) => None,
