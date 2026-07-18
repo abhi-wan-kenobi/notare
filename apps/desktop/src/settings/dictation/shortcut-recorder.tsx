@@ -1,4 +1,5 @@
 import { Trans, useLingui } from "@lingui/react/macro";
+import { platform } from "@tauri-apps/plugin-os";
 import { RotateCcwIcon } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 
@@ -59,6 +60,15 @@ export function ShortcutRecorderRow({
     setError(null);
     setHeldModifiers([]);
     setRecording(true);
+    // WebKit (macOS, and iOS/tvOS Safari) does not move DOM focus to a
+    // <button> on click by default - only text inputs/links are click-
+    // focusable unless "Full Keyboard Access: All Controls" is on in System
+    // Settings (off by default). Without this, the button never becomes
+    // `document.activeElement`, so the keydown/keyup handlers below - which
+    // rely on the recorder having focus - never fire, and the recorder looks
+    // like it silently ignores every combo. Chromium/Firefox already focus
+    // on click, so this is a no-op there.
+    buttonRef.current?.focus();
   };
 
   const commitCandidate = async (accelerator: string) => {
@@ -161,6 +171,7 @@ export function ShortcutRecorderRow({
 
   const chips = recording ? heldModifiers : acceleratorParts(value);
   const isDefault = value === defaultValue;
+  const isMacos = platform() === "macos";
 
   return (
     <div className="flex items-start justify-between gap-4">
@@ -217,7 +228,11 @@ export function ShortcutRecorderRow({
           {chips.length > 0 ? (
             <>
               {chips.map((part, index) => (
-                <KeycapChip key={`${part}-${index}`} label={part} />
+                <KeycapChip
+                  key={`${part}-${index}`}
+                  label={part}
+                  isMacos={isMacos}
+                />
               ))}
               {recording ? (
                 <span className="text-muted-foreground text-xs">…</span>
@@ -254,7 +269,13 @@ export function ShortcutRecorderRow({
 }
 
 /** Presentation of one accelerator token as a keycap. */
-function KeycapChip({ label }: { label: string }) {
+function KeycapChip({
+  label,
+  isMacos,
+}: {
+  label: string;
+  isMacos: boolean;
+}) {
   return (
     <kbd
       className={cn([
@@ -262,13 +283,37 @@ function KeycapChip({ label }: { label: string }) {
         "font-mono text-[11px] leading-none shadow-[inset_0_-1px_0_hsl(var(--border))]",
       ])}
     >
-      {formatKeyToken(label)}
+      {formatKeyToken(label, isMacos)}
     </kbd>
   );
 }
 
-/** "ctrl" -> "Ctrl", "pageup" -> "PageUp", "f5" -> "F5", "up" -> "↑". */
-function formatKeyToken(token: string): string {
+/**
+ * macOS keyboard-symbol convention for the four modifiers (System Settings >
+ * Keyboard Shortcuts renders them the same way) - the physical keys these
+ * tokens map to on a Mac keyboard are Control, Option, Shift and Command
+ * (`heldModifiers` in `./accelerator.ts` maps `event.metaKey` - Cmd on macOS
+ * - to "super"). Everything else keeps the spelled-out Windows/Linux label.
+ */
+const MAC_MODIFIER_GLYPHS: Partial<Record<string, string>> = {
+  ctrl: "⌃",
+  alt: "⌥",
+  shift: "⇧",
+  super: "⌘",
+};
+
+/**
+ * "ctrl" -> "Ctrl" (Windows/Linux) or "⌃" (macOS); "pageup" -> "PageUp";
+ * "f5" -> "F5"; "up" -> "↑".
+ */
+function formatKeyToken(token: string, isMacos: boolean): string {
+  if (isMacos) {
+    const macGlyph = MAC_MODIFIER_GLYPHS[token];
+    if (macGlyph) {
+      return macGlyph;
+    }
+  }
+
   const special: Record<string, string> = {
     ctrl: "Ctrl",
     alt: "Alt",

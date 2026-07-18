@@ -35,8 +35,14 @@ enigo = { workspace = true }
 futures-util = { workspace = true }
 hypr-audio = { workspace = true }
 hypr-audio-utils = { workspace = true }
-owhisper-client = { workspace = true }
+# "local" pulls in `LocalSoniqoLiveClient`: soniqo-*/am-* (Apple-native)
+# models have no WS server behind `base_url` (the sentinel `soniqo://local`),
+# so they are served in-process through the same Swift-bridge client the
+# meeting listener uses (`crates/listener-core/src/actors/listener/adapters.rs`)
+# instead of the generic `ListenClient` WS path below.
+owhisper-client = { workspace = true, features = ["local"] }
 owhisper-interface = { workspace = true }
+hypr-transcribe-soniqo = { workspace = true }
 tokio = { workspace = true, features = ["macros", "rt", "sync", "time"] }
 tokio-stream = { workspace = true }
 
