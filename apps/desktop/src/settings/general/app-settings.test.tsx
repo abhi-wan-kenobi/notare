@@ -181,11 +181,77 @@ describe("AppSettingsView", () => {
     mocks.updateControl.errorMessage = "Failed to download update.";
 
     renderAppSettings();
-
     expect(screen.getByTestId("update-state").textContent).toBe(
       "Failed to download update.",
     );
     fireEvent.click(screen.getByRole("button", { name: "Retry download" }));
     expect(mocks.updateControl.downloadUpdate).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("Meeting bar theme picker", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.configValues = { mic_denoise: false } as Record<string, unknown>;
+    mocks.setSettingValue.mockReset();
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("shows the Notare / Classic picker under the floating bar setting", () => {
+    renderAppSettings();
+
+    const group = screen.getByTestId("meeting-bar-theme-group");
+    expect(group).toBeTruthy();
+    expect(group.textContent).toContain("Notare");
+    expect(group.textContent).toContain("Classic");
+  });
+
+  it("defaults to Notare when meeting_bar_theme is unset", () => {
+    renderAppSettings();
+
+    expect(
+      (screen.getByRole("radio", { name: /Notare/ }) as HTMLInputElement)
+        .checked,
+    ).toBe(true);
+    expect(
+      (screen.getByRole("radio", { name: /Classic/ }) as HTMLInputElement)
+        .checked,
+    ).toBe(false);
+  });
+
+  it("marks Classic as selected when meeting_bar_theme is 'classic'", () => {
+    mocks.configValues.meeting_bar_theme = "classic";
+
+    renderAppSettings();
+
+    expect(
+      (screen.getByRole("radio", { name: /Classic/ }) as HTMLInputElement)
+        .checked,
+    ).toBe(true);
+    expect(
+      (screen.getByRole("radio", { name: /Notare/ }) as HTMLInputElement)
+        .checked,
+    ).toBe(false);
+  });
+
+  it("writes 'classic' when the Classic radio is selected", () => {
+    // Default Notare is checked, so Classic is unchecked and its click fires.
+    renderAppSettings();
+
+    fireEvent.click(screen.getByRole("radio", { name: /Classic/ }));
+    expect(mocks.setSettingValue).toHaveBeenCalledWith("classic");
+  });
+
+  it("writes 'notare' when switching back from Classic", () => {
+    // Classic is checked, so Notare is unchecked and its click fires.
+    mocks.configValues.meeting_bar_theme = "classic";
+
+    renderAppSettings();
+
+    fireEvent.click(screen.getByRole("radio", { name: /Notare/ }));
+    expect(mocks.setSettingValue).toHaveBeenLastCalledWith("notare");
   });
 });
