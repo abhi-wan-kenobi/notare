@@ -41,6 +41,7 @@ import {
 import { useClassicMainShortcuts } from "./useShortcuts";
 
 import { useShell } from "~/contexts/shell";
+import { ContentErrorBoundary } from "~/shared/content-error-boundary";
 import { scrollElementByWheel } from "~/shared/dom/scroll-wheel";
 import { useMountEffect } from "~/shared/hooks/useMountEffect";
 import {
@@ -672,10 +673,12 @@ export function ClassicMainBody() {
             onPointerUp={mainAreaTopDrag.onPointerEnd}
           >
             {currentTab ? (
-              <ClassicMainTabContent
+              <ContentErrorBoundary
                 key={uniqueIdfromTab(currentTab)}
-                tab={currentTab as Tab}
-              />
+                resetKey={uniqueIdfromTab(currentTab)}
+              >
+                <ClassicMainTabContent tab={currentTab as Tab} />
+              </ContentErrorBoundary>
             ) : null}
           </div>
         </ResizablePanel>
