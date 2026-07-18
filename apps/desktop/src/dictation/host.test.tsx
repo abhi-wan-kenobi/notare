@@ -8,6 +8,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
  * whenever `dictation_enabled` is true, regardless of platform.
  */
 
+type CmdResult =
+  | { status: "ok"; data: null }
+  | { status: "error"; error: string };
+
 const mocks = vi.hoisted(() => ({
   platform: "macos" as string,
   settings: {
@@ -21,7 +25,10 @@ const mocks = vi.hoisted(() => ({
   },
   showOrb: vi.fn(async () => ({ status: "ok" as const, data: null })),
   hideOrb: vi.fn(async () => ({ status: "ok" as const, data: null })),
-  startDictation: vi.fn(async () => ({ status: "ok" as const, data: null })),
+  startDictation: vi.fn<() => Promise<CmdResult>>(async () => ({
+    status: "ok",
+    data: null,
+  })),
   stopDictation: vi.fn(async () => ({ status: "ok" as const, data: null })),
   registerGlobalHotkey: vi.fn(async () => ({
     status: "ok" as const,
@@ -39,6 +46,7 @@ const mocks = vi.hoisted(() => ({
     isLocalModel: false,
   },
   sonnerInfo: vi.fn(),
+  sonnerError: vi.fn(),
   setSettingValues: vi.fn(),
 }));
 
@@ -99,7 +107,7 @@ vi.mock("~/stt/useSTTConnection", () => ({
 }));
 
 vi.mock("@hypr/ui/components/ui/toast", () => ({
-  sonnerToast: { info: mocks.sonnerInfo },
+  sonnerToast: { info: mocks.sonnerInfo, error: mocks.sonnerError },
 }));
 
 vi.mock("./history", () => ({
@@ -200,5 +208,54 @@ describe("DictationOrbHost", () => {
       ),
     );
     expect(mocks.sonnerInfo).not.toHaveBeenCalled();
+  });
+
+  // Regression coverage for the macOS "orb click does nothing, silently" bug:
+  // a rejected/errored `startDictation` (e.g. the Soniqo live bridge failing
+  // to start) must surface, never disappear into a `void`ed promise.
+  it("surfaces a toast when startDictation resolves with an error", async () => {
+    mocks.platform = "macos";
+    mocks.sttConnection = {
+      conn: {
+        provider: "hyprnote",
+        model: "soniqo-parakeet-streaming",
+        baseUrl: "soniqo://local",
+      },
+      isLocalModel: true,
+    };
+    mocks.startDictation.mockResolvedValueOnce({
+      status: "error" as const,
+      error: "soniqo_live_start_failed: model not ready",
+    });
+
+    render(<DictationOrbHost />);
+    await waitFor(() => expect(mocks.orbClickListeners.length).toBe(1));
+
+    mocks.orbClickListeners[0]!();
+
+    await waitFor(() => expect(mocks.sonnerError).toHaveBeenCalledTimes(1));
+    expect(mocks.sonnerError.mock.calls[0]![0]).toMatch(
+      /couldn't start dictation/i,
+    );
+  });
+
+  it("surfaces a toast when startDictation rejects", async () => {
+    mocks.platform = "macos";
+    mocks.sttConnection = {
+      conn: {
+        provider: "hyprnote",
+        model: "soniqo-parakeet-streaming",
+        baseUrl: "soniqo://local",
+      },
+      isLocalModel: true,
+    };
+    mocks.startDictation.mockRejectedValueOnce(new Error("ipc failure"));
+
+    render(<DictationOrbHost />);
+    await waitFor(() => expect(mocks.orbClickListeners.length).toBe(1));
+
+    mocks.orbClickListeners[0]!();
+
+    await waitFor(() => expect(mocks.sonnerError).toHaveBeenCalledTimes(1));
   });
 });

@@ -18476,6 +18476,7 @@ dependencies = [
  "tokio",
  "tokio-stream",
  "tracing",
+ "transcribe-soniqo",
 ]
 
 [[package]]

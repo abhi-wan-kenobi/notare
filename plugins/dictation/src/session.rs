@@ -1,12 +1,22 @@
-//! The dictation session (Windows/Linux): default microphone -> local STT
-//! websocket (`/v1/listen`) -> final transcript segments injected into the
-//! focused app.
+//! The dictation session: default microphone -> local STT -> final transcript
+//! segments injected into the focused app.
 //!
 //! Deliberately lighter than the meeting capture pipeline
 //! (`crates/listener-core`): mic-only, nothing written to disk, no note or
-//! transcript rows created. It talks to the same internal whisper server the
-//! meeting flow uses (the renderer passes the server's base URL and model,
-//! resolved via the local-stt plugin).
+//! transcript rows created. Two serving paths, matching how the meeting
+//! listener dispatches (`crates/listener-core/src/actors/listener/adapters.rs`):
+//!
+//! - Whisper/Parakeet-ONNX/Voxtral (Windows/Linux/macOS) and Am (macOS,
+//!   `char-sidecar-stt`) models are served over the internal whisper-server
+//!   websocket (`/v1/listen`); the renderer passes that server's base URL and
+//!   model, resolved via the local-stt plugin, and we speak to it with the
+//!   generic `owhisper_client::ListenClient`.
+//! - Soniqo models (macOS-only, e.g. `soniqo-parakeet-streaming`) have no WS
+//!   server behind `base_url` - the local-stt plugin reports the sentinel
+//!   `hypr_transcribe_soniqo::LOCAL_BASE_URL` ("soniqo://local") because
+//!   transcription runs in-process through a Swift bridge. Those go through
+//!   `owhisper_client::LocalSoniqoLiveClient` instead - the same client the
+//!   meeting listener uses for live Soniqo transcription.
 
 use std::sync::Mutex;
 use std::time::Duration;
@@ -79,40 +89,96 @@ pub async fn start(
         .open_mic_capture(None, SAMPLE_RATE, chunk_size)
         .map_err(|e| Error::Audio(e.to_string()))?;
 
-    let params = ListenParams {
-        model: Some(model),
-        sample_rate: SAMPLE_RATE,
-        custom_query: Some(std::collections::HashMap::from([(
-            "redemption_time_ms".to_string(),
-            "400".to_string(),
-        )])),
-        ..Default::default()
-    };
-
-    let client = ListenClient::builder()
-        .adapter::<HyprnoteAdapter>()
-        .api_base(base_url)
-        .api_key(String::new())
-        .params(params)
-        .connect_policy(hypr_ws_client::client::WebSocketConnectPolicy {
-            connect_timeout: Duration::from_secs(4),
-            max_attempts: 2,
-            retry_delay: Duration::from_secs(1),
-        })
-        .build_single()
-        .await;
-
     let (audio_tx, audio_rx) =
         tokio::sync::mpsc::channel::<MixedMessage<bytes::Bytes, ControlMessage>>(32);
     let outbound = tokio_stream::wrappers::ReceiverStream::new(audio_rx);
 
-    let (listen_stream, ws_handle) = client
-        .from_realtime_audio(outbound)
-        .await
-        .map_err(|e| Error::Session(format!("listen_ws_connect_failed: {e:?}")))?;
-
     let (stop_tx, stop_rx) = tokio::sync::oneshot::channel::<()>();
 
+    match resolve_soniqo_model(&base_url, &model)? {
+        Some(soniqo_model) => {
+            // In-process Swift bridge - no WS handshake, so no connect_policy
+            // to configure (see the module doc comment).
+            let client = owhisper_client::LocalSoniqoLiveClient::new(soniqo_model);
+            let (listen_stream, ws_handle) = client
+                .from_realtime_audio_single(
+                    outbound,
+                    hypr_transcribe_soniqo::TranscriptSource::Microphone,
+                )
+                .await
+                .map_err(|e| Error::Session(format!("soniqo_live_start_failed: {e}")))?;
+
+            commit_and_run(
+                app,
+                mic,
+                audio_tx,
+                listen_stream,
+                ws_handle,
+                stop_tx,
+                stop_rx,
+                mode,
+            );
+        }
+        None => {
+            let params = ListenParams {
+                model: Some(model),
+                sample_rate: SAMPLE_RATE,
+                custom_query: Some(std::collections::HashMap::from([(
+                    "redemption_time_ms".to_string(),
+                    "400".to_string(),
+                )])),
+                ..Default::default()
+            };
+
+            let client = ListenClient::builder()
+                .adapter::<HyprnoteAdapter>()
+                .api_base(base_url)
+                .api_key(String::new())
+                .params(params)
+                .connect_policy(hypr_ws_client::client::WebSocketConnectPolicy {
+                    connect_timeout: Duration::from_secs(4),
+                    max_attempts: 2,
+                    retry_delay: Duration::from_secs(1),
+                })
+                .build_single()
+                .await;
+
+            let (listen_stream, ws_handle) = client
+                .from_realtime_audio(outbound)
+                .await
+                .map_err(|e| Error::Session(format!("listen_ws_connect_failed: {e:?}")))?;
+
+            commit_and_run(
+                app,
+                mic,
+                audio_tx,
+                listen_stream,
+                ws_handle,
+                stop_tx,
+                stop_rx,
+                mode,
+            );
+        }
+    }
+
+    Ok(())
+}
+
+/// Shared tail of `start()` once a listen stream + finalize handle have been
+/// obtained (from either serving path): register the session so `stop()`/
+/// `is_running()` see it, flip the orb to listening and hand the stream off
+/// to `run_session`.
+#[allow(clippy::too_many_arguments)]
+fn commit_and_run<E: std::fmt::Debug + Send + 'static>(
+    app: tauri::AppHandle<tauri::Wry>,
+    mic: hypr_audio::CaptureStream,
+    audio_tx: tokio::sync::mpsc::Sender<MixedMessage<bytes::Bytes, ControlMessage>>,
+    listen_stream: impl futures_util::Stream<Item = Result<StreamResponse, E>> + Send + 'static,
+    ws_handle: impl owhisper_client::FinalizeHandle + 'static,
+    stop_tx: tokio::sync::oneshot::Sender<()>,
+    stop_rx: tokio::sync::oneshot::Receiver<()>,
+    mode: DictationOutputMode,
+) {
     {
         let state = app.state::<SessionState>();
         let mut guard = state.0.lock().unwrap_or_else(|e| e.into_inner());
@@ -130,8 +196,33 @@ pub async fn start(
         stop_rx,
         mode,
     ));
+}
 
-    Ok(())
+/// Whether `(base_url, model)` names a local Soniqo model (macOS-only,
+/// in-process Swift bridge - no WS server exists at `base_url`). Mirrors
+/// `soniqo_model_for_args` in the meeting listener
+/// (`crates/listener-core/src/actors/listener/adapters.rs`): the normal case
+/// is `hypr_transcribe_soniqo::local_model_from_request` matching directly;
+/// the fallback catches a request that is unambiguously local (the
+/// `soniqo://local` sentinel base URL) but whose model id failed to parse,
+/// so it surfaces as a clear error instead of silently falling through to a
+/// WS connect attempt against a non-URL that would just hang/fail opaquely.
+fn resolve_soniqo_model(
+    base_url: &str,
+    model: &str,
+) -> Result<Option<hypr_transcribe_soniqo::SoniqoModel>, Error> {
+    if let Some(model) = hypr_transcribe_soniqo::local_model_from_request(base_url, model) {
+        return Ok(Some(model));
+    }
+
+    if hypr_transcribe_soniqo::is_local_base_url(base_url) {
+        return model
+            .parse::<hypr_transcribe_soniqo::SoniqoModel>()
+            .map(Some)
+            .map_err(|e| Error::Session(format!("soniqo_model_invalid: {e}")));
+    }
+
+    Ok(None)
 }
 
 pub fn stop(app: &tauri::AppHandle<tauri::Wry>) {
@@ -142,11 +233,11 @@ pub fn stop(app: &tauri::AppHandle<tauri::Wry>) {
     }
 }
 
-async fn run_session(
+async fn run_session<E: std::fmt::Debug>(
     app: tauri::AppHandle<tauri::Wry>,
     mut mic: hypr_audio::CaptureStream,
     audio_tx: tokio::sync::mpsc::Sender<MixedMessage<bytes::Bytes, ControlMessage>>,
-    listen_stream: impl futures_util::Stream<Item = Result<StreamResponse, hypr_ws_client::Error>>,
+    listen_stream: impl futures_util::Stream<Item = Result<StreamResponse, E>>,
     ws_handle: impl owhisper_client::FinalizeHandle,
     mut stop_rx: tokio::sync::oneshot::Receiver<()>,
     mode: DictationOutputMode,
@@ -359,7 +450,7 @@ fn normalized_amplitude(samples: &[f32]) -> f32 {
 
 #[cfg(test)]
 mod tests {
-    use super::normalized_amplitude;
+    use super::{normalized_amplitude, resolve_soniqo_model};
 
     #[test]
     fn amplitude_is_zero_for_silence() {
@@ -379,5 +470,52 @@ mod tests {
         let loud = normalized_amplitude(&[0.5; 128]);
         assert!(quiet < medium && medium < loud);
         assert!(quiet > 0.0 && loud < 1.0);
+    }
+
+    // Regression coverage for the macOS dictation-orb-never-starts bug: Soniqo
+    // models (`soniqo-*`) must be recognized so `start()` routes them to
+    // `LocalSoniqoLiveClient` instead of trying to open a WS connection to the
+    // `soniqo://local` sentinel, which is not a URL at all.
+
+    #[test]
+    fn resolves_soniqo_model_from_local_sentinel_base_url() {
+        let model = resolve_soniqo_model(
+            hypr_transcribe_soniqo::LOCAL_BASE_URL,
+            "soniqo-parakeet-streaming",
+        )
+        .unwrap();
+
+        assert_eq!(
+            model,
+            Some(hypr_transcribe_soniqo::SoniqoModel::ParakeetStreaming)
+        );
+    }
+
+    #[test]
+    fn resolves_soniqo_model_from_loopback_http_base_url() {
+        // `get_server_for_model` can also report a real loopback HTTP URL for
+        // some serving paths; the model id alone still identifies Soniqo.
+        let model =
+            resolve_soniqo_model("http://127.0.0.1:50060/v1", "soniqo-parakeet-streaming").unwrap();
+
+        assert_eq!(
+            model,
+            Some(hypr_transcribe_soniqo::SoniqoModel::ParakeetStreaming)
+        );
+    }
+
+    #[test]
+    fn non_soniqo_model_and_base_url_resolve_to_none() {
+        let model = resolve_soniqo_model("http://127.0.0.1:5555", "QuantizedTiny").unwrap();
+        assert_eq!(model, None);
+    }
+
+    #[test]
+    fn invalid_model_on_the_local_sentinel_errors_instead_of_falling_through() {
+        // A malformed model id paired with the local sentinel must not fall
+        // through to the generic WS path (which would just hang trying to
+        // connect to a non-URL) - it should surface as a clear error.
+        let result = resolve_soniqo_model(hypr_transcribe_soniqo::LOCAL_BASE_URL, "not-a-model");
+        assert!(result.is_err());
     }
 }

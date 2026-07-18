@@ -39,8 +39,9 @@ async updateAmplitude(amplitude: number) : Promise<Result<null, string>> {
 }
 },
 /**
- * Show the persistent dictation orb window (Windows/Linux webview path;
- * unsupported on macOS, which keeps its native mini-panel).
+ * Show the persistent dictation orb window - available on every platform
+ * since #31, macOS reaches parity through this same webview orb instead of
+ * its unfinished native panel.
  */
 async showOrb() : Promise<Result<null, string>> {
     try {

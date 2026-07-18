@@ -16,12 +16,19 @@ const mocks = vi.hoisted(() => ({
     status: "ok",
     data: null,
   })),
+  // Windows/Linux by default so the existing spelled-out-modifier tests below
+  // stay unchanged; macOS-specific tests flip this per-case.
+  platform: "windows" as string,
 }));
 
 vi.mock("@hypr/plugin-shortcut", () => ({
   commands: {
     parseGlobalHotkey: mocks.parseGlobalHotkey,
   },
+}));
+
+vi.mock("@tauri-apps/plugin-os", () => ({
+  platform: () => mocks.platform,
 }));
 
 import { ShortcutRecorderRow } from "./shortcut-recorder";
@@ -50,6 +57,7 @@ describe("ShortcutRecorderRow", () => {
   beforeEach(() => {
     mocks.parseGlobalHotkey.mockClear();
     mocks.parseGlobalHotkey.mockResolvedValue({ status: "ok", data: null });
+    mocks.platform = "windows";
   });
 
   afterEach(() => {
@@ -183,5 +191,85 @@ describe("ShortcutRecorderRow", () => {
       screen.getByRole("button", { name: "Reset to the default shortcut" }),
     );
     expect(onCommit).toHaveBeenCalledWith(DEFAULT);
+  });
+
+  // macOS-specific coverage: (a) the chips must render Mac keyboard-symbol
+  // glyphs instead of spelled-out modifier names, and (b) WebKit does not
+  // move DOM focus to a <button> on click by default (only Chromium/Firefox
+  // do that automatically), so the recorder must explicitly focus itself
+  // when armed - otherwise every keydown while "recording" is silently lost
+  // because it never reaches the button's handlers, which is exactly the
+  // "pressing a combo leaves the field blank" bug on macOS.
+
+  it("renders mac-style modifier glyphs on macOS instead of spelled-out names", () => {
+    mocks.platform = "macos";
+    renderRow();
+
+    const chips = recorder().querySelectorAll("kbd");
+    expect(Array.from(chips).map((chip) => chip.textContent)).toEqual([
+      "⌃",
+      "⌥",
+      "Space",
+    ]);
+  });
+
+  it("keeps spelled-out modifiers on Windows/Linux (unchanged)", () => {
+    mocks.platform = "windows";
+    renderRow();
+
+    const chips = recorder().querySelectorAll("kbd");
+    expect(Array.from(chips).map((chip) => chip.textContent)).toEqual([
+      "Ctrl",
+      "Alt",
+      "Space",
+    ]);
+  });
+
+  it("explicitly focuses the recorder button when armed, for WebKit/macOS", () => {
+    // jsdom's own click-focusing behavior can't be relied on to prove this -
+    // it does not reproduce WebKit's "buttons aren't click-focusable by
+    // default" quirk. Spy on the imperative call our fix adds instead.
+    const focusSpy = vi.spyOn(HTMLButtonElement.prototype, "focus");
+    try {
+      renderRow();
+      fireEvent.click(recorder());
+      expect(focusSpy).toHaveBeenCalledTimes(1);
+    } finally {
+      focusSpy.mockRestore();
+    }
+  });
+
+  it("captures a mac Option-modified combo by physical code, even though event.key is garbled", async () => {
+    // WebKit/macOS: holding Option remaps `key` to a special character (e.g.
+    // Option+D -> "∂") while `code` stays the physical key. The accelerator
+    // must resolve from `code`, not the Option-mangled `key`.
+    mocks.platform = "macos";
+    const { onCommit } = renderRow();
+
+    fireEvent.click(recorder());
+    fireEvent.keyDown(recorder(), {
+      key: "∂",
+      code: "KeyD",
+      altKey: true,
+    });
+
+    await waitFor(() =>
+      expect(mocks.parseGlobalHotkey).toHaveBeenCalledWith("alt+d"),
+    );
+    await waitFor(() => expect(onCommit).toHaveBeenCalledWith("alt+d"));
+  });
+
+  it("captures a Cmd (metaKey) combo on macOS as super+key", async () => {
+    mocks.platform = "macos";
+    const { onCommit } = renderRow();
+
+    fireEvent.click(recorder());
+    fireEvent.keyDown(recorder(), {
+      key: "k",
+      code: "KeyK",
+      metaKey: true,
+    });
+
+    await waitFor(() => expect(onCommit).toHaveBeenCalledWith("super+k"));
   });
 });

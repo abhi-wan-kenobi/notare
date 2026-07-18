@@ -35,8 +35,9 @@ pub(crate) async fn update_amplitude<R: tauri::Runtime>(
         .map_err(|e| e.to_string())
 }
 
-/// Show the persistent dictation orb window (Windows/Linux webview path;
-/// unsupported on macOS, which keeps its native mini-panel).
+/// Show the persistent dictation orb window - available on every platform
+/// since #31, macOS reaches parity through this same webview orb instead of
+/// its unfinished native panel.
 #[tauri::command]
 #[specta::specta]
 pub(crate) async fn show_orb<R: tauri::Runtime>(app: tauri::AppHandle<R>) -> Result<(), String> {
