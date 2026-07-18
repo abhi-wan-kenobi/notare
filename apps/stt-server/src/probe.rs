@@ -1,11 +1,21 @@
 use std::time::{Duration, Instant};
 
-/// Generates a 1.0-second 16kHz mono silence WAV file in memory.
+/// Length of the probe audio. Deliberately several seconds, not ~1s: a large
+/// model (e.g. Whisper large-v3-turbo) has enough fixed per-request overhead
+/// (HTTP, VAD, graph setup) that a 1s clip's realtime factor lands below the
+/// GPU threshold even when the GPU is doing the work — the encoder throughput
+/// that GPU offload actually accelerates only dominates over a longer clip, so
+/// this is what makes "verified" vs "cpu" separate cleanly across model sizes.
+const PROBE_AUDIO_SECS: usize = 8;
+const PROBE_SAMPLE_RATE: usize = 16000;
+
+/// Generates a `PROBE_AUDIO_SECS`-second 16kHz mono silence WAV file in memory.
 fn create_silence_wav() -> Vec<u8> {
-    let subchunk2_size: u32 = 32000; // 16000 samples * 2 bytes/sample (16-bit PCM)
+    let n_samples = PROBE_AUDIO_SECS * PROBE_SAMPLE_RATE;
+    let subchunk2_size: u32 = (n_samples * 2) as u32; // 2 bytes/sample (16-bit PCM)
     let chunk_size: u32 = 36 + subchunk2_size;
 
-    let mut wav = Vec::with_capacity(44 + 32000);
+    let mut wav = Vec::with_capacity(44 + n_samples * 2);
     let mut header = [0u8; 44];
     header[0..4].copy_from_slice(b"RIFF");
     header[4..8].copy_from_slice(&chunk_size.to_le_bytes());
@@ -15,20 +25,20 @@ fn create_silence_wav() -> Vec<u8> {
     header[20..22].copy_from_slice(&1u16.to_le_bytes()); // PCM format (1)
     header[22..24].copy_from_slice(&1u16.to_le_bytes()); // Mono channel (1)
     header[24..28].copy_from_slice(&16000u32.to_le_bytes()); // Sample rate (16000)
-    header[28..32].copy_from_slice(&32000u32.to_le_bytes()); // Byte rate (16000 * 1 channel * 2 bytes/sample)
+    header[28..32].copy_from_slice(&32000u32.to_le_bytes()); // Byte rate (16000 * 1ch * 2B/sample; independent of clip length)
     header[32..34].copy_from_slice(&2u16.to_le_bytes()); // Block align (1 channel * 2 bytes/sample)
     header[34..36].copy_from_slice(&16u16.to_le_bytes()); // Bits per sample (16)
     header[36..40].copy_from_slice(b"data");
     header[40..44].copy_from_slice(&subchunk2_size.to_le_bytes());
 
     wav.extend_from_slice(&header);
-    wav.extend(std::iter::repeat(0).take(32000));
+    wav.extend(std::iter::repeat(0).take(n_samples * 2));
     wav
 }
 
 /// Runs a short transcription probe via an HTTP self-request to verify GPU offload and measure performance.
 ///
-/// It sends a 1.0-second silent WAV segment to the local `/v1/listen` endpoint.
+/// It sends a multi-second silent WAV segment (PROBE_AUDIO_SECS) to the local `/v1/listen` endpoint.
 /// If the request succeeds, it returns the calculated realtime factor (audio duration / elapsed time).
 /// If the server is starting up and not yet accepting connections, it retries briefly.
 /// Returns `None` if the request fails or if the server returns an error.
@@ -55,7 +65,7 @@ pub async fn run_probe(port: u16) -> Option<f32> {
                 let elapsed = start.elapsed().as_secs_f32();
                 if resp.status().is_success() {
                     let elapsed = if elapsed <= 0.0 { 0.0001 } else { elapsed };
-                    let factor = 1.0 / elapsed;
+                    let factor = PROBE_AUDIO_SECS as f32 / elapsed;
                     tracing::info!(
                         elapsed_secs = elapsed,
                         realtime_factor = factor,
@@ -101,7 +111,7 @@ mod tests {
     #[test]
     fn test_create_silence_wav_valid() {
         let wav_data = create_silence_wav();
-        assert_eq!(wav_data.len(), 44 + 32000);
+        assert_eq!(wav_data.len(), 44 + PROBE_AUDIO_SECS * PROBE_SAMPLE_RATE * 2);
         assert_eq!(&wav_data[0..4], b"RIFF");
         assert_eq!(&wav_data[8..12], b"WAVE");
         assert_eq!(&wav_data[12..16], b"fmt ");
