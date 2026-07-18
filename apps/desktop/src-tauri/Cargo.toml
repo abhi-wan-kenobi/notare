@@ -126,6 +126,15 @@ gpu-vulkan = ["tauri-plugin-local-stt/vulkan"]
 # Windows/Linux) ships to everyone. See docs/VOXTRAL.md.
 voxtral-cuda = ["tauri-plugin-local-stt/voxtral-llama-cuda"]
 
+# DirectML GPU offload for Parakeet (ONNX Runtime), Windows-only (covers
+# NVIDIA/AMD/Intel through DirectX 12 — no vendor-specific SDK needed at
+# build time, unlike `gpu-vulkan`; ONNX Runtime's prebuilt binaries already
+# ship DirectML support). Opt-in and independent of `gpu-vulkan` — a Windows
+# build wanting GPU offload for *both* engines passes
+# `--features gpu-vulkan,directml`. See docs/BUILDING.md "GPU builds
+# (Parakeet)".
+directml = ["tauri-plugin-local-stt/directml"]
+
 # Compile the whisper.cpp, Parakeet (ONNX) and Voxtral (llama.cpp) engines on
 # platforms that have no Argmax/Soniqo runtime (those are Apple-Silicon-only).
 # CPU inference by default; opt into GPU offload with `--features gpu-vulkan`

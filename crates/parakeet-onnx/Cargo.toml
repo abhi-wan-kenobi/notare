@@ -3,6 +3,22 @@ name = "parakeet-onnx"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+default = []
+# NVIDIA GPU offload via ONNX Runtime's CUDA execution provider. Available on
+# Linux and Windows (x86_64/aarch64); never crashes if unavailable at runtime
+# (missing driver, no NVIDIA GPU, ...) — session creation falls back to CPU
+# and logs a warning. See `model.rs`'s `gpu_execution_providers`.
+cuda = ["hypr-onnx/cuda"]
+# Windows GPU offload via ONNX Runtime's DirectML execution provider (covers
+# NVIDIA/AMD/Intel through DirectX 12). The Cargo feature can be enabled on
+# any platform to typecheck, but the provider is only ever *constructed* on
+# `target_os = "windows"` — DirectML's FFI entry point isn't exported by
+# ONNX Runtime's non-Windows binaries, and constructing it unconditionally
+# would risk a link failure on a full (non-`cargo check`) Linux/macOS build.
+# Falls back to CPU at runtime the same way `cuda` does.
+directml = ["hypr-onnx/directml"]
+
 [dependencies]
 hypr-language = { workspace = true }
 hypr-model-manager = { workspace = true }
