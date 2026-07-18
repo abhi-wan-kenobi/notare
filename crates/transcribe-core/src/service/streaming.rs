@@ -609,16 +609,26 @@ where
         loop {
             match Pin::new(&mut self.chunk_stream).poll_next(cx) {
                 Poll::Ready(Some(Ok(chunk))) => {
-                    let start_sec = chunk.sample_start as f64 / TARGET_SAMPLE_RATE as f64;
                     let this = &mut *self;
-                    match transcribe_chunk(&mut this.session, &chunk.samples, start_sec) {
-                        Ok(segments) => {
-                            this.pending.extend(segments);
-                            if let Some(segment) = this.pending.pop_front() {
-                                return Poll::Ready(Some(Ok((this.channel_idx, segment))));
-                            }
+                    // Cap each VAD chunk at MAX_CHUNK_SAMPLES (25s) before the
+                    // engine sees it: a pauseless >30s utterance would exceed
+                    // Voxtral/libmtmd's fixed 30s window and be silently
+                    // truncated. Mirrors the batch path's windowing in
+                    // `crate::audio`; whisper/parakeet are unaffected (they
+                    // tolerate oversize input, just now get it pre-split).
+                    for (index, window) in
+                        chunk.samples.chunks(crate::audio::MAX_CHUNK_SAMPLES).enumerate()
+                    {
+                        let sample_start =
+                            chunk.sample_start + index * crate::audio::MAX_CHUNK_SAMPLES;
+                        let start_sec = sample_start as f64 / TARGET_SAMPLE_RATE as f64;
+                        match transcribe_chunk(&mut this.session, window, start_sec) {
+                            Ok(segments) => this.pending.extend(segments),
+                            Err(error) => return Poll::Ready(Some(Err(error))),
                         }
-                        Err(error) => return Poll::Ready(Some(Err(error))),
+                    }
+                    if let Some(segment) = this.pending.pop_front() {
+                        return Poll::Ready(Some(Ok((this.channel_idx, segment))));
                     }
                 }
                 Poll::Ready(Some(Err(error))) => {

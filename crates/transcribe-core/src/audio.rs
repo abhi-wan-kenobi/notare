@@ -5,7 +5,13 @@ use hypr_audio_chunking::{AudioChunk, Chunker, SpeechChunker, SpeechChunkingConf
 pub const TARGET_SAMPLE_RATE: u32 = 16_000;
 
 const DEFAULT_SPEECH_REDEMPTION_TIME: Duration = Duration::from_millis(150);
-const MAX_CHUNK_SAMPLES: usize = TARGET_SAMPLE_RATE as usize * 25;
+/// Hard cap on samples handed to an engine in one call (25s). The batch path
+/// windows to this in `chunk_channel_audio_with`; the streaming path applies
+/// the same cap per VAD chunk (see `service::streaming`). Both matter because
+/// Voxtral/libmtmd has a fixed 30s audio window — a longer chunk is silently
+/// truncated (dropped transcript). whisper/parakeet tolerate oversize input,
+/// but capping uniformly keeps every engine correct.
+pub(crate) const MAX_CHUNK_SAMPLES: usize = TARGET_SAMPLE_RATE as usize * 25;
 
 pub fn chunk_channel_audio<E>(samples: &[f32]) -> Result<Vec<AudioChunk>, E>
 where
