@@ -1,6 +1,6 @@
 import { cn } from "@hypr/utils";
 
-const ANARLOG_ICON_SRC = "/assets/anarlog-icon.png";
+const NOTARE_ICON_SRC = "/assets/notare-icon.png";
 
 export function TrialDialogIcon({ state }: { state: "started" | "ended" }) {
   const isStarted = state === "started";
@@ -28,7 +28,7 @@ export function TrialDialogIcon({ state }: { state: "started" | "ended" }) {
         ])}
       >
         <img
-          src={ANARLOG_ICON_SRC}
+          src={NOTARE_ICON_SRC}
           alt=""
           aria-hidden="true"
           className={cn([

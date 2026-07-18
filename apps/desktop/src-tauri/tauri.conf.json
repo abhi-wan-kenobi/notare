@@ -24,7 +24,7 @@
     }
   },
   "bundle": {
-    "publisher": "Fastrepl",
+    "publisher": "Abhishek Gupta",
     "active": true,
     "createUpdaterArtifacts": true,
     "targets": "all",

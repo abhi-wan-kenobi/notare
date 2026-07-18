@@ -5,7 +5,6 @@ import { liveQueryClient } from "~/db";
 import { createSession } from "~/session/queries";
 import { DEFAULT_USER_ID } from "~/shared/utils";
 
-const DEMO_URL = "https://anarlog.so/onboarding-demo/";
 const PENDING_WELCOME_SESSION_KEY = "anarlog.pending-welcome-session";
 const TRACKING_ID = "anarlog-onboarding-demo-v1";
 
@@ -13,9 +12,9 @@ const WELCOME_NOTE = `Welcome to Notare 👋
 
 This note is a quick way to see how Notare works.
 
-Click **Join & record** in the top-right corner. It will open a private, prerecorded demo meeting, so you don't have to worry about your camera or microphone. Notare will listen, transcribe the conversation, and turn it into notes just like a real meeting.
+Press **Record** in the top-right corner. Notare will listen, transcribe your conversation, and turn it into notes just like a real meeting.
 
-When the video ends, come back here to review the transcript and notes.`;
+When you're done, come back here to review the transcript and notes.`;
 
 let pendingWelcomeSession: Promise<string> | null = null;
 
@@ -66,8 +65,8 @@ async function findOrCreateWelcomeSession(): Promise<string> {
     ended_at: "",
     is_all_day: false,
     has_recurrence_rules: false,
-    meeting_link: DEMO_URL,
-    description: "A private, prerecorded introduction to Notare.",
+    meeting_link: "",
+    description: "A quick introduction to Notare.",
   };
 
   return createSession("Welcome to Notare", DEFAULT_USER_ID, {

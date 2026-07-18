@@ -4,7 +4,7 @@ import type { DownloadProgress, ToastCondition, ToastType } from "./types";
 
 import type { DevtoolsToastPreview } from "~/store/zustand/devtools-toast-preview";
 
-const ANARLOG_ICON_SRC = "/assets/anarlog-icon.png";
+const NOTARE_ICON_SRC = "/assets/notare-icon.png";
 
 type ToastRegistryEntry = {
   toast: ToastType;
@@ -136,7 +136,7 @@ export function createToastRegistry({
         id: "pro-requires-login",
         icon: (
           <img
-            src={ANARLOG_ICON_SRC}
+            src={NOTARE_ICON_SRC}
             alt="Notare Pro"
             className="size-5 object-contain object-center"
           />
