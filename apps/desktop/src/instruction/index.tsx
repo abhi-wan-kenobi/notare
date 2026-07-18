@@ -72,7 +72,7 @@ function InstructionShell({
         <div className="flex w-full max-w-sm flex-col items-center gap-6 px-10 pb-10 text-center">
           {icon ?? (
             <img
-              src="/assets/anarlog-icon.png"
+              src="/assets/notare-icon.png"
               alt=""
               className="h-14 w-14 object-contain object-center"
             />

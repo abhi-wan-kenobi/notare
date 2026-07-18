@@ -58,12 +58,12 @@ type ProviderConfig = {
   };
 };
 
-const ANARLOG_ICON_SRC = "/assets/anarlog-icon.png";
+const NOTARE_ICON_SRC = "/assets/notare-icon.png";
 
 export function NotareProviderIcon() {
   return (
     <img
-      src={ANARLOG_ICON_SRC}
+      src={NOTARE_ICON_SRC}
       alt="Notare"
       data-slot="provider-logo"
       className="size-4 object-contain object-center [clip-path:inset(6%_round_18%)]"

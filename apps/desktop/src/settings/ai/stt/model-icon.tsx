@@ -9,7 +9,7 @@ type ModelIconSpec = {
 };
 
 const MODEL_ICON_ASSET_BASE = "/assets/model-icons";
-const ANARLOG_ICON_SRC = "/assets/anarlog-icon.png";
+const NOTARE_ICON_SRC = "/assets/notare-icon.png";
 
 export function getLocalModelIcon(model: string): ModelIconSpec | null {
   const value = model.toLowerCase();
@@ -19,7 +19,7 @@ export function getLocalModelIcon(model: string): ModelIconSpec | null {
       label: "A",
       title: "Notare Pro",
       className: "border-border bg-card text-muted-foreground",
-      imageSrc: ANARLOG_ICON_SRC,
+      imageSrc: NOTARE_ICON_SRC,
       imageClassName: "size-4 object-contain",
     };
   }
