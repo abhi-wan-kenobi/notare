@@ -31,8 +31,9 @@ import { addDictationHistoryEntry } from "./history";
 import { isLegacyOutputMode, normalizeOutputMode } from "./output-mode";
 
 /**
- * Main-window controller for the persistent dictation orb (Windows/Linux;
- * macOS keeps its native dictation path and this host is inert there).
+ * Main-window controller for the persistent dictation orb, active on every
+ * platform since #31 - macOS reaches parity through this same webview orb
+ * instead of its unfinished native panel.
  *
  * Responsibilities:
  * - show/hide the orb window when the `dictation_enabled` setting changes;
@@ -64,7 +65,7 @@ export function DictationOrbHost() {
     "dictation_cleanup",
   ] as const);
   const setSettingValues = useSetSettingValues();
-  const enabled = !isMacos && dictation_enabled;
+  const enabled = dictation_enabled;
 
   const outputMode: DictationOutputMode = normalizeOutputMode(
     dictation_output_mode,

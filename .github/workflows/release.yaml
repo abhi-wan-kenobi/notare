@@ -57,7 +57,13 @@ jobs:
       # docs/BUILDING.md "Windows Vulkan build gotchas").
       - uses: ilammy/msvc-dev-cmd@v1
 
-      - run: pnpm -F desktop tauri build --config ./src-tauri/tauri.conf.stable.json --features gpu-vulkan
+      # `directml` rides the same Windows build as `gpu-vulkan`: it's a
+      # separate engine (Parakeet/ONNX Runtime vs. whisper.cpp/Vulkan) but
+      # needs no extra SDK at build time (ONNX Runtime's prebuilt Windows
+      # binaries already ship DirectML support) and falls back to CPU at
+      # runtime if unavailable — see docs/BUILDING.md "GPU builds
+      # (Parakeet)". Linux does NOT get `directml` (Windows-only EP).
+      - run: pnpm -F desktop tauri build --config ./src-tauri/tauri.conf.stable.json --features gpu-vulkan,directml
         env:
           CI: false
           LIBCLANG_PATH: 'C:\Program Files\LLVM\bin'
@@ -124,11 +130,14 @@ jobs:
           if-no-files-found: error
 
   # macos-latest runners are Apple Silicon (aarch64) — Intel is not built.
-  # No Apple code signing (unsigned by design for now); the minisign updater
-  # signing (TAURI_SIGNING_*) is separate and still applies. The macOS updater
-  # artifact is the .app.tar.gz (+ .sig) from bundle/macos/, NOT the .dmg.
-  # binaries/check-permissions is compiled automatically by build.rs (swiftc,
-  # preinstalled on macOS runners).
+  # Apple Developer ID signing + notarization run inside `tauri build` (issue
+  # #19): APPLE_CERTIFICATE/PASSWORD import the Developer ID cert into a
+  # temporary keychain, APPLE_SIGNING_IDENTITY selects it, and the
+  # APPLE_API_* trio (App Store Connect key) notarizes + staples the .app and
+  # .dmg. The minisign updater signing (TAURI_SIGNING_*) is separate and still
+  # applies. The macOS updater artifact is the .app.tar.gz (+ .sig) from
+  # bundle/macos/, NOT the .dmg. binaries/check-permissions is compiled
+  # automatically by build.rs (swiftc, preinstalled on macOS runners).
   build-macos:
     runs-on: macos-latest
     timeout-minutes: 180
@@ -156,15 +165,33 @@ jobs:
       # clang-sys treats set-but-empty as "search nowhere").
       - run: echo "LIBCLANG_PATH=$(dirname "$(dirname "$(xcrun --find clang)")")/lib" >> "$GITHUB_ENV"
 
+      # notarytool authenticates with the App Store Connect API key (.p8);
+      # write it to a runner-temp file the bundler can read via
+      # APPLE_API_KEY_PATH. RUNNER_TEMP is wiped when the job ends.
+      - run: |
+          echo "$APPLE_API_KEY_P8_BASE64" | base64 --decode > "$RUNNER_TEMP/apple_api_key.p8"
+          echo "APPLE_API_KEY_PATH=$RUNNER_TEMP/apple_api_key.p8" >> "$GITHUB_ENV"
+        env:
+          APPLE_API_KEY_P8_BASE64: ${{ secrets.APPLE_API_KEY_P8_BASE64 }}
+
       # Tauri v2 merges --config files in order (later wins; arrays replaced),
-      # so the -macos overlay only swaps bundle.targets to ["app", "dmg"] while
-      # version/identifier/updater stay in tauri.conf.stable.json. No
-      # gpu-vulkan feature — whisper.cpp uses Metal/CPU on macOS.
+      # so the -macos overlay swaps bundle.targets to ["app", "dmg"] and sets
+      # the real Developer ID signingIdentity (the base config's ad-hoc "-" is
+      # for dev/citest); version/identifier/updater stay in
+      # tauri.conf.stable.json. No gpu-vulkan feature — whisper.cpp uses
+      # Metal/CPU on macOS. APPLE_CERTIFICATE/PASSWORD import the Developer ID
+      # cert into a temp keychain; the bundler then codesigns, notarizes via
+      # the App Store Connect key (APPLE_API_*), and staples the ticket.
       - run: pnpm -F desktop tauri build --config ./src-tauri/tauri.conf.stable.json --config ./src-tauri/tauri.conf.stable-macos.json
         env:
           CI: false
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE_P12_BASE64 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: "Developer ID Application: Abhishek Gupta (M4MVC745NX)"
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER_ID }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY_ID }}
 
       - uses: actions/upload-artifact@v4
         with:
