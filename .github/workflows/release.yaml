@@ -57,7 +57,13 @@ jobs:
       # docs/BUILDING.md "Windows Vulkan build gotchas").
       - uses: ilammy/msvc-dev-cmd@v1
 
-      - run: pnpm -F desktop tauri build --config ./src-tauri/tauri.conf.stable.json --features gpu-vulkan
+      # `directml` rides the same Windows build as `gpu-vulkan`: it's a
+      # separate engine (Parakeet/ONNX Runtime vs. whisper.cpp/Vulkan) but
+      # needs no extra SDK at build time (ONNX Runtime's prebuilt Windows
+      # binaries already ship DirectML support) and falls back to CPU at
+      # runtime if unavailable — see docs/BUILDING.md "GPU builds
+      # (Parakeet)". Linux does NOT get `directml` (Windows-only EP).
+      - run: pnpm -F desktop tauri build --config ./src-tauri/tauri.conf.stable.json --features gpu-vulkan,directml
         env:
           CI: false
           LIBCLANG_PATH: 'C:\Program Files\LLVM\bin'

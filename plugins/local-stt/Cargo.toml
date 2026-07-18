@@ -12,8 +12,13 @@ default = []
 whisper-cpp = ["dep:hypr-transcribe-whisper-local", "dep:hypr-whisper-local"]
 parakeet-onnx = ["dep:hypr-parakeet-onnx", "dep:hypr-transcribe-core"]
 coreml = ["whisper-cpp", "hypr-transcribe-whisper-local/coreml"]
-directml = ["whisper-cpp", "hypr-transcribe-whisper-local/directml"]
-cuda = ["whisper-cpp", "hypr-transcribe-whisper-local/cuda"]
+# `?/` is a weak dependency feature: it only turns on `hypr-parakeet-onnx`'s
+# directml/cuda feature if that optional dep is *already* enabled elsewhere
+# (i.e. via the `parakeet-onnx` feature) — it does not by itself pull the
+# crate in, so `--features directml` alone (without `parakeet-onnx`) still
+# builds.
+directml = ["whisper-cpp", "hypr-transcribe-whisper-local/directml", "hypr-parakeet-onnx?/directml"]
+cuda = ["whisper-cpp", "hypr-transcribe-whisper-local/cuda", "hypr-parakeet-onnx?/cuda"]
 hipblas = ["whisper-cpp", "hypr-transcribe-whisper-local/hipblas"]
 openblas = ["whisper-cpp", "hypr-transcribe-whisper-local/openblas"]
 metal = ["whisper-cpp", "hypr-transcribe-whisper-local/metal"]
