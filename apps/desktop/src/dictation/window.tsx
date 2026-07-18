@@ -70,9 +70,49 @@ export function DictationOrbWindow({ solid = false }: { solid?: boolean }) {
     document.body.style.background = "transparent";
   }, [solid]);
 
+  // A variant picked while the orb window is hidden (or superseded by a
+  // later pick before it could apply) waits here for the next opportunity to
+  // sync - see the effect below and `requestOrbWindowSize`'s doc comment.
+  const pendingVariantRef = useRef<DictationOrbVariant | null>(null);
+
   useEffect(() => {
-    void syncOrbWindowSize(variant);
+    let cancelled = false;
+
+    void requestOrbWindowSize(variant, () => cancelled).then((applied) => {
+      if (!cancelled) {
+        pendingVariantRef.current = applied ? null : variant;
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [variant]);
+
+  // Flush a resize that was deferred because the window was hidden, the next
+  // time a real dictation-session event proves the window is now shown (the
+  // orb window is only ever shown for an active/enabled dictation session -
+  // see `DictationOrbHost`'s lifecycle effect in `host.tsx`).
+  useEffect(() => {
+    const pending = pendingVariantRef.current;
+    if (!pending) {
+      return;
+    }
+
+    let cancelled = false;
+    void requestOrbWindowSize(pending, () => cancelled).then((applied) => {
+      if (!cancelled && applied) {
+        pendingVariantRef.current = null;
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+    // Only the phase transition matters here (it's the signal that the
+    // window is now shown); `pendingVariantRef` is a ref, not state, so it
+    // is intentionally not a dependency.
+  }, [state.phase]);
 
   const dictating = state.phase === "listening" || state.phase === "processing";
   const batchMode = state.mode === "batch";
@@ -166,6 +206,43 @@ export function DictationOrbWindow({ solid = false }: { solid?: boolean }) {
 }
 
 /**
+ * Gate for `applyOrbWindowSize`: a native `setSize`/`setPosition` on a
+ * HIDDEN orb window still round-trips through the single-threaded Tauri/
+ * WebView2 event loop that every window (including the Settings window)
+ * shares, and on Windows that can stall the compositor mid-repaint of
+ * whichever webview is currently painting. Picking an orb style in
+ * Settings while the orb is off (or between sessions, before it has been
+ * shown) must never trigger that resize - the caller (the effects in
+ * `DictationOrbWindow`) stashes the variant in `pendingVariantRef` instead
+ * and retries once a real dictation-session event proves the window is
+ * shown. Returns whether the size was actually applied (or already
+ * matched), so the caller knows whether to keep the variant pending.
+ */
+async function requestOrbWindowSize(
+  variant: DictationOrbVariant,
+  isCancelled: () => boolean,
+): Promise<boolean> {
+  try {
+    const window = getCurrentWebviewWindow();
+    if (!(await window.isVisible())) {
+      return false;
+    }
+    if (isCancelled()) {
+      // Superseded by a later variant pick while the visibility check was
+      // in flight - let that effect's own call own the resize.
+      return true;
+    }
+    await applyOrbWindowSize(window, variant, isCancelled);
+    return true;
+  } catch {
+    // Not running inside the orb webview (tests/storybook) or the window API
+    // is unavailable - keep whatever size the window was created with. This
+    // is a terminal failure, not a "try again later" one, so report applied.
+    return true;
+  }
+}
+
+/**
  * The Rust side always creates the orb window at the cobalt chassis size
  * (`ORB_SIZE` in `plugins/dictation/src/orb.rs`); variants that render larger
  * (particles, 1.5x) are resized from here, where the variant setting lives -
@@ -175,41 +252,49 @@ export function DictationOrbWindow({ solid = false }: { solid?: boolean }) {
  * The re-centered spot is clamped to the current monitor with the TARGET
  * size (the Rust restore clamp ran at the creation size, so a variant that
  * grows near a screen edge would otherwise end up partly offscreen).
+ *
+ * Only ever called on a window already confirmed visible
+ * (`requestOrbWindowSize`); `isCancelled` lets a later variant pick that
+ * arrived while this one was still awaiting IPC round-trips win outright,
+ * coalescing a rapid run of picks into a single native resize instead of
+ * firing one per click.
  */
-async function syncOrbWindowSize(variant: DictationOrbVariant) {
-  try {
-    const window = getCurrentWebviewWindow();
-    const target = orbWindowSizeForVariant(variant);
-    const scale = await window.scaleFactor();
-    const inner = (await window.innerSize()).toLogical(scale);
-    if (
-      Math.abs(inner.width - target) < 1 &&
-      Math.abs(inner.height - target) < 1
-    ) {
-      return;
-    }
-
-    const position = (await window.outerPosition()).toLogical(scale);
-    let x = Math.round(position.x + (inner.width - target) / 2);
-    let y = Math.round(position.y + (inner.height - target) / 2);
-
-    const monitor = await currentMonitor().catch(() => null);
-    if (monitor) {
-      const monitorScale = monitor.scaleFactor || 1;
-      const monitorX = monitor.position.x / monitorScale;
-      const monitorY = monitor.position.y / monitorScale;
-      const monitorWidth = monitor.size.width / monitorScale;
-      const monitorHeight = monitor.size.height / monitorScale;
-      x = clamp(x, monitorX, monitorX + monitorWidth - target);
-      y = clamp(y, monitorY, monitorY + monitorHeight - target);
-    }
-
-    await window.setSize(new LogicalSize(target, target));
-    await window.setPosition(new LogicalPosition(Math.round(x), Math.round(y)));
-  } catch {
-    // Not running inside the orb webview (tests/storybook) or the window API
-    // is unavailable - keep whatever size the window was created with.
+async function applyOrbWindowSize(
+  window: ReturnType<typeof getCurrentWebviewWindow>,
+  variant: DictationOrbVariant,
+  isCancelled: () => boolean,
+) {
+  const target = orbWindowSizeForVariant(variant);
+  const scale = await window.scaleFactor();
+  const inner = (await window.innerSize()).toLogical(scale);
+  if (
+    Math.abs(inner.width - target) < 1 &&
+    Math.abs(inner.height - target) < 1
+  ) {
+    return;
   }
+
+  const position = (await window.outerPosition()).toLogical(scale);
+  let x = Math.round(position.x + (inner.width - target) / 2);
+  let y = Math.round(position.y + (inner.height - target) / 2);
+
+  const monitor = await currentMonitor().catch(() => null);
+  if (monitor) {
+    const monitorScale = monitor.scaleFactor || 1;
+    const monitorX = monitor.position.x / monitorScale;
+    const monitorY = monitor.position.y / monitorScale;
+    const monitorWidth = monitor.size.width / monitorScale;
+    const monitorHeight = monitor.size.height / monitorScale;
+    x = clamp(x, monitorX, monitorX + monitorWidth - target);
+    y = clamp(y, monitorY, monitorY + monitorHeight - target);
+  }
+
+  if (isCancelled()) {
+    return;
+  }
+
+  await window.setSize(new LogicalSize(target, target));
+  await window.setPosition(new LogicalPosition(Math.round(x), Math.round(y)));
 }
 
 function clamp(value: number, min: number, max: number): number {
