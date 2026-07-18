@@ -392,6 +392,10 @@ msgstr ""
 msgid "Choose template icon"
 msgstr ""
 
+#: src/settings/general/app-settings.tsx
+msgid "Classic"
+msgstr ""
+
 #: src/settings/general/storage/legacy-cleanup.tsx
 msgid "Clean Up"
 msgstr ""
@@ -441,6 +445,10 @@ msgstr ""
 
 #: src/dictation/orb.tsx
 msgid "Cobalt"
+msgstr ""
+
+#: src/meeting-float/window.tsx
+msgid "Collapse live transcript"
 msgstr ""
 
 #: src/settings/dictation/index.tsx
@@ -811,6 +819,10 @@ msgstr ""
 msgid "Exclude apps from detection"
 msgstr ""
 
+#: src/meeting-float/window.tsx
+msgid "Expand live transcript"
+msgstr ""
+
 #: src/session/components/outer-header/overflow/export-modal.tsx
 #: src/session/components/outer-header/overflow/index.tsx
 msgid "Export"
@@ -887,6 +899,10 @@ msgstr ""
 
 #: src/chat/components/toolbar-controls.tsx
 msgid "Float chat"
+msgstr ""
+
+#: src/settings/general/app-settings.tsx
+msgid "Floating bar look"
 msgstr ""
 
 #: src/templates/template-icon-picker.tsx
@@ -1426,6 +1442,10 @@ msgstr ""
 
 #: src/settings/dictation/shortcut-recorder.tsx
 msgid "Not set"
+msgstr ""
+
+#: src/settings/general/app-settings.tsx
+msgid "Notare"
 msgstr ""
 
 #: src/onboarding/permissions.tsx
@@ -2183,6 +2203,7 @@ msgstr ""
 msgid "Starting your trial..."
 msgstr ""
 
+#: src/meeting-float/window.tsx
 #: src/session/components/outer-header/index.tsx
 msgid "Stop"
 msgstr ""
@@ -2306,6 +2327,14 @@ msgstr ""
 #: src/onboarding/folder-location.tsx
 #: src/settings/general/storage/notes-location.tsx
 msgid "The app will restart after onboarding to apply your storage changes"
+msgstr ""
+
+#: src/settings/general/app-settings.tsx
+msgid "The compact parchment bar with a dancing waveform."
+msgstr ""
+
+#: src/settings/general/app-settings.tsx
+msgid "The default glass bar with the live orb and captions."
 msgstr ""
 
 #: src/settings/general/spoken-languages.tsx
