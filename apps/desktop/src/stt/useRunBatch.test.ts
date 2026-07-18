@@ -5,7 +5,9 @@ import {
   canRunBatchTranscription,
   getBatchFallbackTarget,
   getBatchProvider,
+  getLocalBatchFallbackFromConn,
   getSessionSpeakerCount,
+  NO_BATCH_PROVIDER_ERROR,
 } from "./useRunBatch";
 import { useRunBatch } from "./useRunBatch";
 
@@ -28,6 +30,8 @@ const {
   isModelDownloadedMock,
   startServerMock,
   stopServerMock,
+  platformMock,
+  useAiProviderMock,
 } = vi.hoisted(() => ({
   startTranscriptionMock: vi.fn(),
   useListenerMock: vi.fn(),
@@ -47,6 +51,8 @@ const {
   startServerMock: vi.fn(),
   stopServerMock: vi.fn(),
   listSupportedModelsMock: vi.fn(),
+  platformMock: { current: "macos" as string },
+  useAiProviderMock: vi.fn(),
 }));
 
 vi.mock("@hypr/plugin-local-stt", () => ({
@@ -56,6 +62,14 @@ vi.mock("@hypr/plugin-local-stt", () => ({
     stopServer: stopServerMock,
     listSupportedModels: listSupportedModelsMock,
   },
+}));
+
+vi.mock("@tauri-apps/plugin-os", () => ({
+  platform: () => platformMock.current,
+}));
+
+vi.mock("~/settings/providers", () => ({
+  useAiProvider: useAiProviderMock,
 }));
 
 vi.mock("./contexts", () => ({
@@ -120,8 +134,16 @@ vi.mock("~/stt/capabilities", () => {
       model.startsWith("am-") ||
       model.startsWith("Quantized"));
 
+  const isWhisperLocalSttModel = (model?: string | null) =>
+    typeof model === "string" && model.startsWith("Quantized");
+
+  const isParakeetLocalSttModel = (model?: string | null) =>
+    typeof model === "string" && model.startsWith("parakeet-");
+
   return {
     isSupportedLocalSttModel,
+    isWhisperLocalSttModel,
+    isParakeetLocalSttModel,
     isHyprnoteLocalSttModel: (
       provider?: string | null,
       model?: string | null,
@@ -184,6 +206,42 @@ describe("getBatchProvider", () => {
       "soniqo",
     );
   });
+
+  test("routes the custom server through the hyprnote batch adapter", () => {
+    // The self-hosted companion server speaks the same /v1/listen protocol
+    // as the local hyprnote server, so custom routes through the hyprnote
+    // adapter — carrying the custom base URL/API key on the BatchTarget.
+    expect(getBatchProvider("custom", "whisper-large-v3")).toBe("hyprnote");
+  });
+});
+
+describe("getLocalBatchFallbackFromConn", () => {
+  test("uses the live whisper connection as a batch fallback", () => {
+    expect(
+      getLocalBatchFallbackFromConn({
+        provider: "hyprnote",
+        model: "QuantizedTiny",
+        baseUrl: "http://127.0.0.1:5555",
+      }),
+    ).toEqual({
+      provider: "hyprnote",
+      model: "QuantizedTiny",
+      baseUrl: "http://127.0.0.1:5555",
+      apiKey: "",
+      label: "Local transcription",
+    });
+  });
+
+  test("returns null for a non-local live connection", () => {
+    expect(
+      getLocalBatchFallbackFromConn({
+        provider: "custom",
+        model: "whisper-large-v3",
+        baseUrl: "https://custom.test",
+      }),
+    ).toBeNull();
+    expect(getLocalBatchFallbackFromConn(null)).toBeNull();
+  });
 });
 
 describe("canRunBatchTranscription", () => {
@@ -230,6 +288,38 @@ describe("getBatchFallbackTarget", () => {
       label: "Soniqo batch transcription",
     });
   });
+
+  test("uses the live local model on Windows/Linux when one is available", () => {
+    const localFallback = {
+      provider: "hyprnote" as const,
+      model: "QuantizedTiny",
+      baseUrl: "http://127.0.0.1:5555",
+      apiKey: "",
+      label: "Local transcription",
+    };
+
+    expect(
+      getBatchFallbackTarget({
+        isPaid: false,
+        accessToken: null,
+        apiBaseUrl: "https://api.test",
+        platform: "windows",
+        localBatchFallback: localFallback,
+      }),
+    ).toEqual(localFallback);
+  });
+
+  test("returns null on Windows/Linux when no local batch model is available", () => {
+    expect(
+      getBatchFallbackTarget({
+        isPaid: false,
+        accessToken: null,
+        apiBaseUrl: "https://api.test",
+        platform: "linux",
+        localBatchFallback: null,
+      }),
+    ).toBeNull();
+  });
 });
 
 describe("useRunBatch", () => {
@@ -268,9 +358,6 @@ describe("useRunBatch", () => {
     useBillingAccessMock.mockReturnValue({
       isPaid: false,
     });
-    useConfigValueMock.mockImplementation((key) =>
-      key === "ai_language" ? "en" : key === "final_stt_model" ? "" : [],
-    );
     isModelDownloadedMock.mockResolvedValue({ status: "ok", data: true });
     startServerMock.mockResolvedValue({
       status: "ok",
@@ -278,6 +365,17 @@ describe("useRunBatch", () => {
     });
     stopServerMock.mockResolvedValue({ status: "ok", data: true });
     listSupportedModelsMock.mockResolvedValue({ status: "ok", data: [] });
+    platformMock.current = "macos";
+    useAiProviderMock.mockReturnValue(undefined);
+    useConfigValueMock.mockImplementation((key: string) =>
+      key === "ai_language"
+        ? "en"
+        : key === "final_stt_model"
+          ? ""
+          : key === "final_stt_provider"
+            ? ""
+            : [],
+    );
   });
 
   test("waits for streamed SQLite persists before retention", async () => {
@@ -390,7 +488,7 @@ describe("useRunBatch", () => {
     );
   });
 
-  test("falls back to local Soniqo when the selected provider is not batch-capable", async () => {
+  test("routes a custom server through the hyprnote batch adapter with its base URL", async () => {
     useSTTConnectionMock.mockReturnValue({
       conn: {
         provider: "custom",
@@ -399,6 +497,39 @@ describe("useRunBatch", () => {
         apiKey: "custom-key",
       },
     });
+    startTranscriptionMock.mockResolvedValue(undefined);
+
+    const { result } = renderHook(() => useRunBatch("session-1"));
+
+    await act(async () => {
+      await result.current("/tmp/session.wav");
+    });
+
+    // custom speaks /v1/listen → hyprnote adapter, carrying the custom base
+    // URL/API key (no fallback to Soniqo).
+    expect(startTranscriptionMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: "hyprnote",
+        model: "realtime-only",
+        base_url: "https://custom.test",
+        api_key: "custom-key",
+      }),
+      expect.any(Object),
+    );
+    expect(sonnerToastMessageMock).not.toHaveBeenCalled();
+  });
+
+  test("falls back to local Soniqo on macOS when the selected target's languages are unsupported", async () => {
+    useSTTConnectionMock.mockReturnValue({
+      conn: {
+        provider: "deepgram",
+        model: "nova-3",
+        baseUrl: "https://api.deepgram.com/v1/listen",
+        apiKey: "test-key",
+      },
+    });
+    isSupportedLanguagesBatchMock.mockResolvedValue(false);
+    platformMock.current = "macos";
     startTranscriptionMock.mockResolvedValue(undefined);
 
     const { result } = renderHook(() => useRunBatch("session-1"));
@@ -416,13 +547,104 @@ describe("useRunBatch", () => {
       }),
       expect.any(Object),
     );
-    expect(sonnerToastMessageMock).toHaveBeenCalledWith(
-      "Using a batch transcription provider",
+  });
+
+  test("falls back to the live local model on Windows when the selected target is unsupported", async () => {
+    useSTTConnectionMock.mockReturnValue({
+      conn: {
+        provider: "hyprnote",
+        model: "QuantizedTiny",
+        baseUrl: "http://127.0.0.1:5555",
+        apiKey: "",
+      },
+    });
+    isSupportedLanguagesBatchMock.mockResolvedValue(false);
+    platformMock.current = "windows";
+    startTranscriptionMock.mockResolvedValue(undefined);
+
+    const { result } = renderHook(() => useRunBatch("session-1"));
+
+    await act(async () => {
+      await result.current("/tmp/session.wav");
+    });
+
+    expect(startTranscriptionMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        description:
-          "realtime-only is not available for batch transcription. Using Soniqo batch transcription instead.",
+        provider: "hyprnote",
+        model: "QuantizedTiny",
+        base_url: "http://127.0.0.1:5555",
+        api_key: "",
       }),
+      expect.any(Object),
     );
+  });
+
+  test("throws a clear error when no batch target is available on Windows", async () => {
+    useSTTConnectionMock.mockReturnValue({
+      conn: {
+        provider: "custom",
+        model: "realtime-only",
+        baseUrl: "https://custom.test",
+        apiKey: "custom-key",
+      },
+    });
+    isSupportedLanguagesBatchMock.mockResolvedValue(false);
+    platformMock.current = "windows";
+    startTranscriptionMock.mockResolvedValue(undefined);
+
+    const { result } = renderHook(() => useRunBatch("session-1"));
+
+    await expect(
+      act(async () => {
+        await result.current("/tmp/session.wav");
+      }),
+    ).rejects.toThrow(NO_BATCH_PROVIDER_ERROR);
+
+    expect(startTranscriptionMock).not.toHaveBeenCalled();
+  });
+
+  test("runs batch on a custom server while live stays local (decoupled final provider)", async () => {
+    useSTTConnectionMock.mockReturnValue({
+      conn: {
+        provider: "hyprnote",
+        model: "QuantizedTiny",
+        baseUrl: "http://127.0.0.1:5555",
+        apiKey: "",
+      },
+    });
+    useConfigValueMock.mockImplementation((key: string) =>
+      key === "ai_language"
+        ? "en"
+        : key === "final_stt_model"
+          ? "whisper-large-v3"
+          : key === "final_stt_provider"
+            ? "custom"
+            : [],
+    );
+    useAiProviderMock.mockReturnValue({
+      base_url: "https://custom.test",
+      api_key: "custom-key",
+    });
+    startTranscriptionMock.mockResolvedValue(undefined);
+
+    const { result } = renderHook(() => useRunBatch("session-1"));
+
+    await act(async () => {
+      await result.current("/tmp/session.wav");
+    });
+
+    expect(startTranscriptionMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: "hyprnote",
+        model: "whisper-large-v3",
+        base_url: "https://custom.test",
+        api_key: "custom-key",
+      }),
+      expect.any(Object),
+    );
+    // Batch targets a remote server; the live local server is left untouched.
+    expect(startServerMock).not.toHaveBeenCalled();
+    expect(stopServerMock).not.toHaveBeenCalled();
   });
 
   test("falls back to hosted cloud transcription for paid users", async () => {
@@ -572,9 +794,9 @@ describe("useRunBatch", () => {
     );
     // Restore happens after the batch run.
     expect(startServerMock).toHaveBeenNthCalledWith(2, "QuantizedTiny");
-    expect(
-      startTranscriptionMock.mock.invocationCallOrder[0],
-    ).toBeLessThan(startServerMock.mock.invocationCallOrder[1]);
+    expect(startTranscriptionMock.mock.invocationCallOrder[0]).toBeLessThan(
+      startServerMock.mock.invocationCallOrder[1],
+    );
   });
 
   test("keeps the live local model when the final model is not downloaded", async () => {

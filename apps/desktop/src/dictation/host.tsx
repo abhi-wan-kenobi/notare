@@ -16,12 +16,6 @@ import {
 } from "@hypr/plugin-shortcut";
 import { sonnerToast } from "@hypr/ui/components/ui/toast";
 
-import { useLanguageModel } from "~/ai/hooks";
-import { deterministicGenerationSettings } from "~/ai/model-settings";
-import { useSetSettingValues } from "~/settings/queries";
-import { useConfigValues } from "~/shared/config";
-import { useSTTConnection } from "~/stt/useSTTConnection";
-
 import {
   finalizeDictation,
   LLM_CLEANUP_SYSTEM_PROMPT,
@@ -29,6 +23,12 @@ import {
 } from "./finalize";
 import { addDictationHistoryEntry } from "./history";
 import { isLegacyOutputMode, normalizeOutputMode } from "./output-mode";
+
+import { useLanguageModel } from "~/ai/hooks";
+import { deterministicGenerationSettings } from "~/ai/model-settings";
+import { useSetSettingValues } from "~/settings/queries";
+import { useConfigValues } from "~/shared/config";
+import { useSTTConnection } from "~/stt/useSTTConnection";
 
 /**
  * Main-window controller for the persistent dictation orb, active on every
@@ -116,9 +116,14 @@ export function DictationOrbHost() {
 
     const conn = connRef.current;
     if (!conn) {
+      // No local live model is configured/downloaded — surface it instead of
+      // silently swallowing the orb click (the pre-split no-op regression).
       console.warn(
         "[dictation] no local STT model ready; select and download a local " +
           "transcription model before dictating",
+      );
+      sonnerToast.info(
+        t`Dictation needs a downloaded local model — choose one in Settings.`,
       );
       return;
     }
@@ -128,7 +133,7 @@ export function DictationOrbHost() {
       conn.model,
       outputModeRef.current,
     );
-  }, []);
+  }, [t]);
 
   const handleFinished = useCallback(
     async (event: DictationFinishedEvent) => {
@@ -281,7 +286,9 @@ export function DictationOrbHost() {
 }
 
 /** Unwrap a specta `Result`-style command response, throwing the error. */
-function unwrap<T>(result: { status: "ok"; data: T } | { status: "error"; error: string }): T {
+function unwrap<T>(
+  result: { status: "ok"; data: T } | { status: "error"; error: string },
+): T {
   if (result.status === "error") {
     throw new Error(result.error);
   }

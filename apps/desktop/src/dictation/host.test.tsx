@@ -21,6 +21,7 @@ const mocks = vi.hoisted(() => ({
   },
   showOrb: vi.fn(async () => ({ status: "ok" as const, data: null })),
   hideOrb: vi.fn(async () => ({ status: "ok" as const, data: null })),
+  startDictation: vi.fn(async () => ({ status: "ok" as const, data: null })),
   stopDictation: vi.fn(async () => ({ status: "ok" as const, data: null })),
   registerGlobalHotkey: vi.fn(async () => ({
     status: "ok" as const,
@@ -31,6 +32,13 @@ const mocks = vi.hoisted(() => ({
     data: null,
   })),
   listen: vi.fn(async () => vi.fn()),
+  orbClickListeners: [] as Array<() => void>,
+  hotkeyListeners: [] as Array<() => void>,
+  sttConnection: {
+    conn: null as null | { provider: string; model: string; baseUrl: string },
+    isLocalModel: false,
+  },
+  sonnerInfo: vi.fn(),
   setSettingValues: vi.fn(),
 }));
 
@@ -42,7 +50,7 @@ vi.mock("@hypr/plugin-dictation", () => ({
   commands: {
     showOrb: mocks.showOrb,
     hideOrb: mocks.hideOrb,
-    startDictation: vi.fn(async () => ({ status: "ok", data: null })),
+    startDictation: mocks.startDictation,
     stopDictation: mocks.stopDictation,
     cleanText: vi.fn(async () => ({ status: "ok", data: "" })),
     deliverText: vi.fn(async () => ({ status: "ok", data: null })),
@@ -50,7 +58,12 @@ vi.mock("@hypr/plugin-dictation", () => ({
   events: {
     dictationStateEvent: { listen: mocks.listen, emit: vi.fn(async () => {}) },
     dictationFinishedEvent: { listen: mocks.listen },
-    dictationOrbClicked: { listen: mocks.listen },
+    dictationOrbClicked: {
+      listen: async (cb: () => void) => {
+        mocks.orbClickListeners.push(cb);
+        return vi.fn();
+      },
+    },
   },
 }));
 
@@ -60,7 +73,12 @@ vi.mock("@hypr/plugin-shortcut", () => ({
     unregisterGlobalHotkey: mocks.unregisterGlobalHotkey,
   },
   events: {
-    globalHotkeyTriggered: { listen: mocks.listen },
+    globalHotkeyTriggered: {
+      listen: async (cb: () => void) => {
+        mocks.hotkeyListeners.push(cb);
+        return vi.fn();
+      },
+    },
   },
 }));
 
@@ -77,7 +95,11 @@ vi.mock("~/shared/config", () => ({
 }));
 
 vi.mock("~/stt/useSTTConnection", () => ({
-  useSTTConnection: () => ({ conn: null, isLocalModel: false }),
+  useSTTConnection: () => mocks.sttConnection,
+}));
+
+vi.mock("@hypr/ui/components/ui/toast", () => ({
+  sonnerToast: { info: mocks.sonnerInfo },
 }));
 
 vi.mock("./history", () => ({
@@ -96,6 +118,9 @@ describe("DictationOrbHost", () => {
       dictation_paste_at_cursor: true,
       dictation_cleanup: "none",
     };
+    mocks.orbClickListeners = [];
+    mocks.hotkeyListeners = [];
+    mocks.sttConnection = { conn: null, isLocalModel: false };
   });
 
   afterEach(() => {
@@ -109,9 +134,7 @@ describe("DictationOrbHost", () => {
 
     await waitFor(() => expect(mocks.showOrb).toHaveBeenCalledTimes(1));
     await waitFor(() =>
-      expect(mocks.registerGlobalHotkey).toHaveBeenCalledWith(
-        "ctrl+alt+space",
-      ),
+      expect(mocks.registerGlobalHotkey).toHaveBeenCalledWith("ctrl+alt+space"),
     );
   });
 
@@ -133,5 +156,49 @@ describe("DictationOrbHost", () => {
     render(<DictationOrbHost />);
 
     await waitFor(() => expect(mocks.showOrb).toHaveBeenCalledTimes(1));
+  });
+
+  it("surfaces a toast instead of a silent no-op when no local model is configured", async () => {
+    mocks.platform = "macos";
+    mocks.sttConnection = { conn: null, isLocalModel: false };
+
+    render(<DictationOrbHost />);
+    await waitFor(() => expect(mocks.showOrb).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(mocks.orbClickListeners.length).toBe(1));
+
+    // Simulate an orb click with no local live model ready.
+    mocks.orbClickListeners[0]!();
+
+    expect(mocks.startDictation).not.toHaveBeenCalled();
+    expect(mocks.sonnerInfo).toHaveBeenCalledTimes(1);
+    expect(mocks.sonnerInfo.mock.calls[0]![0]).toMatch(
+      /downloaded local model/i,
+    );
+  });
+
+  it("starts dictation from the orb click when a local model is ready", async () => {
+    mocks.platform = "macos";
+    mocks.sttConnection = {
+      conn: {
+        provider: "hyprnote",
+        model: "QuantizedTiny",
+        baseUrl: "http://127.0.0.1:5555",
+      },
+      isLocalModel: true,
+    };
+
+    render(<DictationOrbHost />);
+    await waitFor(() => expect(mocks.orbClickListeners.length).toBe(1));
+
+    mocks.orbClickListeners[0]!();
+
+    await waitFor(() =>
+      expect(mocks.startDictation).toHaveBeenCalledWith(
+        "http://127.0.0.1:5555",
+        "QuantizedTiny",
+        "batch",
+      ),
+    );
+    expect(mocks.sonnerInfo).not.toHaveBeenCalled();
   });
 });
