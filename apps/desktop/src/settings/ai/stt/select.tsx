@@ -9,7 +9,6 @@ import {
   Loader2,
   Trash2,
 } from "lucide-react";
-import { useRef } from "react";
 
 import {
   commands as localSttCommands,
@@ -72,99 +71,79 @@ import {
   isConfiguredSttModel,
   isHyprnoteLocalSttModel,
   isLiveTranscriptionSupported,
+  isParakeetLocalSttModel,
   isRealtimeLocalModel,
   isSupportedLanguagesBatch,
   isSupportedLanguagesLive,
   isSupportedLocalSttModel,
+  isWhisperLocalSttModel,
 } from "~/stt/capabilities";
 import {
   getDefaultSttModel,
   getPreferredProviderModel,
 } from "~/stt/model-selection";
 
-export function SelectProviderAndModel() {
-  const { t } = useLingui();
+// A local on-device model that can transcribe live (whisper.cpp / parakeet ONNX
+// stream final transcripts over the loopback /v1/listen websocket; the macOS
+// soniqo streaming model is realtime). Voxtral/am/soniqo-batch are batch-only,
+// so they are NOT offered in the live picker — selecting one would silently
+// degrade live to batch (the regression this split fixes).
+function isLiveCapableLocalModel(modelId: string) {
+  return (
+    isWhisperLocalSttModel(modelId) ||
+    isParakeetLocalSttModel(modelId) ||
+    isRealtimeLocalModel(modelId)
+  );
+}
+
+export function SelectLiveModel() {
   const { current_stt_provider, current_stt_model } = useConfigValues([
     "current_stt_provider",
     "current_stt_model",
   ] as const);
-  const billing = useBillingAccess();
   const configuredProviders = useConfiguredMapping();
   const { startDownload, startTrial } = useSttSettings();
   const health = useConnectionHealth();
 
-  const selectedSttModel = isConfiguredSttModel(
+  const handleSelectProvider = useSetSettingValue("current_stt_provider");
+  const handleSelectModel = useSetSettingValue("current_stt_model");
+
+  const localModels = configuredProviders.hyprnote?.models ?? [];
+  const liveModels = localModels.filter((model) =>
+    isLiveCapableLocalModel(model.id),
+  );
+
+  const isLocalActive = isHyprnoteLocalSttModel(
     current_stt_provider,
     current_stt_model,
-  )
-    ? current_stt_model
-    : undefined;
-  const isConfigured = !!(current_stt_provider && selectedSttModel);
-  const hasError = isConfigured && health.status === "error";
-  const selectedProvider = current_stt_provider as ProviderId | undefined;
-  const selectedModels = selectedProvider
-    ? (configuredProviders[selectedProvider]?.models ?? [])
-    : [];
-  const displayedSttModel =
-    selectedProvider === "custom"
-      ? selectedSttModel
-      : getPreferredProviderModel(selectedSttModel, selectedModels, {
-          keepUnavailableSavedModel: true,
-        });
-  const handleSelectProvider = useSetSettingValue("current_stt_provider");
-
-  const handleSelectModel = useSetSettingValue("current_stt_model");
-  const handleSelectFinalModel = useSetSettingValue("final_stt_model");
-  const lastSelectedModelsRef = useRef<Record<string, string>>(
-    current_stt_provider && selectedSttModel
-      ? { [current_stt_provider]: selectedSttModel }
-      : {},
   );
-  const rememberModel = (provider?: string, model?: string) => {
-    if (!provider || model === undefined) {
-      return;
-    }
-
-    lastSelectedModelsRef.current[provider] = model;
-  };
-
-  const handleProviderChange = (provider: string) => {
-    rememberModel(current_stt_provider, selectedSttModel);
-
-    const providerId = provider as ProviderId;
-    const nextModels = configuredProviders[providerId]?.models ?? [];
-    const nextModel =
-      getPreferredProviderModel(
-        lastSelectedModelsRef.current[provider],
-        nextModels,
-        { allowSavedModelWithoutChoices: providerId === "custom" },
-      ) ||
-      getDefaultSttModel(providerId) ||
-      "";
-
-    rememberModel(provider, nextModel);
-    handleSelectProvider(provider);
-    handleSelectModel(nextModel);
-    // The final model belongs to the previous provider's catalog; reset it to
-    // "same as live" so a stale id never leaks across providers.
-    handleSelectFinalModel("");
-  };
+  // Remote/custom/cloud active selections can't transcribe live; surface that
+  // as an explicit disabled state instead of silently no-op'ing the orb and
+  // meeting-live start. The list below still lets the user pick a local model
+  // to enable live.
+  const liveDisabled = !isLocalActive;
+  const selectedModelEntry = isLocalActive
+    ? liveModels.find((model) => model.id === current_stt_model)
+    : undefined;
+  const isConfigured = isLocalActive && !!selectedModelEntry;
+  const hasError = isConfigured && health.status === "error";
 
   const handleModelChange = (model: string) => {
-    if (!current_stt_provider) {
-      return;
-    }
-
-    rememberModel(current_stt_provider, model);
+    // Selecting a local model makes the live connection local; this also
+    // starts the loopback STT server via syncLocalSttServer.
+    handleSelectProvider("hyprnote");
     handleSelectModel(model);
   };
+
   return (
     <div className="flex flex-col gap-4">
-      {!isConfigured && (
+      {liveDisabled && (
         <SettingsAlert>
           <Trans>
-            <strong className="font-medium">Transcription model</strong> is
-            needed to make Notare listen to your conversations.
+            <strong className="font-medium">Live transcription</strong> needs a
+            downloaded on-device model. Remote, custom, and cloud providers
+            can't transcribe live — pick one below, or use them for the batch
+            pass instead.
           </Trans>
         </SettingsAlert>
       )}
@@ -175,7 +154,7 @@ export function SelectProviderAndModel() {
 
       <div className="flex items-center gap-2">
         <h3 className="text-md font-sans font-semibold">
-          <Trans>Live transcription</Trans>
+          <Trans>Live transcription model</Trans>
         </h3>
         <HealthStatusIndicator />
         {isConfigured && health.status === "success" && (
@@ -190,20 +169,108 @@ export function SelectProviderAndModel() {
       </div>
       <p className="text-muted-foreground -mt-2 text-sm">
         <Trans>
-          Transcribes while the meeting is happening. Pick a provider, then the
-          model that listens live.
+          Transcribes while the meeting is happening and powers the dictation
+          orb. Only downloaded on-device models can listen live.
         </Trans>
       </p>
 
-      <div className="max-w-md" data-stt-provider-selector>
+      <ModelRowList
+        testId="stt-live-model-list"
+        models={liveModels}
+        selectedId={isLocalActive ? current_stt_model : undefined}
+        pairing="live"
+        onSelect={handleModelChange}
+        onDownload={(model) => startDownload(model as LocalModel)}
+        onStartTrial={startTrial}
+      />
+    </div>
+  );
+}
+
+// Sentinel Select value meaning "no dedicated batch provider" — batch falls
+// back to the live model (Radix Select items can't use an empty-string value).
+// Stored as "" in both final_stt_provider and final_stt_model.
+const FINAL_PROVIDER_SAME_AS_LIVE = "__same_as_live__";
+
+export function SelectBatchModel() {
+  const { t } = useLingui();
+  const { final_stt_provider, final_stt_model } = useConfigValues([
+    "final_stt_provider",
+    "final_stt_model",
+  ] as const);
+  const billing = useBillingAccess();
+  const configuredProviders = useConfiguredMapping();
+  const { startDownload, startTrial } = useSttSettings();
+  const handleSelectFinalProvider = useSetSettingValue("final_stt_provider");
+  const handleSelectFinalModel = useSetSettingValue("final_stt_model");
+
+  const selectedProviderValue =
+    typeof final_stt_provider === "string" ? final_stt_provider.trim() : "";
+  const selectedProvider = selectedProviderValue as ProviderId | "";
+  const providerModels = selectedProvider
+    ? (configuredProviders[selectedProvider]?.models ?? [])
+    : [];
+  const finalModel = final_stt_model?.trim() ?? "";
+  const selectedFinalModel = providerModels.find(
+    (model) => model.id === finalModel,
+  );
+
+  const handleProviderChange = (provider: string) => {
+    if (provider === FINAL_PROVIDER_SAME_AS_LIVE) {
+      handleSelectFinalProvider("");
+      handleSelectFinalModel("");
+      return;
+    }
+
+    const providerId = provider as ProviderId;
+    const nextModels = configuredProviders[providerId]?.models ?? [];
+    const nextModel =
+      getPreferredProviderModel(undefined, nextModels) ||
+      getDefaultSttModel(providerId) ||
+      (providerId === "custom" ? "" : "");
+
+    handleSelectFinalProvider(provider);
+    handleSelectFinalModel(nextModel);
+  };
+
+  const handleModelChange = (model: string) => {
+    handleSelectFinalModel(model);
+  };
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center gap-2">
+        <h3 className="text-md font-sans font-semibold">
+          <Trans>Batch & final-pass model</Trans>
+        </h3>
+      </div>
+      <p className="text-muted-foreground -mt-2 text-sm">
+        <Trans>
+          Used for the accurate pass after a recording ends, imported files, and
+          re-transcription. Pick a larger on-device model, a custom self-hosted
+          server, or a cloud provider — independent of the live model.
+        </Trans>
+      </p>
+
+      <div className="max-w-md" data-stt-batch-provider-selector>
         <Select
-          value={current_stt_provider || ""}
+          value={selectedProvider || FINAL_PROVIDER_SAME_AS_LIVE}
           onValueChange={handleProviderChange}
         >
           <SelectTrigger className="bg-card shadow-none focus:ring-0">
             <SelectValue placeholder={t`Select a provider`} />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value={FINAL_PROVIDER_SAME_AS_LIVE}>
+              <div className="flex flex-col gap-0.5">
+                <span>
+                  <Trans>Same as live model</Trans>
+                </span>
+                <span className="text-muted-foreground text-[11px]">
+                  <Trans>Reuses the live model for batch transcription.</Trans>
+                </span>
+              </div>
+            </SelectItem>
             {PROVIDERS.filter(({ disabled }) => !disabled).map((provider) => {
               const configured =
                 configuredProviders[provider.id]?.configured ?? false;
@@ -245,96 +312,30 @@ export function SelectProviderAndModel() {
         </Select>
       </div>
 
-      {current_stt_provider === "custom" ? (
+      {selectedProvider === "custom" ? (
         <Input
-          value={displayedSttModel || ""}
+          value={finalModel}
           onChange={(event) => handleModelChange(event.target.value)}
           className="text-xs"
           placeholder={t`Enter a model identifier`}
         />
-      ) : current_stt_provider ? (
+      ) : selectedProvider ? (
         <ModelRowList
-          testId="stt-live-model-list"
-          models={selectedModels}
-          selectedId={displayedSttModel}
-          pairing="live"
+          testId="stt-batch-model-list"
+          models={providerModels}
+          selectedId={selectedFinalModel ? selectedFinalModel.id : undefined}
+          pairing="final"
           onSelect={handleModelChange}
           onDownload={(model) => startDownload(model as LocalModel)}
           onStartTrial={startTrial}
         />
-      ) : null}
-    </div>
-  );
-}
-
-// Sentinel Select value meaning "no dedicated final model" (Radix Select
-// items cannot use an empty-string value). Stored as "" in settings.
-const FINAL_MODEL_SAME_AS_LIVE = "__same_as_live__";
-
-export function SelectFinalModel() {
-  const { t } = useLingui();
-  const { current_stt_provider, final_stt_model } = useConfigValues([
-    "current_stt_provider",
-    "final_stt_model",
-  ] as const);
-  const configuredProviders = useConfiguredMapping();
-  const { startDownload, startTrial } = useSttSettings();
-  const handleSelectFinalModel = useSetSettingValue("final_stt_model");
-
-  const selectedProvider = current_stt_provider as ProviderId | undefined;
-  const providerModels = selectedProvider
-    ? (configuredProviders[selectedProvider]?.models ?? [])
-    : [];
-
-  if (!selectedProvider) {
-    return null;
-  }
-
-  const finalModel = final_stt_model?.trim() ?? "";
-  const selectedFinalModel = providerModels.find(
-    (model) => model.id === finalModel,
-  );
-
-  return (
-    <div className="flex flex-col gap-2">
-      <h3 className="text-md font-sans font-semibold">
-        <Trans>Final pass & re-transcription</Trans>
-      </h3>
-      <p className="text-muted-foreground text-sm">
-        <Trans>
-          Used for the accurate pass after a recording ends and when
-          re-transcribing a note. Pick a larger model than the live one for
-          better quality, or keep it the same as the live model.
-        </Trans>
-      </p>
-      {selectedProvider === "custom" ? (
-        <Input
-          value={finalModel}
-          onChange={(event) => handleSelectFinalModel(event.target.value)}
-          className="text-xs"
-          placeholder={t`Same as live model`}
-        />
       ) : (
-        <ModelRowList
-          testId="stt-final-model-list"
-          models={providerModels}
-          selectedId={
-            selectedFinalModel
-              ? selectedFinalModel.id
-              : FINAL_MODEL_SAME_AS_LIVE
-          }
-          pairing="final"
-          onSelect={(id) =>
-            handleSelectFinalModel(id === FINAL_MODEL_SAME_AS_LIVE ? "" : id)
-          }
-          onDownload={(model) => startDownload(model as LocalModel)}
-          onStartTrial={startTrial}
-          leadingRow={{
-            id: FINAL_MODEL_SAME_AS_LIVE,
-            label: <Trans>Same as live model</Trans>,
-            hint: <Trans>Reuses the live model for the accurate pass.</Trans>,
-          }}
-        />
+        <p className="text-muted-foreground text-[13px]">
+          <Trans>
+            Batch transcription uses the live model. Pick a provider above to
+            run the final pass on a different model.
+          </Trans>
+        </p>
       )}
     </div>
   );

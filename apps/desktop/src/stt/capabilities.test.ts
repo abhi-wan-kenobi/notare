@@ -19,6 +19,7 @@ import {
   getOnDeviceTranscriptionMode,
   getTranscriptionLanguages,
   isConfiguredSttModel,
+  isLiveTranscriptionSupported,
   isSupportedLanguagesBatch,
   isSupportedLanguagesLive,
   isSupportedLocalSttModel,
@@ -71,9 +72,9 @@ describe("getOnDeviceTranscriptionMode", () => {
   });
 
   test("uses batch mode for the Voxtral (llama.cpp) model — no streaming decode", () => {
-    expect(
-      getOnDeviceTranscriptionMode("voxtral-mini-3b-2507-q4km"),
-    ).toBe("batch");
+    expect(getOnDeviceTranscriptionMode("voxtral-mini-3b-2507-q4km")).toBe(
+      "batch",
+    );
   });
 });
 
@@ -145,12 +146,12 @@ describe("getOnDeviceTranscriptionConfig", () => {
   });
 
   test("keeps all languages live for local whisper models", () => {
-    expect(getOnDeviceTranscriptionConfig("QuantizedSmall", ["en", "hi"])).toEqual(
-      {
-        languages: ["en", "hi"],
-        transcriptionMode: "live",
-      },
-    );
+    expect(
+      getOnDeviceTranscriptionConfig("QuantizedSmall", ["en", "hi"]),
+    ).toEqual({
+      languages: ["en", "hi"],
+      transcriptionMode: "live",
+    });
   });
 });
 
@@ -249,5 +250,40 @@ describe("getTranscriptionLanguages", () => {
       "en-US",
       "ko",
     ]);
+  });
+});
+
+describe("isLiveTranscriptionSupported", () => {
+  test("reports local whisper/parakeet models as live-capable", async () => {
+    isSupportedLanguagesLiveMock.mockResolvedValue({
+      status: "ok",
+      data: true,
+    });
+
+    expect(
+      await isLiveTranscriptionSupported("hyprnote", "QuantizedSmall"),
+    ).toBe(true);
+    expect(
+      await isLiveTranscriptionSupported("hyprnote", "parakeet-tdt-0.6b-v3"),
+    ).toBe(true);
+  });
+
+  test("never reports custom/remote/cloud providers as live-capable", async () => {
+    // Remote, custom and cloud providers are batch-only — even though custom
+    // speaks a Deepgram-compatible protocol, live runs on the local loopback
+    // server only. The listener command must not be consulted for them.
+    isSupportedLanguagesLiveMock.mockResolvedValue({
+      status: "ok",
+      data: true,
+    });
+
+    expect(await isLiveTranscriptionSupported("custom", "nova-3")).toBe(false);
+    expect(await isLiveTranscriptionSupported("deepgram", "nova-3")).toBe(
+      false,
+    );
+    expect(await isLiveTranscriptionSupported("hyprnote", "cloud")).toBe(false);
+    expect(await isLiveTranscriptionSupported("", "")).toBe(false);
+
+    expect(isSupportedLanguagesLiveMock).not.toHaveBeenCalled();
   });
 });
