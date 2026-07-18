@@ -158,7 +158,7 @@ jobs:
       # tauri-plugin-local-stt's default target deps (see
       # apps/desktop/src-tauri/Cargo.toml); `voxtral-cuda` is never added to
       # release.yaml. See docs/BUILDING.md "Voxtral (llama.cpp) engine".
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: notare-${{ inputs.os }}${{ (inputs.gpu == 'vulkan' && '-vulkan') || (inputs.gpu == 'directml' && '-directml') || (inputs.gpu == 'voxtral-cuda' && '-voxtral-cuda') || '' }}
           # All bundle files are staged under the in-repo target bundle dir
