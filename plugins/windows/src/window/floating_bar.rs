@@ -48,8 +48,19 @@ pub struct FloatingBarState {
     pub transcript_bubbles: Vec<FloatingTranscriptBubble>,
 }
 
+/// Native macOS floating bar (Swift NSPanel via `FloatingBarManager`).
+///
+/// Gated off since Track C: macOS now uses the SAME webview floating bar as
+/// Windows/Linux (`mod platform` below), so the Swift FFI path is never
+/// reached - nothing calls `_floating_bar_show`, so the NSPanel never appears
+/// and the `rust_on_floating_bar_*` callbacks never fire (their `APP_HANDLE`
+/// stays empty, since `pub use platform::set_app_handle` now points at the
+/// webview module). Kept in place rather than deleted, exactly like #31 did
+/// for the dictation shortcut→native-panel bridge: the `swift-lib` symbols
+/// still link, and re-enabling the native panel would only need this module
+/// wired back into `pub use`. Do NOT add a second `pub use` here.
 #[cfg(target_os = "macos")]
-mod platform {
+mod macos_native_swift {
     use std::ffi::CStr;
     use std::os::raw::c_char;
     use std::sync::OnceLock;
@@ -136,7 +147,13 @@ mod platform {
     }
 }
 
-#[cfg(not(target_os = "macos"))]
+/// Webview-based floating bar, used on EVERY platform since Track C (macOS
+/// previously rendered the Swift NSPanel in `macos_native_swift` above; that
+/// path is now gated off). A small always-on-top transparent webview window
+/// pointing at `/app/floating` that streams `FloatingBarStateEvent`s; the
+/// React side (`apps/desktop/src/meeting-float/window.tsx`) renders either the
+/// Notare glass bar or the Classic parchment bar based on the
+/// `meeting_bar_theme` setting.
 mod platform {
     use std::sync::OnceLock;
 
@@ -243,6 +260,7 @@ mod platform {
         };
 
         position_top_center(app, &window);
+        apply_macos_panel_traits(&window);
 
         Ok(window)
     }
@@ -276,6 +294,13 @@ mod platform {
             .shadow(false)
             .transparent(transparent)
             .focused(false)
+            // Non-activating panel parity: clicking the bar never steals
+            // keyboard focus (the native NSPanel used `.nonactivatingPanel`).
+            // Also matches the dictation orb (`plugins/dictation/src/orb.rs`).
+            .focusable(false)
+            // macOS `sharingType = .none` parity: the window contents are
+            // excluded from screen-sharing captures. No-op on Windows/Linux.
+            .content_protected(true)
             .visible(false)
             .inner_size(BAR_WIDTH, BAR_HEIGHT)
             .disable_drag_drop_handler();
@@ -327,6 +352,52 @@ mod platform {
 
         Ok(window)
     }
+
+    /// Best-effort macOS-only window tweaks that replicate the native NSPanel
+    /// (`FloatingBarManager.swift`) traits the webview builder cannot express:
+    /// OR `FullScreenAuxiliary | Stationary` into the window's
+    /// `collectionBehavior`. `visible_on_all_workspaces(true)` already set
+    /// `CanJoinAllSpaces`; `FullScreenAuxiliary` lets the bar show over
+    /// full-screen apps and `Stationary` keeps it from drifting with Space
+    /// switches (the native panel used both). No-op off macOS.
+    ///
+    /// VERIFY on macOS CI / the user's Mac (this box is Linux, so the objc2
+    /// path is not compiled here): the bar should stay visible in fullscreen
+    /// apps and across Space switches, and never join a Space.
+    #[cfg(target_os = "macos")]
+    fn apply_macos_panel_traits(window: &tauri::WebviewWindow<tauri::Wry>) {
+        use objc2_app_kit::{NSWindow, NSWindowCollectionBehavior};
+
+        let app = window.app_handle().clone();
+        let win = window.clone();
+        let result = crate::ext::run_on_main_thread(&app, move || {
+            let Ok(ptr) = win.ns_window() else {
+                return;
+            };
+
+            // SAFETY: `ns_window()` returns the underlying NSWindow owned by
+            // the still-alive tauri window; `run_on_main_thread` guarantees
+            // AppKit main-thread access.
+            unsafe {
+                let ns_window = &*(ptr as *mut NSWindow);
+                let mut behavior = ns_window.collectionBehavior();
+                behavior |= NSWindowCollectionBehavior::FullScreenAuxiliary;
+                behavior |= NSWindowCollectionBehavior::Stationary;
+                ns_window.setCollectionBehavior(behavior);
+            }
+        });
+
+        if let Err(error) = result {
+            tracing::warn!(
+                %error,
+                label = WINDOW_LABEL,
+                "failed to apply macOS collectionBehavior bits to the floating bar"
+            );
+        }
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    fn apply_macos_panel_traits(_window: &tauri::WebviewWindow<tauri::Wry>) {}
 
     /// `destroy()` is dispatched through the event loop, so the label can
     /// still be registered for a short while afterwards; wait it out so an

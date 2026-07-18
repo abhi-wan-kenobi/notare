@@ -40,7 +40,10 @@ final class FloatingBarManager {
         return
       }
 
-      FloatingBarFonts.register()
+      // CabinSketch registration removed (Track C): the native panel path is
+      // gated off in favor of the cross-platform webview floating bar, and
+      // FloatingBarView never actually used CabinSketch (it uses system
+      // fonts). `FloatingBarFonts` is left in place for now.
 
       let panel = self.createPanel()
       let hostingView = NSHostingView(
