@@ -152,6 +152,73 @@ that seam; no partial/token-level output).
   end-to-end on real CUDA hardware as of this writing; report back and fix
   this note if the recipe needs adjusting).
 
+## GPU builds (Parakeet — DirectML / CUDA)
+
+Default builds run the Parakeet TDT ONNX engine on CPU. Two opt-in cargo
+features on the `desktop` crate offload it to the GPU via ONNX Runtime
+execution providers (`crates/parakeet-onnx`, forwarding through
+`tauri-plugin-local-stt` and `crates/onnx` → the `ort` crate):
+
+- **`directml`** (Windows only) — DirectX 12, covers NVIDIA/AMD/Intel. Rides
+  the same Windows release build as `gpu-vulkan` (see `release.yaml`):
+  `--features gpu-vulkan,directml`. The two features are independent, so a
+  Windows build can take either, both, or neither.
+- **`cuda`** (Windows + Linux, NVIDIA only) — local opt-in; not wired into CI
+  (no CUDA-capable GitHub runners).
+
+Unlike Vulkan, **no SDK is required at build time** for either — ONNX
+Runtime's `download-binaries` build step fetches prebuilt binaries with
+DirectML/CUDA support already compiled in. `directml`/`cuda` only need to be
+present as compile-time feature flags; the actual GPU driver/runtime is a
+*runtime* requirement (DirectML needs Windows 10+, ships with the OS; CUDA
+needs the NVIDIA driver + CUDA/cuDNN runtime libraries on the machine).
+
+**Both providers fail open to CPU.** If the requested execution provider
+can't register (missing driver, wrong GPU vendor, unsupported platform, ...),
+`parakeet-onnx` catches the registration error, logs a `tracing::warn!`
+(`parakeet_execution_provider_unavailable_falling_back_to_cpu`), and rebuilds
+the session on CPU — it never crashes the app or silently forces a bad
+backend. `directml` can even be compiled on non-Windows targets (e.g. `cargo
+check -p parakeet-onnx --features directml` on Linux CI, verifying the wiring
+typechecks) without ever constructing `DirectMLExecutionProvider` there — see
+the doc comment on `gpu_execution_providers` in
+`crates/parakeet-onnx/src/model.rs`.
+
+### Local build commands
+
+Windows (PowerShell, from the repo root):
+
+```powershell
+$env:LIBCLANG_PATH = 'C:\Program Files\LLVM\bin'
+pnpm -F desktop tauri build --features directml
+# Or combined with whisper.cpp's Vulkan offload:
+pnpm -F desktop tauri build --features gpu-vulkan,directml
+```
+
+Linux/Windows (NVIDIA GPU):
+
+```sh
+pnpm -F desktop tauri build --features cuda
+```
+
+`cargo check`/`cargo build -p desktop --features directml` (or `cuda`) work
+the same way for Rust-only iteration.
+
+CI: the `desktop_test_build` workflow's `gpu` input now has a `directml`
+option (Windows only).
+
+### Runtime: verify the GPU is actually used
+
+Check the app logs for `parakeet_execution_provider_active` — its `provider`
+field is `directml`, `cuda`, or `cpu` (logged once per model load, after the
+encoder session settles which provider it landed on). As with Vulkan, **do
+not assume offload happened** — a silent fallback to `cpu` is valid, expected
+behavior for a machine without the requested GPU/driver, but a machine known
+to have a working NVIDIA/DirectX-12 GPU that still lands on `cpu` means the
+EP failed to register; the accompanying
+`parakeet_execution_provider_unavailable_falling_back_to_cpu` warning (logged
+just before it) has the underlying `ort` error.
+
 ## Known environment quirks
 
 - **WSL2 / hosts with broken IPv6:** Node's fetch (and pnpm's) can time out
