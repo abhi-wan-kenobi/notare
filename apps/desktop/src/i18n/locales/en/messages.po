@@ -384,6 +384,10 @@ msgstr "Choose storage location"
 msgid "Choose template icon"
 msgstr "Choose template icon"
 
+#: src/settings/general/app-settings.tsx
+msgid "Classic"
+msgstr "Classic"
+
 #: src/settings/general/storage/legacy-cleanup.tsx
 msgid "Clean Up"
 msgstr "Clean Up"
@@ -434,6 +438,10 @@ msgstr "Closed"
 #: src/dictation/orb.tsx
 msgid "Cobalt"
 msgstr "Cobalt"
+
+#: src/meeting-float/window.tsx
+msgid "Collapse live transcript"
+msgstr "Collapse live transcript"
 
 #: src/settings/dictation/index.tsx
 msgid "Collect and deliver when you stop"
@@ -799,6 +807,10 @@ msgstr "Example: Start with a two-sentence overview, then list decisions and act
 msgid "Exclude apps from detection"
 msgstr "Exclude apps from detection"
 
+#: src/meeting-float/window.tsx
+msgid "Expand live transcript"
+msgstr "Expand live transcript"
+
 #: src/session/components/outer-header/overflow/export-modal.tsx
 #: src/session/components/outer-header/overflow/index.tsx
 msgid "Export"
@@ -880,6 +892,10 @@ msgstr "Flags"
 #: src/chat/components/toolbar-controls.tsx
 msgid "Float chat"
 msgstr "Float chat"
+
+#: src/settings/general/app-settings.tsx
+msgid "Floating bar look"
+msgstr "Floating bar look"
 
 #: src/templates/template-icon-picker.tsx
 msgid "Food & Drink"
@@ -1419,6 +1435,10 @@ msgstr "None"
 #: src/settings/dictation/shortcut-recorder.tsx
 msgid "Not set"
 msgstr "Not set"
+
+#: src/settings/general/app-settings.tsx
+msgid "Notare"
+msgstr "Notare"
 
 #: src/onboarding/permissions.tsx
 msgid "Notare can hear others"
@@ -2175,6 +2195,7 @@ msgstr "Start with permissions"
 msgid "Starting your trial..."
 msgstr "Starting your trial..."
 
+#: src/meeting-float/window.tsx
 #: src/session/components/outer-header/index.tsx
 msgid "Stop"
 msgstr "Stop"
@@ -2299,6 +2320,14 @@ msgstr "That key cannot be part of a global shortcut."
 #: src/settings/general/storage/notes-location.tsx
 msgid "The app will restart after onboarding to apply your storage changes"
 msgstr "The app will restart after onboarding to apply your storage changes"
+
+#: src/settings/general/app-settings.tsx
+msgid "The compact parchment bar with a dancing waveform."
+msgstr "The compact parchment bar with a dancing waveform."
+
+#: src/settings/general/app-settings.tsx
+msgid "The default glass bar with the live orb and captions."
+msgstr "The default glass bar with the live orb and captions."
 
 #: src/settings/general/spoken-languages.tsx
 msgid "The main language is always included for transcription"

@@ -260,13 +260,17 @@ describe("FloatingBarContent orb variant", () => {
   it("falls back to the default variant when the setting is unset or invalid", () => {
     const { rerender } = render(<FloatingBarContent state={makeState()} />);
     expect(
-      screen.getByTestId("dictation-orb").getAttribute("data-dictation-variant"),
+      screen
+        .getByTestId("dictation-orb")
+        .getAttribute("data-dictation-variant"),
     ).toBe("cobalt");
 
     mocks.config["dictation_orb_variant"] = "not-a-variant";
     rerender(<FloatingBarContent state={makeState()} />);
     expect(
-      screen.getByTestId("dictation-orb").getAttribute("data-dictation-variant"),
+      screen
+        .getByTestId("dictation-orb")
+        .getAttribute("data-dictation-variant"),
     ).toBe("cobalt");
   });
 
@@ -284,5 +288,125 @@ describe("FloatingBarContent orb variant", () => {
     expect(
       screen.getByTestId("dictation-orb").getAttribute("data-dictation-phase"),
     ).toBe("error");
+  });
+});
+
+describe("FloatingBarContent meeting bar theme", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.config = {};
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("renders the Notare bar by default (meeting_bar_theme unset)", () => {
+    render(<FloatingBarContent state={makeState()} />);
+
+    expect(screen.getByTestId("floating-bar-glass")).toBeTruthy();
+    expect(screen.queryByTestId("classic-bar")).toBeNull();
+  });
+
+  it("renders the Notare bar for an explicit 'notare' theme", () => {
+    mocks.config["meeting_bar_theme"] = "notare";
+
+    render(<FloatingBarContent state={makeState()} />);
+
+    expect(screen.getByTestId("floating-bar-glass")).toBeTruthy();
+    expect(screen.queryByTestId("classic-bar")).toBeNull();
+  });
+
+  it("falls back to the Notare bar for an unknown theme value", () => {
+    mocks.config["meeting_bar_theme"] = "not-a-theme";
+
+    render(<FloatingBarContent state={makeState()} />);
+
+    expect(screen.getByTestId("floating-bar-glass")).toBeTruthy();
+    expect(screen.queryByTestId("classic-bar")).toBeNull();
+  });
+
+  it("renders the Classic bar when meeting_bar_theme is 'classic'", () => {
+    mocks.config["meeting_bar_theme"] = "classic";
+
+    render(<FloatingBarContent state={makeState()} />);
+
+    expect(screen.getByTestId("classic-bar")).toBeTruthy();
+    expect(screen.queryByTestId("floating-bar-glass")).toBeNull();
+    // Faithful Classic elements: the dancing-bars waveform + stop capsule.
+    expect(screen.getByTestId("classic-dancing-bars")).toBeTruthy();
+    expect(screen.getByTestId("classic-stop-button")).toBeTruthy();
+    // The Notare orb is not part of the Classic bar.
+    expect(screen.queryByTestId("dictation-orb")).toBeNull();
+  });
+
+  it("shows the ErrorMark instead of DancingBars when the Classic bar errors", () => {
+    mocks.config["meeting_bar_theme"] = "classic";
+
+    render(<FloatingBarContent state={makeState({ status: "error" })} />);
+
+    expect(screen.getByTestId("classic-error-mark")).toBeTruthy();
+    expect(screen.queryByTestId("classic-dancing-bars")).toBeNull();
+  });
+
+  it("emits stop from the Classic stop button", () => {
+    mocks.config["meeting_bar_theme"] = "classic";
+
+    render(<FloatingBarContent state={makeState()} />);
+
+    fireEvent.click(screen.getByLabelText("Stop recording"));
+    expect(mocks.emitStop).toHaveBeenCalled();
+  });
+
+  it("expands the Classic transcript bubble and reuses the captions surface", async () => {
+    mocks.config["meeting_bar_theme"] = "classic";
+
+    render(<FloatingBarContent state={makeState()} />);
+    await act(async () => {});
+
+    // Compact first: no captions, expand affordance available.
+    expect(screen.queryByTestId("floating-bar-captions")).toBeNull();
+    expect(
+      screen.getByTestId("classic-bar").getAttribute("data-classic-expanded"),
+    ).toBeNull();
+
+    fireEvent.click(screen.getByLabelText("Expand live transcript"));
+    expect(mocks.emitSettingsChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ liveCaptionMinimized: false }),
+    );
+  });
+
+  it("collapses the Classic transcript when already expanded", () => {
+    mocks.config["meeting_bar_theme"] = "classic";
+
+    render(
+      <FloatingBarContent state={makeState({ liveCaptionMinimized: false })} />,
+    );
+
+    expect(
+      screen.getByTestId("classic-bar").getAttribute("data-classic-expanded"),
+    ).toBe("true");
+    // Expanded reuses the existing FloatingBarCaptions surface.
+    expect(screen.getByTestId("floating-bar-captions")).toBeTruthy();
+
+    fireEvent.click(screen.getByLabelText("Collapse live transcript"));
+    expect(mocks.emitSettingsChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ liveCaptionMinimized: true }),
+    );
+  });
+
+  it("hides the Classic expand button when the caption toggle is unavailable", () => {
+    mocks.config["meeting_bar_theme"] = "classic";
+
+    render(
+      <FloatingBarContent
+        state={makeState({ liveCaptionToggleVisible: false })}
+      />,
+    );
+
+    expect(screen.queryByLabelText("Expand live transcript")).toBeNull();
+    expect(screen.queryByLabelText("Collapse live transcript")).toBeNull();
+    // Stop capsule still renders (solo width).
+    expect(screen.getByTestId("classic-stop-button")).toBeTruthy();
   });
 });

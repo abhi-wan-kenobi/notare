@@ -6,11 +6,16 @@ import { type ReactNode, useEffect, useId, useState } from "react";
 
 import { Button } from "@hypr/ui/components/ui/button";
 import { Switch } from "@hypr/ui/components/ui/switch";
+import { cn } from "@hypr/utils";
 
 import {
   UPDATE_CHECK_QUERY_KEY,
   useDesktopUpdateControl,
 } from "~/main/update-banner";
+import {
+  normalizeMeetingBarTheme,
+  type MeetingBarTheme,
+} from "~/meeting-float/window";
 import { useSetSettingValue } from "~/settings/queries";
 import { useConfigValue } from "~/shared/config";
 
@@ -114,6 +119,7 @@ export function AppSettingsView({
             checked={floatingBar.value}
             onChange={floatingBar.onChange}
           />
+          <MeetingBarThemeGroup />
         </div>
       </section>
 
@@ -146,13 +152,91 @@ export function MicDenoiseRow() {
       description={
         <Trans>
           Reduce background noise on your microphone before transcription.
-          Applies to new sessions only; recordings are always saved
-          unprocessed.
+          Applies to new sessions only; recordings are always saved unprocessed.
         </Trans>
       }
       checked={micDenoise}
       onChange={setMicDenoise}
     />
+  );
+}
+
+const MEETING_BAR_THEME_OPTIONS: ReadonlyArray<{
+  value: MeetingBarTheme;
+  title: ReactNode;
+  description: ReactNode;
+}> = [
+  {
+    value: "notare",
+    title: <Trans>Notare</Trans>,
+    description: (
+      <Trans>The default glass bar with the live orb and captions.</Trans>
+    ),
+  },
+  {
+    value: "classic",
+    title: <Trans>Classic</Trans>,
+    description: (
+      <Trans>The compact parchment bar with a dancing waveform.</Trans>
+    ),
+  },
+];
+
+/**
+ * "Floating bar look" - the `meeting_bar_theme` setting (`notare` |
+ * `classic`). Self-contained like `MicDenoiseRow` so the form-driven
+ * `AppSettingsView` props stay unchanged. The Classic look is the React port
+ * of the earlier native macOS floating bar (`FloatingBarView.swift`); the
+ * Notare look is unchanged.
+ */
+export function MeetingBarThemeGroup() {
+  const meetingBarTheme = useConfigValue("meeting_bar_theme");
+  const setTheme = useSetSettingValue("meeting_bar_theme");
+  const value = normalizeMeetingBarTheme(meetingBarTheme);
+  const groupName = useId();
+
+  return (
+    <div className="flex flex-col gap-2">
+      <h3 className="text-sm font-medium">
+        <Trans>Floating bar look</Trans>
+      </h3>
+      <div
+        role="radiogroup"
+        data-testid="meeting-bar-theme-group"
+        className="flex flex-col gap-2"
+      >
+        {MEETING_BAR_THEME_OPTIONS.map((option) => {
+          const selected = value === option.value;
+          return (
+            <label
+              key={option.value}
+              className={cn([
+                "flex cursor-pointer items-start gap-3 rounded-lg border p-3",
+                "transition-colors duration-(--motion-duration-state)",
+                selected
+                  ? "border-primary/60 bg-accent/40"
+                  : "border-border hover:bg-accent/20",
+              ])}
+            >
+              <input
+                type="radio"
+                name={groupName}
+                value={option.value}
+                checked={selected}
+                onChange={() => setTheme(option.value)}
+                className="accent-primary mt-0.5 shrink-0"
+              />
+              <span className="flex flex-1 flex-col gap-1">
+                <span className="text-sm font-medium">{option.title}</span>
+                <span className="text-muted-foreground text-xs">
+                  {option.description}
+                </span>
+              </span>
+            </label>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
