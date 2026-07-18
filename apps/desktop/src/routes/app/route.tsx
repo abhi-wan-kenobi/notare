@@ -1,4 +1,9 @@
-import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  Outlet,
+  redirect,
+  useRouterState,
+} from "@tanstack/react-router";
 
 import { TooltipProvider } from "@hypr/ui/components/ui/tooltip";
 
@@ -10,6 +15,7 @@ import {
 } from "./-resolve-entry-path";
 
 import { useDeeplinkHandler } from "~/shared/hooks/useDeeplinkHandler";
+import { ContentErrorBoundary } from "~/shared/content-error-boundary";
 import { ListenerProvider } from "~/stt/contexts";
 
 export const Route = createFileRoute("/app")({
@@ -36,13 +42,24 @@ export const Route = createFileRoute("/app")({
 
 function Component() {
   const { listenerStore } = Route.useLoaderData();
+  // A render error inside `<Outlet />` covers every "/app/*" window surface
+  // (main w/ tabs, dictation orb, floating meeting bar, composer,
+  // instruction, onboarding, a popped-out note) - `RootErrorBoundary` in
+  // main.tsx is the only other boundary in the app, and it sits above the
+  // router entirely, so without this a crash here would unmount the whole
+  // window down to a bare "Reload Notare" screen. Keying the reset off the
+  // top-level path clears a caught error the moment the route actually
+  // changes, even for a surface that isn't otherwise remounted.
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
 
   useDeeplinkHandler();
 
   return (
     <TooltipProvider>
       <ListenerProvider store={listenerStore}>
-        <Outlet />
+        <ContentErrorBoundary resetKey={pathname}>
+          <Outlet />
+        </ContentErrorBoundary>
       </ListenerProvider>
     </TooltipProvider>
   );
