@@ -11,14 +11,22 @@ description = ""
 default = []
 whisper-cpp = ["dep:hypr-transcribe-whisper-local", "dep:hypr-whisper-local"]
 parakeet-onnx = ["dep:hypr-parakeet-onnx", "dep:hypr-transcribe-core"]
+# CUDA-only (Phase A decision, issue #16): no `vulkan` passthrough here —
+# llama.cpp's mtmd (multimodal/audio) path heap-corrupts on RDNA2 Vulkan
+# (ggml-org/llama.cpp#22128). CPU-only builds (this feature with no `cuda`)
+# are the supported fallback.
+voxtral-llama = ["dep:hypr-transcribe-voxtral-llama", "dep:hypr-transcribe-core"]
 coreml = ["whisper-cpp", "hypr-transcribe-whisper-local/coreml"]
-directml = ["whisper-cpp", "hypr-transcribe-whisper-local/directml"]
-cuda = ["whisper-cpp", "hypr-transcribe-whisper-local/cuda"]
+directml = ["whisper-cpp", "hypr-transcribe-whisper-local/directml", "hypr-parakeet-onnx?/directml"]
+cuda = ["whisper-cpp", "hypr-transcribe-whisper-local/cuda", "voxtral-llama-cuda", "hypr-parakeet-onnx?/cuda"]
 hipblas = ["whisper-cpp", "hypr-transcribe-whisper-local/hipblas"]
 openblas = ["whisper-cpp", "hypr-transcribe-whisper-local/openblas"]
 metal = ["whisper-cpp", "hypr-transcribe-whisper-local/metal"]
 vulkan = ["whisper-cpp", "hypr-transcribe-whisper-local/vulkan"]
 openmp = ["whisper-cpp", "hypr-transcribe-whisper-local/openmp"]
+# Split out so enabling plugin-wide `cuda` doesn't force `voxtral-llama` on
+# for builds that never opt into that engine.
+voxtral-llama-cuda = ["voxtral-llama", "hypr-transcribe-voxtral-llama/cuda"]
 [build-dependencies]
 tauri-plugin = { workspace = true, features = ["build"] }
 
@@ -32,8 +40,10 @@ reqwest = { workspace = true }
 rodio = { workspace = true }
 similar = { workspace = true }
 specta-typescript = { workspace = true }
+tempfile = { workspace = true }
 tokio-tungstenite = { workspace = true }
 tower = { workspace = true }
+tracing-subscriber = { workspace = true }
 
 [dependencies]
 hypr-am = { workspace = true }
@@ -49,7 +59,9 @@ hypr-parakeet-onnx = { workspace = true, optional = true }
 hypr-parakeet-onnx-model = { workspace = true }
 hypr-transcribe-core = { workspace = true, optional = true }
 hypr-transcribe-soniqo = { workspace = true }
+hypr-transcribe-voxtral-llama = { workspace = true, optional = true }
 hypr-transcribe-whisper-local = { workspace = true, optional = true }
+hypr-voxtral-llama-model = { workspace = true }
 hypr-whisper-local = { workspace = true, optional = true }
 hypr-whisper-local-model = { workspace = true }
 

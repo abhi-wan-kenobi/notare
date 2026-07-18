@@ -958,6 +958,10 @@ msgstr ""
 msgid "Good accuracy at a moderate speed."
 msgstr ""
 
+#: src/settings/dictation/index.tsx
+msgid "Grant access"
+msgstr ""
+
 #: src/dictation/orb.tsx
 msgid "Halo"
 msgstr ""
@@ -1432,6 +1436,10 @@ msgstr ""
 msgid "Notare needs access to your microphone and system audio to record and transcribe your meetings"
 msgstr ""
 
+#: src/settings/dictation/index.tsx
+msgid "Notare needs Accessibility access to type and paste dictated text into other apps."
+msgstr ""
+
 #: src/onboarding/index.tsx
 msgid "Notare will sync your calendar to get meeting reminders"
 msgstr ""
@@ -1544,6 +1552,10 @@ msgstr ""
 
 #: src/onboarding/permissions.tsx
 msgid "Open settings"
+msgstr ""
+
+#: src/settings/dictation/index.tsx
+msgid "Open Settings"
 msgstr ""
 
 #: src/calendar/components/apple/permission.tsx

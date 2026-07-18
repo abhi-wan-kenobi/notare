@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   CleanupGroup,
   DictationHistoryList,
+  MacosAccessibilityHint,
   OrbVariantGroup,
   OutputModeGroup,
 } from "./index";
@@ -207,5 +208,57 @@ describe("DictationHistoryList", () => {
     );
 
     expect(screen.getAllByText(/ago$/)).toHaveLength(2);
+  });
+});
+
+// #31: paste-at-cursor / type-as-you-speak on macOS both need the
+// Accessibility permission (enigo's CGEvent path) - this inline hint is the
+// contextual nudge shown in the Dictation settings while it is missing.
+describe("MacosAccessibilityHint", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("renders nothing once accessibility is authorized", () => {
+    const { container } = render(
+      <MacosAccessibilityHint
+        status="authorized"
+        isPending={false}
+        onRequest={vi.fn()}
+        onOpen={vi.fn()}
+      />,
+    );
+
+    expect(container.firstChild).toBeNull();
+  });
+
+  it("offers to request access when never asked", () => {
+    const onRequest = vi.fn();
+    render(
+      <MacosAccessibilityHint
+        status="neverRequested"
+        isPending={false}
+        onRequest={onRequest}
+        onOpen={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Grant access/ }));
+    expect(onRequest).toHaveBeenCalledTimes(1);
+  });
+
+  it("offers to open Settings once denied", () => {
+    const onOpen = vi.fn();
+    render(
+      <MacosAccessibilityHint
+        status="denied"
+        isPending={false}
+        onRequest={vi.fn()}
+        onOpen={onOpen}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Open Settings/ }));
+    expect(onOpen).toHaveBeenCalledTimes(1);
   });
 });

@@ -10,10 +10,15 @@ on:
         default: windows
         options: [windows, macos, linux]
       gpu:
-        description: "GPU acceleration for whisper.cpp (windows/linux only)"
+        description: >-
+          GPU acceleration: "vulkan" offloads whisper.cpp (windows/linux);
+          "directml" offloads Parakeet/ONNX (windows only, no build SDK);
+          "voxtral-cuda" builds the Voxtral (llama.cpp) engine with CUDA
+          (windows only — manual NVIDIA validation, never in release.yaml;
+          see issue #16 Phase B / #18 and docs/BUILDING.md)
         type: choice
         default: none
-        options: [none, vulkan]
+        options: [none, vulkan, directml, voxtral-cuda]
 
 jobs:
   build:
@@ -21,6 +26,15 @@ jobs:
     timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
+
+      # voxtral-cuda is a Windows-only test-build variant (issue #16 Phase B):
+      # llama.cpp's CUDA backend needs the CUDA toolkit installed on the build
+      # machine, and this workflow only wires that up for windows-latest. Fail
+      # fast with a clear message instead of silently building a CPU artifact.
+      - if: inputs.gpu == 'voxtral-cuda' && inputs.os != 'windows'
+        run: |
+          echo "::error::voxtral-cuda is a Windows-only test-build variant (no CUDA toolkit setup wired up for ${{ inputs.os }})."
+          exit 1
 
       - if: inputs.os == 'linux'
         run: |
@@ -43,6 +57,21 @@ jobs:
         with:
           version: 1.4.309.0
           cache: true
+
+      # CUDA toolkit for the Voxtral (llama.cpp) engine's `cuda` feature
+      # (llama-cpp-2/llama-cpp-sys-2 build llama.cpp's CUDA backend via CMake
+      # + nvcc). Version pinned to a release with prebuilt Windows network
+      # installers on the Jimver action's index; bump alongside llama-cpp-2
+      # if a build ever needs a newer toolkit. Cached like the Vulkan SDK
+      # above — this download is large (~3GB) and this is a manual/rare
+      # workflow, so cache misses are expected and fine, not a regression.
+      - if: inputs.os == 'windows' && inputs.gpu == 'voxtral-cuda'
+        uses: Jimver/cuda-toolkit@v0.2.24
+        id: cuda-toolkit
+        with:
+          cuda: "12.4.1"
+          method: network
+          use-github-cache: true
 
       - uses: actions/setup-node@v4
         with:
@@ -81,9 +110,17 @@ jobs:
       # builds (docs/BUILDING.md "Windows Vulkan build gotchas"). Only needed
       # for the Windows Vulkan build; CPU-only Windows builds stay on the
       # default generator + in-repo target dir.
-      - if: inputs.os == 'windows' && inputs.gpu == 'vulkan'
+      #
+      # Applied to voxtral-cuda too, on the same theory: llama.cpp's CUDA
+      # backend is also a nested CMake build triggered by a `*-sys` crate
+      # (llama-cpp-sys-2), so it's exposed to the same MSBuild/MAX_PATH class
+      # of failure. Unverified end-to-end on this box (no CUDA hardware here
+      # — see the live smoke-test note in the PR); Abhishek's Windows/NVIDIA
+      # run is the first real test of this path, drop/adjust if it turns out
+      # unnecessary or wrong for nvcc.
+      - if: inputs.os == 'windows' && (inputs.gpu == 'vulkan' || inputs.gpu == 'voxtral-cuda')
         uses: ilammy/msvc-dev-cmd@v1
-      - if: inputs.os == 'windows' && inputs.gpu == 'vulkan'
+      - if: inputs.os == 'windows' && (inputs.gpu == 'vulkan' || inputs.gpu == 'voxtral-cuda')
         shell: pwsh
         run: |
           Add-Content $env:GITHUB_ENV 'CMAKE_GENERATOR=Ninja'
@@ -91,18 +128,21 @@ jobs:
           Add-Content $env:GITHUB_ENV 'CC=cl'
           Add-Content $env:GITHUB_ENV 'CXX=cl'
 
-      - run: pnpm -F desktop tauri build --config ./src-tauri/tauri.conf.citest.json ${{ inputs.gpu == 'vulkan' && inputs.os != 'macos' && '--features gpu-vulkan' || '' }}
+      # `directml`/`voxtral-cuda` are Windows-only and need no build-time
+      # Vulkan SDK, so they skip the Ninja/CARGO_TARGET_DIR workaround above
+      # (that's whisper.cpp/Vulkan-shader-gen-specific).
+      - run: pnpm -F desktop tauri build --config ./src-tauri/tauri.conf.citest.json ${{ (inputs.gpu == 'vulkan' && inputs.os != 'macos' && '--features gpu-vulkan') || (inputs.gpu == 'directml' && inputs.os == 'windows' && '--features directml') || (inputs.gpu == 'voxtral-cuda' && inputs.os == 'windows' && '--features voxtral-cuda') || '' }}
         env:
           CI: false
 
-      # Windows Vulkan build emits its bundle under D:\nb (the
+      # Windows Vulkan/voxtral-cuda builds emit their bundle under D:\nb (the
       # CARGO_TARGET_DIR MAX_PATH workaround above), which is on a different
       # drive root than the repo. upload-artifact@v4 rejects a path list
       # whose entries share only a drive root ("rootDirectory ... is not a
       # parent directory of the file"), so stage the D:\nb bundle into the
       # in-repo target bundle dir first — then the upload sees one root
-      # tree. No-op for non-Vulkan builds (their bundle is already in-repo).
-      - if: inputs.os == 'windows' && inputs.gpu == 'vulkan'
+      # tree. No-op otherwise (bundle is already in-repo).
+      - if: inputs.os == 'windows' && (inputs.gpu == 'vulkan' || inputs.gpu == 'voxtral-cuda')
         shell: pwsh
         run: |
           $src = 'D:\nb\release\bundle'
@@ -112,9 +152,15 @@ jobs:
             Copy-Item -Path "$src\*" -Destination $dst -Recurse -Force
           }
 
+      # notare-windows-voxtral-cuda is a manual NVIDIA-validation build, not
+      # a release artifact: CPU Voxtral (RTF ~0.9, verified) ships to every
+      # Windows/Linux user via the normal `voxtral-llama` feature baked into
+      # tauri-plugin-local-stt's default target deps (see
+      # apps/desktop/src-tauri/Cargo.toml); `voxtral-cuda` is never added to
+      # release.yaml. See docs/BUILDING.md "Voxtral (llama.cpp) engine".
       - uses: actions/upload-artifact@v4
         with:
-          name: notare-${{ inputs.os }}${{ inputs.gpu == 'vulkan' && '-vulkan' || '' }}
+          name: notare-${{ inputs.os }}${{ (inputs.gpu == 'vulkan' && '-vulkan') || (inputs.gpu == 'directml' && '-directml') || (inputs.gpu == 'voxtral-cuda' && '-voxtral-cuda') || '' }}
           # All bundle files are staged under the in-repo target bundle dir
           # (see the copy step above for the Windows Vulkan case), so a
           # single root tree is uploaded. The build step itself is the

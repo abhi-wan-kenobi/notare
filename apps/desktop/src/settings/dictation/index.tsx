@@ -1,8 +1,10 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
-import { Trash2Icon } from "lucide-react";
+import { platform } from "@tauri-apps/plugin-os";
+import { AlertCircleIcon, Trash2Icon } from "lucide-react";
 import { type ReactNode, useEffect, useId, useState } from "react";
 
+import type { PermissionStatus } from "@hypr/plugin-permissions";
 import { Button } from "@hypr/ui/components/ui/button";
 import { Switch } from "@hypr/ui/components/ui/switch";
 import { sonnerToast } from "@hypr/ui/components/ui/toast";
@@ -28,12 +30,14 @@ import { SettingsPageTitle } from "~/settings/page-title";
 import { useSetSettingValue } from "~/settings/queries";
 import { SETTING_DEFINITIONS } from "~/settings/schema";
 import { useConfigValues } from "~/shared/config";
+import { usePermission } from "~/shared/hooks/usePermissions";
 import { useSTTConnection } from "~/stt/useSTTConnection";
 
 /**
- * Dictation settings (Windows/Linux): the persistent dictation orb that types
- * recognized speech into whichever app has keyboard focus. The nav hides this
- * section on macOS, which keeps its native dictation path.
+ * Dictation settings: the persistent dictation orb that types recognized
+ * speech into whichever app has keyboard focus. Runs on every platform since
+ * #31 - macOS reaches parity through this same webview orb instead of its
+ * unfinished native panel.
  */
 export function SettingsDictation() {
   const {
@@ -66,6 +70,9 @@ export function SettingsDictation() {
   const { conn, isLocalModel } = useSTTConnection();
   const modelReady = isLocalModel && !!conn;
 
+  const isMacos = platform() === "macos";
+  const accessibility = usePermission("accessibility");
+
   return (
     <div className="flex flex-col gap-8">
       <SettingsPageTitle title={<Trans>Dictation</Trans>} />
@@ -83,6 +90,14 @@ export function SettingsDictation() {
             checked={dictation_enabled}
             onChange={setEnabled}
           />
+          {isMacos && dictation_enabled ? (
+            <MacosAccessibilityHint
+              status={accessibility.status}
+              isPending={accessibility.isPending}
+              onRequest={accessibility.request}
+              onOpen={accessibility.open}
+            />
+          ) : null}
           <ShortcutRecorderRow
             value={dictation_shortcut}
             defaultValue={SETTING_DEFINITIONS.dictation_shortcut.default}
@@ -581,6 +596,59 @@ function formatRelativeTime(createdAt: string): string {
     return "";
   }
   return formatDistanceToNow(date, { addSuffix: true });
+}
+
+/**
+ * macOS-only: paste-at-cursor and type-as-you-speak both synthesize
+ * keystrokes via `enigo`'s `CGEvent` path (`plugins/dictation/src/inject.rs`),
+ * which needs the Accessibility permission - without it, injection silently
+ * fails. Shown inline whenever the orb is on and the permission has not been
+ * granted yet, so the requirement surfaces before a silent no-op paste does.
+ * The same permission also has a full row in Settings > Permissions; this is
+ * a cheaper, contextual nudge right where dictation is turned on.
+ */
+export function MacosAccessibilityHint({
+  status,
+  isPending,
+  onRequest,
+  onOpen,
+}: {
+  status: PermissionStatus | undefined;
+  isPending: boolean;
+  onRequest: () => void;
+  onOpen: () => void;
+}) {
+  if (status === "authorized") {
+    return null;
+  }
+
+  const neverRequested = status === undefined || status === "neverRequested";
+
+  return (
+    <div className="border-amber-500/40 bg-amber-500/10 flex items-center justify-between gap-3 rounded-lg border p-3">
+      <div className="flex items-center gap-2">
+        <AlertCircleIcon className="size-4 shrink-0 text-amber-500" />
+        <p className="text-xs">
+          <Trans>
+            Notare needs Accessibility access to type and paste dictated text
+            into other apps.
+          </Trans>
+        </p>
+      </div>
+      <Button
+        variant="outline"
+        size="sm"
+        disabled={isPending}
+        onClick={neverRequested ? onRequest : onOpen}
+      >
+        {neverRequested ? (
+          <Trans>Grant access</Trans>
+        ) : (
+          <Trans>Open Settings</Trans>
+        )}
+      </Button>
+    </div>
+  );
 }
 
 function SettingRow({

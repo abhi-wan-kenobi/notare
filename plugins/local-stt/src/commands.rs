@@ -37,6 +37,8 @@ pub async fn list_supported_models() -> Result<Vec<SttModelInfo>, String> {
         .filter(|m| cfg!(feature = "whisper-cpp") || !matches!(m, LocalModel::Whisper(_)))
         // Same rule for the Parakeet ONNX engine.
         .filter(|m| cfg!(feature = "parakeet-onnx") || !matches!(m, LocalModel::ParakeetOnnx(_)))
+        // Same rule for the Voxtral (llama.cpp) engine.
+        .filter(|m| cfg!(feature = "voxtral-llama") || !matches!(m, LocalModel::VoxtralLlama(_)))
         .map(stt_model_info)
         .collect())
 }

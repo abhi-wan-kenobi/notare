@@ -133,13 +133,12 @@ pub async fn main() {
         }));
     }
 
-    // Backs the dictation-orb toggle hotkey on Windows/Linux (consumed by the
-    // shortcut plugin's `register_global_hotkey`). macOS keeps its native
-    // event-tap shortcut path and does not need this plugin.
-    #[cfg(not(target_os = "macos"))]
-    {
-        builder = builder.plugin(tauri_plugin_global_shortcut::Builder::new().build());
-    }
+    // Backs the dictation-orb toggle hotkey (consumed by the shortcut
+    // plugin's `register_global_hotkey`) on every platform. macOS also keeps
+    // an unused native event-tap push-to-talk path in the shortcut plugin,
+    // but dictation itself reaches parity through this webview-orb path
+    // since #31.
+    builder = builder.plugin(tauri_plugin_global_shortcut::Builder::new().build());
 
     builder = builder
         .plugin(tauri_plugin_opener::init())

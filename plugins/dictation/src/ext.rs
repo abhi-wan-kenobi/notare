@@ -22,29 +22,16 @@ impl<'a, R: tauri::Runtime, M: tauri::Manager<R>> Dictation<'a, R, M> {
         self.manager.state::<Handler>().update_amplitude(amplitude)
     }
 
-    // --- Persistent dictation orb (Windows/Linux). macOS keeps its native
-    // --- panel path untouched; these return `Unsupported` there.
+    // --- Persistent dictation orb, available on every platform since #31
+    // --- (macOS reaches parity through this same webview orb instead of its
+    // --- unfinished native panel).
 
     pub fn show_orb(&self) -> Result<(), Error> {
-        #[cfg(not(target_os = "macos"))]
-        {
-            crate::orb::show()
-        }
-        #[cfg(target_os = "macos")]
-        {
-            Err(Error::Unsupported)
-        }
+        crate::orb::show()
     }
 
     pub fn hide_orb(&self) -> Result<(), Error> {
-        #[cfg(not(target_os = "macos"))]
-        {
-            crate::orb::hide()
-        }
-        #[cfg(target_os = "macos")]
-        {
-            Err(Error::Unsupported)
-        }
+        crate::orb::hide()
     }
 
     pub async fn start_dictation(
@@ -53,74 +40,38 @@ impl<'a, R: tauri::Runtime, M: tauri::Manager<R>> Dictation<'a, R, M> {
         model: String,
         output_mode: crate::events::DictationOutputMode,
     ) -> Result<(), Error> {
-        #[cfg(not(target_os = "macos"))]
-        {
-            crate::session::start(base_url, model, output_mode).await
-        }
-        #[cfg(target_os = "macos")]
-        {
-            let _ = (base_url, model, output_mode);
-            Err(Error::Unsupported)
-        }
+        crate::session::start(base_url, model, output_mode).await
     }
 
     pub fn stop_dictation(&self) -> Result<(), Error> {
-        #[cfg(not(target_os = "macos"))]
-        {
-            crate::session::stop(crate::orb::app_handle()?);
-            Ok(())
-        }
-        #[cfg(target_os = "macos")]
-        {
-            Err(Error::Unsupported)
-        }
+        crate::session::stop(crate::orb::app_handle()?);
+        Ok(())
     }
 
     pub fn is_dictating(&self) -> Result<bool, Error> {
-        #[cfg(not(target_os = "macos"))]
-        {
-            Ok(crate::session::is_running(crate::orb::app_handle()?))
-        }
-        #[cfg(target_os = "macos")]
-        {
-            Ok(false)
-        }
+        Ok(crate::session::is_running(crate::orb::app_handle()?))
     }
 
     pub async fn type_text(&self, text: String) -> Result<(), Error> {
-        #[cfg(not(target_os = "macos"))]
-        {
-            tauri::async_runtime::spawn_blocking(move || crate::inject::type_text(&text))
-                .await
-                .map_err(|e| Error::Inject(format!("injection task panicked: {e}")))?
-        }
-        #[cfg(target_os = "macos")]
-        {
-            let _ = text;
-            Err(Error::Unsupported)
-        }
+        tauri::async_runtime::spawn_blocking(move || crate::inject::type_text(&text))
+            .await
+            .map_err(|e| Error::Inject(format!("injection task panicked: {e}")))?
     }
 
     /// Copy `text` to the clipboard; with `paste_at_cursor` also synthesize
-    /// Ctrl+V into the focused app (batch-mode delivery).
+    /// the platform paste chord (Ctrl+V, or Cmd+V on macOS - see
+    /// `inject::send_paste_chord`) into the focused app (batch-mode
+    /// delivery).
     pub async fn deliver_text(&self, text: String, paste_at_cursor: bool) -> Result<(), Error> {
-        #[cfg(not(target_os = "macos"))]
-        {
-            tauri::async_runtime::spawn_blocking(move || {
-                if paste_at_cursor {
-                    crate::inject::paste_text(&text)
-                } else {
-                    crate::inject::copy_text(&text)
-                }
-            })
-            .await
-            .map_err(|e| Error::Inject(format!("delivery task panicked: {e}")))?
-        }
-        #[cfg(target_os = "macos")]
-        {
-            let _ = (text, paste_at_cursor);
-            Err(Error::Unsupported)
-        }
+        tauri::async_runtime::spawn_blocking(move || {
+            if paste_at_cursor {
+                crate::inject::paste_text(&text)
+            } else {
+                crate::inject::copy_text(&text)
+            }
+        })
+        .await
+        .map_err(|e| Error::Inject(format!("delivery task panicked: {e}")))?
     }
 
     /// Deterministic transcript cleanup (`clean.rs`). Pure - available on
