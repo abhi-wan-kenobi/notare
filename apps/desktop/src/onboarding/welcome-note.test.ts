@@ -36,7 +36,7 @@ it("reuses an existing onboarding welcome note", async () => {
   expect(mocks.createSession).not.toHaveBeenCalled();
 });
 
-it("creates a prerecorded demo note with normal meeting metadata", async () => {
+it("creates a welcome note with no external demo link", async () => {
   mocks.execute.mockResolvedValueOnce([]);
   mocks.createSession.mockResolvedValueOnce("welcome-session");
 
@@ -45,10 +45,11 @@ it("creates a prerecorded demo note with normal meeting metadata", async () => {
   const [title, , initial] = mocks.createSession.mock.calls[0];
   const event = JSON.parse(initial.event_json);
   expect(title).toBe("Welcome to Notare");
-  expect(event.meeting_link).toBe("https://anarlog.so/onboarding-demo/");
+  expect(event.meeting_link).toBe("");
   expect(event.tracking_id).toBe("anarlog-onboarding-demo-v1");
-  expect(initial.raw_md).toContain("prerecorded demo meeting");
-  expect(initial.raw_md).toContain("Join & record");
+  expect(initial.raw_md).not.toContain("anarlog.so");
+  expect(initial.raw_md).not.toContain("prerecorded");
+  expect(initial.raw_md).toContain("Record");
 });
 
 it("carries the welcome note across a one-time onboarding relaunch", () => {

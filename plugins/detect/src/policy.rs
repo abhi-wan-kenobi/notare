@@ -34,6 +34,9 @@ impl AppCategory {
                 "com.hyprnote.stable",
                 "com.hyprnote.nightly",
                 "com.hyprnote.staging",
+                "be.abhishek.notare",
+                "be.abhishek.notare.staging",
+                "be.abhishek.notare.dev",
             ],
             Self::Dictation => &[
                 "com.electron.wispr-flow",
