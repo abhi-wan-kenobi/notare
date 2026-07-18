@@ -128,11 +128,27 @@ export function DictationOrbHost() {
       return;
     }
 
-    void dictationCommands.startDictation(
-      conn.baseUrl,
-      conn.model,
-      outputModeRef.current,
-    );
+    void dictationCommands
+      .startDictation(conn.baseUrl, conn.model, outputModeRef.current)
+      .then((result) => {
+        if (result.status === "error") {
+          // Surface it instead of a silent no-op orb click/hotkey press -
+          // e.g. the local server for this model isn't up yet, or (macOS)
+          // the Soniqo bridge failed to start.
+          console.error(
+            "[dictation] failed to start the dictation session",
+            result.error,
+          );
+          sonnerToast.error(t`Couldn't start dictation: ${result.error}`);
+        }
+      })
+      .catch((error) => {
+        console.error(
+          "[dictation] failed to start the dictation session",
+          error,
+        );
+        sonnerToast.error(t`Couldn't start dictation.`);
+      });
   }, [t]);
 
   const handleFinished = useCallback(
