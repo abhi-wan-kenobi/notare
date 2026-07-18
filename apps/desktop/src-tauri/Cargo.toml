@@ -114,10 +114,25 @@ automation = ["tauri-plugin-automation"]
 # docs/BUILDING.md "GPU builds (Vulkan)".
 gpu-vulkan = ["tauri-plugin-local-stt/vulkan"]
 
+# DirectML GPU offload for Parakeet (ONNX Runtime), Windows-only (covers
+# NVIDIA/AMD/Intel through DirectX 12 — no vendor-specific SDK needed at
+# build time, unlike `gpu-vulkan`; ONNX Runtime's prebuilt binaries already
+# ship DirectML support). Opt-in and independent of `gpu-vulkan` — a Windows
+# build wanting GPU offload for *both* engines passes
+# `--features gpu-vulkan,directml`. See docs/BUILDING.md "GPU builds
+# (Parakeet)".
+directml = ["tauri-plugin-local-stt/directml"]
+
+# NVIDIA GPU offload for Parakeet (ONNX Runtime) via CUDA, Windows+Linux.
+# Local opt-in only — not wired into CI, which has no CUDA-capable runners.
+# (`tauri-plugin-local-stt/cuda` also enables whisper.cpp's own cuda feature;
+# see that crate for whisper-specific NVIDIA offload notes.)
+cuda = ["tauri-plugin-local-stt/cuda"]
+
 # Compile the whisper.cpp and Parakeet (ONNX) engines on platforms that have
 # no Argmax/Soniqo runtime (those are Apple-Silicon-only). CPU inference by
-# default; opt into GPU offload with `--features gpu-vulkan` (see [features]
-# above).
+# default; opt into GPU offload with `--features gpu-vulkan` (whisper.cpp) and/or
+# `--features directml` or `--features cuda` (Parakeet) — see [features] above.
 [target.'cfg(any(target_os = "linux", target_os = "windows"))'.dependencies]
 tauri-plugin-local-stt = { workspace = true, features = ["whisper-cpp", "parakeet-onnx"] }
 # Toggle hotkey for the dictation orb (the shortcut plugin's non-macOS

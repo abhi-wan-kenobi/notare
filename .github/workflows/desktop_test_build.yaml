@@ -10,10 +10,10 @@ on:
         default: windows
         options: [windows, macos, linux]
       gpu:
-        description: "GPU acceleration for whisper.cpp (windows/linux only)"
+        description: "GPU acceleration: vulkan = whisper.cpp on windows/linux; directml = Parakeet on windows only"
         type: choice
         default: none
-        options: [none, vulkan]
+        options: [none, vulkan, directml]
 
 jobs:
   build:
@@ -91,7 +91,13 @@ jobs:
           Add-Content $env:GITHUB_ENV 'CC=cl'
           Add-Content $env:GITHUB_ENV 'CXX=cl'
 
-      - run: pnpm -F desktop tauri build --config ./src-tauri/tauri.conf.citest.json ${{ inputs.gpu == 'vulkan' && inputs.os != 'macos' && '--features gpu-vulkan' || '' }}
+      # `directml` is Windows-only (DirectML wraps DirectX 12); unlike
+      # `gpu-vulkan` it needs no build-time SDK (ONNX Runtime's prebuilt
+      # Windows binaries already ship DirectML support), so it skips the
+      # Ninja/CARGO_TARGET_DIR workaround above (that's whisper.cpp/Vulkan-
+      # shader-gen-specific) and stays on the default generator + in-repo
+      # target dir.
+      - run: pnpm -F desktop tauri build --config ./src-tauri/tauri.conf.citest.json ${{ inputs.gpu == 'vulkan' && inputs.os != 'macos' && '--features gpu-vulkan' || inputs.gpu == 'directml' && inputs.os == 'windows' && '--features directml' || '' }}
         env:
           CI: false
 
@@ -114,7 +120,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: notare-${{ inputs.os }}${{ inputs.gpu == 'vulkan' && '-vulkan' || '' }}
+          name: notare-${{ inputs.os }}${{ inputs.gpu == 'vulkan' && '-vulkan' || inputs.gpu == 'directml' && '-directml' || '' }}
           # All bundle files are staged under the in-repo target bundle dir
           # (see the copy step above for the Windows Vulkan case), so a
           # single root tree is uploaded. The build step itself is the

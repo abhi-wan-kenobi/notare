@@ -9,7 +9,7 @@
 use std::sync::LazyLock;
 
 use hypr_onnx::ndarray::{self, Array, Array1, Array2, Array3, ArrayD, ArrayViewD, IxDyn};
-use hypr_onnx::ort::execution_providers::CPUExecutionProvider;
+use hypr_onnx::ort::execution_providers::{CPUExecutionProvider, ExecutionProviderDispatch};
 use hypr_onnx::ort::inputs;
 use hypr_onnx::ort::session::Session;
 use hypr_onnx::ort::session::builder::GraphOptimizationLevel;
@@ -72,18 +72,39 @@ pub struct ParakeetModel {
 
 impl ParakeetModel {
     pub fn new<P: AsRef<Path>>(model_dir: P) -> Result<Self, ParakeetError> {
-        let encoder = Self::init_session(&model_dir, ENCODER_FILE)?;
-        let decoder_joint = Self::init_session(&model_dir, DECODER_JOINT_FILE)?;
-        let preprocessor = Self::init_session(&model_dir, PREPROCESSOR_FILE)?;
+        let model_dir = model_dir.as_ref();
+        // Deliberately not using `hypr_onnx::load_model_from_bytes`: it pins
+        // sessions to a single thread, which is far too slow for the 0.6B
+        // encoder. Cap at 4 intra-op threads to stay polite on the desktop.
+        let threads = std::thread::available_parallelism()
+            .map(|n| n.get())
+            .unwrap_or(1)
+            .min(4)
+            .max(1);
+
+        // Probe GPU execution providers (if this build was compiled with
+        // any) on the encoder — the biggest of the three model files, and a
+        // representative proxy for whether the chosen EP works for the rest
+        // of the pipeline — then reuse that decision for the other two
+        // sessions instead of re-probing (GPU context init isn't free).
+        let (encoder, provider) = Self::init_encoder_session(model_dir, threads)?;
+        let decoder_joint = Self::init_session_with_provider(
+            model_dir,
+            DECODER_JOINT_FILE,
+            threads,
+            provider.as_ref(),
+        )?;
+        let preprocessor = Self::init_session_with_provider(
+            model_dir,
+            PREPROCESSOR_FILE,
+            threads,
+            provider.as_ref(),
+        )?;
 
         let (vocab, blank_idx) = Self::load_vocab(&model_dir)?;
         let vocab_size = vocab.len();
 
-        tracing::info!(
-            vocab_size,
-            blank_idx,
-            "parakeet_vocabulary_loaded"
-        );
+        tracing::info!(vocab_size, blank_idx, "parakeet_vocabulary_loaded");
 
         Ok(Self {
             encoder,
@@ -95,26 +116,57 @@ impl ParakeetModel {
         })
     }
 
-    fn init_session<P: AsRef<Path>>(
-        model_dir: P,
-        file_name: &str,
-    ) -> Result<Session, ParakeetError> {
-        // Deliberately not using `hypr_onnx::load_model_from_bytes`: it pins
-        // sessions to a single thread, which is far too slow for the 0.6B
-        // encoder. Cap at 4 intra-op threads to stay polite on the desktop.
-        let threads = std::thread::available_parallelism()
-            .map(|n| n.get())
-            .unwrap_or(1)
-            .min(4)
-            .max(1);
+    /// GPU execution providers this build was compiled to try, most-preferred
+    /// first. Both are opt-in via Cargo features (`cuda`, `directml`) and are
+    /// always registered with `error_on_failure()` so [`init_encoder_session`]
+    /// can catch a registration failure (missing driver, wrong GPU vendor,
+    /// unsupported platform, ...) and fall back to CPU instead of the app
+    /// crashing or silently running on an unexpected backend.
+    ///
+    /// DirectML is a Windows-only execution provider (it wraps DirectX 12).
+    /// The `directml` Cargo feature can still be turned on to typecheck this
+    /// crate on other platforms (e.g. `cargo check -p parakeet-onnx --features
+    /// directml` on Linux CI), but the provider is only *constructed* under
+    /// `target_os = "windows"`: ONNX Runtime's non-Windows binaries don't
+    /// export DirectML's FFI entry point, so constructing it unconditionally
+    /// would risk a link failure on a full (non-check) non-Windows build.
+    fn gpu_execution_providers() -> Vec<(&'static str, ExecutionProviderDispatch)> {
+        #[allow(unused_mut)]
+        let mut providers: Vec<(&'static str, ExecutionProviderDispatch)> = Vec::new();
 
-        let session = Session::builder()?
+        #[cfg(all(feature = "directml", target_os = "windows"))]
+        providers.push((
+            "directml",
+            hypr_onnx::ort::execution_providers::DirectMLExecutionProvider::default()
+                .build()
+                .error_on_failure(),
+        ));
+
+        #[cfg(feature = "cuda")]
+        providers.push((
+            "cuda",
+            hypr_onnx::ort::execution_providers::CUDAExecutionProvider::default()
+                .build()
+                .error_on_failure(),
+        ));
+
+        providers
+    }
+
+    fn build_session(
+        model_path: &Path,
+        threads: usize,
+        providers: Vec<ExecutionProviderDispatch>,
+    ) -> hypr_onnx::ort::Result<Session> {
+        Session::builder()?
             .with_optimization_level(GraphOptimizationLevel::Level3)?
-            .with_execution_providers(vec![CPUExecutionProvider::default().build()])?
+            .with_execution_providers(providers)?
             .with_parallel_execution(true)?
             .with_intra_threads(threads)?
-            .commit_from_file(model_dir.as_ref().join(file_name))?;
+            .commit_from_file(model_path)
+    }
 
+    fn log_session_inputs(session: &Session, file_name: &str) {
         for input in &session.inputs {
             tracing::debug!(
                 model = file_name,
@@ -123,7 +175,79 @@ impl ParakeetModel {
                 "parakeet_model_input"
             );
         }
+    }
 
+    /// Loads the encoder, trying each candidate GPU execution provider (in
+    /// priority order) before falling back to CPU. Returns the session plus
+    /// whichever provider ended up active (`None` means CPU), so the caller
+    /// can reuse that decision for the decoder/preprocessor sessions.
+    fn init_encoder_session(
+        model_dir: &Path,
+        threads: usize,
+    ) -> Result<(Session, Option<(&'static str, ExecutionProviderDispatch)>), ParakeetError> {
+        let model_path = model_dir.join(ENCODER_FILE);
+
+        for (name, ep) in Self::gpu_execution_providers() {
+            match Self::build_session(&model_path, threads, vec![ep.clone()]) {
+                Ok(session) => {
+                    tracing::info!(provider = name, "parakeet_execution_provider_active");
+                    Self::log_session_inputs(&session, ENCODER_FILE);
+                    return Ok((session, Some((name, ep))));
+                }
+                Err(error) => {
+                    tracing::warn!(
+                        provider = name,
+                        %error,
+                        "parakeet_execution_provider_unavailable_falling_back_to_cpu"
+                    );
+                }
+            }
+        }
+
+        tracing::info!(provider = "cpu", "parakeet_execution_provider_active");
+        let session = Self::build_session(
+            &model_path,
+            threads,
+            vec![CPUExecutionProvider::default().build()],
+        )?;
+        Self::log_session_inputs(&session, ENCODER_FILE);
+        Ok((session, None))
+    }
+
+    /// Loads `file_name` using the GPU provider already selected for the
+    /// encoder (if any), falling back to CPU if that provider unexpectedly
+    /// fails to register for this particular graph (never crashes).
+    fn init_session_with_provider(
+        model_dir: &Path,
+        file_name: &str,
+        threads: usize,
+        provider: Option<&(&'static str, ExecutionProviderDispatch)>,
+    ) -> Result<Session, ParakeetError> {
+        let model_path = model_dir.join(file_name);
+
+        if let Some((name, ep)) = provider {
+            match Self::build_session(&model_path, threads, vec![ep.clone()]) {
+                Ok(session) => {
+                    Self::log_session_inputs(&session, file_name);
+                    return Ok(session);
+                }
+                Err(error) => {
+                    tracing::warn!(
+                        model = file_name,
+                        provider = %name,
+                        %error,
+                        "parakeet_execution_provider_unavailable_falling_back_to_cpu"
+                    );
+                }
+            }
+        }
+
+        let session = Self::build_session(
+            &model_path,
+            threads,
+            vec![CPUExecutionProvider::default().build()],
+        )?;
+        Self::log_session_inputs(&session, file_name);
         Ok(session)
     }
 
@@ -600,5 +724,61 @@ mod tests {
         assert_eq!(t, encodings_len);
         // exactly MAX_TOKENS_PER_STEP emissions happen per frame + 1 forced advance
         assert_eq!(iterations, encodings_len * MAX_TOKENS_PER_STEP);
+    }
+
+    #[test]
+    fn gpu_execution_providers_only_include_compiled_in_backends() {
+        let providers = ParakeetModel::gpu_execution_providers();
+        let names: Vec<&str> = providers.iter().map(|(name, _)| *name).collect();
+
+        #[cfg(not(feature = "cuda"))]
+        assert!(
+            !names.contains(&"cuda"),
+            "the cuda EP must not be attempted when the `cuda` feature is off"
+        );
+        #[cfg(feature = "cuda")]
+        assert!(
+            names.contains(&"cuda"),
+            "the cuda EP must be attempted when the `cuda` feature is on"
+        );
+
+        #[cfg(not(all(feature = "directml", target_os = "windows")))]
+        assert!(
+            !names.contains(&"directml"),
+            "the directml EP must only be attempted with the `directml` feature on AND target_os = windows"
+        );
+        #[cfg(all(feature = "directml", target_os = "windows"))]
+        assert!(
+            names.contains(&"directml"),
+            "the directml EP must be attempted on Windows when the `directml` feature is on"
+        );
+    }
+
+    #[test]
+    fn directml_is_never_constructed_off_windows_even_with_the_feature_on() {
+        // Regression guard for the link-safety property `gpu_execution_providers`
+        // documents: constructing `DirectMLExecutionProvider` off Windows risks
+        // a link failure on a full (non-`cargo check`) build, because ONNX
+        // Runtime's non-Windows binaries don't export DirectML's FFI entry
+        // point. Even with the `directml` Cargo feature on (e.g. to typecheck
+        // this crate on Linux CI), the provider must never actually be built
+        // outside `target_os = "windows"`.
+        #[cfg(not(target_os = "windows"))]
+        {
+            let providers = ParakeetModel::gpu_execution_providers();
+            assert!(
+                providers.iter().all(|(name, _)| *name != "directml"),
+                "directml must never be constructed off Windows"
+            );
+        }
+    }
+
+    #[test]
+    fn default_build_has_no_gpu_candidates() {
+        // With neither the `cuda` nor `directml` feature on (the plain `cargo
+        // test -p parakeet-onnx` gate), the model must fall straight to CPU —
+        // byte-for-byte the pre-GPU-feature behavior.
+        #[cfg(not(any(feature = "cuda", feature = "directml")))]
+        assert!(ParakeetModel::gpu_execution_providers().is_empty());
     }
 }
