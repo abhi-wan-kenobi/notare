@@ -24,6 +24,12 @@ const mocks = vi.hoisted(() => ({
   })),
   setSize: vi.fn(async () => undefined),
   setPosition: vi.fn(async () => undefined),
+  // Orb window visibility (Settings→Dictation "half-page" repro, #Windows):
+  // a variant pick must never resize the orb window while it's hidden -
+  // default true so the existing size-sync tests below (which don't care
+  // about visibility) keep exercising the resize path unchanged.
+  orbWindowVisible: true,
+  isVisible: vi.fn(async () => mocks.orbWindowVisible),
   monitor: null as null | {
     position: { x: number; y: number };
     size: { width: number; height: number };
@@ -60,6 +66,7 @@ vi.mock("@tauri-apps/api/webviewWindow", () => ({
     outerPosition: mocks.outerPosition,
     setSize: mocks.setSize,
     setPosition: mocks.setPosition,
+    isVisible: mocks.isVisible,
   }),
 }));
 
@@ -98,6 +105,7 @@ describe("DictationOrbWindow", () => {
     vi.clearAllMocks();
     mocks.stateHandlers.length = 0;
     mocks.monitor = null;
+    mocks.orbWindowVisible = true;
     document.documentElement.classList.remove("dark");
     document.documentElement.style.background = "";
     document.body.style.background = "";
@@ -289,6 +297,63 @@ describe("DictationOrbWindow", () => {
       expect(mocks.setPosition).toHaveBeenCalledWith(
         expect.objectContaining({ x: 1836, y: 996 }),
       );
+    } finally {
+      mocks.config.dictation_orb_variant = "cobalt";
+    }
+  });
+
+  it("does not resize the orb window for a variant picked while it is hidden", async () => {
+    // Settings→Dictation "half-page" repro (Windows/WebView2): a native
+    // setSize/setPosition on the orb window - even one that is hidden -
+    // shares the single-threaded window event loop with every other
+    // webview, including Settings. A variant pick that lands while the orb
+    // is off/hidden must never reach the native call.
+    mocks.orbWindowVisible = false;
+    mocks.config.dictation_orb_variant = "particles";
+    try {
+      render(<DictationOrbWindow />);
+      await act(async () => {});
+
+      expect(mocks.setSize).not.toHaveBeenCalled();
+      expect(mocks.setPosition).not.toHaveBeenCalled();
+    } finally {
+      mocks.config.dictation_orb_variant = "cobalt";
+    }
+  });
+
+  it("applies a deferred resize once a dictation-session event proves the window is shown", async () => {
+    mocks.orbWindowVisible = false;
+    mocks.config.dictation_orb_variant = "particles";
+    try {
+      render(<DictationOrbWindow />);
+      await act(async () => {});
+      expect(mocks.setSize).not.toHaveBeenCalled();
+
+      // The orb window is only ever shown for an enabled/active dictation
+      // session, so a state event is the signal that it's now on screen.
+      mocks.orbWindowVisible = true;
+      await pushState({ phase: "listening", amplitude: 0.4, mode: "type" });
+
+      expect(mocks.setSize).toHaveBeenCalledTimes(1);
+      expect(mocks.setSize).toHaveBeenCalledWith(
+        expect.objectContaining({ width: 84, height: 84 }),
+      );
+    } finally {
+      mocks.config.dictation_orb_variant = "cobalt";
+    }
+  });
+
+  it("does not re-resize on a session event once nothing is pending", async () => {
+    mocks.config.dictation_orb_variant = "particles";
+    try {
+      render(<DictationOrbWindow />);
+      await act(async () => {});
+      expect(mocks.setSize).toHaveBeenCalledTimes(1);
+
+      // The window was already visible, so the initial pick applied
+      // immediately - a later session event must not resize it again.
+      await pushState({ phase: "listening", amplitude: 0.4, mode: "type" });
+      expect(mocks.setSize).toHaveBeenCalledTimes(1);
     } finally {
       mocks.config.dictation_orb_variant = "cobalt";
     }
