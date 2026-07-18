@@ -16,20 +16,9 @@ import { commands } from "~/types/tauri.gen";
 
 const SOCIALS = [
   {
-    label: "Discord",
-    icon: "simple-icons:discord",
-    url: "https://anarlog.so/discord",
-  },
-  {
     label: "GitHub",
     icon: "simple-icons:github",
-    url: "https://github.com/fastrepl/char",
-  },
-  {
-    label: "X",
-    icon: "simple-icons:x",
-    size: 14,
-    url: "https://x.com/getcharnotes",
+    url: "https://github.com/abhi-wan-kenobi/notare",
   },
 ] as const;
 
@@ -43,8 +32,6 @@ export function FinalDescription() {
       </span>
       <div className="flex items-center gap-2">
         {SOCIALS.map((social) => {
-          const iconSize = "size" in social ? social.size : SOCIAL_ICON_SIZE;
-
           return (
             <button
               key={social.label}
@@ -52,7 +39,11 @@ export function FinalDescription() {
               className="text-muted-foreground hover:text-muted-foreground inline-flex size-5 items-center justify-center rounded-md transition-colors duration-150"
               aria-label={social.label}
             >
-              <Icon icon={social.icon} width={iconSize} height={iconSize} />
+              <Icon
+                icon={social.icon}
+                width={SOCIAL_ICON_SIZE}
+                height={SOCIAL_ICON_SIZE}
+              />
             </button>
           );
         })}

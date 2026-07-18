@@ -11,7 +11,7 @@ export type CalendarProvider = {
   icon: ReactNode;
   badge?: string | null;
   platform?: "macos" | "all";
-  docsPath: string;
+  docsPath?: string;
   /** Legacy cloud (Nango) integration id — dead in Notare, kept for Outlook. */
   nangoIntegrationId?: string;
   /** Direct integration using the user's own OAuth client (no cloud). */
@@ -34,7 +34,6 @@ const _PROVIDERS = [
       />
     ),
     platform: "macos",
-    docsPath: "https://docs.anarlog.so/calendar#apple-calendar",
     nangoIntegrationId: undefined,
   },
   {
@@ -68,7 +67,6 @@ const _PROVIDERS = [
     badge: "",
     icon: <OutlookIcon size={16} />,
     platform: "all",
-    docsPath: "https://docs.anarlog.so/calendar#outlook-calendar",
     nangoIntegrationId: "outlook",
   },
 ] as const satisfies readonly CalendarProvider[];

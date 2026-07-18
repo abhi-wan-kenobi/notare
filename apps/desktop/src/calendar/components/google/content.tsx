@@ -1,10 +1,11 @@
-import { commands as calendarCommands } from "@hypr/plugin-calendar";
-import type { GoogleAccountStatus } from "@hypr/plugin-calendar";
-import { commands as openerCommands } from "@hypr/plugin-opener2";
 import { Trans } from "@lingui/react/macro";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { open as selectFile } from "@tauri-apps/plugin-dialog";
 import { useCallback, useMemo, useState } from "react";
+
+import { commands as calendarCommands } from "@hypr/plugin-calendar";
+import type { GoogleAccountStatus } from "@hypr/plugin-calendar";
+import { commands as openerCommands } from "@hypr/plugin-opener2";
 
 import { useSync } from "../context";
 import {
@@ -143,7 +144,9 @@ export function GoogleDirectContent({ config }: { config: CalendarProvider }) {
       <ImportClientContent
         onSelectFile={() => importFileMutation.mutate()}
         onPasteJson={(json) => importJsonMutation.mutate(json)}
-        isImporting={importFileMutation.isPending || importJsonMutation.isPending}
+        isImporting={
+          importFileMutation.isPending || importJsonMutation.isPending
+        }
         error={actionError}
         docsPath={config.docsPath}
       />
@@ -209,7 +212,7 @@ const GOOGLE_CREDENTIALS_URL =
  * pre-connect state, so nobody has to leave the app to figure out where the
  * client JSON comes from.
  */
-function SetupGuide({ docsPath }: { docsPath: string }) {
+function SetupGuide({ docsPath }: { docsPath: string | undefined }) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -262,8 +265,8 @@ function SetupGuide({ docsPath }: { docsPath: string }) {
           </ol>
           <p className="text-xs text-amber-700">
             <Trans>
-              If you see redirect URI / JavaScript origin fields, you picked
-              Web — choose Desktop app instead.
+              If you see redirect URI / JavaScript origin fields, you picked Web
+              — choose Desktop app instead.
             </Trans>
           </p>
           <div className="flex items-center gap-2">
@@ -276,12 +279,14 @@ function SetupGuide({ docsPath }: { docsPath: string }) {
               <Trans>Open Google Cloud console</Trans>
             </button>
             <span className="text-muted-foreground text-xs">·</span>
-            <button
-              onClick={() => void openerCommands.openUrl(docsPath, null)}
-              className="text-muted-foreground hover:text-foreground cursor-pointer text-xs underline transition-colors"
-            >
-              <Trans>Full setup guide</Trans>
-            </button>
+            {docsPath && (
+              <button
+                onClick={() => void openerCommands.openUrl(docsPath, null)}
+                className="text-muted-foreground hover:text-foreground cursor-pointer text-xs underline transition-colors"
+              >
+                <Trans>Full setup guide</Trans>
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -300,7 +305,7 @@ function ImportClientContent({
   onPasteJson: (json: string) => void;
   isImporting: boolean;
   error: string | null;
-  docsPath: string;
+  docsPath: string | undefined;
 }) {
   const [showPaste, setShowPaste] = useState(false);
   const [pasted, setPasted] = useState("");
