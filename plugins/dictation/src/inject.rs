@@ -289,11 +289,19 @@ fn send_paste_chord() -> Result<(), String> {
 
     let mut enigo = Enigo::new(&Settings::default()).map_err(|e| e.to_string())?;
 
-    // Windows: use the virtual-key code for `V` (0x56) so the chord is
-    // keyboard-layout independent. Elsewhere: a unicode `v` keysym.
+    // Use a raw virtual-key code where possible so the chord is keyboard-layout
+    // independent - and, on macOS, so enigo does NOT resolve the key through the
+    // Text Input Source Manager. `Key::Unicode` -> `get_layoutdependent_keycode`
+    // calls `TSMGetInputSourceProperty`, a HIToolbox API that asserts it runs on
+    // the main dispatch queue; because the paste chord runs on a tokio blocking
+    // worker (see `type_text`/`paste_text` callers), that assertion traps with
+    // SIGTRAP and crashes the app. `Key::Other` maps straight to the CGKeyCode
+    // with no TSM lookup. Windows `V` = 0x56, macOS `kVK_ANSI_V` = 0x09.
     #[cfg(windows)]
     let v_key = Key::Other(0x56);
-    #[cfg(not(windows))]
+    #[cfg(target_os = "macos")]
+    let v_key = Key::Other(0x09);
+    #[cfg(not(any(windows, target_os = "macos")))]
     let v_key = Key::Unicode('v');
 
     // The paste chord's modifier: macOS pastes with Cmd+V (enigo's `Meta`,
