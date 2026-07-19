@@ -413,7 +413,11 @@ function OrbPreviewCard({
       onMouseEnter={() => onHoverChange(true)}
       onMouseLeave={() => onHoverChange(false)}
       className={cn([
-        "flex cursor-pointer flex-col items-center gap-2 rounded-lg border p-3 pt-4 text-center",
+        // `relative` scopes the `sr-only` radio's absolute positioning to this
+        // card. Without it the visually-hidden input anchors to a distant
+        // positioned ancestor, so selecting a variant focuses an off-screen
+        // element and the browser scrolls the settings page up to reach it.
+        "relative flex cursor-pointer flex-col items-center gap-2 rounded-lg border p-3 pt-4 text-center",
         "transition-colors duration-(--motion-duration-state)",
         "focus-within:ring-ring focus-within:ring-2",
         selected
