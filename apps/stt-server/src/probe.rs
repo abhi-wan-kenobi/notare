@@ -137,4 +137,46 @@ mod tests {
         let result = run_probe(0, None).await;
         assert!(result.is_none());
     }
+
+    /// Regression test for the GPU-offload probe auth fix: when a shared-secret
+    /// token is configured, the probe MUST send `Authorization: Bearer <token>`
+    /// on its `/v1/listen` request (otherwise a token-gated server 401s it and
+    /// the offload factor can never be measured). Uses a tiny raw-TCP mock that
+    /// captures the request headers - no extra deps.
+    #[tokio::test]
+    async fn probe_sends_bearer_token_when_configured() {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        use tokio::net::TcpListener;
+
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let (tx, rx) = tokio::sync::oneshot::channel::<bool>();
+
+        tokio::spawn(async move {
+            if let Ok((mut sock, _)) = listener.accept().await {
+                // The request headers (incl. Authorization) arrive before the
+                // WAV body; a single read of the head is enough to inspect them.
+                let mut buf = vec![0u8; 8192];
+                let n = sock.read(&mut buf).await.unwrap_or(0);
+                let head = String::from_utf8_lossy(&buf[..n]).to_lowercase();
+                let has_bearer = head.contains("authorization: bearer secret-probe-token");
+                // Respond 200 so the probe treats it as success and returns.
+                let _ = sock
+                    .write_all(b"HTTP/1.1 200 OK\r\ncontent-length: 2\r\nconnection: close\r\n\r\nok")
+                    .await;
+                let _ = tx.send(has_bearer);
+            }
+        });
+
+        let _ = run_probe(port, Some("secret-probe-token")).await;
+
+        let sent_bearer = tokio::time::timeout(Duration::from_secs(5), rx)
+            .await
+            .expect("mock server never received the probe request")
+            .expect("mock server task dropped the channel");
+        assert!(
+            sent_bearer,
+            "probe must send `Authorization: Bearer <token>` when a token is configured"
+        );
+    }
 }
