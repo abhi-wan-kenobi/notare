@@ -42,7 +42,10 @@ fn create_silence_wav() -> Vec<u8> {
 /// If the request succeeds, it returns the calculated realtime factor (audio duration / elapsed time).
 /// If the server is starting up and not yet accepting connections, it retries briefly.
 /// Returns `None` if the request fails or if the server returns an error.
-pub async fn run_probe(port: u16) -> Option<f32> {
+/// `token` must match the server's configured shared secret when one is set
+/// (`NOTARE_STT_TOKEN`); the probe hits the same auth-gated `/v1/listen` route,
+/// so without it the request 401s and the offload factor can never be measured.
+pub async fn run_probe(port: u16, token: Option<&str>) -> Option<f32> {
     let client = reqwest::Client::new();
     let url = format!("http://127.0.0.1:{}/v1/listen?channels=1&sample_rate=16000", port);
     let wav_data = create_silence_wav();
@@ -54,13 +57,14 @@ pub async fn run_probe(port: u16) -> Option<f32> {
     loop {
         attempts += 1;
         let start = Instant::now();
-        match client
+        let mut request = client
             .post(&url)
             .header("content-type", "audio/wav")
-            .body(wav_data.clone())
-            .send()
-            .await
-        {
+            .body(wav_data.clone());
+        if let Some(token) = token {
+            request = request.header("authorization", format!("Bearer {token}"));
+        }
+        match request.send().await {
             Ok(resp) => {
                 let elapsed = start.elapsed().as_secs_f32();
                 if resp.status().is_success() {
@@ -130,7 +134,7 @@ mod tests {
     async fn test_run_probe_closed_port_returns_none() {
         // Port 0 is an invalid target port, causing an immediate or eventual connection failure.
         // Verify it retries and returns None without panicking.
-        let result = run_probe(0).await;
+        let result = run_probe(0, None).await;
         assert!(result.is_none());
     }
 }

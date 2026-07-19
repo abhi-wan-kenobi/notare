@@ -125,7 +125,7 @@ impl AppState {
         );
 
         let port = self.config.port;
-        let result = crate::probe::run_probe(port).await;
+        let result = crate::probe::run_probe(port, self.config.token.as_deref()).await;
 
         match result {
             Some(factor) => {
