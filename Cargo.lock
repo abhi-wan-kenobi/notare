@@ -18461,6 +18461,8 @@ dependencies = [
  "dictation-ui-macos",
  "enigo",
  "futures-util",
+ "objc2",
+ "objc2-app-kit",
  "owhisper-client",
  "owhisper-interface",
  "serde",
