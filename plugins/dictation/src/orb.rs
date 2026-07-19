@@ -166,9 +166,50 @@ fn get_or_create_window(
 
     restore_position(app, &window);
     watch_moves(&window);
+    apply_macos_orb_traits(&window);
 
     Ok(window)
 }
+
+/// macOS-only: the webview builder cannot express the NSPanel collection-
+/// behavior traits the orb needs to stay put. `visible_on_all_workspaces(true)`
+/// already set `CanJoinAllSpaces`, but without `FullScreenAuxiliary` the orb
+/// vanishes over full-screen apps, and without `Stationary` it drifts/hides
+/// when the user switches Spaces. Mirror the meeting bar
+/// (`plugins/windows/src/window/floating_bar.rs::apply_macos_panel_traits`).
+/// No-op off macOS.
+#[cfg(target_os = "macos")]
+fn apply_macos_orb_traits(window: &tauri::WebviewWindow<tauri::Wry>) {
+    use objc2_app_kit::{NSWindow, NSWindowCollectionBehavior};
+
+    let win = window.clone();
+    let result = window.app_handle().run_on_main_thread(move || {
+        let Ok(ptr) = win.ns_window() else {
+            return;
+        };
+        // SAFETY: `ns_window()` returns the live NSWindow owned by the still-
+        // alive tauri window; `run_on_main_thread` guarantees AppKit main-thread
+        // access.
+        unsafe {
+            let ns_window = &*(ptr as *mut NSWindow);
+            let mut behavior = ns_window.collectionBehavior();
+            behavior |= NSWindowCollectionBehavior::FullScreenAuxiliary;
+            behavior |= NSWindowCollectionBehavior::Stationary;
+            ns_window.setCollectionBehavior(behavior);
+        }
+    });
+
+    if let Err(error) = result {
+        tracing::warn!(
+            %error,
+            label = WINDOW_LABEL,
+            "failed to apply macOS collectionBehavior bits to the dictation orb"
+        );
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+fn apply_macos_orb_traits(_window: &tauri::WebviewWindow<tauri::Wry>) {}
 
 fn build_window(
     app: &tauri::AppHandle<tauri::Wry>,

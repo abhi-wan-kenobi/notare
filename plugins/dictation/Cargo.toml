@@ -48,3 +48,5 @@ tokio-stream = { workspace = true }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 hypr-dictation-ui-macos = { workspace = true }
+objc2 = { workspace = true }
+objc2-app-kit = { workspace = true, features = ["NSWindow"] }
