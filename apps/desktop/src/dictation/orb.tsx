@@ -92,11 +92,11 @@ export function orbSizeForVariant(
 }
 
 /**
- * Mirror of `ORB_SIZE` in `plugins/dictation/src/orb.rs`: the Rust side
- * always creates the orb window at the cobalt chassis size and the orb
+ * Mirror of `ORB_SIZE` in `plugins/dictation/src/orb.rs` (keep in sync): the
+ * Rust side creates the orb window at the cobalt chassis size and the orb
  * webview resizes itself per variant (it is the one that knows the setting).
  */
-const ORB_WINDOW_BASE_SIZE = 56;
+const ORB_WINDOW_BASE_SIZE = 70;
 
 /** Logical size of the dictation orb window for `variant`. */
 export function orbWindowSizeForVariant(variant: DictationOrbVariant): number {
@@ -132,19 +132,56 @@ export function DictationOrb({
   className?: string;
 }) {
   const Variant = ORB_VARIANTS[variant] ?? CobaltOrb;
+  const renderedSize = orbSizeForVariant(variant, size);
 
   return (
     <span
       data-testid="dictation-orb"
       data-dictation-phase={phase}
       data-dictation-variant={variant}
-      className={cn(["inline-flex", className])}
+      className={cn(["relative inline-flex", className])}
     >
-      <Variant
-        phase={phase}
-        amplitude={amplitude}
-        size={orbSizeForVariant(variant, size)}
-      />
+      <Variant phase={phase} amplitude={amplitude} size={renderedSize} />
+      {phase === "processing" ? (
+        <ProcessingRing size={renderedSize} />
+      ) : null}
+    </span>
+  );
+}
+
+/**
+ * Variant-agnostic "transcribing" affordance. Every orb look renders `phase`
+ * differently (and some barely at all), yet after you stop speaking there is a
+ * real wait while the final segments flush - during which the user needs to
+ * see that something is happening. Overlay a thin spinning arc that frames the
+ * orb regardless of variant. `aria-hidden`; honors reduced motion.
+ */
+function ProcessingRing({ size }: { size: number }) {
+  const ring = Math.round(size * 1.18);
+  return (
+    <span
+      aria-hidden
+      data-testid="dictation-orb-processing"
+      className="pointer-events-none absolute inset-0 flex items-center justify-center text-white/75"
+    >
+      <svg
+        width={ring}
+        height={ring}
+        viewBox="0 0 100 100"
+        className="animate-spin motion-reduce:animate-none"
+        style={{ animationDuration: "1.1s" }}
+      >
+        <circle
+          cx="50"
+          cy="50"
+          r="45"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="5"
+          strokeLinecap="round"
+          strokeDasharray="64 240"
+        />
+      </svg>
     </span>
   );
 }

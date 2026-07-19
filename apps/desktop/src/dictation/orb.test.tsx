@@ -232,17 +232,17 @@ describe("orb variant sizing", () => {
     expect(orbSizeForVariant("particles", 28)).toBe(42);
   });
 
-  it("scales the orb window to match (Rust creates it at 56px)", () => {
-    expect(orbWindowSizeForVariant("cobalt")).toBe(56);
-    expect(orbWindowSizeForVariant("waveform")).toBe(56);
-    expect(orbWindowSizeForVariant("particles")).toBe(84);
-    expect(orbWindowSizeForVariant("ring")).toBe(56);
-    expect(orbWindowSizeForVariant("aurora")).toBe(56);
-    expect(orbWindowSizeForVariant("mono")).toBe(56);
-    expect(orbWindowSizeForVariant("bloom")).toBe(56);
-    expect(orbWindowSizeForVariant("halo")).toBe(56);
-    expect(orbWindowSizeForVariant("ember")).toBe(56);
-    expect(orbWindowSizeForVariant("silk")).toBe(56);
-    expect(orbWindowSizeForVariant("pip")).toBe(56);
+  it("scales the orb window to match (Rust creates it at 70px)", () => {
+    expect(orbWindowSizeForVariant("cobalt")).toBe(70);
+    expect(orbWindowSizeForVariant("waveform")).toBe(70);
+    expect(orbWindowSizeForVariant("particles")).toBe(105);
+    expect(orbWindowSizeForVariant("ring")).toBe(70);
+    expect(orbWindowSizeForVariant("aurora")).toBe(70);
+    expect(orbWindowSizeForVariant("mono")).toBe(70);
+    expect(orbWindowSizeForVariant("bloom")).toBe(70);
+    expect(orbWindowSizeForVariant("halo")).toBe(70);
+    expect(orbWindowSizeForVariant("ember")).toBe(70);
+    expect(orbWindowSizeForVariant("silk")).toBe(70);
+    expect(orbWindowSizeForVariant("pip")).toBe(70);
   });
 });

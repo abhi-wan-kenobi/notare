@@ -15,9 +15,9 @@ const mocks = vi.hoisted(() => ({
   emitClicked: vi.fn(async () => undefined),
   startDragging: vi.fn(async () => undefined),
   scaleFactor: vi.fn(async () => 1),
-  // Rust creates the orb window at the cobalt size (56 logical px).
+  // Rust creates the orb window at the cobalt size (70 logical px).
   innerSize: vi.fn(async () => ({
-    toLogical: () => ({ width: 56, height: 56 }),
+    toLogical: () => ({ width: 70, height: 70 }),
   })),
   outerPosition: vi.fn(async () => ({
     toLogical: () => ({ x: 200, y: 300 }),
@@ -262,13 +262,13 @@ describe("DictationOrbWindow", () => {
       render(<DictationOrbWindow />);
       await act(async () => {});
 
-      // 56 -> 84 logical px (1.5x), re-centered on the old spot.
+      // 70 -> 105 logical px (1.5x), re-centered on the old spot.
       expect(mocks.setSize).toHaveBeenCalledTimes(1);
       expect(mocks.setSize).toHaveBeenCalledWith(
-        expect.objectContaining({ width: 84, height: 84 }),
+        expect.objectContaining({ width: 105, height: 105 }),
       );
       expect(mocks.setPosition).toHaveBeenCalledWith(
-        expect.objectContaining({ x: 186, y: 286 }),
+        expect.objectContaining({ x: 183, y: 283 }),
       );
     } finally {
       mocks.config.dictation_orb_variant = "cobalt";
@@ -282,7 +282,7 @@ describe("DictationOrbWindow", () => {
       size: { width: 1920, height: 1080 },
       scaleFactor: 1,
     };
-    // Orb parked in the bottom-right corner: growing 56 -> 84 around the
+    // Orb parked in the bottom-right corner: growing 70 -> 105 around the
     // center would push it past both edges without the clamp.
     mocks.outerPosition.mockImplementation(async () => ({
       toLogical: () => ({ x: 1880, y: 1040 }),
@@ -292,10 +292,10 @@ describe("DictationOrbWindow", () => {
       await act(async () => {});
 
       expect(mocks.setSize).toHaveBeenCalledWith(
-        expect.objectContaining({ width: 84, height: 84 }),
+        expect.objectContaining({ width: 105, height: 105 }),
       );
       expect(mocks.setPosition).toHaveBeenCalledWith(
-        expect.objectContaining({ x: 1836, y: 996 }),
+        expect.objectContaining({ x: 1815, y: 975 }),
       );
     } finally {
       mocks.config.dictation_orb_variant = "cobalt";
@@ -336,7 +336,7 @@ describe("DictationOrbWindow", () => {
 
       expect(mocks.setSize).toHaveBeenCalledTimes(1);
       expect(mocks.setSize).toHaveBeenCalledWith(
-        expect.objectContaining({ width: 84, height: 84 }),
+        expect.objectContaining({ width: 105, height: 105 }),
       );
     } finally {
       mocks.config.dictation_orb_variant = "cobalt";
