@@ -578,6 +578,15 @@ msgstr "Could not connect."
 msgid "Could not start trial"
 msgstr "Could not start trial"
 
+#. placeholder {0}: result.error
+#: src/dictation/host.tsx
+msgid "Couldn't start dictation: {0}"
+msgstr "Couldn't start dictation: {0}"
+
+#: src/dictation/host.tsx
+msgid "Couldn't start dictation."
+msgstr "Couldn't start dictation."
+
 #: src/calendar/components/google/content.tsx
 msgid "Create a project in the Google Cloud console (any name, it's free)."
 msgstr "Create a project in the Google Cloud console (any name, it's free)."
