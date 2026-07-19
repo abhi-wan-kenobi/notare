@@ -11,6 +11,43 @@ HTMLCanvasElement.prototype.getContext = vi.fn(
   () => null,
 ) as unknown as HTMLCanvasElement["getContext"];
 
+// jsdom's `PointerEvent` extends `Event` (not `MouseEvent`), so it silently
+// drops the coordinate/button fields (`clientX`, `clientY`, `button`, …) from
+// its init dict. Pointer-driven UI - e.g. the main-area window-drag strip in
+// `src/main/body.tsx` - then never sees the coordinates a test fires with, and
+// `fireEvent.pointerDown/Move` become no-ops for that logic. Back `PointerEvent`
+// with `MouseEvent`, which carries those fields, and layer the pointer-specific
+// properties on top.
+class PointerEventPolyfill extends MouseEvent {
+  public readonly pointerId: number;
+  public readonly pointerType: string;
+  public readonly width: number;
+  public readonly height: number;
+  public readonly pressure: number;
+  public readonly tangentialPressure: number;
+  public readonly tiltX: number;
+  public readonly tiltY: number;
+  public readonly twist: number;
+  public readonly isPrimary: boolean;
+
+  constructor(type: string, params: PointerEventInit = {}) {
+    super(type, params);
+    this.pointerId = params.pointerId ?? 0;
+    this.pointerType = params.pointerType ?? "";
+    this.width = params.width ?? 1;
+    this.height = params.height ?? 1;
+    this.pressure = params.pressure ?? 0;
+    this.tangentialPressure = params.tangentialPressure ?? 0;
+    this.tiltX = params.tiltX ?? 0;
+    this.tiltY = params.tiltY ?? 0;
+    this.twist = params.twist ?? 0;
+    this.isPrimary = params.isPrimary ?? false;
+  }
+}
+globalThis.PointerEvent =
+  PointerEventPolyfill as unknown as typeof globalThis.PointerEvent;
+globalThis.window.PointerEvent = globalThis.PointerEvent;
+
 Object.defineProperty(globalThis.window, "__TAURI_INTERNALS__", {
   value: {
     metadata: {
