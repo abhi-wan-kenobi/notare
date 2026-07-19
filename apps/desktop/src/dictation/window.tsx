@@ -188,7 +188,7 @@ export function DictationOrbWindow({ solid = false }: { solid?: boolean }) {
         <DictationOrb
           phase={state.phase}
           amplitude={state.amplitude}
-          size={40}
+          size={50}
           variant={variant}
         />
         {batchMode && dictating ? (

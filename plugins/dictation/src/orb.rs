@@ -31,7 +31,7 @@ pub const WINDOW_LABEL: &str = "dictation";
 /// `dictation_orb_variant` setting (`syncOrbWindowSize` in
 /// `apps/desktop/src/dictation/window.tsx`), so treat this as the default
 /// size, not an invariant.
-const ORB_SIZE: f64 = 56.0;
+const ORB_SIZE: f64 = 70.0;
 const BOTTOM_MARGIN: f64 = 32.0;
 
 /// The live-caption window that floats just above the orb: label, logical
