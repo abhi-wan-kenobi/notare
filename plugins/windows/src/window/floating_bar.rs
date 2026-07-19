@@ -298,6 +298,13 @@ mod platform {
             // keyboard focus (the native NSPanel used `.nonactivatingPanel`).
             // Also matches the dictation orb (`plugins/dictation/src/orb.rs`).
             .focusable(false)
+            // A non-activating window on macOS never becomes key, so AppKit
+            // swallows the first left-click instead of delivering it to the
+            // WKWebView - the bar's buttons (stop, captions, open) would not
+            // respond to a click. `accept_first_mouse` (default false) passes
+            // the click through to the webview without taking key focus. No-op
+            // on Windows/Linux. Mirrors the fix in the dictation orb.
+            .accept_first_mouse(true)
             // macOS `sharingType = .none` parity: the window contents are
             // excluded from screen-sharing captures. No-op on Windows/Linux.
             .content_protected(true)

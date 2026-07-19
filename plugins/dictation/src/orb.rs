@@ -202,6 +202,14 @@ fn build_window(
         // Never activate on click: keyboard focus must stay on the app that
         // receives the dictated text (WS_EX_NOACTIVATE on Windows).
         .focusable(false)
+        // A non-activating (`focusable(false)`) window on macOS never becomes
+        // key, so AppKit swallows the first left-click instead of delivering it
+        // to the WKWebView - the orb button's onClick never fires and clicking
+        // the orb does nothing (the global hotkey still works). `accept_first_mouse`
+        // (default false) makes clicks pass through to the webview without
+        // stealing key focus. No-op on Windows/Linux, where the click already
+        // reaches the webview.
+        .accept_first_mouse(true)
         .visible(false)
         .inner_size(ORB_SIZE, ORB_SIZE)
         .disable_drag_drop_handler();
