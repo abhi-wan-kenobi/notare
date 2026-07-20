@@ -26,6 +26,7 @@ import type {
   OnStoppedCallback,
 } from "~/store/zustand/listener/transcript";
 import {
+  expandHinglish,
   getLiveTranscriptionConfig,
   getTranscriptionLanguages,
 } from "~/stt/capabilities";
@@ -169,7 +170,10 @@ export function useStartListening(sessionId: string) {
       );
     };
 
-    const languages = getTranscriptionLanguages(aiLanguage, spokenLanguages);
+    const languages = expandHinglish(
+      getTranscriptionLanguages(aiLanguage, spokenLanguages),
+      { provider: conn?.provider, model: conn?.model },
+    );
     const liveTranscriptionConfig = await getLiveTranscriptionConfig({
       provider: conn?.provider,
       model: conn?.model,
