@@ -291,12 +291,12 @@ describe("isLiveTranscriptionSupported", () => {
 
 describe("expandHinglish", () => {
   test("is a no-op when the sentinel is absent", () => {
-    expect(expandHinglish(["en"], { model: "voxtral-mini-3b-2507-q4km" })).toEqual([
-      "en",
-    ]);
-    expect(expandHinglish([], { provider: "custom", model: "Quantized-x" })).toEqual(
-      [],
-    );
+    expect(
+      expandHinglish(["en"], { model: "voxtral-mini-3b-2507-q4km" }),
+    ).toEqual(["en"]);
+    expect(
+      expandHinglish([], { provider: "custom", model: "Quantized-x" }),
+    ).toEqual([]);
   });
 
   test("Voxtral gets hi,en (its promptable code-mix mode)", () => {
@@ -306,20 +306,27 @@ describe("expandHinglish", () => {
   });
 
   test("Whisper (bundled or remote custom server) gets en", () => {
-    expect(expandHinglish(["hinglish"], { model: "QuantizedLargeTurbo" })).toEqual([
-      "en",
-    ]);
     expect(
-      expandHinglish(["hinglish"], { provider: "custom", model: "QuantizedTiny" }),
+      expandHinglish(["hinglish"], { model: "QuantizedLargeTurbo" }),
+    ).toEqual(["en"]);
+    expect(
+      expandHinglish(["hinglish"], {
+        provider: "custom",
+        model: "QuantizedTiny",
+      }),
     ).toEqual(["en"]);
   });
 
   test("merges with other selected languages and de-dupes", () => {
     expect(
-      expandHinglish(["hinglish", "en"], { model: "voxtral-mini-3b-2507-q4km" }),
+      expandHinglish(["hinglish", "en"], {
+        model: "voxtral-mini-3b-2507-q4km",
+      }),
     ).toEqual(["hi", "en"]);
     expect(
-      expandHinglish(["fr", "hinglish"], { model: "voxtral-mini-3b-2507-q4km" }),
+      expandHinglish(["fr", "hinglish"], {
+        model: "voxtral-mini-3b-2507-q4km",
+      }),
     ).toEqual(["fr", "hi", "en"]);
   });
 });

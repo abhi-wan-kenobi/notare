@@ -3,6 +3,7 @@ import {
   commands as listenerCommands,
   type TranscriptionMode,
 } from "@hypr/plugin-transcription";
+
 import { HINGLISH_LANGUAGE_CODE } from "~/settings/general/language";
 
 type LiveTranscriptionConfig = {
@@ -182,7 +183,8 @@ export function expandHinglish(
 
   const out: string[] = [];
   for (const language of languages) {
-    const mapped = language === HINGLISH_LANGUAGE_CODE ? replacement : [language];
+    const mapped =
+      language === HINGLISH_LANGUAGE_CODE ? replacement : [language];
     for (const code of mapped) {
       if (!out.includes(code)) {
         out.push(code);
