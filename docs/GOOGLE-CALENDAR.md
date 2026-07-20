@@ -24,7 +24,7 @@ credit card.
 
 ### 1. Create a project
 
-1. Open <https://console.cloud.google.com/projectcreate> (sign in if asked).
+1. Open [https://console.cloud.google.com/projectcreate](https://console.cloud.google.com/projectcreate) (sign in if asked).
 2. Project name: anything you like, e.g. `notare`.
 3. Click **Create**, and wait a few seconds for the notification.
 4. Make sure the new project is selected in the project picker at the top of
@@ -32,13 +32,13 @@ credit card.
 
 ### 2. Enable the Google Calendar API
 
-1. Open <https://console.cloud.google.com/apis/library/calendar-json.googleapis.com>.
+1. Open [https://console.cloud.google.com/apis/library/calendar-json.googleapis.com](https://console.cloud.google.com/apis/library/calendar-json.googleapis.com).
 2. Check the project name shown at the top is your new project.
 3. Click **Enable**.
 
 ### 3. Set up the consent screen
 
-1. Open <https://console.cloud.google.com/auth/overview> (called
+1. Open [https://console.cloud.google.com/auth/overview](https://console.cloud.google.com/auth/overview) (called
    "Google Auth Platform"). If Google asks you to configure it, click
    **Get started**.
 2. **App information**: App name `Notare` (or anything), pick your own email
@@ -59,7 +59,7 @@ credit card.
 
 ### 4. Create the Desktop-app OAuth client
 
-1. Open <https://console.cloud.google.com/auth/clients> (or **Clients** in the
+1. Open [https://console.cloud.google.com/auth/clients](https://console.cloud.google.com/auth/clients) (or **Clients** in the
    left menu of the Google Auth Platform page).
 2. Click **+ Create client**.
 3. **Application type**: choose **Desktop app** ← important, not "Web".
