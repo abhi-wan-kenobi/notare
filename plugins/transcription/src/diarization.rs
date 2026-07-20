@@ -65,9 +65,11 @@ pub async fn run_diarization(
 ) -> Result<DiarizationResult, String> {
     // Diarization + ONNX inference is blocking/CPU-heavy — keep it off the async
     // runtime's worker threads.
-    tokio::task::spawn_blocking(move || diarize_and_align(audio_path, num_speakers, words, enrolled))
-        .await
-        .map_err(|e| e.to_string())?
+    tokio::task::spawn_blocking(move || {
+        diarize_and_align(audio_path, num_speakers, words, enrolled)
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 /// Compute a speaker embedding for a short enrollment clip. The caller stores it
@@ -158,8 +160,8 @@ fn identify_speakers(
         .iter()
         .map(|p| (p.human_id.clone(), p.embedding.clone()))
         .collect();
-    let mut index =
-        hypr_diarization::VoiceProfileIndex::from_profiles(embedding, profiles).map_err(stringify)?;
+    let mut index = hypr_diarization::VoiceProfileIndex::from_profiles(embedding, profiles)
+        .map_err(stringify)?;
 
     // The longest turn per speaker gives the most reliable embedding.
     let mut longest: HashMap<i32, &DiarizedSegment> = HashMap::new();
@@ -185,7 +187,10 @@ fn identify_speakers(
         if start >= end {
             continue;
         }
-        if let Some(human_id) = index.identify(&mono[start..end], MATCH_THRESHOLD).map_err(stringify)? {
+        if let Some(human_id) = index
+            .identify(&mono[start..end], MATCH_THRESHOLD)
+            .map_err(stringify)?
+        {
             out.push(SpeakerHuman {
                 speaker_index,
                 human_id,

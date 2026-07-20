@@ -62,7 +62,8 @@ fn best_speaker(word: &AlignableWord, spans: &[SpeakerSpan]) -> i32 {
         });
     }
 
-    best.map(|b| b.speaker_index).unwrap_or(spans[0].speaker_index)
+    best.map(|b| b.speaker_index)
+        .unwrap_or(spans[0].speaker_index)
 }
 
 #[derive(Clone, Copy)]
@@ -161,13 +162,19 @@ mod tests {
     #[test]
     fn empty_spans_returns_empty() {
         let words = [word("w0", 0, 100), word("w1", 100, 200)];
-        assert_eq!(align_words_to_speakers(&words, &[]), Vec::<(String, i32)>::new());
+        assert_eq!(
+            align_words_to_speakers(&words, &[]),
+            Vec::<(String, i32)>::new()
+        );
     }
 
     #[test]
     fn empty_words_returns_empty() {
         let spans = [span(0, 1000, 0)];
-        assert_eq!(align_words_to_speakers(&[], &spans), Vec::<(String, i32)>::new());
+        assert_eq!(
+            align_words_to_speakers(&[], &spans),
+            Vec::<(String, i32)>::new()
+        );
     }
 
     #[test]
@@ -191,11 +198,14 @@ mod tests {
         // word fully inside span A, far from span B.
         let words = [word("w", 100, 200)];
         let spans = [
-            span(50, 400, 0),   // overlap 100
-            span(500, 900, 1),  // overlap 0, midpoint far
+            span(50, 400, 0),  // overlap 100
+            span(500, 900, 1), // overlap 0, midpoint far
         ];
 
-        assert_eq!(align_words_to_speakers(&words, &spans), vec![("w".to_string(), 0)]);
+        assert_eq!(
+            align_words_to_speakers(&words, &spans),
+            vec![("w".to_string(), 0)]
+        );
     }
 
     #[test]
@@ -207,7 +217,10 @@ mod tests {
             span(1000, 2000, 1), // overlap 500 (1000..1500)
         ];
 
-        assert_eq!(align_words_to_speakers(&words, &spans), vec![("w".to_string(), 1)]);
+        assert_eq!(
+            align_words_to_speakers(&words, &spans),
+            vec![("w".to_string(), 1)]
+        );
     }
 
     #[test]
@@ -219,7 +232,10 @@ mod tests {
             span(500, 1000, 1), // overlap 100 (500..600)
         ];
 
-        assert_eq!(align_words_to_speakers(&words, &spans), vec![("w".to_string(), 0)]);
+        assert_eq!(
+            align_words_to_speakers(&words, &spans),
+            vec![("w".to_string(), 0)]
+        );
     }
 
     #[test]
@@ -227,11 +243,14 @@ mod tests {
         // word sits in a gap between two spans; no overlap with either.
         let words = [word("w", 1100, 1200)]; // midpoint 1150
         let spans = [
-            span(0, 1000, 0),   // midpoint 500, dist 650
+            span(0, 1000, 0),    // midpoint 500, dist 650
             span(1300, 2000, 1), // midpoint 1650, dist 500 -> nearest
         ];
 
-        assert_eq!(align_words_to_speakers(&words, &spans), vec![("w".to_string(), 1)]);
+        assert_eq!(
+            align_words_to_speakers(&words, &spans),
+            vec![("w".to_string(), 1)]
+        );
     }
 
     #[test]
@@ -239,12 +258,15 @@ mod tests {
         // midpoints equidistant -> prefer earlier span (lower start_ms).
         let words = [word("w", 1100, 1200)]; // midpoint 1150
         let spans = [
-            span(0, 1000, 0),     // midpoint 500, dist 650
-            span(1300, 2000, 1),  // midpoint 1650, dist 500
-            span(900, 1000, 2),   // midpoint 950, dist 200 -> nearest
+            span(0, 1000, 0),    // midpoint 500, dist 650
+            span(1300, 2000, 1), // midpoint 1650, dist 500
+            span(900, 1000, 2),  // midpoint 950, dist 200 -> nearest
         ];
 
-        assert_eq!(align_words_to_speakers(&words, &spans), vec![("w".to_string(), 2)]);
+        assert_eq!(
+            align_words_to_speakers(&words, &spans),
+            vec![("w".to_string(), 2)]
+        );
     }
 
     #[test]
@@ -252,12 +274,12 @@ mod tests {
         // Two spans give identical overlap and identical midpoint distance.
         // Both span [0,200] and [0,200]; first by slice order wins.
         let words = [word("w", 50, 150)];
-        let spans = [
-            span(0, 200, 0),
-            span(0, 200, 1),
-        ];
+        let spans = [span(0, 200, 0), span(0, 200, 1)];
 
-        assert_eq!(align_words_to_speakers(&words, &spans), vec![("w".to_string(), 0)]);
+        assert_eq!(
+            align_words_to_speakers(&words, &spans),
+            vec![("w".to_string(), 0)]
+        );
     }
 
     #[test]
@@ -269,21 +291,17 @@ mod tests {
         // A=[0,100] mid 50, B=[200,300] mid 250, word=[50,250]: overlap A=50, B=50,
         // mid dist A=|150-50|=100, B=|150-250|=100 -> tie. Earlier start (A) wins.
         let words = [word("w", 50, 250)];
-        let spans = [
-            span(0, 100, 0),
-            span(200, 300, 1),
-        ];
+        let spans = [span(0, 100, 0), span(200, 300, 1)];
 
-        assert_eq!(align_words_to_speakers(&words, &spans), vec![("w".to_string(), 0)]);
+        assert_eq!(
+            align_words_to_speakers(&words, &spans),
+            vec![("w".to_string(), 0)]
+        );
     }
 
     #[test]
     fn preserves_input_order() {
-        let words = [
-            word("c", 500, 600),
-            word("a", 0, 100),
-            word("b", 200, 300),
-        ];
+        let words = [word("c", 500, 600), word("a", 0, 100), word("b", 200, 300)];
         let spans = [span(0, 10_000, 7)];
 
         let result = align_words_to_speakers(&words, &spans);
@@ -300,7 +318,10 @@ mod tests {
         let words = [word("w", 500, 100)];
         let spans = [span(0, 10_000, 2)];
 
-        assert_eq!(align_words_to_speakers(&words, &spans), vec![("w".to_string(), 2)]);
+        assert_eq!(
+            align_words_to_speakers(&words, &spans),
+            vec![("w".to_string(), 2)]
+        );
     }
 
     #[test]
@@ -309,11 +330,14 @@ mod tests {
         // Real overlap must win over the closer-but-disjoint fallback.
         let words = [word("w", 50, 150)]; // midpoint 100
         let spans = [
-            span(140, 1000, 0),  // overlap 10, midpoint 570, dist 470
-            span(0, 40, 1),      // overlap 0, midpoint 20, dist 80 (closer)
+            span(140, 1000, 0), // overlap 10, midpoint 570, dist 470
+            span(0, 40, 1),     // overlap 0, midpoint 20, dist 80 (closer)
         ];
 
-        assert_eq!(align_words_to_speakers(&words, &spans), vec![("w".to_string(), 0)]);
+        assert_eq!(
+            align_words_to_speakers(&words, &spans),
+            vec![("w".to_string(), 0)]
+        );
     }
 
     #[test]
@@ -322,11 +346,11 @@ mod tests {
         // boundary spans? End-exclusive: word=[0,100], spanA=[0,100] overlap 100,
         // spanB=[100,200] overlap 0 -> A wins.
         let words = [word("w", 0, 100)];
-        let spans = [
-            span(0, 100, 0),
-            span(100, 200, 1),
-        ];
+        let spans = [span(0, 100, 0), span(100, 200, 1)];
 
-        assert_eq!(align_words_to_speakers(&words, &spans), vec![("w".to_string(), 0)]);
+        assert_eq!(
+            align_words_to_speakers(&words, &spans),
+            vec![("w".to_string(), 0)]
+        );
     }
 }

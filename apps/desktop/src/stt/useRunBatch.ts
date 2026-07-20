@@ -424,7 +424,10 @@ export const useRunBatch = (sessionId: string) => {
           const captured: { id: string; start_ms: number; end_ms: number }[] =
             [];
           for (const w of newWords) {
-            if (typeof w.start_ms === "number" && typeof w.end_ms === "number") {
+            if (
+              typeof w.start_ms === "number" &&
+              typeof w.end_ms === "number"
+            ) {
               captured.push({
                 id: w.id,
                 start_ms: w.start_ms,
