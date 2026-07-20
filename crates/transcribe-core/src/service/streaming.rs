@@ -641,8 +641,10 @@ where
                     // truncated. Mirrors the batch path's windowing in
                     // `crate::audio`; whisper/parakeet are unaffected (they
                     // tolerate oversize input, just now get it pre-split).
-                    for (index, window) in
-                        chunk.samples.chunks(crate::audio::MAX_CHUNK_SAMPLES).enumerate()
+                    for (index, window) in chunk
+                        .samples
+                        .chunks(crate::audio::MAX_CHUNK_SAMPLES)
+                        .enumerate()
                     {
                         let sample_start =
                             chunk.sample_start + index * crate::audio::MAX_CHUNK_SAMPLES;
