@@ -111,8 +111,8 @@ impl VoxtralModel {
             .map(|n| n.get() as i32)
             .unwrap_or(1);
 
-        let model_params = LlamaModelParams::default()
-            .with_n_gpu_layers(if use_gpu() { u32::MAX } else { 0 });
+        let model_params =
+            LlamaModelParams::default().with_n_gpu_layers(if use_gpu() { u32::MAX } else { 0 });
 
         let model = LlamaModel::load_from_file(backend, &weight_path, &model_params)
             .map_err(|e| VoxtralError::ModelLoad(e.to_string()))?;
@@ -143,7 +143,15 @@ impl VoxtralModel {
     /// batch/static-file only today (no cross-chunk streaming state to
     /// preserve), so this matches upstream's own current design instead of
     /// fighting it.
-    pub fn transcribe_samples(&mut self, samples: &[f32]) -> Result<String, VoxtralError> {
+    ///
+    /// `target` is what to transcribe *into*: English verbatim (the default),
+    /// a single language in its native script, or romanized Hinglish. It only
+    /// shapes the instruction prompt; the decode is unchanged.
+    pub fn transcribe_samples(
+        &mut self,
+        samples: &[f32],
+        target: &TranscribeTarget,
+    ) -> Result<String, VoxtralError> {
         let n_threads = std::thread::available_parallelism()
             .map(|n| n.get() as i32)
             .unwrap_or(1);
@@ -174,9 +182,7 @@ impl VoxtralModel {
         // formatted essay) instead of transcribing it. An explicit verbatim
         // instruction alongside the marker reliably gets literal ASR
         // output instead.
-        let marker = llama_cpp_2::mtmd::mtmd_default_marker();
-        let instruction =
-            format!("{marker}Repeat exactly, word for word, what is said in the audio above. Output only the verbatim transcript: no summary, no commentary, no headings, no markdown, no added punctuation beyond what is spoken.");
+        let instruction = build_instruction(target);
         let messages = [LlamaChatMessage::new("user".to_string(), instruction)
             .map_err(|e| VoxtralError::ChatTemplate(e.to_string()))?];
         let template = self
@@ -230,5 +236,117 @@ impl VoxtralModel {
         }
 
         Ok(output.trim().to_string())
+    }
+}
+
+/// The primary English display name of a language. ISO 639 names can carry
+/// alternate names separated by `';'` (e.g. "Spanish ;   Castilian",
+/// "Dutch ;   Flemish"); the chat-template instruction wants the primary name
+/// only, so the alternates are trimmed off.
+fn display_name(language: &hypr_language::Language) -> String {
+    language
+        .language_name()
+        .split(';')
+        .next()
+        .unwrap_or("")
+        .trim()
+        .to_string()
+}
+
+/// The script note for the target language's native script: Devanagari for
+/// Hindi, "the standard script" for everything else (the Voxtral Mini 3B
+/// supported set — es/fr/pt/de/nl/it — all use a single Latin/Cyrillic/etc.
+/// script that needs no special call-out).
+fn script_note(language: &hypr_language::Language) -> &'static str {
+    if language.iso639_code() == "hi" {
+        "Devanagari"
+    } else {
+        "the standard script"
+    }
+}
+
+/// What to instruct Voxtral to transcribe into. Voxtral is an LLM, so the
+/// target is expressed as a natural-language instruction rather than a decode
+/// flag. Extend this enum (e.g. a Hinglish-in-Devanagari or Hindi-in-Roman
+/// variant) when the script-preference param plumbing lands — see issue #40.
+#[derive(Debug, Clone, PartialEq)]
+pub enum TranscribeTarget {
+    /// English verbatim — the default when no language (or English) is asked.
+    English,
+    /// Verbatim transcription in a single language's native script.
+    Language(hypr_language::Language),
+    /// Code-mixed Hindi-English ("Hinglish"), written in Roman script — the way
+    /// it is actually typed in Indian offices (romanized Hindi + inline
+    /// English). Forcing Devanagari (the plain-Hindi path) would mangle it.
+    HinglishRoman,
+}
+
+/// Build the user-turn instruction that accompanies the audio marker in the
+/// mtmd chat template. `English` keeps the verbatim default; `Language`
+/// forces that language's native script; `HinglishRoman` asks for romanized
+/// code-mixed output. All keep the same anti-summary guard.
+fn build_instruction(target: &TranscribeTarget) -> String {
+    let marker = llama_cpp_2::mtmd::mtmd_default_marker();
+    match target {
+        TranscribeTarget::English => format!(
+            "{marker}Repeat exactly, word for word, what is said in the audio above. \
+             Output only the verbatim transcript: no summary, no commentary, no headings, \
+             no markdown, no added punctuation beyond what is spoken."
+        ),
+        TranscribeTarget::Language(language) => {
+            let name = display_name(language);
+            let script = script_note(language);
+            format!(
+                "{marker}Transcribe the audio verbatim in {name}. Output only the exact \
+                 spoken words in the native script of {name} ({script}). Do not translate, \
+                 summarize, explain, or add any commentary."
+            )
+        }
+        TranscribeTarget::HinglishRoman => format!(
+            "{marker}Transcribe the audio verbatim. The speech is code-mixed Hindi and \
+             English (Hinglish), as spoken in Indian offices. Write the Hindi words in \
+             Roman script (romanized, the way they are typed in chat) and keep the English \
+             words in English. Do not convert anything to Devanagari, do not translate, and \
+             do not summarize, explain, or add any commentary. Output only the exact spoken \
+             words."
+        ),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn english_instruction_is_verbatim_default() {
+        let instruction = build_instruction(&TranscribeTarget::English);
+        assert!(instruction.contains("Repeat exactly, word for word"));
+        assert!(!instruction.contains("Transcribe the audio verbatim in"));
+    }
+
+    #[test]
+    fn non_english_instruction_names_target_language() {
+        let hindi: hypr_language::Language = "hi".parse().unwrap();
+        let instruction = build_instruction(&TranscribeTarget::Language(hindi));
+        assert!(instruction.contains("Transcribe the audio verbatim in Hindi."));
+        assert!(instruction.contains("native script of Hindi (Devanagari)"));
+        assert!(instruction.contains("Do not translate, summarize, explain"));
+    }
+
+    #[test]
+    fn non_hindi_uses_standard_script() {
+        let french: hypr_language::Language = "fr".parse().unwrap();
+        let instruction = build_instruction(&TranscribeTarget::Language(french));
+        assert!(instruction.contains("Transcribe the audio verbatim in French."));
+        assert!(instruction.contains("native script of French (the standard script)"));
+    }
+
+    #[test]
+    fn hinglish_asks_for_romanized_code_mix() {
+        let instruction = build_instruction(&TranscribeTarget::HinglishRoman);
+        assert!(instruction.contains("code-mixed Hindi and English"));
+        assert!(instruction.contains("Roman script"));
+        assert!(instruction.contains("keep the English words in English"));
+        assert!(instruction.contains("Do not convert anything to Devanagari"));
     }
 }
