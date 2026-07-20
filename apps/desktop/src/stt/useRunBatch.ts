@@ -2,6 +2,7 @@ import { platform } from "@tauri-apps/plugin-os";
 import { useCallback } from "react";
 
 import type { TranscriptionParams } from "@hypr/plugin-transcription";
+import { commands as transcriptionCommands } from "@hypr/plugin-transcription";
 import { sonnerToast } from "@hypr/ui/components/ui/toast";
 
 import { useListener } from "./contexts";
@@ -363,6 +364,10 @@ export const useRunBatch = (sessionId: string) => {
           dictionaryTerms,
         }));
       let transcriptId: string | null = null;
+      // Final word set (id + timing) captured from persist so a local
+      // diarization pass can label them by speaker after transcription.
+      let diarizationWords: { id: string; start_ms: number; end_ms: number }[] =
+        [];
       const inferredNumSpeakers =
         options?.numSpeakers === undefined &&
         options?.minSpeakers === undefined &&
@@ -412,6 +417,25 @@ export const useRunBatch = (sessionId: string) => {
 
             newWordIds.push(wordId);
           });
+
+          // Batch persists in "replace" mode (last call = the full transcript),
+          // so replace; append only if a custom persist path asks for it.
+          // Words without timing can't be aligned to a speaker span — skip them.
+          const captured: { id: string; start_ms: number; end_ms: number }[] =
+            [];
+          for (const w of newWords) {
+            if (typeof w.start_ms === "number" && typeof w.end_ms === "number") {
+              captured.push({
+                id: w.id,
+                start_ms: w.start_ms,
+                end_ms: w.end_ms,
+              });
+            }
+          }
+          diarizationWords =
+            persistOptions?.mode === "append"
+              ? [...diarizationWords, ...captured]
+              : captured;
 
           const newHints: SpeakerHintWithId[] = [];
 
@@ -493,6 +517,38 @@ export const useRunBatch = (sessionId: string) => {
       }
 
       if (transcriptWriteError) throw transcriptWriteError;
+
+      // On-device speaker diarization for local engines (Whisper/Parakeet emit
+      // no speakers; cloud providers already diarize). Best-effort — never fail
+      // the transcription over it — and run before retention deletes the audio.
+      if (
+        transcriptId &&
+        diarizationWords.length > 0 &&
+        (isWhisperLocalSttModel(target.model) ||
+          isParakeetLocalSttModel(target.model))
+      ) {
+        try {
+          const diarized = await transcriptionCommands.runDiarization(
+            filePath,
+            params.num_speakers ?? null,
+            diarizationWords,
+          );
+          if (diarized.status === "ok" && diarized.data.length > 0) {
+            const speakerHints: SpeakerHintWithId[] = diarized.data.map((r) => ({
+              id: id(),
+              word_id: r.word_id,
+              type: "provider_speaker_index",
+              value: JSON.stringify({
+                provider: target.provider,
+                speaker_index: r.speaker_index,
+              }),
+            }));
+            await appendTranscriptWordsAndHints(transcriptId, [], speakerHints);
+          }
+        } catch (error) {
+          console.error("[runBatch] on-device diarization failed", error);
+        }
+      }
 
       await deleteProcessedAudioForRetention(audioRetention, sessionId);
     },
