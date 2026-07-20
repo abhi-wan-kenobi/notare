@@ -362,11 +362,22 @@ export function ParticleOrb({
   }, [size, reducedMotion, staticPhase]);
 
   return (
-    <canvas
-      ref={canvasRef}
-      data-testid="dictation-particle-orb"
-      aria-hidden
+    <span
+      className="relative inline-flex shrink-0"
       style={{ width: size, height: size }}
-    />
+    >
+      <canvas
+        ref={canvasRef}
+        data-testid="dictation-particle-orb"
+        aria-hidden
+        style={{ width: size, height: size }}
+      />
+      {phase === "error" && (
+        <span
+          data-testid="dictation-particle-error-badge"
+          className="bg-destructive absolute -right-0.5 -bottom-0.5 size-2.5 rounded-full border border-black/30"
+        />
+      )}
+    </span>
   );
 }
