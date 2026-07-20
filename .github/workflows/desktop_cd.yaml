@@ -76,7 +76,7 @@ jobs:
     if: ${{ !cancelled() && (needs.cn-draft.result == 'success' || needs.cn-draft.result == 'skipped') }}
     permissions:
       contents: write
-    runs-on: depot-macos-26
+    runs-on: macos-latest
     strategy:
       fail-fast: true
       matrix:
