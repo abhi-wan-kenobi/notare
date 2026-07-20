@@ -1,0 +1,10 @@
+[package]
+name = "diarization"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+eyre = "0.6"
+sherpa-rs = "0.6.8"
+thiserror = { workspace = true }
+tracing = { workspace = true }
