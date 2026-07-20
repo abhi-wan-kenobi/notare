@@ -184,6 +184,55 @@ fn seconds_to_ms(seconds: f32) -> u64 {
     (seconds * 1000.0).round() as u64
 }
 
+// --- Bundled models -------------------------------------------------------
+//
+// sherpa-onnx needs model *file paths*, so the bundled bytes are materialized
+// into a cache dir once and reused. Models: pyannote-segmentation-3.0 (MIT) +
+// a 3D-Speaker embedding (permissive) — the exact pair validated in the #15
+// spike (11-36x realtime on CPU). ~35MB, in line with the crates/pyannote-local
+// bundle already in-tree.
+
+const SEGMENTATION_ONNX: &[u8] = include_bytes!("../data/segmentation.onnx");
+const EMBEDDING_ONNX: &[u8] = include_bytes!("../data/embedding.onnx");
+
+/// Materialize the bundled ONNX models into a cache directory and return their
+/// paths. Written once; reused when the file already exists at the right size.
+pub fn bundled_model_paths() -> Result<(PathBuf, PathBuf), DiarizeError> {
+    let dir = std::env::temp_dir().join("notare-diarization-models");
+    std::fs::create_dir_all(&dir)?;
+    let segmentation = dir.join("segmentation.onnx");
+    let embedding = dir.join("embedding.onnx");
+    materialize(&segmentation, SEGMENTATION_ONNX)?;
+    materialize(&embedding, EMBEDDING_ONNX)?;
+    Ok((segmentation, embedding))
+}
+
+fn materialize(path: &Path, bytes: &[u8]) -> Result<(), DiarizeError> {
+    let up_to_date = std::fs::metadata(path)
+        .map(|m| m.len() == bytes.len() as u64)
+        .unwrap_or(false);
+    if !up_to_date {
+        std::fs::write(path, bytes)?;
+    }
+    Ok(())
+}
+
+impl Diarizer {
+    /// Construct a diarizer from the bundled segmentation + embedding models.
+    pub fn from_bundled() -> Result<Self, DiarizeError> {
+        let (segmentation, embedding) = bundled_model_paths()?;
+        Self::new(segmentation, embedding)
+    }
+}
+
+impl VoiceProfileIndex {
+    /// Construct a voice-profile index from the bundled embedding model.
+    pub fn from_bundled() -> Result<Self, DiarizeError> {
+        let (_segmentation, embedding) = bundled_model_paths()?;
+        Self::new(embedding)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -213,5 +262,17 @@ mod tests {
         assert_eq!(converted.start_ms, 1500);
         assert_eq!(converted.end_ms, 4123);
         assert_eq!(converted.speaker_index, 2);
+    }
+
+    #[test]
+    fn bundled_models_materialize_and_load() {
+        // Materializing writes both files to the cache dir...
+        let (segmentation, embedding) = bundled_model_paths().expect("materialize");
+        assert!(segmentation.exists() && embedding.exists());
+
+        // ...and sherpa can actually parse/load them (proves the bundle is a
+        // valid segmentation + embedding pair, not just bytes on disk).
+        Diarizer::from_bundled().expect("diarizer loads bundled models");
+        VoiceProfileIndex::from_bundled().expect("index loads bundled embedding");
     }
 }
