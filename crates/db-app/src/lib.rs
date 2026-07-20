@@ -10,6 +10,7 @@ mod session_ops;
 mod session_types;
 mod template_ops;
 mod template_types;
+mod voice_profile_ops;
 
 pub use calendar_ops::*;
 pub use calendar_types::*;
@@ -21,6 +22,7 @@ pub use session_ops::*;
 pub use session_types::*;
 pub use template_ops::*;
 pub use template_types::*;
+pub use voice_profile_ops::*;
 
 pub const APP_MIGRATION_STEPS: &[hypr_db_migrate::MigrationStep] = &[
     hypr_db_migrate::MigrationStep {
@@ -72,6 +74,11 @@ pub const APP_MIGRATION_STEPS: &[hypr_db_migrate::MigrationStep] = &[
         id: "20260716120000_dictation_history",
         scope: hypr_db_migrate::MigrationScope::Plain,
         sql: include_str!("../migrations/20260716120000_dictation_history.sql"),
+    },
+    hypr_db_migrate::MigrationStep {
+        id: "20260720151807_voice_profiles",
+        scope: hypr_db_migrate::MigrationScope::Plain,
+        sql: include_str!("../migrations/20260720151807_voice_profiles.sql"),
     },
 ];
 
@@ -270,6 +277,7 @@ mod tests {
                 "tags",
                 "templates",
                 "transcripts",
+                "voice_profiles",
             ]
         );
     }
