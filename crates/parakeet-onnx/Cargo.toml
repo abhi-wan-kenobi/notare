@@ -5,6 +5,15 @@ edition = "2024"
 
 [features]
 default = []
+# macOS GPU offload via ONNX Runtime's CoreML execution provider (Apple
+# Silicon / Metal). The Cargo feature can be enabled on any platform to
+# typecheck, but the provider is only ever *constructed* on
+# `target_os = "macos"` — CoreML's FFI entry point isn't exported by ONNX
+# Runtime's non-Apple binaries, and constructing it unconditionally would
+# risk a link failure on a full (non-`cargo check`) Linux/Windows build.
+# Falls back to CPU at runtime the same way `cuda`/`directml` do. See
+# `model.rs`'s `gpu_execution_providers`.
+coreml = ["hypr-onnx/coreml"]
 # NVIDIA GPU offload via ONNX Runtime's CUDA execution provider. Available on
 # Linux and Windows (x86_64/aarch64); never crashes if unavailable at runtime
 # (missing driver, no NVIDIA GPU, ...) — session creation falls back to CPU

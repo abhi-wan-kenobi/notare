@@ -38,6 +38,9 @@ suite structurally could not (e.g. the v0.3.1 paste-at-cursor crash).
 - [ ] Transcription routes to the server; **GPU offload actually happens** (admin page "GPU verified Nx", or watch GPU utilisation).
 - [ ] Token gate: `/v1/listen` 401s without the token, works with it.
 
+## Parakeet (ONNX) GPU offload
+- [ ] **macOS: confirm Parakeet loads with the CoreML EP** and falls back to CPU if unavailable (watch the `parakeet_execution_provider_active` / `..._falling_back_to_cpu` log lines). Real CoreML acceleration can only be verified on Abhishek's Mac — Linux CI only typechecks the path.
+
 ## Per-fix rule
 When a bug fix touches a path with no feasible unit test (native input, GPU,
 OS windowing), add a line here in the same PR.
