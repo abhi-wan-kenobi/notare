@@ -89,13 +89,9 @@ describe("ParticleOrb", () => {
     const { rerender } = render(
       <ParticleOrb phase="listening" amplitude={0.5} size={32} />,
     );
-    expect(
-      screen.queryByTestId("dictation-particle-error-badge"),
-    ).toBeNull();
+    expect(screen.queryByTestId("dictation-particle-error-badge")).toBeNull();
 
     rerender(<ParticleOrb phase="error" amplitude={0} size={32} />);
-    expect(
-      screen.getByTestId("dictation-particle-error-badge"),
-    ).not.toBeNull();
+    expect(screen.getByTestId("dictation-particle-error-badge")).not.toBeNull();
   });
 });
