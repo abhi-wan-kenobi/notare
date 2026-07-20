@@ -32,7 +32,7 @@ jobs:
       matrix:
         include:
           - platform: "macos"
-            runner: "depot-macos-15"
+            runner: "macos-15"
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
@@ -159,7 +159,7 @@ jobs:
 
   desktop_swift:
     if: ${{ !startsWith(github.head_ref || '', 'blog/') }}
-    runs-on: depot-macos-15
+    runs-on: macos-15
     defaults:
       run:
         shell: bash
