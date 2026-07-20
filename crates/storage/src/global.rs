@@ -5,11 +5,13 @@ const STAGING_BUNDLE_IDS: &[&str] = &["be.abhishek.notare.staging", "com.hyprnot
 const RELEASE_APP_FOLDER: &str = "notare";
 /// Older release-channel data folders, newest rename first.
 ///
-/// Migration decision (2026-07-16): if a legacy folder still holds data and
-/// the current one doesn't, we keep using the legacy folder *in place* — no
-/// copy/move. That is the safest minimal approach: existing users' sessions
-/// and models survive the rename with zero data-move risk, while fresh
-/// installs land in `notare`.
+/// Migration (updated 2026-07-20): if a legacy folder still holds data and the
+/// current one doesn't, rename it to `notare` — an atomic, same-volume rename
+/// (safer than a copy) so the on-disk folder matches the brand instead of
+/// silently staying `anarlog` forever. If the rename can't happen (target
+/// exists, cross-volume, permissions) we fall back to adopting the legacy
+/// folder in place so a user's data is never clobbered or lost. Fresh installs
+/// land directly in `notare`.
 const LEGACY_RELEASE_APP_FOLDERS: &[&str] = &["anarlog", "hyprnote"];
 
 pub fn compute_vault_config_path(base: &Path) -> PathBuf {
@@ -22,6 +24,8 @@ pub fn compute_default_base(bundle_id: &str) -> Option<PathBuf> {
     Some(data_dir.join(app_folder))
 }
 
+/// Resolve the app-data folder name, migrating a legacy folder to the current
+/// name in place when one is found (see [`LEGACY_RELEASE_APP_FOLDERS`]).
 fn resolve_app_folder<'a>(data_dir: &Path, bundle_id: &'a str, is_debug: bool) -> &'a str {
     if is_debug || STAGING_BUNDLE_IDS.contains(&bundle_id) {
         return bundle_id;
@@ -29,11 +33,28 @@ fn resolve_app_folder<'a>(data_dir: &Path, bundle_id: &'a str, is_debug: bool) -
     if has_app_data(&data_dir.join(RELEASE_APP_FOLDER)) {
         return RELEASE_APP_FOLDER;
     }
-    LEGACY_RELEASE_APP_FOLDERS
+    match LEGACY_RELEASE_APP_FOLDERS
         .iter()
         .copied()
         .find(|folder| has_app_data(&data_dir.join(folder)))
-        .unwrap_or(RELEASE_APP_FOLDER)
+    {
+        // Renamed the legacy folder to `notare`; use the new name.
+        Some(legacy) if migrate_legacy_folder(data_dir, legacy) => RELEASE_APP_FOLDER,
+        // Rename couldn't happen — adopt the legacy folder in place (data safe).
+        Some(legacy) => legacy,
+        None => RELEASE_APP_FOLDER,
+    }
+}
+
+/// Rename a legacy data folder to the current `notare` folder. Same-volume
+/// rename is atomic. Returns `false` (caller adopts in place) when the target
+/// already exists or the rename fails, so data is never clobbered or lost.
+fn migrate_legacy_folder(data_dir: &Path, legacy: &str) -> bool {
+    let to = data_dir.join(RELEASE_APP_FOLDER);
+    if to.exists() {
+        return false;
+    }
+    std::fs::rename(data_dir.join(legacy), &to).is_ok()
 }
 
 fn has_app_data(path: &Path) -> bool {
@@ -58,7 +79,7 @@ mod tests {
     }
 
     #[test]
-    fn resolve_app_folder_keeps_anarlog_folder_when_it_has_data() {
+    fn resolve_app_folder_migrates_anarlog_to_notare() {
         let temp = tempdir().unwrap();
         let legacy_base = temp.path().join("anarlog");
         std::fs::create_dir_all(&legacy_base).unwrap();
@@ -66,12 +87,20 @@ mod tests {
 
         assert_eq!(
             resolve_app_folder(temp.path(), "be.abhishek.notare", false),
-            "anarlog"
+            RELEASE_APP_FOLDER
+        );
+        // The legacy folder was renamed: anarlog is gone, notare holds the data.
+        assert!(!temp.path().join("anarlog").exists());
+        assert!(
+            temp.path()
+                .join(RELEASE_APP_FOLDER)
+                .join("store.json")
+                .exists()
         );
     }
 
     #[test]
-    fn resolve_app_folder_keeps_hyprnote_folder_when_it_has_data() {
+    fn resolve_app_folder_migrates_hyprnote_to_notare() {
         let temp = tempdir().unwrap();
         let legacy_base = temp.path().join("hyprnote");
         std::fs::create_dir_all(&legacy_base).unwrap();
@@ -79,23 +108,54 @@ mod tests {
 
         assert_eq!(
             resolve_app_folder(temp.path(), "be.abhishek.notare", false),
-            "hyprnote"
+            RELEASE_APP_FOLDER
+        );
+        assert!(
+            temp.path()
+                .join(RELEASE_APP_FOLDER)
+                .join("store.json")
+                .exists()
         );
     }
 
     #[test]
-    fn resolve_app_folder_prefers_anarlog_over_hyprnote() {
+    fn resolve_app_folder_migrates_anarlog_before_hyprnote() {
         let temp = tempdir().unwrap();
         for folder in ["anarlog", "hyprnote"] {
             let base = temp.path().join(folder);
             std::fs::create_dir_all(&base).unwrap();
-            std::fs::write(base.join("store.json"), "{}").unwrap();
+            std::fs::write(base.join(format!("{folder}.json")), "{}").unwrap();
         }
 
         assert_eq!(
             resolve_app_folder(temp.path(), "be.abhishek.notare", false),
+            RELEASE_APP_FOLDER
+        );
+        // anarlog (first in the list) migrated into notare; hyprnote untouched.
+        assert!(
+            temp.path()
+                .join(RELEASE_APP_FOLDER)
+                .join("anarlog.json")
+                .exists()
+        );
+        assert!(temp.path().join("hyprnote").exists());
+    }
+
+    #[test]
+    fn resolve_app_folder_adopts_legacy_in_place_when_notare_dir_blocks_rename() {
+        let temp = tempdir().unwrap();
+        // An empty `notare` dir exists (no data, but blocks the rename target).
+        std::fs::create_dir_all(temp.path().join(RELEASE_APP_FOLDER)).unwrap();
+        let legacy_base = temp.path().join("anarlog");
+        std::fs::create_dir_all(&legacy_base).unwrap();
+        std::fs::write(legacy_base.join("store.json"), "{}").unwrap();
+
+        // Can't clobber the existing notare dir, so adopt anarlog in place.
+        assert_eq!(
+            resolve_app_folder(temp.path(), "be.abhishek.notare", false),
             "anarlog"
         );
+        assert!(temp.path().join("anarlog").join("store.json").exists());
     }
 
     #[test]
