@@ -1,4 +1,5 @@
 mod channel_state;
+pub mod diar_align;
 mod label;
 mod postprocessor;
 mod processor;
