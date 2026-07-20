@@ -19424,6 +19424,8 @@ name = "tauri-plugin-transcription"
 version = "0.1.0"
 dependencies = [
  "audio",
+ "audio-utils",
+ "diarization",
  "language",
  "owhisper-client",
  "owhisper-interface",

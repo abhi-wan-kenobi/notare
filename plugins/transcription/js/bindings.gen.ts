@@ -110,6 +110,22 @@ async renderTranscriptSegments(params: RenderTranscriptRequest) : Promise<Result
     else return { status: "error", error: e  as any };
 }
 },
+/**
+ * Run on-device speaker diarization over a recorded audio file and assign each
+ * supplied word a speaker index by timestamp overlap.
+ * 
+ * Pure compute: the caller persists the results as `provider_speaker_index`
+ * hints, exactly like the cloud-provider speaker path — so the transcript
+ * render/label pipeline is unchanged. Runs on the bundled models (no download).
+ */
+async runDiarization(audioPath: string, numSpeakers: number | null, words: DiarWordInput[]) : Promise<Result<DiarWordSpeaker[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:transcription|run_diarization", { audioPath, numSpeakers, words }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async startTranscription(params: TranscriptionParams) : Promise<Result<null, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("plugin:transcription|start_transcription", { params }) };
@@ -224,6 +240,14 @@ export type ChannelProfile = "DirectMic" | "RemoteParty" | "MixedCapture"
 export type DegradedError = { type: "authentication_failed"; provider: string } | { type: "upstream_unavailable"; message: string } | { type: "connection_timeout" } | { type: "stream_error"; message: string }
 export type DenoiseEvent = { type: "denoiseStarted"; session_id: string } | { type: "denoiseProgress"; session_id: string; percentage: number } | { type: "denoiseCompleted"; session_id: string } | { type: "denoiseFailed"; session_id: string; error: string }
 export type DenoiseParams = { session_id: string; input_path: string; output_path: string }
+/**
+ * A transcript word to be labeled by the diarizer, identified by its stable id.
+ */
+export type DiarWordInput = { id: string; start_ms: number; end_ms: number }
+/**
+ * The diarizer's per-word speaker assignment.
+ */
+export type DiarWordSpeaker = { word_id: string; speaker_index: number }
 export type FinalizedWord = { id: string; text: string; start_ms: number; end_ms: number; channel: number; state: WordState; speaker_index?: number | null }
 export type IdentityAssignment = { human_id: string; scope: IdentityScope }
 export type IdentityScope = { kind: "channel"; channel: ChannelProfile } | { kind: "channel_speaker"; channel: ChannelProfile; speaker_index: number } | { kind: "words"; word_ids: string[] }

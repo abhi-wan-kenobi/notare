@@ -8,6 +8,7 @@ use tokio::task::AbortHandle;
 use tokio_util::sync::CancellationToken;
 
 mod api;
+mod diarization;
 mod error;
 mod listener;
 mod listener2;
@@ -80,6 +81,7 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
             listener::commands::suggest_providers_for_languages_live::<tauri::Wry>,
             listener::commands::list_documented_language_codes_live::<tauri::Wry>,
             listener::commands::render_transcript_segments,
+            diarization::run_diarization,
             listener2::commands::start_transcription::<tauri::Wry>,
             listener2::commands::stop_transcription::<tauri::Wry>,
             listener2::commands::run_denoise::<tauri::Wry>,
