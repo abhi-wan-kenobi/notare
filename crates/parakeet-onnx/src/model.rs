@@ -117,11 +117,21 @@ impl ParakeetModel {
     }
 
     /// GPU execution providers this build was compiled to try, most-preferred
-    /// first. Both are opt-in via Cargo features (`cuda`, `directml`) and are
-    /// always registered with `error_on_failure()` so [`init_encoder_session`]
-    /// can catch a registration failure (missing driver, wrong GPU vendor,
-    /// unsupported platform, ...) and fall back to CPU instead of the app
-    /// crashing or silently running on an unexpected backend.
+    /// first. All are opt-in via Cargo features (`coreml`, `cuda`, `directml`)
+    /// and are always registered with `error_on_failure()` so
+    /// [`init_encoder_session`] can catch a registration failure (missing
+    /// driver, wrong GPU vendor, unsupported platform, ...) and fall back to
+    /// CPU instead of the app crashing or silently running on an unexpected
+    /// backend.
+    ///
+    /// CoreML is the macOS-native accelerator (Apple Silicon / Metal). The
+    /// `coreml` Cargo feature can still be turned on to typecheck this crate
+    /// on other platforms (e.g. `cargo check -p parakeet-onnx --features
+    /// coreml` on Linux CI), but the provider is only *constructed* under
+    /// `target_os = "macos"`: ONNX Runtime's non-Apple binaries don't export
+    /// CoreML's FFI entry point, so constructing it unconditionally would risk
+    /// a link failure on a full (non-check) non-macOS build. Mirrors the
+    /// `directml`-on-Windows pattern below.
     ///
     /// DirectML is a Windows-only execution provider (it wraps DirectX 12).
     /// The `directml` Cargo feature can still be turned on to typecheck this
@@ -133,6 +143,14 @@ impl ParakeetModel {
     fn gpu_execution_providers() -> Vec<(&'static str, ExecutionProviderDispatch)> {
         #[allow(unused_mut)]
         let mut providers: Vec<(&'static str, ExecutionProviderDispatch)> = Vec::new();
+
+        #[cfg(all(feature = "coreml", target_os = "macos"))]
+        providers.push((
+            "coreml",
+            hypr_onnx::ort::execution_providers::CoreMLExecutionProvider::default()
+                .build()
+                .error_on_failure(),
+        ));
 
         #[cfg(all(feature = "directml", target_os = "windows"))]
         providers.push((
