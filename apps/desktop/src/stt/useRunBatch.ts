@@ -23,6 +23,7 @@ import { useConfigValue } from "~/shared/config";
 import { id } from "~/shared/utils";
 import type { BatchPersistCallback } from "~/store/zustand/listener/transcript";
 import {
+  expandHinglish,
   getTranscriptionLanguages,
   isHyprnoteLocalSttModel,
   isParakeetLocalSttModel,
@@ -504,7 +505,13 @@ export const useRunBatch = (sessionId: string) => {
         base_url: target.baseUrl,
         api_key: target.apiKey,
         keywords,
-        languages,
+        // Expand a Hinglish selection against the resolved batch target
+        // (Whisper -> en, Voxtral -> hi,en), which can differ from the live
+        // engine since batch may retarget to a final-pass model.
+        languages: expandHinglish(languages, {
+          provider: target.provider,
+          model: target.model,
+        }),
         num_speakers: options?.numSpeakers ?? inferredNumSpeakers,
         min_speakers: options?.minSpeakers,
         max_speakers: options?.maxSpeakers,

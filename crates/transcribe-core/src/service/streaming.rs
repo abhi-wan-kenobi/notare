@@ -10,7 +10,10 @@ use std::{
 
 use axum::{
     body::Body,
-    extract::{FromRequestParts, ws::WebSocketUpgrade},
+    extract::{
+        FromRequestParts,
+        ws::{Message, WebSocketUpgrade},
+    },
     http::{Request, StatusCode},
     response::{IntoResponse, Response},
 };
@@ -276,11 +279,33 @@ async fn handle_websocket<E: SttEngine>(
             let mut mono_mixdown = hypr_audio_utils::MonoMixdown::new(TARGET_SAMPLE_RATE);
             let mut stream_closed = false;
 
+            // Keep the WebSocket warm through intermediary proxies (e.g.
+            // Tailscale Serve) and stateful NAT. A long transcription whose
+            // outbound segments are sparse — the server can spend many seconds
+            // decoding a single chunk with nothing flowing on the wire — can
+            // otherwise have its connection silently idled out, freezing the
+            // client mid-stream with no error. A ~15s WS ping sits well under
+            // typical proxy/NAT idle windows and lets a broken path surface
+            // quickly instead of hanging.
+            let mut keepalive = tokio::time::interval_at(
+                tokio::time::Instant::now() + std::time::Duration::from_secs(15),
+                std::time::Duration::from_secs(15),
+            );
+            keepalive.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+
             while !stream_closed {
                 tokio::select! {
                     _ = guard.cancelled() => {
                         tracing::info!("websocket_cancelled_by_new_connection");
                         break;
+                    }
+                    _ = keepalive.tick() => {
+                        // Best-effort: a failed send means the peer is gone, so
+                        // end the loop rather than spinning on a dead socket.
+                        if ws_sender.send(Message::Ping(Default::default())).await.is_err() {
+                            tracing::info!("websocket_keepalive_ping_failed_peer_gone");
+                            break;
+                        }
                     }
                     item = stream.next() => {
                         match item {
@@ -616,8 +641,10 @@ where
                     // truncated. Mirrors the batch path's windowing in
                     // `crate::audio`; whisper/parakeet are unaffected (they
                     // tolerate oversize input, just now get it pre-split).
-                    for (index, window) in
-                        chunk.samples.chunks(crate::audio::MAX_CHUNK_SAMPLES).enumerate()
+                    for (index, window) in chunk
+                        .samples
+                        .chunks(crate::audio::MAX_CHUNK_SAMPLES)
+                        .enumerate()
                     {
                         let sample_start =
                             chunk.sample_start + index * crate::audio::MAX_CHUNK_SAMPLES;

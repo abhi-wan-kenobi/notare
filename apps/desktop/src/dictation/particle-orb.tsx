@@ -113,10 +113,34 @@ interface PhaseLook {
 
 /** Per-frame motion constants, scaled from the reference's per-state values. */
 const PHASE_LOOKS: Record<DictationPhase, PhaseLook> = {
-  idle: { rotY: 0.0015, rotX: 0, turbulence: 0.1, brightness: 0.85, intensityTarget: 0 },
-  listening: { rotY: 0.003, rotX: 0, turbulence: 0.1, brightness: 1, intensityTarget: 0 },
-  processing: { rotY: 0.012, rotX: 0.004, turbulence: 0.14, brightness: 0.95, intensityTarget: 0.3 },
-  error: { rotY: 0, rotX: 0, turbulence: 0, brightness: 0.45, intensityTarget: 0 },
+  idle: {
+    rotY: 0.0015,
+    rotX: 0,
+    turbulence: 0.1,
+    brightness: 0.85,
+    intensityTarget: 0,
+  },
+  listening: {
+    rotY: 0.003,
+    rotX: 0,
+    turbulence: 0.1,
+    brightness: 1,
+    intensityTarget: 0,
+  },
+  processing: {
+    rotY: 0.012,
+    rotX: 0.004,
+    turbulence: 0.14,
+    brightness: 0.95,
+    intensityTarget: 0.3,
+  },
+  error: {
+    rotY: 0,
+    rotX: 0,
+    turbulence: 0,
+    brightness: 0.45,
+    intensityTarget: 0,
+  },
 };
 
 function mixRgb(a: Rgb, b: Rgb, t: number): Rgb {
@@ -224,7 +248,8 @@ function drawFrame(
 
   for (const p of particles) {
     // Cheap sin-field turbulence standing in for the reference's curl noise.
-    const px = p.x + turbulence * Math.sin(ft * 0.9 + p.y * 2.0 + p.seed * 6.28);
+    const px =
+      p.x + turbulence * Math.sin(ft * 0.9 + p.y * 2.0 + p.seed * 6.28);
     const py = p.y + turbulence * Math.sin(ft * 1.1 + p.z * 1.8 + p.seed * 4.7);
     const pz = p.z + turbulence * Math.sin(ft * 0.8 + p.x * 2.2 + p.seed * 3.1);
 
@@ -362,11 +387,22 @@ export function ParticleOrb({
   }, [size, reducedMotion, staticPhase]);
 
   return (
-    <canvas
-      ref={canvasRef}
-      data-testid="dictation-particle-orb"
-      aria-hidden
+    <span
+      className="relative inline-flex shrink-0"
       style={{ width: size, height: size }}
-    />
+    >
+      <canvas
+        ref={canvasRef}
+        data-testid="dictation-particle-orb"
+        aria-hidden
+        style={{ width: size, height: size }}
+      />
+      {phase === "error" && (
+        <span
+          data-testid="dictation-particle-error-badge"
+          className="bg-destructive absolute -right-0.5 -bottom-0.5 size-2.5 rounded-full border border-black/30"
+        />
+      )}
+    </span>
   );
 }

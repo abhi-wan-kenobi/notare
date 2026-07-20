@@ -82,4 +82,16 @@ describe("ParticleOrb", () => {
     expect(canvas.style.width).toBe("40px");
     expect(canvas.style.height).toBe("40px");
   });
+
+  it("shows the shared destructive badge dot only in the error phase", () => {
+    // Parity with the other alive variants: at 32px the desaturation-only
+    // error treatment reads as a dim idle, so pair it with the badge dot (#34).
+    const { rerender } = render(
+      <ParticleOrb phase="listening" amplitude={0.5} size={32} />,
+    );
+    expect(screen.queryByTestId("dictation-particle-error-badge")).toBeNull();
+
+    rerender(<ParticleOrb phase="error" amplitude={0} size={32} />);
+    expect(screen.getByTestId("dictation-particle-error-badge")).not.toBeNull();
+  });
 });

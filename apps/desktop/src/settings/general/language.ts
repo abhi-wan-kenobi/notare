@@ -1,6 +1,13 @@
 const displayNamesByLocale = new Map<string, Intl.DisplayNames>();
 
+/// Sentinel "language" for Hinglish (Hindi-English code-mix). It is not a real
+/// ISO/BCP-47 code; the STT request layer expands it per-engine (Whisper ->
+/// `en`, Voxtral -> `hi,en`). See `expandHinglish` in stt/capabilities.ts and
+/// issue #40. It is passed through the locale normalizers unchanged.
+export const HINGLISH_LANGUAGE_CODE = "hinglish";
+
 export const CORE_TRANSCRIPTION_LANGUAGE_CODES = [
+  HINGLISH_LANGUAGE_CODE,
   "ar",
   "be",
   "bg",
@@ -57,6 +64,10 @@ export function getBaseLanguageDisplayName(
   displayLocale = "en",
 ): string {
   const language = getBaseLanguageCode(code);
+  if (language === HINGLISH_LANGUAGE_CODE) {
+    // Intl.DisplayNames has no entry for the sentinel; label it explicitly.
+    return "Hinglish";
+  }
   if (!language) {
     return code;
   }
@@ -102,6 +113,11 @@ function tryParseLocale(code: string): {
   language: string;
   region?: string;
 } | null {
+  // The Hinglish sentinel is not a real locale; keep it intact so the picker
+  // and dedupe treat it as its own option rather than collapsing it.
+  if (code === HINGLISH_LANGUAGE_CODE) {
+    return { language: HINGLISH_LANGUAGE_CODE };
+  }
   let locale: Intl.Locale;
   try {
     locale = new Intl.Locale(code);
