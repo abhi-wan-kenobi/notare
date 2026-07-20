@@ -93,7 +93,7 @@ jobs:
   direct-provider-batch-e2e:
     needs: setup
     if: needs.setup.outputs.providers != ''
-    runs-on: depot-ubuntu-24.04-8
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -149,7 +149,7 @@ jobs:
   proxy-provider-e2e:
     needs: setup
     if: needs.setup.outputs.providers != ''
-    runs-on: depot-ubuntu-24.04-8
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
