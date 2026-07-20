@@ -111,16 +111,32 @@ async renderTranscriptSegments(params: RenderTranscriptRequest) : Promise<Result
 }
 },
 /**
- * Run on-device speaker diarization over a recorded audio file and assign each
- * supplied word a speaker index by timestamp overlap.
+ * Run on-device speaker diarization over a recorded audio file: assign each
+ * supplied word a speaker index (by timestamp overlap), and — when `enrolled`
+ * profiles are supplied — recognize which diarized speakers are known humans.
  * 
- * Pure compute: the caller persists the results as `provider_speaker_index`
- * hints, exactly like the cloud-provider speaker path — so the transcript
- * render/label pipeline is unchanged. Runs on the bundled models (no download).
+ * Pure compute. The caller persists `word_speakers` as `provider_speaker_index`
+ * hints and `speaker_humans` as `user_speaker_assignment` hints — exactly the
+ * cloud-provider + manual-assignment paths — so the render/label pipeline is
+ * unchanged. Runs on the bundled models (no download).
  */
-async runDiarization(audioPath: string, numSpeakers: number | null, words: DiarWordInput[]) : Promise<Result<DiarWordSpeaker[], string>> {
+async runDiarization(audioPath: string, numSpeakers: number | null, words: DiarWordInput[], enrolled: EnrolledProfile[]) : Promise<Result<DiarizationResult, string>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("plugin:transcription|run_diarization", { audioPath, numSpeakers, words }) };
+    return { status: "ok", data: await TAURI_INVOKE("plugin:transcription|run_diarization", { audioPath, numSpeakers, words, enrolled }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Compute a speaker embedding for a short enrollment clip. The caller stores it
+ * as a voice profile (`voice_profiles` table) against a human. Uses the same
+ * bundled embedding model as diarization, so enrolled profiles are directly
+ * comparable to diarized speakers.
+ */
+async computeVoiceEmbedding(audioPath: string) : Promise<Result<number[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:transcription|compute_voice_embedding", { audioPath }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -248,6 +264,15 @@ export type DiarWordInput = { id: string; start_ms: number; end_ms: number }
  * The diarizer's per-word speaker assignment.
  */
 export type DiarWordSpeaker = { word_id: string; speaker_index: number }
+/**
+ * Diarization + recognition result: per-word speaker indices, plus any
+ * diarized speakers that matched an enrolled voice profile.
+ */
+export type DiarizationResult = { word_speakers: DiarWordSpeaker[]; speaker_humans: SpeakerHuman[] }
+/**
+ * An enrolled voice profile to match diarized speakers against.
+ */
+export type EnrolledProfile = { human_id: string; embedding: number[] }
 export type FinalizedWord = { id: string; text: string; start_ms: number; end_ms: number; channel: number; state: WordState; speaker_index?: number | null }
 export type IdentityAssignment = { human_id: string; scope: IdentityScope }
 export type IdentityScope = { kind: "channel"; channel: ChannelProfile } | { kind: "channel_speaker"; channel: ChannelProfile; speaker_index: number } | { kind: "words"; word_ids: string[] }
@@ -263,6 +288,10 @@ export type RenderTranscriptWordInput = { id: string; text: string; start_ms: nu
 export type RenderedTranscriptSegment = { id: string; key: SegmentKey; speaker_label: string; start_ms: number; end_ms: number; text: string; words: SegmentWord[] }
 export type SegmentKey = { channel: ChannelProfile; speaker_index?: number | null; speaker_human_id?: string | null }
 export type SegmentWord = { text: string; start_ms: number; end_ms: number; channel: ChannelProfile; is_final: boolean; id?: string | null }
+/**
+ * A diarized speaker matched to an enrolled human (voice recognition).
+ */
+export type SpeakerHuman = { speaker_index: number; human_id: string }
 export type StreamAlternatives = { transcript: string; words: StreamWord[]; confidence: number; languages?: string[] }
 export type StreamChannel = { alternatives: StreamAlternatives[] }
 export type StreamExtra = { started_unix_millis: number }

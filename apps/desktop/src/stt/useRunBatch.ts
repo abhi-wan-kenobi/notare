@@ -532,17 +532,25 @@ export const useRunBatch = (sessionId: string) => {
             filePath,
             params.num_speakers ?? null,
             diarizationWords,
+            // Enrolled voice profiles for recognition — wired to the
+            // voice_profiles store + enrollment UX in P2.6 (#15). Empty for now
+            // means diarization-only ("Speaker N", no auto-naming).
+            [],
           );
-          if (diarized.status === "ok" && diarized.data.length > 0) {
-            const speakerHints: SpeakerHintWithId[] = diarized.data.map((r) => ({
-              id: id(),
-              word_id: r.word_id,
-              type: "provider_speaker_index",
-              value: JSON.stringify({
-                provider: target.provider,
-                speaker_index: r.speaker_index,
-              }),
-            }));
+          if (
+            diarized.status === "ok" &&
+            diarized.data.word_speakers.length > 0
+          ) {
+            const speakerHints: SpeakerHintWithId[] =
+              diarized.data.word_speakers.map((r) => ({
+                id: id(),
+                word_id: r.word_id,
+                type: "provider_speaker_index",
+                value: JSON.stringify({
+                  provider: target.provider,
+                  speaker_index: r.speaker_index,
+                }),
+              }));
             await appendTranscriptWordsAndHints(transcriptId, [], speakerHints);
           }
         } catch (error) {
