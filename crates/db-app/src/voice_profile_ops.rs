@@ -35,7 +35,7 @@ fn encode_embedding(embedding: &[f32]) -> Vec<u8> {
 }
 
 fn decode_embedding(bytes: &[u8]) -> Result<Vec<f32>, String> {
-    if bytes.len() % 4 != 0 {
+    if !bytes.len().is_multiple_of(4) {
         return Err(format!(
             "embedding blob length {} is not a multiple of 4",
             bytes.len()
@@ -143,7 +143,7 @@ mod tests {
 
     #[test]
     fn embedding_blob_roundtrip_is_bit_exact() {
-        let embedding: Vec<f32> = vec![0.0, -1.5, 3.1415927, f32::MIN, f32::MAX, 1e-37];
+        let embedding: Vec<f32> = vec![0.0, -1.5, 1.2345678, f32::MIN, f32::MAX, 1e-37];
         let blob = encode_embedding(&embedding);
         let decoded = decode_embedding(&blob).unwrap();
 
