@@ -3,6 +3,7 @@ import {
   commands as listenerCommands,
   type TranscriptionMode,
 } from "@hypr/plugin-transcription";
+import { HINGLISH_LANGUAGE_CODE } from "~/settings/general/language";
 
 type LiveTranscriptionConfig = {
   languages: string[];
@@ -156,6 +157,39 @@ export function getTranscriptionLanguages(
   }
 
   return languages;
+}
+
+/// Expand the Hinglish sentinel into real language codes for the active engine.
+///
+/// Hinglish (Hindi-English code-mix) has no single ISO code. Voxtral is an LLM
+/// with a promptable Hinglish mode, so it gets `hi,en` (its engine turns that
+/// into romanized code-mix). Every other engine — bundled Whisper (`Quantized`)
+/// or a remote custom Whisper server — has no romanized-Hinglish mode, so we
+/// ask for `en`, Whisper's least-bad code-mix behavior. See issue #40.
+///
+/// A no-op when the sentinel isn't present. Result is de-duplicated.
+export function expandHinglish(
+  languages: string[],
+  engine: { provider?: string | null; model?: string | null },
+): string[] {
+  if (!languages.includes(HINGLISH_LANGUAGE_CODE)) {
+    return languages;
+  }
+
+  const replacement = isVoxtralLocalSttModel(engine.model)
+    ? ["hi", "en"]
+    : ["en"];
+
+  const out: string[] = [];
+  for (const language of languages) {
+    const mapped = language === HINGLISH_LANGUAGE_CODE ? replacement : [language];
+    for (const code of mapped) {
+      if (!out.includes(code)) {
+        out.push(code);
+      }
+    }
+  }
+  return out;
 }
 
 export function getOnDeviceTranscriptionConfig(

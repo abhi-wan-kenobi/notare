@@ -171,6 +171,27 @@ vi.mock("~/stt/capabilities", () => {
 
       return languages;
     },
+    expandHinglish: (
+      languages: string[],
+      engine: { provider?: string | null; model?: string | null },
+    ) => {
+      if (!languages.includes("hinglish")) {
+        return languages;
+      }
+      const replacement =
+        typeof engine.model === "string" && engine.model.startsWith("voxtral-")
+          ? ["hi", "en"]
+          : ["en"];
+      const out: string[] = [];
+      for (const language of languages) {
+        for (const code of language === "hinglish" ? replacement : [language]) {
+          if (!out.includes(code)) {
+            out.push(code);
+          }
+        }
+      }
+      return out;
+    },
     isSupportedLanguagesBatch: isSupportedLanguagesBatchMock,
   };
 });

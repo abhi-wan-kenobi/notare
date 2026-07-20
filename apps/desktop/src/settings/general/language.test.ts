@@ -3,8 +3,26 @@ import { describe, expect, test } from "vitest";
 import {
   CORE_TRANSCRIPTION_LANGUAGE_CODES,
   getAdditionalSpokenLanguages,
+  getBaseLanguageDisplayName,
+  HINGLISH_LANGUAGE_CODE,
   parseLocale,
 } from "./language";
+
+describe("Hinglish sentinel", () => {
+  test("is offered as a transcription option", () => {
+    expect(CORE_TRANSCRIPTION_LANGUAGE_CODES).toContain(HINGLISH_LANGUAGE_CODE);
+  });
+
+  test("labels as Hinglish (Intl has no entry for it)", () => {
+    expect(getBaseLanguageDisplayName(HINGLISH_LANGUAGE_CODE)).toBe("Hinglish");
+  });
+
+  test("survives locale parsing intact instead of collapsing to en", () => {
+    expect(parseLocale(HINGLISH_LANGUAGE_CODE).language).toBe(
+      HINGLISH_LANGUAGE_CODE,
+    );
+  });
+});
 
 describe("getAdditionalSpokenLanguages", () => {
   test("removes the main language from stored spoken languages", () => {
