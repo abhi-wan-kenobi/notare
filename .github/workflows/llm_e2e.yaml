@@ -11,7 +11,7 @@ on:
 
 jobs:
   proxy-non-streaming:
-    runs-on: depot-ubuntu-24.04-8
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/rust_install
@@ -25,7 +25,7 @@ jobs:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
 
   proxy-streaming:
-    runs-on: depot-ubuntu-24.04-8
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/rust_install
