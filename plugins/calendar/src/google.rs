@@ -48,11 +48,34 @@ impl StoredGoogleCredentials {
     }
 }
 
+/// The bundled first-party OAuth client (Notare's own GCP project), baked in at
+/// build time so users can "Sign in with Google" without creating their own
+/// Google Cloud project. Present only when the build was given the creds (via the
+/// `NOTARE_GOOGLE_CLIENT_ID`/`_SECRET` env at compile time); absent in dev/fork
+/// builds, where the app falls back to a user-imported (BYO) client. A Desktop
+/// OAuth client secret is not confidential (loopback + PKCE is the protection),
+/// so baking it in is the standard approach — mirrors POSTHOG_API_KEY etc.
+fn bundled_client() -> Option<StoredGoogleCredentials> {
+    let client_id = option_env!("NOTARE_GOOGLE_CLIENT_ID").filter(|s| !s.is_empty())?;
+    let client_secret = option_env!("NOTARE_GOOGLE_CLIENT_SECRET").filter(|s| !s.is_empty())?;
+    Some(StoredGoogleCredentials {
+        client_id: client_id.to_string(),
+        client_secret: client_secret.to_string(),
+        auth_uri: "https://accounts.google.com/o/oauth2/auth".to_string(),
+        token_uri: "https://oauth2.googleapis.com/token".to_string(),
+        client_kind: Some("installed".to_string()),
+        refresh_token: None,
+    })
+}
+
 /// Status surfaced to the frontend.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, specta::Type)]
 pub struct GoogleAccountStatus {
-    /// A client json has been imported.
+    /// A client json has been imported (BYO client).
     pub has_client: bool,
+    /// A bundled first-party client is compiled into this build, so the user can
+    /// "Sign in with Google" without importing their own client.
+    pub has_bundled_client: bool,
     /// A refresh token exists (i.e. the consent flow completed).
     pub connected: bool,
     /// `"installed"` or `"web"` (when a client is present).
@@ -220,15 +243,18 @@ pub async fn status<R: tauri::Runtime>(
     app: &tauri::AppHandle<R>,
 ) -> Result<GoogleAccountStatus, Error> {
     let creds = load(app).await?;
+    let has_bundled_client = bundled_client().is_some();
     Ok(match creds {
         None => GoogleAccountStatus {
             has_client: false,
+            has_bundled_client,
             connected: false,
             client_kind: None,
             client_id: None,
         },
         Some(creds) => GoogleAccountStatus {
             has_client: true,
+            has_bundled_client,
             connected: creds.refresh_token.is_some(),
             client_kind: creds.client_kind.clone(),
             client_id: Some(creds.client_id.clone()),
@@ -251,10 +277,13 @@ pub async fn is_connected<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> bool 
 pub async fn connect<R: tauri::Runtime>(
     app: &tauri::AppHandle<R>,
 ) -> Result<GoogleAccountStatus, Error> {
-    let Some(mut creds) = load(app).await? else {
-        return Err(auth_error(
-            "no client json imported yet — add your Google OAuth client first",
-        ));
+    // Prefer a user-imported (BYO) client; otherwise fall back to the bundled
+    // first-party client so users don't need their own Google Cloud project.
+    let mut creds = match load(app).await? {
+        Some(creds) => creds,
+        None => bundled_client().ok_or_else(|| {
+            auth_error("no Google OAuth client available — add your own under Advanced settings")
+        })?,
     };
 
     let state = app.state::<GoogleAuthState>();

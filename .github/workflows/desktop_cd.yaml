@@ -131,6 +131,11 @@ jobs:
           POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
           VITE_POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
           SENTRY_DSN: ${{ secrets.SENTRY_DSN_HYPRNOTE_2 }}
+          # Bundled first-party Google OAuth client (Notare GCP project) so users
+          # can "Sign in with Google" without their own Cloud project. Desktop
+          # client secret is non-confidential (loopback + PKCE).
+          NOTARE_GOOGLE_CLIENT_ID: ${{ secrets.NOTARE_GOOGLE_CLIENT_ID }}
+          NOTARE_GOOGLE_CLIENT_SECRET: ${{ secrets.NOTARE_GOOGLE_CLIENT_SECRET }}
           APP_VERSION: ${{ needs.compute-version.outputs.version }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}

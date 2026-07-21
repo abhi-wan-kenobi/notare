@@ -270,9 +270,14 @@ export type EventStatus = "confirmed" | "tentative" | "cancelled"
  */
 export type GoogleAccountStatus = { 
 /**
- * A client json has been imported.
+ * A client json has been imported (BYO client).
  */
 has_client: boolean; 
+/**
+ * A bundled first-party client is compiled into this build, so the user can
+ * "Sign in with Google" without importing their own client.
+ */
+has_bundled_client: boolean; 
 /**
  * A refresh token exists (i.e. the consent flow completed).
  */
