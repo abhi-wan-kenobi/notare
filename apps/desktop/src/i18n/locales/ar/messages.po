@@ -1182,6 +1182,10 @@ msgstr ""
 msgid "Live transcript copied"
 msgstr ""
 
+#: src/settings/general/app-settings.tsx
+msgid "Live transcription"
+msgstr ""
+
 #: src/settings/ai/stt/select.tsx
 msgid "Live transcription model"
 msgstr ""
@@ -2429,6 +2433,10 @@ msgstr ""
 msgid "Toggle shortcut"
 msgstr ""
 
+#: src/settings/general/app-settings.tsx
+msgid "Transcribe in real time during a meeting. Turn this off to transcribe only after you stop — lighter for long meetings, and audio is always recorded either way. Applies to new sessions only."
+msgstr ""
+
 #: src/settings/ai/stt/shared.tsx
 msgid "Transcribes English only."
 msgstr ""
@@ -2443,6 +2451,7 @@ msgid "Transcript"
 msgstr ""
 
 #: src/settings/ai/stt/index.tsx
+#: src/settings/general/app-settings.tsx
 #: src/sidebar/settings.tsx
 msgid "Transcription"
 msgstr ""
