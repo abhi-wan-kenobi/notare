@@ -53,14 +53,18 @@ jobs:
           APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER_ID }}
           APPLE_API_KEY: ${{ secrets.APPLE_API_KEY_ID }}
 
-      # Diagnostic: confirm where the ort onnxruntime dylib actually lands, so
-      # the frameworks path in tauri.conf.stable-macos.json can be corrected if
-      # this build's guess (target/release/libonnxruntime.1.17.1.dylib) is off.
-      - name: Locate onnxruntime dylib
+      # Diagnostic: enumerate EVERY dynamic library the build drops next to the
+      # binary (onnxruntime + the sherpa-onnx cascade), so the frameworks list in
+      # tauri.conf.stable-macos.json can be verified complete. The app links
+      # sherpa-rs dynamically, so libsherpa-onnx-c-api.dylib (and its own dylib
+      # deps) must all be bundled or the app aborts at launch.
+      - name: Locate bundled dylibs
         if: always()
         run: |
-          echo "--- libonnxruntime dylibs under target ---"
-          find apps/desktop/src-tauri/target -name "libonnxruntime*.dylib" 2>/dev/null || true
+          echo "--- all dylibs at target/release top level ---"
+          find apps/desktop/src-tauri/target/release -maxdepth 1 -name "*.dylib" 2>/dev/null | sort || true
+          echo "--- all UNIQUE dylib basenames anywhere under target/release ---"
+          find apps/desktop/src-tauri/target/release -name "*.dylib" 2>/dev/null -exec basename {} \; | sort -u || true
           echo "--- in the built .app Frameworks ---"
           find apps/desktop/src-tauri/target/release/bundle -name "*.dylib" 2>/dev/null || true
 
