@@ -86,10 +86,15 @@ jobs:
           if-no-files-found: error
 
   build-linux:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
+
+      # ubuntu-24.04 restricts unprivileged user namespaces via AppArmor, which
+      # breaks AppImage tooling (linuxdeploy) even with APPIMAGE_EXTRACT_AND_RUN.
+      # Allow them so the AppImage bundles.
+      - run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
 
       - run: |
           sudo apt-get update
