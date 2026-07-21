@@ -45,16 +45,53 @@ jobs:
       - run: pnpm -F desktop tauri build --config ./src-tauri/tauri.conf.stable.json --config ./src-tauri/tauri.conf.stable-macos.json
         env:
           CI: false
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE_P12_BASE64 }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           APPLE_SIGNING_IDENTITY: "Developer ID Application: Abhishek Gupta (M4MVC745NX)"
           APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER_ID }}
           APPLE_API_KEY: ${{ secrets.APPLE_API_KEY_ID }}
 
-      # Assert the results. `codesign` must report a Developer ID authority
-      # (not "-"/adhoc); `spctl` must accept it under the Gatekeeper "install"
-      # policy (proves notarization is recognized); `stapler validate` must
-      # find the stapled ticket. Any failure exits non-zero and fails the job.
+      # Diagnostic: enumerate EVERY dynamic library the build drops next to the
+      # binary (onnxruntime + the sherpa-onnx cascade), so the frameworks list in
+      # tauri.conf.stable-macos.json can be verified complete. The app links
+      # sherpa-rs dynamically, so libsherpa-onnx-c-api.dylib (and its own dylib
+      # deps) must all be bundled or the app aborts at launch.
+      - name: Locate bundled dylibs
+        if: always()
+        run: |
+          echo "--- all dylibs at target/release top level ---"
+          find apps/desktop/src-tauri/target/release -maxdepth 1 -name "*.dylib" 2>/dev/null | sort || true
+          echo "--- all UNIQUE dylib basenames anywhere under target/release ---"
+          find apps/desktop/src-tauri/target/release -name "*.dylib" 2>/dev/null -exec basename {} \; | sort -u || true
+          echo "--- in the built .app Frameworks ---"
+          find apps/desktop/src-tauri/target/release/bundle -name "*.dylib" 2>/dev/null || true
+
+      # Publish the signed build so it can be installed for shakedown testing
+      # (uploaded even if the assertions below fail, e.g. notarization still
+      # processing, so the .dmg is still retrievable).
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: notare-macos-signed
+          path: |
+            apps/desktop/src-tauri/target/release/bundle/dmg/*.dmg
+            apps/desktop/src-tauri/target/release/bundle/macos/*.app.tar.gz
+          if-no-files-found: warn
+
+      # Assert the results on the .APP — that's what actually installs and runs.
+      # `codesign` must report a Developer ID authority (not "-"/adhoc); `spctl`
+      # under the Gatekeeper EXEC policy must accept it (proves notarization is
+      # recognized for launch); `stapler validate` must find the stapled ticket.
+      # Any of these failing exits non-zero and fails the job.
+      #
+      # The .dmg WRAPPER is checked informationally only: `tauri build` notarizes
+      # + staples the app, not the dmg, so a dmg-level `spctl -t install` assess
+      # reports "Unnotarized" and `stapler validate` finds no dmg ticket — neither
+      # is a real problem, because Gatekeeper validates the APP's own stapled
+      # ticket when the user launches it out of the dmg. (If we ever want a
+      # clean-distributing dmg, notarize the dmg too and promote these to asserts.)
       - run: |
           set -euo pipefail
           APP=$(find apps/desktop/src-tauri/target/release/bundle/macos -maxdepth 1 -name '*.app' | head -1)
@@ -69,11 +106,14 @@ jobs:
           codesign -dvv "$APP" 2>&1 | grep 'Authority=Developer ID Application' \
             || { echo 'FAIL: not Developer-ID-signed'; exit 1; }
 
-          echo "--- spctl assess (Gatekeeper install policy)"
-          spctl -a -t install -vv "$DMG"
+          echo "--- spctl assess the app (Gatekeeper exec policy — expect: accepted, Notarized Developer ID)"
+          spctl -a -t exec -vv "$APP"
 
-          echo "--- stapler validate (notarization ticket present)"
+          echo "--- stapler validate the app (notarization ticket present)"
           xcrun stapler validate "$APP"
-          xcrun stapler validate "$DMG"
+
+          echo "--- dmg wrapper (informational only — see comment above)"
+          spctl -a -t install -vv "$DMG" || echo "note: dmg wrapper is not itself notarized (expected; the app inside is)"
+          xcrun stapler validate "$DMG" || echo "note: dmg has no stapled ticket (expected; the app inside is stapled)"
 
           echo "ALL SIGNING/NOTARIZATION CHECKS PASSED"
