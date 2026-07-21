@@ -187,15 +187,14 @@ jobs:
           CI: false
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          # Apple signing/notarization TEMPORARILY disabled for v0.3.0: the
-          # account's first-ever notarization is stuck in Apple's review queue
-          # (would hang this job). Re-enable for v0.3.1 once the first
-          # submission clears — uncomment the five APPLE_* lines below.
-          # APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE_P12_BASE64 }}
-          # APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          # APPLE_SIGNING_IDENTITY: "Developer ID Application: Abhishek Gupta (M4MVC745NX)"
-          # APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER_ID }}
-          # APPLE_API_KEY: ${{ secrets.APPLE_API_KEY_ID }}
+          # Apple Developer ID signing + notarization (re-enabled 2026-07-21:
+          # the account's stuck first notarization cleared — submissions now
+          # Accepted). Signs + notarizes + staples the .app and .dmg.
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE_P12_BASE64 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: "Developer ID Application: Abhishek Gupta (M4MVC745NX)"
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER_ID }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY_ID }}
 
       - uses: actions/upload-artifact@v4
         with:
