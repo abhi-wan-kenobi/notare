@@ -13,9 +13,12 @@ const AUTO_CLUSTER_NUM_CLUSTERS: i32 = -1;
 
 /// Cosine-distance cutoff for auto speaker clustering (sherpa `FastClustering`).
 /// Only used when no explicit speaker count is supplied. Lower ⇒ splits into more
-/// speakers; higher ⇒ merges. 0.5 is sherpa-onnx's own default; kept here so it's
-/// a single tunable knob (promote to a `run_diarization` arg for the P2.6 UI).
-const AUTO_CLUSTER_THRESHOLD: f32 = 0.5;
+/// speakers; higher ⇒ merges. Calibrated against the labelled `hypr-data` fixtures
+/// (see `examples/threshold_sweep.rs`): sherpa's struct default of 0.5 badly
+/// over-splits (a clean 2-speaker clip → 4-9 speakers); 0.99 recovers the right
+/// count on the 3-speaker clip and lands within +1 on the 2-speaker clips. Auto
+/// is best-effort — the P2.6 "# of speakers" control provides an exact override.
+const AUTO_CLUSTER_THRESHOLD: f32 = 0.99;
 
 #[derive(thiserror::Error, Debug)]
 pub enum DiarizeError {
