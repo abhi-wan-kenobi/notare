@@ -132,6 +132,15 @@ export function AppSettingsView({
         </div>
       </section>
 
+      <section>
+        <h2 className="mb-4 font-sans text-lg font-semibold">
+          <Trans>Transcription</Trans>
+        </h2>
+        <div className="flex flex-col gap-4">
+          <LiveTranscriptionRow />
+        </div>
+      </section>
+
       <UpdatesSection />
     </div>
   );
@@ -157,6 +166,32 @@ export function MicDenoiseRow() {
       }
       checked={micDenoise}
       onChange={setMicDenoise}
+    />
+  );
+}
+
+/**
+ * "Live transcription" - the `live_transcription_enabled` setting. When off, a
+ * meeting records audio only and transcribes the whole recording once when you
+ * stop (lighter for long meetings; no live STT stream). Self-contained like
+ * `MicDenoiseRow`.
+ */
+export function LiveTranscriptionRow() {
+  const liveEnabled = useConfigValue("live_transcription_enabled");
+  const setLiveEnabled = useSetSettingValue("live_transcription_enabled");
+
+  return (
+    <SettingRow
+      title={<Trans>Live transcription</Trans>}
+      description={
+        <Trans>
+          Transcribe in real time during a meeting. Turn this off to transcribe
+          only after you stop — lighter for long meetings, and audio is always
+          recorded either way. Applies to new sessions only.
+        </Trans>
+      }
+      checked={liveEnabled}
+      onChange={setLiveEnabled}
     />
   );
 }

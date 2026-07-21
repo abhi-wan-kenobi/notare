@@ -151,7 +151,22 @@ impl Actor for ListenerActor {
     ) -> Result<(), ActorProcessingErr> {
         if let Some(shutdown_tx) = state.shutdown_tx.take() {
             let _ = shutdown_tx.send(());
-            let _ = (&mut state.rx_task).await;
+            // Bound the wait for the receive task to drain. Without a timeout, a
+            // wedged transcription stream (e.g. an unreachable/stalled remote
+            // /v1/listen websocket) stalls post_stop indefinitely, which stalls
+            // the whole session-shutdown chain — the user sees a "Stop" that
+            // never finishes. If it doesn't drain promptly, abort it and move on;
+            // the transcript flush below still runs.
+            const RX_DRAIN_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(3);
+            if tokio::time::timeout(RX_DRAIN_TIMEOUT, &mut state.rx_task)
+                .await
+                .is_err()
+            {
+                tracing::warn!(
+                    "listener rx task did not drain within {RX_DRAIN_TIMEOUT:?}; aborting"
+                );
+                state.rx_task.abort();
+            }
         }
 
         if let Some(update) = state.transcript.flush() {

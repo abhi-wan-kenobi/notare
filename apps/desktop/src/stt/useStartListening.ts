@@ -64,6 +64,7 @@ export function useStartListening(sessionId: string) {
   const spokenLanguages = useConfigValue("spoken_languages");
   const dictionaryTerms = useConfigValue("personalization_dictionary_terms");
   const micDenoise = useConfigValue("mic_denoise");
+  const liveTranscriptionEnabled = useConfigValue("live_transcription_enabled");
   const audioRetention = normalizeAudioRetention(
     useConfigValue("audio_retention"),
   );
@@ -180,6 +181,15 @@ export function useStartListening(sessionId: string) {
       languages,
     });
 
+    // "Post-process only": when the user turns live transcription off, capture
+    // audio but don't stream it — force batch so no live STT listener is spawned
+    // (lighter for long meetings; the recorder always runs, so the whole
+    // recording is transcribed once on stop via the existing post-capture batch
+    // path). Rust honours an incoming "batch" mode as-is and skips the listener.
+    const transcriptionMode = liveTranscriptionEnabled
+      ? liveTranscriptionConfig.transcriptionMode
+      : "batch";
+
     const started = await start(
       {
         session_id: sessionId,
@@ -189,7 +199,7 @@ export function useStartListening(sessionId: string) {
         base_url: conn?.baseUrl ?? "",
         api_key: conn?.apiKey ?? "",
         keywords,
-        transcription_mode: liveTranscriptionConfig.transcriptionMode,
+        transcription_mode: transcriptionMode,
         participant_human_ids: participantHumanIds,
         self_human_id: session?.user_id || null,
         mic_denoise: micDenoise === true,
@@ -229,6 +239,7 @@ export function useStartListening(sessionId: string) {
     conn,
     dictionaryTerms,
     hadTranscriptBeforeStart,
+    liveTranscriptionEnabled,
     micDenoise,
     participantHumanIds,
     session,
