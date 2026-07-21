@@ -12,5 +12,14 @@
     <true/>
     <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
     <true/>
+    <!-- Anchor Keychain trust to a stable, Team-ID-prefixed access group so
+         secrets (STT/LLM tokens, Google OAuth) survive across builds and
+         "Always Allow" sticks. Without this, macOS binds the item ACL to the
+         raw per-build code signature and re-prompts every launch. Valid for
+         Developer ID distribution when the group carries the Team ID prefix. -->
+    <key>keychain-access-groups</key>
+    <array>
+        <string>M4MVC745NX.be.abhishek.notare</string>
+    </array>
 </dict>
 </plist>
