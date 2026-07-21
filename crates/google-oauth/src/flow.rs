@@ -9,10 +9,12 @@ use crate::client_json::ClientCredentials;
 use crate::error::Error;
 use crate::token::{TokenResponse, exchange_code};
 
-/// Read-only access to the calendar list + events.
+/// Read-only access to the calendar list + events, plus the account email so the
+/// UI can show which Google account is connected.
 pub const DEFAULT_SCOPES: &[&str] = &[
     "https://www.googleapis.com/auth/calendar.readonly",
     "https://www.googleapis.com/auth/calendar.events.readonly",
+    "https://www.googleapis.com/auth/userinfo.email",
 ];
 
 #[derive(Debug, Clone)]
@@ -133,7 +135,8 @@ const SUCCESS_PAGE: &str = "<!doctype html><html><head><title>Notare</title></he
 
 const FAILURE_PAGE: &str = "<!doctype html><html><head><title>Notare</title></head><body style=\"font-family: sans-serif; display: flex; justify-content: center; margin-top: 20vh;\"><div style=\"text-align: center;\"><h2>Connection failed</h2><p>Authorization was not granted. You can close this tab and try again from Notare.</p></div></body></html>";
 
-const NOT_FOUND_RESPONSE: &str = "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
+const NOT_FOUND_RESPONSE: &str =
+    "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
 
 async fn handle_connections(listener: TcpListener, expected_state: &str) -> Result<String, Error> {
     loop {

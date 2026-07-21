@@ -39,6 +39,9 @@ export function GoogleDirectContent({ config }: { config: CalendarProvider }) {
   const { data: status, isPending, isError } = useGoogleAccountStatus();
   const { scheduleSync } = useSync();
   const [actionError, setActionError] = useState<string | null>(null);
+  // Reveal the BYO-client import UI when a bundled client is available (it's the
+  // "Advanced" path — most users just click "Sign in with Google").
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const invalidateStatus = useCallback(
     () => queryClient.invalidateQueries({ queryKey: STATUS_QUERY_KEY }),
@@ -140,6 +143,42 @@ export function GoogleDirectContent({ config }: { config: CalendarProvider }) {
   }
 
   if (!status.has_client) {
+    // A bundled first-party client is compiled in → let the user sign in
+    // directly, no Google Cloud project needed. BYO import stays under Advanced.
+    if (status.has_bundled_client) {
+      return (
+        <div className="flex flex-col gap-2 pt-1 pb-2">
+          <button
+            onClick={() => connectMutation.mutate()}
+            disabled={connectMutation.isPending}
+            className="border-border hover:bg-accent inline-flex w-fit items-center justify-center gap-2 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-default disabled:opacity-50"
+          >
+            {connectMutation.isPending
+              ? "Waiting for Google… finish sign-in in your browser"
+              : `Sign in with Google`}
+          </button>
+          {!showAdvanced ? (
+            <button
+              onClick={() => setShowAdvanced(true)}
+              className="text-muted-foreground hover:text-foreground w-fit cursor-pointer text-[11px] underline transition-colors"
+            >
+              Advanced: use your own OAuth client
+            </button>
+          ) : (
+            <ImportClientContent
+              onSelectFile={() => importFileMutation.mutate()}
+              onPasteJson={(json) => importJsonMutation.mutate(json)}
+              isImporting={
+                importFileMutation.isPending || importJsonMutation.isPending
+              }
+              error={actionError}
+              docsPath={config.docsPath}
+            />
+          )}
+          {actionError && <p className="text-xs text-red-600">{actionError}</p>}
+        </div>
+      );
+    }
     return (
       <ImportClientContent
         onSelectFile={() => importFileMutation.mutate()}
