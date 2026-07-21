@@ -8,7 +8,9 @@ import {
   FolderOpen,
   Loader2,
   Trash2,
+  Zap,
 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   commands as localSttCommands,
@@ -19,6 +21,7 @@ import {
 } from "@hypr/plugin-local-stt";
 import { commands as openerCommands } from "@hypr/plugin-opener2";
 import type { AIProviderStorage } from "@hypr/store";
+import { Button } from "@hypr/ui/components/ui/button";
 import { Input } from "@hypr/ui/components/ui/input";
 import {
   Select,
@@ -36,6 +39,13 @@ import { cn } from "@hypr/utils";
 
 import { useSttSettings } from "./context";
 import { HealthStatusIndicator, useConnectionHealth } from "./health";
+import {
+  activateCustomSttModel,
+  type CustomSttModel,
+  downloadCustomSttModel,
+  fetchCustomSttModelProgress,
+  listCustomSttModels,
+} from "./list-custom-stt";
 import { LocalModelBackendBadge, LocalModelLabel } from "./model-icon";
 import { resolveLiveLanguageSupportMode } from "./selection";
 import {
@@ -214,6 +224,7 @@ export function SelectBatchModel() {
   const selectedFinalModel = providerModels.find(
     (model) => model.id === finalModel,
   );
+  const customConfig = configuredProviders.custom;
 
   const handleProviderChange = (provider: string) => {
     if (provider === FINAL_PROVIDER_SAME_AS_LIVE) {
@@ -313,11 +324,11 @@ export function SelectBatchModel() {
       </div>
 
       {selectedProvider === "custom" ? (
-        <Input
-          value={finalModel}
-          onChange={(event) => handleModelChange(event.target.value)}
-          className="text-xs"
-          placeholder={t`Enter a model identifier`}
+        <CustomSttModelSection
+          baseUrl={customConfig?.baseUrl ?? ""}
+          apiKey={customConfig?.apiKey ?? ""}
+          selectedId={finalModel}
+          onSelect={handleModelChange}
         />
       ) : selectedProvider ? (
         <ModelRowList
@@ -338,6 +349,379 @@ export function SelectBatchModel() {
         </p>
       )}
     </div>
+  );
+}
+
+/**
+ * Model picker for the "Custom" STT provider: lists the models the connected
+ * self-hosted Notare STT server exposes (GET <origin>/api/models), shows
+ * which are active/installed, lets the user download a not-installed model
+ * (POST .../download, polled via .../progress) and activate one
+ * (POST .../activate). Selecting a row stores the model id in
+ * `final_stt_model`, exactly what the free-text input did. A free-text input
+ * stays available below so an unreachable server or an unlisted id never
+ * regresses the manual workflow.
+ */
+function CustomSttModelSection({
+  baseUrl,
+  apiKey,
+  selectedId,
+  onSelect,
+}: {
+  baseUrl: string;
+  apiKey: string;
+  selectedId: string;
+  onSelect: (id: string) => void;
+}) {
+  const { t } = useLingui();
+  const queryClient = useQueryClient();
+  const trimmedBaseUrl = baseUrl.trim();
+  const queryKey = ["stt-custom-models", trimmedBaseUrl, apiKey.trim()];
+
+  const modelsQuery = useQuery({
+    queryKey,
+    queryFn: () => listCustomSttModels(trimmedBaseUrl, apiKey),
+    enabled: trimmedBaseUrl.length > 0,
+    staleTime: 1000 * 5,
+    retry: false,
+  });
+
+  const models = modelsQuery.data?.ok ? modelsQuery.data.models : [];
+  const fetchError =
+    modelsQuery.data && !modelsQuery.data.ok ? modelsQuery.data.error : null;
+  const hasModels = models.length > 0;
+
+  // If the chosen id isn't one the server exposes (server down, unlisted, or
+  // a value typed manually into the fallback), we still show it selected so
+  // the user can see what's stored.
+  const selectedEntry = models.find((model) => model.id === selectedId);
+
+  return (
+    <div className="flex flex-col gap-2">
+      {hasModels ? (
+        <div
+          role="radiogroup"
+          data-testid="stt-custom-model-list"
+          className="border-border divide-border bg-card divide-y overflow-hidden rounded-[10px] border"
+        >
+          {models.map((model) => (
+            <CustomSttModelRow
+              key={model.id}
+              model={model}
+              baseUrl={trimmedBaseUrl}
+              apiKey={apiKey}
+              selected={model.id === selectedId}
+              onSelect={() => onSelect(model.id)}
+              onDownloaded={() => void modelsQuery.refetch()}
+              onActivated={() => {
+                void queryClient.invalidateQueries({ queryKey });
+                onSelect(model.id);
+              }}
+            />
+          ))}
+        </div>
+      ) : (
+        <p className="text-muted-foreground text-[13px]">
+          {modelsQuery.isLoading
+            ? t`Loading models...`
+            : fetchError
+              ? fetchError
+              : t`No models are available for this provider.`}
+        </p>
+      )}
+
+      {selectedEntry ? null : (
+        <Input
+          value={selectedId}
+          onChange={(event) => onSelect(event.target.value)}
+          className="text-xs"
+          placeholder={t`Enter a model identifier`}
+          aria-label={t`Custom model identifier`}
+        />
+      )}
+    </div>
+  );
+}
+
+function CustomSttModelRow({
+  model,
+  baseUrl,
+  apiKey,
+  selected,
+  onSelect,
+  onDownloaded,
+  onActivated,
+}: {
+  model: CustomSttModel;
+  baseUrl: string;
+  apiKey: string;
+  selected: boolean;
+  onSelect: () => void;
+  onDownloaded: () => void;
+  onActivated: () => void;
+}) {
+  const { t } = useLingui();
+  const [downloadPercent, setDownloadPercent] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [activating, setActivating] = useState(false);
+  const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const isDownloading = downloadPercent !== null;
+  const sizeLabel = formatModelSize(model.sizeBytes);
+
+  useEffect(() => {
+    return () => {
+      if (pollRef.current) {
+        clearTimeout(pollRef.current);
+      }
+    };
+  }, []);
+
+  const stopPolling = () => {
+    if (pollRef.current) {
+      clearTimeout(pollRef.current);
+      pollRef.current = null;
+    }
+  };
+
+  const pollProgress = () => {
+    stopPolling();
+    pollRef.current = setTimeout(async () => {
+      const progress = await fetchCustomSttModelProgress(
+        baseUrl,
+        apiKey,
+        model.id,
+      );
+      if (!progress) {
+        // Can't read progress — keep the indeterminate spinner going and
+        // retry; the download itself may still be running server-side.
+        pollProgress();
+        return;
+      }
+
+      if (progress.failed) {
+        setDownloadPercent(null);
+        setError(progress.detail ?? t`Download failed.`);
+        return;
+      }
+
+      if (progress.complete) {
+        setDownloadPercent(null);
+        onDownloaded();
+        return;
+      }
+
+      setDownloadPercent(progress.percent ?? downloadPercent);
+      pollProgress();
+    }, 1500);
+  };
+
+  const handleDownload = async () => {
+    setError(null);
+    setDownloadPercent(0);
+    const result = await downloadCustomSttModel(baseUrl, apiKey, model.id);
+    if (!result.ok) {
+      setDownloadPercent(null);
+      setError(result.error);
+      return;
+    }
+    if (result.alreadyInstalled) {
+      setDownloadPercent(null);
+      onDownloaded();
+      return;
+    }
+    pollProgress();
+  };
+
+  const handleActivate = async () => {
+    setError(null);
+    setActivating(true);
+    const result = await activateCustomSttModel(baseUrl, apiKey, model.id);
+    setActivating(false);
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    onActivated();
+  };
+
+  const handleClick = () => {
+    if (model.installed && !model.corrupt) {
+      onSelect();
+    }
+  };
+
+  const selectable = model.installed && !model.corrupt;
+
+  return (
+    <div
+      role="radio"
+      aria-checked={selected}
+      tabIndex={selectable ? 0 : -1}
+      onClick={selectable ? handleClick : undefined}
+      onKeyDown={
+        selectable
+          ? (event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                handleClick();
+              }
+            }
+          : undefined
+      }
+      className={cn([
+        "group/custom-model-row relative flex items-center gap-2.5 px-3 py-2 text-left outline-hidden",
+        "transition-colors duration-(--motion-duration-state)",
+        selectable && "hover:bg-accent/50 cursor-pointer",
+        "focus-visible:ring-ring focus-visible:ring-2 focus-visible:ring-inset",
+        selected && "bg-primary/5",
+      ])}
+    >
+      <span
+        aria-hidden
+        className={cn([
+          "mt-1 size-3.5 shrink-0 rounded-full border transition-colors duration-(--motion-duration-state)",
+          selected
+            ? "border-primary border-[4.5px]"
+            : selectable
+              ? "border-border group-hover/custom-model-row:border-muted-foreground"
+              : "border-border border-dashed",
+        ])}
+      />
+      <div className="min-w-0 flex-1">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+          <span
+            className={cn([
+              "min-w-0 text-[13px] font-medium",
+              !model.installed && "text-muted-foreground",
+            ])}
+          >
+            {model.displayName}
+          </span>
+          <CustomSttModelStatusBadge model={model} />
+          {model.englishOnly ? (
+            <span className="text-muted-foreground shrink-0 rounded-md border px-1.5 py-0.5 text-[10px] leading-none font-medium">
+              EN
+            </span>
+          ) : null}
+          {sizeLabel ? (
+            <span className="text-muted-foreground shrink-0 font-mono text-[11px]">
+              {sizeLabel}
+            </span>
+          ) : null}
+        </div>
+        {model.description ? (
+          <span className="text-muted-foreground mt-0.5 block min-w-0 truncate text-[11px]">
+            {model.description}
+          </span>
+        ) : null}
+        {error ? (
+          <span className="text-destructive mt-0.5 block text-[11px]">
+            {error}
+          </span>
+        ) : null}
+      </div>
+      <div className="flex shrink-0 items-center gap-1 self-center">
+        {isDownloading ? (
+          <span
+            className={cn([
+              "flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium",
+              "border-primary/25 bg-primary/10 text-primary",
+            ])}
+          >
+            <Loader2 className="size-3 animate-spin" />
+            <span className="font-mono">
+              {downloadPercent !== null ? `${downloadPercent}%` : "…"}
+            </span>
+          </span>
+        ) : model.installed && !model.active ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-6 gap-1 px-2 text-[11px]"
+            disabled={activating}
+            onClick={(event) => {
+              event.stopPropagation();
+              void handleActivate();
+            }}
+          >
+            {activating ? (
+              <Loader2 className="size-3 animate-spin" />
+            ) : (
+              <Zap className="size-3" />
+            )}
+            <Trans>Activate</Trans>
+          </Button>
+        ) : !model.installed || model.corrupt ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-6 gap-1 px-2 text-[11px]"
+            onClick={(event) => {
+              event.stopPropagation();
+              void handleDownload();
+            }}
+          >
+            <DownloadIcon className="size-3" />
+            <Trans>Download</Trans>
+          </Button>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function CustomSttModelStatusBadge({ model }: { model: CustomSttModel }) {
+  if (model.active) {
+    return (
+      <span
+        className={cn([
+          "shrink-0 rounded-md border px-1.5 py-0.5 text-[10px] leading-none font-medium",
+          "border-primary/25 bg-primary/10 text-primary",
+        ])}
+      >
+        <Trans>Active</Trans>
+      </span>
+    );
+  }
+
+  if (model.corrupt) {
+    return (
+      <span
+        className={cn([
+          "shrink-0 rounded-md border px-1.5 py-0.5 text-[10px] leading-none font-medium",
+          "border-alert-foreground/30 bg-alert-foreground/10 text-alert-foreground",
+        ])}
+      >
+        <Trans>Corrupt</Trans>
+      </span>
+    );
+  }
+
+  if (model.installed) {
+    return (
+      <span
+        className={cn([
+          "shrink-0 rounded-md border px-1.5 py-0.5 text-[10px] leading-none font-medium",
+          modelBadgeNeutralClassName,
+        ])}
+      >
+        <Trans>Installed</Trans>
+      </span>
+    );
+  }
+
+  return (
+    <span
+      className={cn([
+        "shrink-0 rounded-md border px-1.5 py-0.5 text-[10px] leading-none font-medium",
+        modelBadgeNeutralClassName,
+      ])}
+    >
+      <Trans>Not installed</Trans>
+    </span>
   );
 }
 
@@ -565,6 +949,8 @@ function useConfiguredMapping(): Record<
   {
     configured: boolean;
     models: ModelEntry[];
+    baseUrl: string;
+    apiKey: string;
   }
 > {
   const billing = useBillingAccess();
@@ -622,7 +1008,10 @@ function useConfiguredMapping(): Record<
         }).length === 0;
 
       if (!eligible) {
-        return [provider.id, { configured: false, models: [] }];
+        return [
+          provider.id,
+          { configured: false, models: [], baseUrl, apiKey },
+        ];
       }
 
       if (provider.id === "hyprnote") {
@@ -641,17 +1030,19 @@ function useConfiguredMapping(): Record<
           recommendedUse: model.recommended_use,
         }));
 
-        return [provider.id, { configured: true, models }];
+        return [provider.id, { configured: true, models, baseUrl, apiKey }];
       }
 
       if (provider.id === "custom") {
-        return [provider.id, { configured: true, models: [] }];
+        return [provider.id, { configured: true, models: [], baseUrl, apiKey }];
       }
 
       return [
         provider.id,
         {
           configured: true,
+          baseUrl,
+          apiKey,
           models: provider.models.map((model) => ({
             id: model,
             isDownloaded: true,
@@ -665,6 +1056,8 @@ function useConfiguredMapping(): Record<
     {
       configured: boolean;
       models: ModelEntry[];
+      baseUrl: string;
+      apiKey: string;
     }
   >;
 }
