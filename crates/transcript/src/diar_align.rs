@@ -33,6 +33,62 @@ pub fn align_words_to_speakers(
         .collect()
 }
 
+/// Collapse speaker-label runs shorter than `min_run` words into the surrounding
+/// speaker, in place.
+///
+/// Local per-word diarization can flip the speaker for a single word near a span
+/// boundary. Left unsmoothed, each flip starts a new transcript segment, so a
+/// long meeting with jittery boundaries produces thousands of one-word segments
+/// — pathological for segment consolidation (`consolidate_micro_segments`) and
+/// for the (unvirtualized) render, freezing the UI. This is a hysteresis filter:
+/// a candidate speaker only "wins" once it has held for `min_run` consecutive
+/// words; shorter blips keep the currently-committed speaker. `min_run <= 1` is a
+/// no-op. Order-sensitive — expects words in transcript (temporal) order, which
+/// is how `align_words_to_speakers` returns them.
+pub fn smooth_speaker_runs(assignments: &mut [(String, i32)], min_run: usize) {
+    if min_run <= 1 || assignments.len() < 2 {
+        return;
+    }
+
+    let mut committed = assignments[0].1;
+    let mut pending_speaker: Option<i32> = None;
+    let mut pending: Vec<usize> = Vec::new();
+
+    let absorb = |assignments: &mut [(String, i32)], pending: &mut Vec<usize>, committed: i32| {
+        for &j in pending.iter() {
+            assignments[j].1 = committed;
+        }
+        pending.clear();
+    };
+
+    for i in 0..assignments.len() {
+        let s = assignments[i].1;
+        if s == committed {
+            // Back to the committed speaker: the pending run was a short blip —
+            // rewrite it as committed.
+            absorb(assignments, &mut pending, committed);
+            pending_speaker = None;
+        } else if pending_speaker == Some(s) {
+            pending.push(i);
+            if pending.len() >= min_run {
+                // The candidate has held long enough — accept the switch; the
+                // run keeps its own labels (already `s`).
+                committed = s;
+                pending.clear();
+                pending_speaker = None;
+            }
+        } else {
+            // A third speaker before the pending run qualified: the old pending
+            // was too short — absorb it, then start a fresh run here.
+            absorb(assignments, &mut pending, committed);
+            pending.push(i);
+            pending_speaker = Some(s);
+        }
+    }
+    // A trailing run that never reached `min_run` is a blip too.
+    absorb(assignments, &mut pending, committed);
+}
+
 fn best_speaker(word: &AlignableWord, spans: &[SpeakerSpan]) -> i32 {
     let word_mid = midpoint(word.start_ms, word.end_ms);
 
@@ -352,5 +408,55 @@ mod tests {
             align_words_to_speakers(&words, &spans),
             vec![("w".to_string(), 0)]
         );
+    }
+
+    fn seq(speakers: &[i32]) -> Vec<(String, i32)> {
+        speakers
+            .iter()
+            .enumerate()
+            .map(|(i, &s)| (format!("w{i}"), s))
+            .collect()
+    }
+
+    fn speakers_of(assignments: &[(String, i32)]) -> Vec<i32> {
+        assignments.iter().map(|(_, s)| *s).collect()
+    }
+
+    #[test]
+    fn smoothing_absorbs_isolated_single_word_flip() {
+        let mut a = seq(&[0, 0, 1, 0, 0]);
+        smooth_speaker_runs(&mut a, 3);
+        assert_eq!(speakers_of(&a), vec![0, 0, 0, 0, 0]);
+    }
+
+    #[test]
+    fn smoothing_keeps_a_real_run() {
+        let mut a = seq(&[0, 0, 0, 1, 1, 1, 0, 0, 0]);
+        smooth_speaker_runs(&mut a, 3);
+        assert_eq!(speakers_of(&a), vec![0, 0, 0, 1, 1, 1, 0, 0, 0]);
+    }
+
+    #[test]
+    fn smoothing_collapses_alternating_singletons() {
+        // No run reaches length 3, so everything holds the first speaker —
+        // exactly the pathological input that used to explode into 1-word segments.
+        let mut a = seq(&[0, 1, 0, 1, 0, 1]);
+        smooth_speaker_runs(&mut a, 3);
+        assert_eq!(speakers_of(&a), vec![0, 0, 0, 0, 0, 0]);
+    }
+
+    #[test]
+    fn smoothing_switches_once_new_speaker_sustains() {
+        // A short blip is absorbed, but a sustained run of the new speaker wins.
+        let mut a = seq(&[0, 0, 1, 0, 1, 1, 1, 1]);
+        smooth_speaker_runs(&mut a, 3);
+        assert_eq!(speakers_of(&a), vec![0, 0, 0, 0, 1, 1, 1, 1]);
+    }
+
+    #[test]
+    fn smoothing_min_run_one_is_a_noop() {
+        let mut a = seq(&[0, 1, 0, 2, 0]);
+        smooth_speaker_runs(&mut a, 1);
+        assert_eq!(speakers_of(&a), vec![0, 1, 0, 2, 0]);
     }
 }
