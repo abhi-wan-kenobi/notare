@@ -99,6 +99,14 @@ msgstr "Accessibility"
 msgid "Account"
 msgstr "Account"
 
+#: src/settings/ai/stt/select.tsx
+msgid "Activate"
+msgstr "Activate"
+
+#: src/settings/ai/stt/select.tsx
+msgid "Active"
+msgstr "Active"
+
 #: src/templates/template-icon-picker.tsx
 msgid "Activity"
 msgstr "Activity"
@@ -570,6 +578,10 @@ msgstr "Copy live transcript so far"
 msgid "Copy message"
 msgstr "Copy message"
 
+#: src/settings/ai/stt/select.tsx
+msgid "Corrupt"
+msgstr "Corrupt"
+
 #: src/settings/ai/stt/test-connection-button.tsx
 msgid "Could not connect."
 msgstr "Could not connect."
@@ -602,6 +614,10 @@ msgstr "Created"
 #: src/settings/general/app-settings.tsx
 msgid "Current version"
 msgstr "Current version"
+
+#: src/settings/ai/stt/select.tsx
+msgid "Custom model identifier"
+msgstr "Custom model identifier"
 
 #: src/settings/general/theme.tsx
 msgid "Dark"
@@ -712,6 +728,10 @@ msgstr "Download"
 #: src/onboarding/index.tsx
 msgid "Download a speech-to-text model — transcription runs entirely on your device"
 msgstr "Download a speech-to-text model — transcription runs entirely on your device"
+
+#: src/settings/ai/stt/select.tsx
+msgid "Download failed."
+msgstr "Download failed."
 
 #: src/calendar/components/google/content.tsx
 msgid "Download the JSON, then select it here."
@@ -1083,6 +1103,10 @@ msgstr "Insert above"
 msgid "Insert below"
 msgstr "Insert below"
 
+#: src/settings/ai/stt/select.tsx
+msgid "Installed"
+msgstr "Installed"
+
 #: src/settings/ai/llm/index.tsx
 #: src/sidebar/settings.tsx
 msgid "Intelligence"
@@ -1171,6 +1195,7 @@ msgid "Loading calendars..."
 msgstr "Loading calendars..."
 
 #: src/settings/ai/shared/model-combobox.tsx
+#: src/settings/ai/stt/select.tsx
 msgid "Loading models..."
 msgstr "Loading models..."
 
@@ -1448,6 +1473,10 @@ msgstr "No templates yet"
 #: src/settings/dictation/index.tsx
 msgid "None"
 msgstr "None"
+
+#: src/settings/ai/stt/select.tsx
+msgid "Not installed"
+msgstr "Not installed"
 
 #: src/settings/dictation/shortcut-recorder.tsx
 msgid "Not set"

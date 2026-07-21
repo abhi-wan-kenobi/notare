@@ -99,6 +99,14 @@ msgstr ""
 msgid "Account"
 msgstr ""
 
+#: src/settings/ai/stt/select.tsx
+msgid "Activate"
+msgstr ""
+
+#: src/settings/ai/stt/select.tsx
+msgid "Active"
+msgstr ""
+
 #: src/templates/template-icon-picker.tsx
 msgid "Activity"
 msgstr ""
@@ -570,6 +578,10 @@ msgstr ""
 msgid "Copy message"
 msgstr ""
 
+#: src/settings/ai/stt/select.tsx
+msgid "Corrupt"
+msgstr ""
+
 #: src/settings/ai/stt/test-connection-button.tsx
 msgid "Could not connect."
 msgstr ""
@@ -601,6 +613,10 @@ msgstr ""
 
 #: src/settings/general/app-settings.tsx
 msgid "Current version"
+msgstr ""
+
+#: src/settings/ai/stt/select.tsx
+msgid "Custom model identifier"
 msgstr ""
 
 #: src/settings/general/theme.tsx
@@ -711,6 +727,10 @@ msgstr ""
 
 #: src/onboarding/index.tsx
 msgid "Download a speech-to-text model — transcription runs entirely on your device"
+msgstr ""
+
+#: src/settings/ai/stt/select.tsx
+msgid "Download failed."
 msgstr ""
 
 #: src/calendar/components/google/content.tsx
@@ -1083,6 +1103,10 @@ msgstr ""
 msgid "Insert below"
 msgstr ""
 
+#: src/settings/ai/stt/select.tsx
+msgid "Installed"
+msgstr ""
+
 #: src/settings/ai/llm/index.tsx
 #: src/sidebar/settings.tsx
 msgid "Intelligence"
@@ -1171,6 +1195,7 @@ msgid "Loading calendars..."
 msgstr ""
 
 #: src/settings/ai/shared/model-combobox.tsx
+#: src/settings/ai/stt/select.tsx
 msgid "Loading models..."
 msgstr ""
 
@@ -1447,6 +1472,10 @@ msgstr ""
 
 #: src/settings/dictation/index.tsx
 msgid "None"
+msgstr ""
+
+#: src/settings/ai/stt/select.tsx
+msgid "Not installed"
 msgstr ""
 
 #: src/settings/dictation/shortcut-recorder.tsx

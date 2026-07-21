@@ -36,12 +36,17 @@ const REQUEST_TIMEOUT_MS = 5000;
 /**
  * `/api/status` lives at the server root, not under whatever path the user's
  * `base_url` happens to end in (typically `.../v1`, since that's what the
- * live/batch STT calls need — see docs/stt-server-design.md §5). So this
- * derives the status URL from the origin only, ignoring the base URL's path.
+ * live/batch STT calls need — see docs/stt-server-design.md §5). The admin
+ * API (`/api/models`, `/api/models/{id}/...`) is the same: it hangs off the
+ * server origin, ignoring the base URL's path. This derives that origin.
  */
-export function getSttServerStatusUrl(baseUrl: string): string {
+export function getSttServerOrigin(baseUrl: string): string {
   const url = new URL(baseUrl);
-  return `${url.protocol}//${url.host}/api/status`;
+  return `${url.protocol}//${url.host}`;
+}
+
+export function getSttServerStatusUrl(baseUrl: string): string {
+  return `${getSttServerOrigin(baseUrl)}/api/status`;
 }
 
 export function parseSttServerStatus(json: unknown): SttServerStatus | null {
@@ -117,7 +122,8 @@ export async function fetchSttServerStatus(
     if (!status) {
       return {
         ok: false,
-        error: "Connected, but the response didn't look like a Notare STT server.",
+        error:
+          "Connected, but the response didn't look like a Notare STT server.",
       };
     }
 
