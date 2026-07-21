@@ -14,23 +14,32 @@ OS="$(uname -s)"
 
 case "$OS" in
   Darwin)
+    # The beforeBundleCommand hook doesn't pass the bundle dir, so auto-detect
+    # the built macOS .app under the cargo target output when $1 is absent.
     BUNDLE_DIR="${1:-}"
     if [ -z "$BUNDLE_DIR" ]; then
-      echo "[fix-dylib] No bundle dir provided, skipping."
+      BUNDLE_DIR=$(find target -type d -path "*/bundle/macos" 2>/dev/null | head -n 1) || true
+    fi
+    if [ -z "$BUNDLE_DIR" ]; then
+      echo "[fix-dylib] No bundle dir found, skipping."
       exit 0
     fi
 
-    APP_BUNDLE=$(find "$BUNDLE_DIR" -name "*.app" -maxdepth 1 | head -n 1)
+    APP_BUNDLE=$(find "$BUNDLE_DIR" -name "*.app" -maxdepth 1 | head -n 1) || true
     if [ -z "$APP_BUNDLE" ]; then
       echo "[fix-dylib] No .app bundle found, skipping."
       exit 0
     fi
 
+    # Copy build-output dylibs the binary links dynamically (the `ort` crate's
+    # ONNX Runtime) into the bundle's Frameworks. Without this the app aborts at
+    # launch: "Library not loaded: @rpath/libonnxruntime.<ver>.dylib".
     FRAMEWORKS="$APP_BUNDLE/Contents/Frameworks"
-    if [ ! -d "$FRAMEWORKS" ]; then
-      echo "[fix-dylib] No Frameworks directory, skipping."
-      exit 0
-    fi
+    mkdir -p "$FRAMEWORKS"
+    for src in $(find target -name "libonnxruntime*.dylib" 2>/dev/null); do
+      echo "[fix-dylib] bundling $(basename "$src")"
+      cp -f "$src" "$FRAMEWORKS/"
+    done
 
     DYLIBS=$(find "$FRAMEWORKS" -name "*.dylib" 2>/dev/null)
     if [ -z "$DYLIBS" ]; then
