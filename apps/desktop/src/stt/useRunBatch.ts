@@ -2,6 +2,7 @@ import { platform } from "@tauri-apps/plugin-os";
 import { useCallback } from "react";
 
 import type { TranscriptionParams } from "@hypr/plugin-transcription";
+import { commands as transcriptionCommands } from "@hypr/plugin-transcription";
 import { sonnerToast } from "@hypr/ui/components/ui/toast";
 
 import { useListener } from "./contexts";
@@ -28,6 +29,7 @@ import {
   isParakeetLocalSttModel,
   isSupportedLanguagesBatch,
   isWhisperLocalSttModel,
+  shouldRunLocalDiarization,
 } from "~/stt/capabilities";
 import { appendTranscriptWordsAndHints, createTranscript } from "~/stt/queries";
 import type { SpeakerHintWithId, WordWithId } from "~/stt/types";
@@ -364,6 +366,10 @@ export const useRunBatch = (sessionId: string) => {
           dictionaryTerms,
         }));
       let transcriptId: string | null = null;
+      // Final word set (id + timing) captured from persist so a local
+      // diarization pass can label them by speaker after transcription.
+      let diarizationWords: { id: string; start_ms: number; end_ms: number }[] =
+        [];
       const inferredNumSpeakers =
         options?.numSpeakers === undefined &&
         options?.minSpeakers === undefined &&
@@ -413,6 +419,28 @@ export const useRunBatch = (sessionId: string) => {
 
             newWordIds.push(wordId);
           });
+
+          // Batch persists in "replace" mode (last call = the full transcript),
+          // so replace; append only if a custom persist path asks for it.
+          // Words without timing can't be aligned to a speaker span — skip them.
+          const captured: { id: string; start_ms: number; end_ms: number }[] =
+            [];
+          for (const w of newWords) {
+            if (
+              typeof w.start_ms === "number" &&
+              typeof w.end_ms === "number"
+            ) {
+              captured.push({
+                id: w.id,
+                start_ms: w.start_ms,
+                end_ms: w.end_ms,
+              });
+            }
+          }
+          diarizationWords =
+            persistOptions?.mode === "append"
+              ? [...diarizationWords, ...captured]
+              : captured;
 
           const newHints: SpeakerHintWithId[] = [];
 
@@ -500,6 +528,53 @@ export const useRunBatch = (sessionId: string) => {
       }
 
       if (transcriptWriteError) throw transcriptWriteError;
+
+      // On-device speaker diarization for engines that emit no speakers of their
+      // own — local Whisper/Parakeet AND a self-hosted "custom" STT server
+      // (cloud providers already diarize; see shouldRunLocalDiarization). Runs on
+      // the local WAV regardless of where transcription happened. Best-effort —
+      // never fail transcription over it — and before retention deletes the audio.
+      if (
+        transcriptId &&
+        diarizationWords.length > 0 &&
+        shouldRunLocalDiarization(target.provider, target.model)
+      ) {
+        try {
+          const diarized = await transcriptionCommands.runDiarization(
+            filePath,
+            // Only an EXPLICIT user-set count constrains diarization to exactly
+            // that many speakers. Do NOT pass the calendar-participant-derived
+            // count (`params.num_speakers`) here — it silently hard-locked the
+            // speaker count (e.g. 2 invitees ⇒ only 2 speakers even with more
+            // voices in the room). null ⇒ auto-detect. The P2.6 "# of speakers"
+            // control will set `options.numSpeakers` when the user wants a fixed count.
+            options?.numSpeakers ?? null,
+            diarizationWords,
+            // Enrolled voice profiles for recognition — wired to the
+            // voice_profiles store + enrollment UX in P2.6 (#15). Empty for now
+            // means diarization-only ("Speaker N", no auto-naming).
+            [],
+          );
+          if (
+            diarized.status === "ok" &&
+            diarized.data.word_speakers.length > 0
+          ) {
+            const speakerHints: SpeakerHintWithId[] =
+              diarized.data.word_speakers.map((r) => ({
+                id: id(),
+                word_id: r.word_id,
+                type: "provider_speaker_index",
+                value: JSON.stringify({
+                  provider: target.provider,
+                  speaker_index: r.speaker_index,
+                }),
+              }));
+            await appendTranscriptWordsAndHints(transcriptId, [], speakerHints);
+          }
+        } catch (error) {
+          console.error("[runBatch] on-device diarization failed", error);
+        }
+      }
 
       await deleteProcessedAudioForRetention(audioRetention, sessionId);
     },
