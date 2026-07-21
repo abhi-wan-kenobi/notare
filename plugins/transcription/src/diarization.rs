@@ -47,6 +47,13 @@ const MATCH_THRESHOLD: f32 = 0.5;
 
 const SAMPLE_RATE_HZ: usize = 16_000;
 
+/// Minimum consecutive words a speaker must hold before a label switch is kept.
+/// Matches the segment builder's `min_segment_words` so smoothed runs don't
+/// immediately become "micro" segments. Suppresses single-word diarization
+/// flips that would otherwise fragment the transcript into thousands of
+/// one-word segments (a UI-freezing, O(n²) input to segment consolidation).
+const MIN_SPEAKER_RUN_WORDS: usize = 3;
+
 /// Run on-device speaker diarization over a recorded audio file: assign each
 /// supplied word a speaker index (by timestamp overlap), and — when `enrolled`
 /// profiles are supplied — recognize which diarized speakers are known humans.
@@ -128,7 +135,13 @@ fn diarize_and_align(
         })
         .collect();
 
-    let word_speakers = align_words_to_speakers(&alignable, &spans)
+    let mut aligned = align_words_to_speakers(&alignable, &spans);
+    // Smooth out single-word speaker flips at span boundaries before they become
+    // per-word transcript segments. Without this, jittery local diarization on a
+    // long meeting produces thousands of one-word segments, which is O(n²) in
+    // segment consolidation and freezes the (unvirtualized) transcript render.
+    hypr_transcript::diar_align::smooth_speaker_runs(&mut aligned, MIN_SPEAKER_RUN_WORDS);
+    let word_speakers = aligned
         .into_iter()
         .map(|(word_id, speaker_index)| DiarWordSpeaker {
             word_id,
