@@ -29,6 +29,7 @@ import {
   isParakeetLocalSttModel,
   isSupportedLanguagesBatch,
   isWhisperLocalSttModel,
+  shouldRunLocalDiarization,
 } from "~/stt/capabilities";
 import { appendTranscriptWordsAndHints, createTranscript } from "~/stt/queries";
 import type { SpeakerHintWithId, WordWithId } from "~/stt/types";
@@ -528,19 +529,26 @@ export const useRunBatch = (sessionId: string) => {
 
       if (transcriptWriteError) throw transcriptWriteError;
 
-      // On-device speaker diarization for local engines (Whisper/Parakeet emit
-      // no speakers; cloud providers already diarize). Best-effort — never fail
-      // the transcription over it — and run before retention deletes the audio.
+      // On-device speaker diarization for engines that emit no speakers of their
+      // own — local Whisper/Parakeet AND a self-hosted "custom" STT server
+      // (cloud providers already diarize; see shouldRunLocalDiarization). Runs on
+      // the local WAV regardless of where transcription happened. Best-effort —
+      // never fail transcription over it — and before retention deletes the audio.
       if (
         transcriptId &&
         diarizationWords.length > 0 &&
-        (isWhisperLocalSttModel(target.model) ||
-          isParakeetLocalSttModel(target.model))
+        shouldRunLocalDiarization(target.provider, target.model)
       ) {
         try {
           const diarized = await transcriptionCommands.runDiarization(
             filePath,
-            params.num_speakers ?? null,
+            // Only an EXPLICIT user-set count constrains diarization to exactly
+            // that many speakers. Do NOT pass the calendar-participant-derived
+            // count (`params.num_speakers`) here — it silently hard-locked the
+            // speaker count (e.g. 2 invitees ⇒ only 2 speakers even with more
+            // voices in the room). null ⇒ auto-detect. The P2.6 "# of speakers"
+            // control will set `options.numSpeakers` when the user wants a fixed count.
+            options?.numSpeakers ?? null,
             diarizationWords,
             // Enrolled voice profiles for recognition — wired to the
             // voice_profiles store + enrollment UX in P2.6 (#15). Empty for now

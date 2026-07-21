@@ -6,6 +6,17 @@ use sherpa_rs::speaker_id::{EmbeddingExtractor, ExtractorConfig};
 
 const SAMPLE_RATE: u32 = 16000;
 
+/// Sentinel passed to sherpa's `num_clusters` to select threshold-based auto
+/// clustering (`cutree_cdist`) instead of a fixed-K cut. Any value `<= 0` works;
+/// -1 is the sherpa-onnx convention for "decide the count from the data".
+const AUTO_CLUSTER_NUM_CLUSTERS: i32 = -1;
+
+/// Cosine-distance cutoff for auto speaker clustering (sherpa `FastClustering`).
+/// Only used when no explicit speaker count is supplied. Lower ⇒ splits into more
+/// speakers; higher ⇒ merges. 0.5 is sherpa-onnx's own default; kept here so it's
+/// a single tunable knob (promote to a `run_diarization` arg for the P2.6 UI).
+const AUTO_CLUSTER_THRESHOLD: f32 = 0.5;
+
 #[derive(thiserror::Error, Debug)]
 pub enum DiarizeError {
     #[error("sherpa error: {0}")]
@@ -68,8 +79,24 @@ impl Diarizer {
         num_speakers: Option<i32>,
     ) -> Result<Vec<DiarizedSegment>, DiarizeError> {
         let mut config = DiarizeConfig::default();
-        if let Some(n) = num_speakers {
-            config.num_clusters = Some(n);
+        match num_speakers {
+            // An explicit, positive speaker count → a hard cluster count
+            // (sherpa's fixed-K cut, `cutree_k`): exactly `n` speakers.
+            Some(n) if n > 0 => {
+                config.num_clusters = Some(n);
+            }
+            // No usable hint → auto-detect the number of speakers from the audio.
+            // sherpa-rs's `DiarizeConfig::default()` hard-codes
+            // `num_clusters = Some(4)`, and `Diarize::new` does
+            // `num_clusters.unwrap_or(4)`, so leaving it as-is (or `None`) forces
+            // a fixed cut of 4 and silently ignores `threshold` — the bug that
+            // capped every recording at ≤4 speakers. Passing `-1` selects
+            // sherpa's threshold-based clustering (`cutree_cdist`), which lets the
+            // dendrogram cut where the audio actually separates speakers.
+            _ => {
+                config.num_clusters = Some(AUTO_CLUSTER_NUM_CLUSTERS);
+                config.threshold = Some(AUTO_CLUSTER_THRESHOLD);
+            }
         }
 
         let inner = Diarize::new(&self.segmentation_model, &self.embedding_model, config)?;

@@ -65,6 +65,23 @@ export function isVoxtralLocalSttModel(model?: string | null) {
   return typeof model === "string" && model.startsWith("voxtral-");
 }
 
+/// Whether to run the on-device speaker-diarization post-pass for this engine.
+/// True for engines that emit NO speaker labels of their own (so a local pass on
+/// the recorded WAV adds them): local Whisper/Parakeet, and a self-hosted
+/// "custom" STT server (the companion `apps/stt-server` — Whisper under the hood,
+/// no diarization). Cloud providers that already diarize (e.g. Deepgram, hyprnote
+/// cloud) are intentionally excluded so we never double-label. Diarization runs on
+/// batch, where the local audio file + word timings are always available.
+export function shouldRunLocalDiarization(
+  provider?: string | null,
+  model?: string | null,
+): boolean {
+  if (isWhisperLocalSttModel(model) || isParakeetLocalSttModel(model)) {
+    return true;
+  }
+  return provider === "custom";
+}
+
 export function isHyprnoteCloudSttModel(
   provider?: string | null,
   model?: string | null,
