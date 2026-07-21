@@ -144,6 +144,13 @@ vi.mock("~/stt/capabilities", () => {
     isSupportedLocalSttModel,
     isWhisperLocalSttModel,
     isParakeetLocalSttModel,
+    shouldRunLocalDiarization: (
+      provider?: string | null,
+      model?: string | null,
+    ) =>
+      isWhisperLocalSttModel(model) ||
+      isParakeetLocalSttModel(model) ||
+      provider === "custom",
     isHyprnoteLocalSttModel: (
       provider?: string | null,
       model?: string | null,
