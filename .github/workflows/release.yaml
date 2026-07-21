@@ -128,6 +128,13 @@ jobs:
           # ship FUSE, so it can't mount/run → "failed to run linuxdeploy" during
           # AppImage bundling. Extract-and-run instead of mounting via FUSE.
           APPIMAGE_EXTRACT_AND_RUN: "1"
+          # THE real fix: the app links sherpa's libsherpa-onnx-c-api.so +
+          # libonnxruntime.so dynamically (build-script output next to the
+          # binary). linuxdeploy walks NEEDED libs and errored "Could not find
+          # dependency: libsherpa-onnx-c-api.so" (tauri swallowed it as the
+          # opaque "failed to run linuxdeploy"). Point it at the target dir so it
+          # bundles them into the AppImage.
+          LD_LIBRARY_PATH: ${{ github.workspace }}/apps/desktop/src-tauri/target/release
 
       - uses: actions/upload-artifact@v4
         with:
