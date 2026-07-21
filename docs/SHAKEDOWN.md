@@ -14,6 +14,8 @@ suite structurally could not (e.g. the v0.3.1 paste-at-cursor crash).
 - [ ] Download an STT model; record a short meeting → transcript appears.
 - [ ] Enhance/notes → note saved as Markdown into the vault folder.
 - [ ] Auto-update: an older build sees the new `latest.json`, downloads, restarts into the new version.
+- [ ] **Stop always completes** — stop a recording and the session finalizes within a few seconds; specifically, stop a meeting whose STT server is **unreachable/slow** (e.g. a remote `/v1/listen` that's down) and confirm Stop still finishes (regression: the listener drain had no timeout, so a wedged websocket could hang Stop indefinitely).
+- [ ] **Live transcription off (post-process only)** — turn off Settings → Transcription → "Live transcription", record a meeting (no live captions appear), then stop → the full recording is transcribed in one batch pass and the transcript appears. Audio is still saved.
 
 ## Dictation
 - [ ] Global hotkey starts/stops dictation; text lands in the focused app.

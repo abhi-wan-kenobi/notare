@@ -1182,6 +1182,10 @@ msgstr "Live"
 msgid "Live transcript copied"
 msgstr "Live transcript copied"
 
+#: src/settings/general/app-settings.tsx
+msgid "Live transcription"
+msgstr "Live transcription"
+
 #: src/settings/ai/stt/select.tsx
 msgid "Live transcription model"
 msgstr "Live transcription model"
@@ -2429,6 +2433,10 @@ msgstr "Tip: The Notare team loves our users!"
 msgid "Toggle shortcut"
 msgstr "Toggle shortcut"
 
+#: src/settings/general/app-settings.tsx
+msgid "Transcribe in real time during a meeting. Turn this off to transcribe only after you stop — lighter for long meetings, and audio is always recorded either way. Applies to new sessions only."
+msgstr "Transcribe in real time during a meeting. Turn this off to transcribe only after you stop — lighter for long meetings, and audio is always recorded either way. Applies to new sessions only."
+
 #: src/settings/ai/stt/shared.tsx
 msgid "Transcribes English only."
 msgstr "Transcribes English only."
@@ -2443,6 +2451,7 @@ msgid "Transcript"
 msgstr "Transcript"
 
 #: src/settings/ai/stt/index.tsx
+#: src/settings/general/app-settings.tsx
 #: src/sidebar/settings.tsx
 msgid "Transcription"
 msgstr "Transcription"

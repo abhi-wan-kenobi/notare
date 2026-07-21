@@ -131,6 +131,16 @@ export const SETTING_DEFINITIONS = {
     path: ["general", "audio_retention"],
     default: "forever" as string,
   },
+  // When off, meetings skip real-time transcription — audio is still recorded
+  // and the whole recording is transcribed in one batch pass when you stop.
+  // Lighter for long meetings (no continuous STT + no long-lived websocket) and
+  // avoids a live stream that can stall "stop". Read at session start; changing
+  // it does not affect an in-flight session.
+  live_transcription_enabled: {
+    type: "boolean",
+    path: ["general", "live_transcription_enabled"],
+    default: true as boolean,
+  },
   notification_event: {
     type: "boolean",
     path: ["notification", "event"],
