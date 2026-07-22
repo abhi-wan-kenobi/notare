@@ -1,0 +1,92 @@
+# Notare STT companion server — AMD ROCm/hipBLAS GPU offloaded image.
+#
+# Build it with:
+#
+#   docker build -f apps/stt-server/Dockerfile.rocm -t notare-stt-server:rocm .
+#
+# Run it with ROCm device access (needs /dev/kfd AND /dev/dri for AMD GPU):
+#
+#   docker run --rm -p 8383:8383 \
+#     --device /dev/kfd \
+#     --device /dev/dri \
+#     --group-add video \
+#     -v notare-stt-models:/data/models \
+#     -e NOTARE_STT_MODEL_DIR=/data/models \
+#     notare-stt-server:rocm
+#
+
+# --- builder -----------------------------------------------------------
+# rocm/dev-ubuntu-24.04 ships the HIP/hipBLAS/rocBLAS SDK on an Ubuntu 24.04
+# base (matches CI's ubuntu-24.04). Rust comes from rustup so
+# rust-toolchain.toml picks the pinned version. whisper-rs compiles the ggml
+# HIP backend against this SDK when the `hipblas` feature is enabled.
+FROM rocm/dev-ubuntu-24.04:latest AS builder
+RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates git \
+    && rm -rf /var/lib/apt/lists/*
+RUN curl -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    cmake \
+    clang \
+    libclang-dev \
+    pkg-config \
+    libssl-dev \
+    libasound2-dev \
+    libudev-dev \
+    libpulse-dev \
+    libpipewire-0.3-dev \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /workspace
+
+# Proven coruscant recipe for the RX 6600 (gfx1032, built as gfx1030 + runtime override).
+# AMDGPU_TARGETS pins the HIP code-object target for the ggml/whisper.cpp build;
+# HSA_OVERRIDE_GFX_VERSION lets an unsupported-listed gfx1032 run the gfx1030 kernels.
+ENV AMDGPU_TARGETS=gfx1030 \
+    HSA_OVERRIDE_GFX_VERSION=10.3.0
+
+# Copy the whole workspace (needed due to local workspace path dependencies)
+COPY . .
+
+RUN cargo build --release -p stt-server --features hipblas && \
+    cp target/release/stt-server /usr/local/bin/stt-server
+
+# --- runtime -------------------------------------------------------------
+# rocm/dev-ubuntu-24.04 runtime carries the ROCm/HIP runtime libraries the
+# hipBLAS-linked binary needs at execution time.
+FROM rocm/dev-ubuntu-24.04:latest AS runtime
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    libssl3 \
+    curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd --system --create-home --uid 10001 notare
+
+COPY --from=builder /usr/local/bin/stt-server /usr/local/bin/stt-server
+
+# Storage layout:
+#   /data/models/stt/<file>            model catalog
+#   /data/models/stt/<file>.verified   CRC32 sidecar stamp
+RUN mkdir -p /data/models && chown -R notare:notare /data
+VOLUME ["/data"]
+USER notare
+
+# GPU-purposed image → require the GPU at startup. HSA override applies at run time too.
+ENV NOTARE_STT_HOST=0.0.0.0 \
+    NOTARE_STT_PORT=8383 \
+    NOTARE_STT_MODEL_DIR=/data/models \
+    NOTARE_STT_MODEL=QuantizedSmall \
+    NOTARE_STT_REQUIRE_GPU=true \
+    HSA_OVERRIDE_GFX_VERSION=10.3.0 \
+    RUST_LOG=info
+
+EXPOSE 8383
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s \
+    CMD curl -f "http://localhost:${NOTARE_STT_PORT}/health" || exit 1
+
+ENTRYPOINT ["/usr/local/bin/stt-server"]
