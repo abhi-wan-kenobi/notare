@@ -21,6 +21,7 @@ import {
   LLM_CLEANUP_SYSTEM_PROMPT,
   normalizeCleanupMode,
 } from "./finalize";
+import { isLikelyEngineBusyError } from "./errors";
 import { addDictationHistoryEntry } from "./history";
 import { isLegacyOutputMode, normalizeOutputMode } from "./output-mode";
 
@@ -132,14 +133,20 @@ export function DictationOrbHost() {
       .startDictation(conn.baseUrl, conn.model, outputModeRef.current)
       .then((result) => {
         if (result.status === "error") {
-          // Surface it instead of a silent no-op orb click/hotkey press -
-          // e.g. the local server for this model isn't up yet, or (macOS)
-          // the Soniqo bridge failed to start.
+          // Surface it instead of a silent no-op orb click/hotkey press. The
+          // most common real cause is engine contention (a batch re-transcription
+          // is already using the internal whisper server); otherwise it's e.g.
+          // the local server not up yet or the macOS Soniqo bridge failing.
+          // Never dump the raw backend error at the user — log it, show guidance.
           console.error(
             "[dictation] failed to start the dictation session",
             result.error,
           );
-          sonnerToast.error(t`Couldn't start dictation: ${result.error}`);
+          sonnerToast.error(
+            isLikelyEngineBusyError(result.error)
+              ? t`Couldn't start dictation — the transcription engine is busy. If a recording is still transcribing, try again once it finishes.`
+              : t`Couldn't start dictation. Check that a local model is selected, then try again.`,
+          );
         }
       })
       .catch((error) => {
@@ -147,7 +154,9 @@ export function DictationOrbHost() {
           "[dictation] failed to start the dictation session",
           error,
         );
-        sonnerToast.error(t`Couldn't start dictation.`);
+        sonnerToast.error(
+          t`Couldn't start dictation. Check that a local model is selected, then try again.`,
+        );
       });
   }, [t]);
 
