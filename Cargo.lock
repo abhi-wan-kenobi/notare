@@ -18729,6 +18729,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "tauri-plugin-embedding-search"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "db-app",
+ "db-core",
+ "serde",
+ "serde_json",
+ "sha2 0.11.0",
+ "specta",
+ "specta-typescript",
+ "sqlx",
+ "tauri",
+ "tauri-plugin",
+ "tauri-specta",
+ "tauri-utils 0.1.0",
+ "tempfile",
+ "text-embedding",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "tauri-plugin-export"
 version = "0.1.0"
 dependencies = [
