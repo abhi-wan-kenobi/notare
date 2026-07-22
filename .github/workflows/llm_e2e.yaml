@@ -23,7 +23,7 @@ jobs:
         with:
           platform: linux
       - uses: ./.github/actions/infisical_install
-      - run: infisical run --token="$INFISICAL_TOKEN" --env=dev --projectId="$INFISICAL_PROJECT_ID" --path="/anarlog/llm" -- cargo test -p llm-proxy proxy_e2e::openrouter::non_streaming -- --ignored --nocapture
+      - run: infisical run --token="$INFISICAL_TOKEN" --env=dev --projectId="$INFISICAL_PROJECT_ID" --path="/anarlog/llm" -- cargo test --locked -p llm-proxy proxy_e2e::openrouter::non_streaming -- --ignored --nocapture
         env:
           INFISICAL_TOKEN: ${{ secrets.INFISICAL_TOKEN }}
           INFISICAL_PROJECT_ID: ${{ secrets.INFISICAL_PROJECT_ID }}
@@ -39,7 +39,7 @@ jobs:
         with:
           platform: linux
       - uses: ./.github/actions/infisical_install
-      - run: infisical run --token="$INFISICAL_TOKEN" --env=dev --projectId="$INFISICAL_PROJECT_ID" --path="/anarlog/llm" -- cargo test -p llm-proxy proxy_e2e::openrouter::streaming -- --ignored --nocapture
+      - run: infisical run --token="$INFISICAL_TOKEN" --env=dev --projectId="$INFISICAL_PROJECT_ID" --path="/anarlog/llm" -- cargo test --locked -p llm-proxy proxy_e2e::openrouter::streaming -- --ignored --nocapture
         env:
           INFISICAL_TOKEN: ${{ secrets.INFISICAL_TOKEN }}
           INFISICAL_PROJECT_ID: ${{ secrets.INFISICAL_PROJECT_ID }}

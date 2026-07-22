@@ -57,10 +57,10 @@ jobs:
           platform: ${{ matrix.platform }}
       - if: matrix.platform == 'macos'
         run: echo "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)" >> $GITHUB_ENV
-      - run: cargo check -p desktop
-      - run: cargo test -p desktop
+      - run: cargo check --locked -p desktop
+      - run: cargo test --locked -p desktop
       - run: |
-          cargo test --workspace \
+          cargo test --locked --workspace \
             --exclude desktop \
             --exclude control-tauri \
             --exclude ai \
