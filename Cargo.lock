@@ -4884,6 +4884,7 @@ dependencies = [
  "tauri-plugin-dialog",
  "tauri-plugin-dictation",
  "tauri-plugin-dock",
+ "tauri-plugin-embedding-search",
  "tauri-plugin-export",
  "tauri-plugin-flag",
  "tauri-plugin-fs-sync",
@@ -4933,6 +4934,7 @@ dependencies = [
  "tauri-plugin-windows",
  "tauri-specta",
  "tempfile",
+ "text-embedding",
  "tokio",
  "tracing",
 ]

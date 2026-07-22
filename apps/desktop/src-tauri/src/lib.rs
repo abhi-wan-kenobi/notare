@@ -6,7 +6,7 @@ mod ext;
 mod store;
 mod supervisor;
 
-use db::open_desktop_db;
+use db::{desktop_models_dir, open_desktop_db};
 use ext::*;
 use store::*;
 
@@ -148,6 +148,10 @@ pub async fn main() {
         .plugin(tauri_plugin_analytics::init())
         .plugin(tauri_plugin_agent::init())
         .plugin(tauri_plugin_db::init(db.clone()))
+        .plugin(tauri_plugin_embedding_search::init(
+            db.clone(),
+            desktop_models_dir(&context.config().identifier),
+        ))
         .plugin(tauri_plugin_bedrock::init())
         .plugin(tauri_plugin_calendar::init())
         .plugin(tauri_plugin_todo::init())
