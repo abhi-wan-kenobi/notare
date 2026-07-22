@@ -141,6 +141,15 @@ export const SETTING_DEFINITIONS = {
     path: ["general", "live_transcription_enabled"],
     default: true as boolean,
   },
+  // Override for diarization's speaker count. Absent (undefined) = automatic —
+  // the calibrated auto-count / threshold-based auto-clustering stays the
+  // primary path. A positive integer forces exactly that many speakers
+  // (feeds `options.numSpeakers` in useRunBatch; Rust treats Some(n>0) as a
+  // fixed count and None as auto). Read at batch-run time.
+  diarization_speaker_count: {
+    type: "number",
+    path: ["general", "diarization_speaker_count"],
+  },
   notification_event: {
     type: "boolean",
     path: ["notification", "event"],

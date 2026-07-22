@@ -269,6 +269,14 @@ msgstr ""
 msgid "Authorize access in your browser, then return to Notare."
 msgstr ""
 
+#: src/settings/general/app-settings.tsx
+msgid "Automatic"
+msgstr ""
+
+#: src/settings/general/app-settings.tsx
+msgid "Automatic detects the count; set a fixed number if auto-detection is wrong. Applies to the next batch transcription."
+msgstr ""
+
 #: src/settings/general/notification.tsx
 msgid "Automatically detect when a meeting starts based on microphone activity."
 msgstr ""
@@ -1234,6 +1242,10 @@ msgstr ""
 
 #: src/settings/general/account.tsx
 msgid "Manage billing"
+msgstr ""
+
+#: src/settings/general/app-settings.tsx
+msgid "Manual"
 msgstr ""
 
 #: src/session/components/note-input/search/bar.tsx
@@ -2223,6 +2235,10 @@ msgstr ""
 
 #: src/contacts/shared.tsx
 msgid "Sort options"
+msgstr ""
+
+#: src/settings/general/app-settings.tsx
+msgid "Speakers"
 msgstr ""
 
 #: src/settings/general/storage/legacy-cleanup.tsx

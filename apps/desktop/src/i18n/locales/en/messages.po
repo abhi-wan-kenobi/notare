@@ -269,6 +269,14 @@ msgstr "Aurora"
 msgid "Authorize access in your browser, then return to Notare."
 msgstr "Authorize access in your browser, then return to Notare."
 
+#: src/settings/general/app-settings.tsx
+msgid "Automatic"
+msgstr "Automatic"
+
+#: src/settings/general/app-settings.tsx
+msgid "Automatic detects the count; set a fixed number if auto-detection is wrong. Applies to the next batch transcription."
+msgstr "Automatic detects the count; set a fixed number if auto-detection is wrong. Applies to the next batch transcription."
+
 #: src/settings/general/notification.tsx
 msgid "Automatically detect when a meeting starts based on microphone activity."
 msgstr "Automatically detect when a meeting starts based on microphone activity."
@@ -1235,6 +1243,10 @@ msgstr "Manage"
 #: src/settings/general/account.tsx
 msgid "Manage billing"
 msgstr "Manage billing"
+
+#: src/settings/general/app-settings.tsx
+msgid "Manual"
+msgstr "Manual"
 
 #: src/session/components/note-input/search/bar.tsx
 msgid "Match case"
@@ -2224,6 +2236,10 @@ msgstr "Something went wrong while generating the summary."
 #: src/contacts/shared.tsx
 msgid "Sort options"
 msgstr "Sort options"
+
+#: src/settings/general/app-settings.tsx
+msgid "Speakers"
+msgstr "Speakers"
 
 #: src/settings/general/storage/legacy-cleanup.tsx
 msgid "SQLite migration verification is incomplete"
