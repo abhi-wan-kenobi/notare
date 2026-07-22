@@ -250,6 +250,12 @@ export const useRunBatch = (sessionId: string) => {
   const dictionaryTerms = useConfigValue("personalization_dictionary_terms");
   const finalSttModel = useConfigValue("final_stt_model");
   const finalSttProvider = useConfigValue("final_stt_provider");
+  // User override for diarization speaker count (Settings → Transcription →
+  // Speakers). undefined = automatic; a positive integer forces exactly that
+  // many speakers. Folded in below as the fallback for an explicit per-call
+  // options.numSpeakers so every batch path (re-transcribe, upload, post-
+  // capture) honours the setting without each call site threading it.
+  const speakerCountSetting = useConfigValue("diarization_speaker_count");
   // Batch may run on a different provider than the local-only live
   // connection (e.g. a custom companion server or cloud). Resolve the final
   // provider's configured base URL/API key so the BatchTarget carries it.
@@ -380,6 +386,15 @@ export const useRunBatch = (sessionId: string) => {
                 .map((participant) => participant.humanId),
               session?.user_id,
             )
+          : undefined;
+      // An explicit per-call options.numSpeakers wins; otherwise the user's
+      // persisted "# of speakers" setting applies. Only a positive integer
+      // forces a fixed count — anything else (absent / 0 / invalid) falls
+      // back to the auto path below.
+      const userNumSpeakers = options?.numSpeakers ?? speakerCountSetting;
+      const fixedNumSpeakers =
+        typeof userNumSpeakers === "number" && userNumSpeakers > 0
+          ? userNumSpeakers
           : undefined;
 
       const handlePersist: BatchPersistCallback | undefined =
@@ -513,7 +528,7 @@ export const useRunBatch = (sessionId: string) => {
           provider: target.provider,
           model: target.model,
         }),
-        num_speakers: options?.numSpeakers ?? inferredNumSpeakers,
+        num_speakers: fixedNumSpeakers ?? inferredNumSpeakers,
         min_speakers: options?.minSpeakers,
         max_speakers: options?.maxSpeakers,
       };
@@ -546,9 +561,10 @@ export const useRunBatch = (sessionId: string) => {
             // that many speakers. Do NOT pass the calendar-participant-derived
             // count (`params.num_speakers`) here — it silently hard-locked the
             // speaker count (e.g. 2 invitees ⇒ only 2 speakers even with more
-            // voices in the room). null ⇒ auto-detect. The P2.6 "# of speakers"
-            // control will set `options.numSpeakers` when the user wants a fixed count.
-            options?.numSpeakers ?? null,
+            // voices in the room). null ⇒ auto-detect. fixedNumSpeakers carries
+            // the user's "# of speakers" override (or an explicit per-call
+            // options.numSpeakers); undefined falls back to auto-detect.
+            fixedNumSpeakers ?? null,
             diarizationWords,
             // Enrolled voice profiles for recognition — wired to the
             // voice_profiles store + enrollment UX in P2.6 (#15). Empty for now
@@ -591,6 +607,7 @@ export const useRunBatch = (sessionId: string) => {
       session,
       participants,
       spokenLanguages,
+      speakerCountSetting,
       startTranscription,
       sessionId,
     ],

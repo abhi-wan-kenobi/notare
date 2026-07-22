@@ -5,6 +5,7 @@ import { Loader2Icon } from "lucide-react";
 import { type ReactNode, useEffect, useId, useState } from "react";
 
 import { Button } from "@hypr/ui/components/ui/button";
+import { Input } from "@hypr/ui/components/ui/input";
 import { Switch } from "@hypr/ui/components/ui/switch";
 import { cn } from "@hypr/utils";
 
@@ -16,7 +17,7 @@ import {
   normalizeMeetingBarTheme,
   type MeetingBarTheme,
 } from "~/meeting-float/window";
-import { useSetSettingValue } from "~/settings/queries";
+import { useClearSettingValue, useSetSettingValue } from "~/settings/queries";
 import { useConfigValue } from "~/shared/config";
 
 interface SettingItem {
@@ -138,6 +139,7 @@ export function AppSettingsView({
         </h2>
         <div className="flex flex-col gap-4">
           <LiveTranscriptionRow />
+          <DiarizationSpeakerCountRow />
         </div>
       </section>
 
@@ -193,6 +195,76 @@ export function LiveTranscriptionRow() {
       checked={liveEnabled}
       onChange={setLiveEnabled}
     />
+  );
+}
+
+const DIARIZATION_MAX_SPEAKERS = 10;
+
+/**
+ * "Speakers" - the `diarization_speaker_count` setting. Automatic (absent)
+ * keeps the calibrated auto-detection; Manual forces a fixed speaker count
+ * for diarization when auto-detection is wrong. Self-contained like
+ * `LiveTranscriptionRow`.
+ */
+export function DiarizationSpeakerCountRow() {
+  const speakerCount = useConfigValue("diarization_speaker_count");
+  const setSpeakerCount = useSetSettingValue("diarization_speaker_count");
+  const clearSpeakerCount = useClearSettingValue("diarization_speaker_count");
+
+  const isManual = typeof speakerCount === "number" && speakerCount > 0;
+  const [count, setCount] = useState(isManual ? String(speakerCount) : "2");
+
+  const commitCount = (raw: string) => {
+    const n = Number.parseInt(raw, 10);
+    if (Number.isFinite(n) && n >= 1 && n <= DIARIZATION_MAX_SPEAKERS) {
+      setSpeakerCount(n);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex-1">
+        <h3 className="mb-1 text-sm font-medium">
+          <Trans>Speakers</Trans>
+        </h3>
+        <p className="text-muted-foreground text-xs">
+          <Trans>
+            Automatic detects the count; set a fixed number if auto-detection is
+            wrong. Applies to the next batch transcription.
+          </Trans>
+        </p>
+      </div>
+      <div className="flex items-center gap-2">
+        <Button
+          type="button"
+          size="sm"
+          variant={isManual ? "outline" : "default"}
+          onClick={() => clearSpeakerCount()}
+        >
+          <Trans>Automatic</Trans>
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant={isManual ? "default" : "outline"}
+          onClick={() => commitCount(count)}
+        >
+          <Trans>Manual</Trans>
+        </Button>
+        {isManual && (
+          <Input
+            type="number"
+            min={1}
+            max={DIARIZATION_MAX_SPEAKERS}
+            value={count}
+            onChange={(e) => setCount(e.target.value)}
+            onBlur={(e) => commitCount(e.target.value)}
+            className="w-20"
+            aria-label="Number of speakers"
+          />
+        )}
+      </div>
+    </div>
   );
 }
 
