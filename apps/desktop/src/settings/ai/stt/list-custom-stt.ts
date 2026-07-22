@@ -72,9 +72,7 @@ function authHeaders(apiKey: string): Record<string, string> {
 // (crates/model-downloader/src/integrity.rs derives
 // `#[serde(tag = "state", content = "detail")]`). Read `.state`; also tolerate a
 // plain string so an older/alternate server shape still classifies correctly.
-function readIntegrityState(
-  raw: unknown,
-): CustomSttModelIntegrity | undefined {
+function readIntegrityState(raw: unknown): CustomSttModelIntegrity | undefined {
   if (typeof raw === "string") {
     return raw as CustomSttModelIntegrity;
   }
