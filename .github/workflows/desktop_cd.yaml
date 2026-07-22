@@ -19,6 +19,9 @@ on:
         type: string
         default: ""
 
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.channel }}
   cancel-in-progress: true
@@ -39,6 +42,7 @@ jobs:
           lfs: true
           fetch-depth: 0
           fetch-tags: true
+          persist-credentials: false
       - run: |
           git remote set-url origin "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
           git fetch --tags --force
@@ -61,6 +65,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - run: ./scripts/version.sh "./apps/desktop/src-tauri/tauri.conf.json" "${{ needs.compute-version.outputs.version }}"
       - uses: ./.github/actions/cn_release
         with:
@@ -91,6 +97,7 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
           submodules: recursive
+          persist-credentials: false
       - run: |
           git remote set-url origin "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
           git fetch --tags --force
@@ -234,6 +241,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - run: ./scripts/version.sh "./apps/desktop/src-tauri/tauri.conf.json" "${{ needs.compute-version.outputs.version }}"
       - uses: ./.github/actions/cn_release
         with:
@@ -255,6 +264,7 @@ jobs:
         with:
           fetch-depth: 0
           fetch-tags: true
+          persist-credentials: false
       - run: git fetch --tags --force
       - if: ${{ needs.build-macos.result == 'success' }}
         uses: ./.github/actions/cn_download
@@ -297,7 +307,7 @@ jobs:
       - id: release-body
         run: |
           echo "value=https://anarlog.so/changelog/${{ needs.compute-version.outputs.version }}" >> "$GITHUB_OUTPUT"
-      - uses: ncipollo/release-action@v1
+      - uses: ncipollo/release-action@339a81892b84b4eeb0f6e744e4574d79d0d9b8dd # v1.21.0
         with:
           tag: desktop_v${{ needs.compute-version.outputs.version }}
           name: desktop_v${{ needs.compute-version.outputs.version }}

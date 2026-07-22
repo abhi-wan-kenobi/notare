@@ -9,7 +9,7 @@ on:
     tags: ["v*"]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build-windows:
@@ -17,10 +17,12 @@ jobs:
     timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       # Sets VULKAN_SDK and puts its Bin (glslc.exe) on PATH; whisper-rs-sys's
       # cmake finds the SDK through VULKAN_SDK.
-      - uses: humbletim/install-vulkan-sdk@v1.2
+      - uses: humbletim/install-vulkan-sdk@30ba978f977e81b72d091fc8888feb1fb26f9aff # v1.2
         with:
           version: 1.4.309.0
           cache: true
@@ -39,7 +41,7 @@ jobs:
 
       - run: corepack enable
 
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
         with:
           key: release-gpu-vulkan
 
@@ -55,7 +57,7 @@ jobs:
       # Visual Studio generator (VCTargetsPath probe). Ninja inside an MSVC
       # dev environment is the proven fix (same as local builds; see
       # docs/BUILDING.md "Windows Vulkan build gotchas").
-      - uses: ilammy/msvc-dev-cmd@v1
+      - uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
 
       # `directml` rides the same Windows build as `gpu-vulkan`: it's a
       # separate engine (Parakeet/ONNX Runtime vs. whisper.cpp/Vulkan) but
@@ -90,6 +92,8 @@ jobs:
     timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       # ubuntu-24.04 restricts unprivileged user namespaces via AppArmor, which
       # breaks AppImage tooling (linuxdeploy) even with APPIMAGE_EXTRACT_AND_RUN.
@@ -109,7 +113,7 @@ jobs:
 
       - run: corepack enable
 
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
         with:
           key: release-gpu-vulkan
 
@@ -159,6 +163,8 @@ jobs:
     timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-node@v4
         with:
@@ -166,7 +172,7 @@ jobs:
 
       - run: corepack enable
 
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
         with:
           key: release-macos-arm64-v2
 
@@ -224,6 +230,8 @@ jobs:
   publish:
     needs: [build-windows, build-linux, build-macos]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -278,7 +286,7 @@ jobs:
             }' > latest.json
           cat latest.json
 
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
         with:
           name: Notare ${{ github.ref_name }}
           generate_release_notes: true

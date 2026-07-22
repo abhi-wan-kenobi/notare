@@ -20,12 +20,17 @@ on:
         default: none
         options: [none, vulkan, directml, voxtral-cuda]
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ${{ inputs.os == 'windows' && 'windows-latest' || inputs.os == 'macos' && 'macos-latest' || 'ubuntu-24.04' }}
     timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       # voxtral-cuda is a Windows-only test-build variant (issue #16 Phase B):
       # llama.cpp's CUDA backend needs the CUDA toolkit installed on the build
@@ -53,7 +58,7 @@ jobs:
       # cmake finds the SDK through VULKAN_SDK. Same action meetily uses for
       # their Windows release default.
       - if: inputs.os == 'windows' && inputs.gpu == 'vulkan'
-        uses: humbletim/install-vulkan-sdk@v1.2
+        uses: humbletim/install-vulkan-sdk@30ba978f977e81b72d091fc8888feb1fb26f9aff # v1.2
         with:
           version: 1.4.309.0
           cache: true
@@ -66,7 +71,7 @@ jobs:
       # above — this download is large (~3GB) and this is a manual/rare
       # workflow, so cache misses are expected and fine, not a regression.
       - if: inputs.os == 'windows' && inputs.gpu == 'voxtral-cuda'
-        uses: Jimver/cuda-toolkit@v0.2.24
+        uses: Jimver/cuda-toolkit@c35baa1a18fd1fc9dcf47c5bd839bf30559c0bc3 # v0.2.24
         id: cuda-toolkit
         with:
           cuda: "12.4.1"
@@ -79,7 +84,7 @@ jobs:
 
       - run: corepack enable
 
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
         with:
           key: gpu-${{ inputs.gpu }}
 
@@ -119,7 +124,7 @@ jobs:
       # run is the first real test of this path, drop/adjust if it turns out
       # unnecessary or wrong for nvcc.
       - if: inputs.os == 'windows' && (inputs.gpu == 'vulkan' || inputs.gpu == 'voxtral-cuda')
-        uses: ilammy/msvc-dev-cmd@v1
+        uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
       - if: inputs.os == 'windows' && (inputs.gpu == 'vulkan' || inputs.gpu == 'voxtral-cuda')
         shell: pwsh
         run: |
