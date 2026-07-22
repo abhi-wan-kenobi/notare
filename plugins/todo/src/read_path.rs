@@ -13,6 +13,7 @@ pub enum ReadPathResult {
 }
 
 pub enum ReadPath<'a> {
+    #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
     Apple(&'a str),
     LinearTeams {
         connection_id: &'a str,
