@@ -1,0 +1,8 @@
+[default]
+description = "Default permissions for the plugin"
+permissions = [
+    "allow-embed-and-index-chunks",
+    "allow-delete-session-chunks",
+    "allow-semantic-search",
+    "allow-embedding-index-status",
+]
