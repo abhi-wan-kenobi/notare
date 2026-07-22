@@ -12,3 +12,8 @@
 /// model-mutation routes (currently `501`, handled gracefully client-side —
 /// see the `Api` object in the embedded `<script>`).
 pub const INDEX_HTML: &str = include_str!("assets/index.html");
+
+/// The live processing dashboard, served at `GET /dashboard`. Self-contained
+/// (inline CSS/JS, no CDN); polls `GET /api/sessions` and renders the current
+/// session's throughput graph + recent history.
+pub const DASHBOARD_HTML: &str = include_str!("assets/dashboard.html");

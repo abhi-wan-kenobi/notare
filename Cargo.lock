@@ -4971,6 +4971,7 @@ dependencies = [
 name = "diarization"
 version = "0.1.0"
 dependencies = [
+ "data",
  "eyre",
  "sherpa-rs",
  "thiserror 2.0.18",
@@ -20661,6 +20662,7 @@ dependencies = [
  "model-manager",
  "owhisper-interface",
  "rodio",
+ "serde",
  "serde_html_form 0.4.0",
  "serde_json",
  "tempfile",

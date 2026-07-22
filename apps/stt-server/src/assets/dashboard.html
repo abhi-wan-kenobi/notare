@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Notare STT — Live Processing</title>
+<style>
+  :root {
+    --bg:#0c1211; --panel:#121a19; --line:#233130; --ink:#e4ecec; --dim:#8aa0a1;
+    --accent:#4fc3cf; --ok:#4bbd5f; --warn:#d99d3a; --stall:#f0666d; --idle:#6f8385;
+    --mono:ui-monospace,"SF Mono","Cascadia Code",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--mono);font-size:14px;line-height:1.5}
+  .wrap{max-width:860px;margin:0 auto;padding:28px 20px 60px}
+  header{display:flex;align-items:baseline;gap:14px;border-bottom:1px solid var(--line);padding-bottom:14px}
+  h1{font-size:16px;letter-spacing:.04em;margin:0;font-weight:650}
+  h1 span{color:var(--accent)}
+  .updated{margin-left:auto;color:var(--dim);font-size:12px}
+  .status{display:flex;align-items:center;gap:12px;margin:24px 0 8px}
+  .dot{width:12px;height:12px;border-radius:50%;flex:0 0 auto}
+  .pill{font-size:20px;font-weight:700;letter-spacing:.06em}
+  .sub{color:var(--dim);font-size:13px}
+  .s-idle .dot{background:var(--idle)} .s-idle .pill{color:var(--idle)}
+  .s-proc .dot{background:var(--ok);box-shadow:0 0 10px var(--ok)} .s-proc .pill{color:var(--ok)}
+  .s-stall .dot{background:var(--stall);box-shadow:0 0 10px var(--stall)} .s-stall .pill{color:var(--stall)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:18px 0}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+  .card .k{color:var(--dim);font-size:11px;text-transform:uppercase;letter-spacing:.06em}
+  .card .v{font-size:22px;font-weight:700;margin-top:5px;font-variant-numeric:tabular-nums}
+  .graphwrap{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;margin:6px 0}
+  .graphwrap .lbl{color:var(--dim);font-size:11px;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+  canvas{width:100%;height:160px;display:block}
+  h2{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--dim);margin:28px 0 10px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--line)}
+  th{color:var(--dim);font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+  td{font-variant-numeric:tabular-nums}
+  .oc{font-weight:700}
+  .oc-completed{color:var(--ok)} .oc-ended{color:var(--dim)} .oc-error,.oc-stalled{color:var(--stall)}
+  .empty{color:var(--dim);padding:18px 0;text-align:center}
+  a{color:var(--accent);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Notare STT · <span>Live Processing</span></h1>
+    <div class="updated" id="updated">connecting…</div>
+  </header>
+
+  <div class="status s-idle" id="status">
+    <div class="dot"></div>
+    <div>
+      <div class="pill" id="pill">IDLE</div>
+      <div class="sub" id="statusSub">No active transcription.</div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card"><div class="k">Audio processed</div><div class="v" id="mAudio">—</div></div>
+    <div class="card"><div class="k">Elapsed</div><div class="v" id="mElapsed">—</div></div>
+    <div class="card"><div class="k">Last activity</div><div class="v" id="mIdle">—</div></div>
+    <div class="card"><div class="k">Engine</div><div class="v" id="mModel" style="font-size:15px">—</div></div>
+  </div>
+
+  <div class="graphwrap">
+    <div class="lbl">Throughput — audio-seconds processed over time (climbing = healthy · flat = stalled)</div>
+    <canvas id="g" width="1600" height="320"></canvas>
+  </div>
+
+  <h2>Recent sessions</h2>
+  <table>
+    <thead><tr><th>ended</th><th>engine</th><th>audio</th><th>duration</th><th>outcome</th></tr></thead>
+    <tbody id="recent"><tr><td class="empty" colspan="5">—</td></tr></tbody>
+  </table>
+</div>
+
+<script>
+"use strict";
+var STALL_MS = 20000; // matches the server's 20s write timeout
+var $ = function(id){ return document.getElementById(id); };
+function fmtDur(ms){ if(ms<0)ms=0; var s=Math.floor(ms/1000); var m=Math.floor(s/60); s=s%60; return m>0?(m+"m "+s+"s"):(s+"s"); }
+function fmtSecs(x){ return (x||0).toFixed(1)+"s"; }
+function fmtClock(ms){ var d=new Date(ms); return d.toLocaleTimeString(); }
+
+function drawGraph(samples, stalled){
+  var c=$("g"), ctx=c.getContext("2d"), W=c.width, H=c.height, pad=10;
+  ctx.clearRect(0,0,W,H);
+  // grid
+  ctx.strokeStyle="rgba(255,255,255,0.05)"; ctx.lineWidth=1;
+  for(var i=0;i<=4;i++){ var y=pad+(H-2*pad)*i/4; ctx.beginPath(); ctx.moveTo(pad,y); ctx.lineTo(W-pad,y); ctx.stroke(); }
+  if(!samples||samples.length<2) return;
+  var t0=samples[0].t_ms, t1=samples[samples.length-1].t_ms;
+  var maxA=0; samples.forEach(function(s){ if(s.audio_secs>maxA)maxA=s.audio_secs; });
+  if(maxA<=0)maxA=1; if(t1<=t0)t1=t0+1;
+  var col=stalled?"#f0666d":"#4fc3cf";
+  // area
+  ctx.beginPath();
+  samples.forEach(function(s,i){
+    var x=pad+(W-2*pad)*(s.t_ms-t0)/(t1-t0);
+    var y=(H-pad)-(H-2*pad)*(s.audio_secs/maxA);
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  });
+  var last=samples[samples.length-1];
+  var lx=pad+(W-2*pad)*(last.t_ms-t0)/(t1-t0);
+  var ly=(H-pad)-(H-2*pad)*(last.audio_secs/maxA);
+  ctx.lineTo(lx,H-pad); ctx.lineTo(pad,H-pad); ctx.closePath();
+  ctx.fillStyle=stalled?"rgba(240,102,109,0.10)":"rgba(79,195,207,0.10)"; ctx.fill();
+  // line
+  ctx.beginPath();
+  samples.forEach(function(s,i){
+    var x=pad+(W-2*pad)*(s.t_ms-t0)/(t1-t0);
+    var y=(H-pad)-(H-2*pad)*(s.audio_secs/maxA);
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  });
+  ctx.strokeStyle=col; ctx.lineWidth=2.5; ctx.stroke();
+  // endpoint
+  ctx.beginPath(); ctx.arc(lx,ly,4,0,7); ctx.fillStyle=col; ctx.fill();
+}
+
+function render(d){
+  $("updated").textContent="updated "+fmtClock(d.now_ms);
+  var cur=d.current, statusEl=$("status");
+  if(!cur){
+    statusEl.className="status s-idle";
+    $("pill").textContent="IDLE"; $("statusSub").textContent="No active transcription.";
+    $("mAudio").textContent="—"; $("mElapsed").textContent="—"; $("mIdle").textContent="—"; $("mModel").textContent="—";
+    drawGraph(d.samples,false);
+  } else {
+    var idleMs=d.now_ms-cur.last_activity_ms, stalled=idleMs>STALL_MS;
+    statusEl.className="status "+(stalled?"s-stall":"s-proc");
+    $("pill").textContent=stalled?"STALLED":"PROCESSING";
+    $("statusSub").textContent=(stalled?"No progress for "+fmtDur(idleMs)+" — likely stuck (the 20s watchdog will end it). ":"")+"session "+cur.id.slice(0,8);
+    $("mAudio").textContent=fmtSecs(cur.audio_secs_processed);
+    $("mElapsed").textContent=fmtDur(d.now_ms-cur.started_at_ms);
+    $("mIdle").textContent=fmtDur(idleMs)+" ago";
+    $("mModel").textContent=cur.model||"—";
+    drawGraph(d.samples,stalled);
+  }
+  var rows=(d.recent||[]).map(function(r){
+    var oc=(r.outcome||"ended").toLowerCase();
+    return "<tr><td>"+fmtClock(r.ended_at_ms)+"</td><td>"+(r.model||"—")+"</td><td>"+fmtSecs(r.audio_secs_processed)+
+      "</td><td>"+fmtDur(r.ended_at_ms-r.started_at_ms)+"</td><td class='oc oc-"+oc+"'>"+oc+"</td></tr>";
+  }).join("");
+  $("recent").innerHTML=rows||"<tr><td class='empty' colspan='5'>No sessions yet.</td></tr>";
+}
+
+function tick(){
+  fetch("/api/sessions",{cache:"no-store"}).then(function(r){return r.json();}).then(render)
+    .catch(function(){ $("updated").textContent="server unreachable"; });
+}
+tick(); setInterval(tick,1000);
+</script>
+</body>
+</html>

@@ -292,6 +292,10 @@ async fn handle_websocket<E: SttEngine>(
     match build_transcription_streams(total_channels, model.as_ref(), &languages, redemption_time) {
         Ok((audio_txs, mut stream)) => {
             let mut audio_txs = audio_txs;
+            // Register this session for the live dashboard; the guard records it
+            // as ended on any of the loop's exit paths.
+            let _activity =
+                crate::activity::begin_guarded(metadata.request_id.clone(), provider.to_string());
             let mut stop_reason = None;
             let mut receiving_input = true;
             let mut channel_audio_durations = vec![0.0_f64; total_channels];
@@ -338,6 +342,11 @@ async fn handle_websocket<E: SttEngine>(
                     item = stream.next() => {
                         match item {
                             Some(Ok((channel_idx, segment))) => {
+                                // Live-dashboard progress: furthest audio position
+                                // the engine has produced output for (a flat line
+                                // on the graph = a stall).
+                                crate::activity::registry()
+                                    .progress(segment.start + segment.duration);
                                 let channel_index = vec![channel_idx as i32, total_channels as i32];
                                 let channel = vec![channel_idx as u8];
                                 // Segments are always sent as confirmed; a single

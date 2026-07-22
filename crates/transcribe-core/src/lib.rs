@@ -5,6 +5,7 @@ mod error;
 mod origin;
 mod service;
 mod transport;
+pub mod activity;
 
 pub use audio::*;
 pub use batch::*;

@@ -37,6 +37,8 @@ pub fn router(state: Arc<AppState>) -> Router {
 
     Router::new()
         .route("/", get(web::index))
+        .route("/dashboard", get(web::dashboard))
+        .route("/api/sessions", get(web::sessions_handler))
         .route("/api/status", get(status::status_handler))
         .route("/api/models", get(models::list_models))
         .route("/api/models/{id}/progress", get(models::model_progress))
