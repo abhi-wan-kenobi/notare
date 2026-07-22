@@ -25,6 +25,7 @@ import {
   isSupportedLanguagesLive,
   isSupportedLocalSttModel,
   isVoxtralLocalSttModel,
+  shouldRunLocalDiarization,
 } from "./capabilities";
 
 beforeEach(() => {
@@ -100,6 +101,39 @@ describe("isVoxtralLocalSttModel", () => {
     expect(isVoxtralLocalSttModel("voxtral-mini-3b-2507-q4km")).toBe(true);
     expect(isVoxtralLocalSttModel("parakeet-tdt-v3-int8")).toBe(false);
     expect(isVoxtralLocalSttModel(undefined)).toBe(false);
+  });
+});
+
+describe("shouldRunLocalDiarization", () => {
+  test("runs for custom providers regardless of model", () => {
+    expect(shouldRunLocalDiarization("custom", "whisper-large-v3")).toBe(true);
+    expect(shouldRunLocalDiarization("custom", "nova-3-general")).toBe(true);
+    expect(shouldRunLocalDiarization("custom", undefined)).toBe(true);
+  });
+
+  test("runs for local Whisper models", () => {
+    expect(shouldRunLocalDiarization("hyprnote", "QuantizedSmall")).toBe(true);
+    expect(shouldRunLocalDiarization("hyprnote", "QuantizedTinyEn")).toBe(true);
+    expect(shouldRunLocalDiarization("hyprnote", "QuantizedLargeTurbo")).toBe(
+      true,
+    );
+  });
+
+  test("runs for local Parakeet models", () => {
+    expect(shouldRunLocalDiarization("hyprnote", "parakeet-tdt-v3-int8")).toBe(
+      true,
+    );
+    expect(shouldRunLocalDiarization("hyprnote", "parakeet-tdt-0.6b-v3")).toBe(
+      true,
+    );
+  });
+
+  test("does not run for cloud providers", () => {
+    expect(shouldRunLocalDiarization("deepgram", "nova-3-general")).toBe(false);
+    expect(shouldRunLocalDiarization("hyprnote", "cloud")).toBe(false);
+    expect(shouldRunLocalDiarization("cloudflare_workers_ai", "nova-3")).toBe(
+      false,
+    );
   });
 });
 

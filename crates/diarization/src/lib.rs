@@ -49,6 +49,26 @@ pub struct Diarizer {
     embedding_model: PathBuf,
 }
 
+fn cluster_config(num_speakers: Option<i32>) -> (Option<i32>, Option<f32>) {
+    match num_speakers {
+        // An explicit, positive speaker count → a hard cluster count
+        // (sherpa's fixed-K cut, `cutree_k`): exactly `n` speakers.
+        Some(n) if n > 0 => (Some(n), None),
+        // No usable hint → auto-detect the number of speakers from the audio.
+        // sherpa-rs's `DiarizeConfig::default()` hard-codes
+        // `num_clusters = Some(4)`, and `Diarize::new` does
+        // `num_clusters.unwrap_or(4)`, so leaving it as-is (or `None`) forces
+        // a fixed cut of 4 and silently ignores `threshold` — the bug that
+        // capped every recording at ≤4 speakers. Passing `-1` selects
+        // sherpa's threshold-based clustering (`cutree_cdist`), which lets the
+        // dendrogram cut where the audio actually separates speakers.
+        _ => (
+            Some(AUTO_CLUSTER_NUM_CLUSTERS),
+            Some(AUTO_CLUSTER_THRESHOLD),
+        ),
+    }
+}
+
 impl Diarizer {
     pub fn new(
         segmentation_model: impl AsRef<Path>,
@@ -81,26 +101,10 @@ impl Diarizer {
         samples_16k_mono: &[f32],
         num_speakers: Option<i32>,
     ) -> Result<Vec<DiarizedSegment>, DiarizeError> {
+        let (num_clusters, threshold) = cluster_config(num_speakers);
         let mut config = DiarizeConfig::default();
-        match num_speakers {
-            // An explicit, positive speaker count → a hard cluster count
-            // (sherpa's fixed-K cut, `cutree_k`): exactly `n` speakers.
-            Some(n) if n > 0 => {
-                config.num_clusters = Some(n);
-            }
-            // No usable hint → auto-detect the number of speakers from the audio.
-            // sherpa-rs's `DiarizeConfig::default()` hard-codes
-            // `num_clusters = Some(4)`, and `Diarize::new` does
-            // `num_clusters.unwrap_or(4)`, so leaving it as-is (or `None`) forces
-            // a fixed cut of 4 and silently ignores `threshold` — the bug that
-            // capped every recording at ≤4 speakers. Passing `-1` selects
-            // sherpa's threshold-based clustering (`cutree_cdist`), which lets the
-            // dendrogram cut where the audio actually separates speakers.
-            _ => {
-                config.num_clusters = Some(AUTO_CLUSTER_NUM_CLUSTERS);
-                config.threshold = Some(AUTO_CLUSTER_THRESHOLD);
-            }
-        }
+        config.num_clusters = num_clusters;
+        config.threshold = threshold;
 
         let inner = Diarize::new(&self.segmentation_model, &self.embedding_model, config)?;
         self.inner = inner;
@@ -266,6 +270,23 @@ impl VoiceProfileIndex {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn cluster_config_uses_fixed_count_for_positive_speaker_counts() {
+        assert_eq!(cluster_config(Some(5)), (Some(5), None));
+        assert_eq!(cluster_config(Some(1)), (Some(1), None));
+    }
+
+    #[test]
+    fn cluster_config_falls_back_to_auto_clustering() {
+        let auto = (
+            Some(AUTO_CLUSTER_NUM_CLUSTERS),
+            Some(AUTO_CLUSTER_THRESHOLD),
+        );
+        assert_eq!(cluster_config(None), auto);
+        assert_eq!(cluster_config(Some(0)), auto);
+        assert_eq!(cluster_config(Some(-3)), auto);
+    }
 
     #[test]
     fn seconds_to_ms_rounds_to_nearest_millisecond() {
