@@ -5,6 +5,7 @@ import {
   CalendarDaysIcon,
   type LucideIcon,
   NotebookTextIcon,
+  SearchIcon,
   SettingsIcon,
   UsersIcon,
 } from "lucide-react";
@@ -61,6 +62,12 @@ export function SidebarSurfaceNav() {
       label: t`Notes`,
       icon: NotebookTextIcon,
       onClick: goToNotes,
+    },
+    {
+      id: "search",
+      label: t`Search`,
+      icon: SearchIcon,
+      onClick: () => openSurface("search"),
     },
     {
       id: "calendar",
