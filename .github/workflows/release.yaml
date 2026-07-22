@@ -289,18 +289,17 @@ jobs:
       - uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
         with:
           name: Notare ${{ github.ref_name }}
+          # Publish pre-release-suffixed tags (e.g. v0.4.1-rc1) as GitHub
+          # pre-releases so `releases/latest` + the updater's latest.json stay on
+          # the newest STABLE release — an rc never auto-updates production users.
+          prerelease: ${{ contains(github.ref_name, '-') }}
           generate_release_notes: true
           body: |
-            > **macOS (Apple Silicon only for now):** the `.dmg` is **unsigned**
-            > (no Apple certificates yet). Drag **Notare** to Applications, then
-            > strip the quarantine flag before opening — otherwise macOS will
-            > claim the app is "damaged" and refuse to launch:
+            > **macOS (Apple Silicon):** signed with **Developer ID** and
+            > **notarized + stapled by Apple** — it opens normally, no `xattr`
+            > step needed.
             >
-            > ```
-            > xattr -cr /Applications/Notare.app
-            > ```
-            >
-            > **Windows:** builds are unsigned — SmartScreen will warn; choose
+            > **Windows:** unsigned — SmartScreen may warn; choose
             > "More info → Run anyway".
           files: |
             release-assets/*.msi
