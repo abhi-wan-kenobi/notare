@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { index, integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 const currentTimestamp = sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`;
 
@@ -240,6 +240,15 @@ export const actionItems = sqliteTable(
     createdBy: text("created_by").notNull().default(""),
     updatedBy: text("updated_by").notNull().default(""),
     metadataJson: text("metadata_json").notNull().default("{}"),
+    // Structured action items v2 (WS-C). See migration
+    // 20260723130000_action_items_v2.sql for the provenance/anti-hallucination
+    // contract on source_text / source_start_ms / owner_speaker_id.
+    confidence: real("confidence").notNull().default(0),
+    sourceText: text("source_text").notNull().default(""),
+    sourceStartMs: integer("source_start_ms"),
+    ownerSpeakerId: text("owner_speaker_id").notNull().default(""),
+    priority: text("priority").notNull().default(""),
+    syncedTargetsJson: text("synced_targets_json").notNull().default("[]"),
     createdAt: text("created_at").notNull().default(currentTimestamp),
     updatedAt: text("updated_at").notNull().default(currentTimestamp),
     deletedAt: text("deleted_at"),
