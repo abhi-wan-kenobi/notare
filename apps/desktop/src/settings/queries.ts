@@ -184,6 +184,17 @@ export function setSettingValue<K extends SettingKey>(
   return setSettingValues({ [key]: value } as SettingValues);
 }
 
+// Removes a setting row so it reads back as absent (its default-undefined
+// state). Used by settings whose "automatic" / default state is encoded as
+// absence rather than a sentinel value (e.g. diarization_speaker_count).
+export function clearSettingValue<K extends SettingKey>(key: K): Promise<void> {
+  return enqueueDatabaseWrite("app-settings", async () => {
+    await executeTransaction([
+      { sql: `DELETE FROM app_settings WHERE id = ?`, params: [key] },
+    ]);
+  });
+}
+
 export function setSettingValues(values: SettingValues): Promise<void> {
   return enqueueDatabaseWrite("app-settings", () =>
     persistSettingValues(values),
@@ -219,6 +230,14 @@ export function useSetSettingValue<K extends SettingKey>(key: K) {
     },
     [key],
   );
+}
+
+export function useClearSettingValue<K extends SettingKey>(key: K) {
+  return useCallback(() => {
+    void clearSettingValue(key).catch((error) => {
+      console.error(`[settings] failed to clear ${key}`, error);
+    });
+  }, [key]);
 }
 
 export function useSetSettingValues() {
