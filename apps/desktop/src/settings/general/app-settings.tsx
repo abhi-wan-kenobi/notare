@@ -199,6 +199,10 @@ export function LiveTranscriptionRow() {
 }
 
 const DIARIZATION_MAX_SPEAKERS = 10;
+const DIARIZATION_DEFAULT_SPEAKERS = 2;
+
+const clampSpeakerCount = (n: number): number =>
+  Math.max(1, Math.min(DIARIZATION_MAX_SPEAKERS, Math.trunc(n)));
 
 /**
  * "Speakers" - the `diarization_speaker_count` setting. Automatic (absent)
@@ -212,13 +216,38 @@ export function DiarizationSpeakerCountRow() {
   const clearSpeakerCount = useClearSettingValue("diarization_speaker_count");
 
   const isManual = typeof speakerCount === "number" && speakerCount > 0;
-  const [count, setCount] = useState(isManual ? String(speakerCount) : "2");
+  const [count, setCount] = useState(
+    isManual ? String(speakerCount) : String(DIARIZATION_DEFAULT_SPEAKERS),
+  );
 
   const commitCount = (raw: string) => {
-    const n = Number.parseInt(raw, 10);
-    if (Number.isFinite(n) && n >= 1 && n <= DIARIZATION_MAX_SPEAKERS) {
-      setSpeakerCount(n);
+    if (raw.trim() === "" && isManual && speakerCount !== undefined) {
+      setCount(String(speakerCount));
+      return;
     }
+
+    const n = Number.parseInt(raw, 10);
+    if (!Number.isFinite(n)) {
+      if (isManual && speakerCount !== undefined) {
+        setCount(String(speakerCount));
+      }
+      return;
+    }
+
+    const clamped = clampSpeakerCount(n);
+    setCount(String(clamped));
+    if (clamped !== speakerCount) {
+      setSpeakerCount(clamped);
+    }
+  };
+
+  const handleManualClick = () => {
+    if (isManual) {
+      commitCount(count);
+      return;
+    }
+    setCount(String(DIARIZATION_DEFAULT_SPEAKERS));
+    setSpeakerCount(DIARIZATION_DEFAULT_SPEAKERS);
   };
 
   return (
@@ -247,7 +276,7 @@ export function DiarizationSpeakerCountRow() {
           type="button"
           size="sm"
           variant={isManual ? "default" : "outline"}
-          onClick={() => commitCount(count)}
+          onClick={handleManualClick}
         >
           <Trans>Manual</Trans>
         </Button>
