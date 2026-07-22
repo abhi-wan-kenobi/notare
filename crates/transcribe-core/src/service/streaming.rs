@@ -257,6 +257,25 @@ enum StopReason {
     Finalize,
 }
 
+/// Bounded send into the transcription pipeline. If the pipeline stops draining
+/// (its output consumer wedged on a half-open socket during a network hiccup),
+/// this mpsc backpressures indefinitely and freezes the session loop. Time it out
+/// so the session ends with an error instead of hanging the client forever.
+/// Returns `true` when the send FAILED (channel closed or timed out).
+async fn pipeline_send_failed<T>(tx: &tokio::sync::mpsc::Sender<T>, item: T) -> bool {
+    match tokio::time::timeout(crate::transport::WS_SEND_TIMEOUT, tx.send(item)).await {
+        Ok(Ok(())) => false,
+        Ok(Err(_)) => true,
+        Err(_) => {
+            tracing::warn!(
+                timeout_secs = crate::transport::WS_SEND_TIMEOUT.as_secs(),
+                "audio_pipeline_send_timed_out: transcription pipeline not draining, ending session"
+            );
+            true
+        }
+    }
+}
+
 async fn handle_websocket<E: SttEngine>(
     socket: axum::extract::ws::WebSocket,
     params: ListenParams,
@@ -300,11 +319,20 @@ async fn handle_websocket<E: SttEngine>(
                         break;
                     }
                     _ = keepalive.tick() => {
-                        // Best-effort: a failed send means the peer is gone, so
-                        // end the loop rather than spinning on a dead socket.
-                        if ws_sender.send(Message::Ping(Default::default())).await.is_err() {
-                            tracing::info!("websocket_keepalive_ping_failed_peer_gone");
-                            break;
+                        // Best-effort: a failed OR hung send means the peer/path
+                        // is gone, so end the loop rather than spinning on (or
+                        // blocking forever against) a dead socket.
+                        match tokio::time::timeout(
+                            crate::transport::WS_SEND_TIMEOUT,
+                            ws_sender.send(Message::Ping(Default::default())),
+                        )
+                        .await
+                        {
+                            Ok(Ok(())) => {}
+                            _ => {
+                                tracing::info!("websocket_keepalive_ping_failed_peer_gone");
+                                break;
+                            }
                         }
                     }
                     item = stream.next() => {
@@ -390,7 +418,7 @@ async fn handle_websocket<E: SttEngine>(
                                     continue;
                                 }
                                 channel_audio_durations[0] += samples.len() as f64 / TARGET_SAMPLE_RATE as f64;
-                                if audio_txs[0].send(samples).await.is_err() {
+                                if pipeline_send_failed(&audio_txs[0], samples).await {
                                     send_ws_best_effort(
                                         &mut ws_sender,
                                         &StreamResponse::ErrorResponse {
@@ -407,7 +435,7 @@ async fn handle_websocket<E: SttEngine>(
                                 if total_channels >= 2 {
                                     channel_audio_durations[0] += ch0.len() as f64 / TARGET_SAMPLE_RATE as f64;
                                     channel_audio_durations[1] += ch1.len() as f64 / TARGET_SAMPLE_RATE as f64;
-                                    if audio_txs[0].send(ch0).await.is_err() || audio_txs[1].send(ch1).await.is_err() {
+                                    if pipeline_send_failed(&audio_txs[0], ch0).await || pipeline_send_failed(&audio_txs[1], ch1).await {
                                         send_ws_best_effort(
                                             &mut ws_sender,
                                             &StreamResponse::ErrorResponse {
@@ -422,7 +450,7 @@ async fn handle_websocket<E: SttEngine>(
                                 } else {
                                     let mixed = mono_mixdown.mix(&ch0, &ch1);
                                     channel_audio_durations[0] += mixed.len() as f64 / TARGET_SAMPLE_RATE as f64;
-                                    if !mixed.is_empty() && audio_txs[0].send(mixed).await.is_err() {
+                                    if !mixed.is_empty() && pipeline_send_failed(&audio_txs[0], mixed).await {
                                         send_ws_best_effort(
                                             &mut ws_sender,
                                             &StreamResponse::ErrorResponse {
