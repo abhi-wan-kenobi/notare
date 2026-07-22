@@ -1,3 +1,4 @@
+use axum::Json;
 use axum::response::{Html, IntoResponse};
 
 /// `GET /` — the embedded web admin page (Phase 3, `docs/stt-server-design.md`
@@ -5,6 +6,19 @@ use axum::response::{Html, IntoResponse};
 /// `/api/status` and `/api/models` itself once loaded in the browser.
 pub async fn index() -> impl IntoResponse {
     Html(crate::assets::INDEX_HTML)
+}
+
+/// `GET /dashboard` — live processing view. Static page that polls
+/// `/api/sessions` and draws the current session's throughput (a flat line = a
+/// stall) plus recent-session history.
+pub async fn dashboard() -> impl IntoResponse {
+    Html(crate::assets::DASHBOARD_HTML)
+}
+
+/// `GET /api/sessions` — snapshot of live + recent transcription activity from
+/// the process-global registry in `hypr_transcribe_core`.
+pub async fn sessions_handler() -> impl IntoResponse {
+    Json(hypr_transcribe_core::activity::registry().snapshot())
 }
 
 #[cfg(test)]

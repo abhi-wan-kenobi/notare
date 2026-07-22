@@ -6,7 +6,7 @@ use axum::{
     http::StatusCode,
     response::{
         IntoResponse, Response,
-        sse::{Event, Sse},
+        sse::{Event, KeepAlive, Sse},
     },
 };
 use futures_util::{SinkExt, stream::SplitSink};
@@ -15,6 +15,15 @@ use owhisper_interface::stream::StreamResponse;
 use tokio::sync::mpsc;
 
 pub type WsSender = SplitSink<WebSocket, Message>;
+
+/// A single WS write must never block forever. A half-open socket — e.g. a
+/// Tailscale path hiccup / DERP flap mid-stream — can leave `sender.send().await`
+/// pending indefinitely, which silently freezes the entire session `select!`
+/// loop (the client hangs at ~88% with no error). Bounding each write surfaces a
+/// stuck connection as a normal send-failure instead of an infinite hang. The
+/// window sits well above the 15s keepalive so a healthy-but-slow write is never
+/// tripped.
+pub const WS_SEND_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(20);
 
 pub async fn send_ws(sender: &mut WsSender, value: &StreamResponse) -> bool {
     let payload = match serde_json::to_string(value) {
@@ -25,7 +34,16 @@ pub async fn send_ws(sender: &mut WsSender, value: &StreamResponse) -> bool {
         }
     };
 
-    sender.send(Message::Text(payload.into())).await.is_ok()
+    match tokio::time::timeout(WS_SEND_TIMEOUT, sender.send(Message::Text(payload.into()))).await {
+        Ok(result) => result.is_ok(),
+        Err(_) => {
+            tracing::warn!(
+                timeout_secs = WS_SEND_TIMEOUT.as_secs(),
+                "ws_send_timed_out: write blocked past the timeout; treating the connection as broken"
+            );
+            false
+        }
+    }
 }
 
 pub async fn send_ws_best_effort(sender: &mut WsSender, value: &StreamResponse) {
@@ -37,7 +55,15 @@ pub async fn send_ws_best_effort(sender: &mut WsSender, value: &StreamResponse) 
         }
     };
 
-    let _ = sender.send(Message::Text(payload.into())).await;
+    if tokio::time::timeout(WS_SEND_TIMEOUT, sender.send(Message::Text(payload.into())))
+        .await
+        .is_err()
+    {
+        tracing::warn!(
+            timeout_secs = WS_SEND_TIMEOUT.as_secs(),
+            "ws_send_best_effort_timed_out: write blocked past the timeout"
+        );
+    }
 }
 
 pub fn json_error_response(status: StatusCode, error: &str, detail: impl Into<String>) -> Response {
@@ -67,7 +93,15 @@ pub fn batch_sse_response(event_rx: mpsc::UnboundedReceiver<BatchSseMessage>) ->
         })
     });
 
-    Sse::new(events_stream).into_response()
+    // Keep the SSE connection alive during processing gaps: a batch
+    // re-transcription can go quiet between chunks / while finalizing, and an
+    // idle Tailscale-Serve/proxy path can silently tear the connection down —
+    // freezing the client mid-progress. Periodic keep-alive comments hold the
+    // path open and surface a genuinely dead socket as a stream end (which the
+    // client can retry) instead of an invisible hang.
+    Sse::new(events_stream)
+        .keep_alive(KeepAlive::new().interval(std::time::Duration::from_secs(15)))
+        .into_response()
 }
 
 pub fn format_timestamp_now() -> String {

@@ -20661,6 +20661,7 @@ dependencies = [
  "model-manager",
  "owhisper-interface",
  "rodio",
+ "serde",
  "serde_html_form 0.4.0",
  "serde_json",
  "tempfile",

@@ -37,6 +37,13 @@ cuda = [
     "hypr-transcribe-whisper-local/cuda",
     "hypr-whisper-local/cuda",
 ]
+# AMD ROCm/HIP backend (whisper.cpp HIP). Build with AMDGPU_TARGETS=gfx1030 for
+# the RX 6600 (gfx1032) and run with HSA_OVERRIDE_GFX_VERSION=10.3.0 — the same
+# recipe proven on this GPU by the Voxtral ROCm spike.
+hipblas = [
+    "hypr-transcribe-whisper-local/hipblas",
+    "hypr-whisper-local/hipblas",
+]
 
 [dev-dependencies]
 reqwest = { workspace = true, features = ["json"] }

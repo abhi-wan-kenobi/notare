@@ -207,6 +207,11 @@ where
         .fold(0.0_f64, f64::max);
 
     let metadata = build_metadata::<E>(model_path);
+    // Register this batch (re-transcription) session for the live dashboard. The
+    // guard ends it on any return path. Runs in a spawn_blocking thread, but the
+    // registry is a sync Mutex, so this is safe.
+    let _activity =
+        crate::activity::begin_guarded(metadata.request_id.clone(), E::arch().to_string());
     let mut session = build_session(engine, params)?;
     let channel_durations = channel_samples
         .iter()
@@ -284,6 +289,9 @@ fn transcribe_chunks<S: SttEngineSession>(
         progress.update_channel(channel_idx, chunk_start_sec);
 
         let segments = transcribe_chunk(session, &chunk.samples, chunk_start_sec)?;
+        // Live-dashboard progress: advances per processed chunk. If a chunk hangs,
+        // last-activity freezes here and the graph flatlines at this position.
+        crate::activity::registry().progress(chunk_start_sec);
         for segment in segments {
             cumulative_confidence += segment.confidence;
             segment_count += 1;

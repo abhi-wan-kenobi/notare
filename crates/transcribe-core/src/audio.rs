@@ -30,9 +30,58 @@ where
     C: Chunker,
 {
     let chunks = chunker.chunk(samples, TARGET_SAMPLE_RATE)?;
-    let mut normalized = Vec::new();
+    let total = samples.len();
 
-    for chunk in chunks {
+    // --- Pack adjacent VAD chunks up toward MAX_CHUNK_SAMPLES ----------------
+    // whisper.cpp's GPU encoder always computes over a fixed 30s window, so its
+    // per-call cost is ~constant regardless of chunk length. The VAD produces one
+    // chunk per utterance/breath, so a long recording became *hundreds* of tiny
+    // calls — each paying the full fixed cost — collapsing batch throughput to
+    // ~1x even though the GPU can do ~8x. Group adjacent chunks whose combined
+    // span stays within the cap and transcribe the ORIGINAL contiguous audio for
+    // that span (including the inter-utterance silence), so each whisper call
+    // amortizes the fixed cost over ~25s and word timings still map to the real
+    // timeline (offsets are relative to the packed chunk's sample_start).
+    let mut packed: Vec<AudioChunk> = Vec::new();
+    let mut group_start: Option<usize> = None;
+    let mut group_end: usize = 0;
+    for chunk in &chunks {
+        match group_start {
+            Some(gs) if chunk.sample_end.saturating_sub(gs) <= MAX_CHUNK_SAMPLES => {
+                group_end = chunk.sample_end;
+            }
+            Some(gs) => {
+                let end = group_end.min(total);
+                if end > gs {
+                    packed.push(AudioChunk {
+                        samples: samples[gs..end].to_vec(),
+                        sample_start: gs,
+                        sample_end: end,
+                    });
+                }
+                group_start = Some(chunk.sample_start);
+                group_end = chunk.sample_end;
+            }
+            None => {
+                group_start = Some(chunk.sample_start);
+                group_end = chunk.sample_end;
+            }
+        }
+    }
+    if let Some(gs) = group_start {
+        let end = group_end.min(total);
+        if end > gs {
+            packed.push(AudioChunk {
+                samples: samples[gs..end].to_vec(),
+                sample_start: gs,
+                sample_end: end,
+            });
+        }
+    }
+
+    // --- Split any packed group still over the cap (a single >25s utterance) --
+    let mut normalized = Vec::new();
+    for chunk in packed {
         if chunk.samples.len() <= MAX_CHUNK_SAMPLES {
             normalized.push(chunk);
             continue;
@@ -140,7 +189,11 @@ mod tests {
             }],
         };
 
-        let chunks = chunk_channel_audio_with(&vec![0.0; oversized], &mut chunker).unwrap();
+        let chunks = chunk_channel_audio_with(
+            &vec![0.0; TARGET_SAMPLE_RATE as usize * 2 + oversized],
+            &mut chunker,
+        )
+        .unwrap();
 
         assert_eq!(chunks.len(), 2);
         assert_eq!(chunks[0].sample_start, TARGET_SAMPLE_RATE as usize * 2);
@@ -154,6 +207,7 @@ mod tests {
 
     #[test]
     fn resolved_progress_uses_sample_offsets() {
+        // Chunks spaced >25s apart so the packing pass keeps them separate.
         let mut chunker = FakeChunker {
             chunks: vec![
                 AudioChunk {
@@ -163,18 +217,43 @@ mod tests {
                 },
                 AudioChunk {
                     samples: vec![0.0; TARGET_SAMPLE_RATE as usize * 3],
-                    sample_start: TARGET_SAMPLE_RATE as usize * 8,
-                    sample_end: TARGET_SAMPLE_RATE as usize * 11,
+                    sample_start: TARGET_SAMPLE_RATE as usize * 40,
+                    sample_end: TARGET_SAMPLE_RATE as usize * 43,
                 },
             ],
         };
 
         let chunks =
-            chunk_channel_audio_with(&vec![0.0; TARGET_SAMPLE_RATE as usize * 11], &mut chunker)
+            chunk_channel_audio_with(&vec![0.0; TARGET_SAMPLE_RATE as usize * 45], &mut chunker)
                 .unwrap();
 
-        assert_eq!(initial_resolved_until(&chunks, 20.0), 4.0);
-        assert_eq!(next_resolved_until(&chunks, 0, 20.0), 8.0);
-        assert_eq!(next_resolved_until(&chunks, 1, 20.0), 20.0);
+        assert_eq!(chunks.len(), 2);
+        assert_eq!(initial_resolved_until(&chunks, 45.0), 4.0);
+        assert_eq!(next_resolved_until(&chunks, 0, 45.0), 40.0);
+        assert_eq!(next_resolved_until(&chunks, 1, 45.0), 45.0);
+    }
+
+    #[test]
+    fn adjacent_chunks_pack_into_one_call() {
+        // Ten 1s utterance chunks within a 25s span must pack into ONE whisper
+        // call (the fixed-30s-window amortization fix). Each is offset 2s apart,
+        // so the packed chunk spans 0..19s of the original contiguous audio.
+        let chunks: Vec<AudioChunk> = (0..10usize)
+            .map(|i| AudioChunk {
+                samples: vec![0.0; TARGET_SAMPLE_RATE as usize],
+                sample_start: TARGET_SAMPLE_RATE as usize * 2 * i,
+                sample_end: TARGET_SAMPLE_RATE as usize * 2 * i + TARGET_SAMPLE_RATE as usize,
+            })
+            .collect();
+        let mut chunker = FakeChunker { chunks };
+
+        let out =
+            chunk_channel_audio_with(&vec![0.0; TARGET_SAMPLE_RATE as usize * 20], &mut chunker)
+                .unwrap();
+
+        assert_eq!(out.len(), 1, "adjacent short chunks should pack into one call");
+        assert_eq!(out[0].sample_start, 0);
+        assert_eq!(out[0].sample_end, TARGET_SAMPLE_RATE as usize * 19);
+        assert_eq!(out[0].samples.len(), TARGET_SAMPLE_RATE as usize * 19);
     }
 }
