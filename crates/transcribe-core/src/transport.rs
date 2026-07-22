@@ -6,7 +6,7 @@ use axum::{
     http::StatusCode,
     response::{
         IntoResponse, Response,
-        sse::{Event, Sse},
+        sse::{Event, KeepAlive, Sse},
     },
 };
 use futures_util::{SinkExt, stream::SplitSink};
@@ -93,7 +93,15 @@ pub fn batch_sse_response(event_rx: mpsc::UnboundedReceiver<BatchSseMessage>) ->
         })
     });
 
-    Sse::new(events_stream).into_response()
+    // Keep the SSE connection alive during processing gaps: a batch
+    // re-transcription can go quiet between chunks / while finalizing, and an
+    // idle Tailscale-Serve/proxy path can silently tear the connection down —
+    // freezing the client mid-progress. Periodic keep-alive comments hold the
+    // path open and surface a genuinely dead socket as a stream end (which the
+    // client can retry) instead of an invisible hang.
+    Sse::new(events_stream)
+        .keep_alive(KeepAlive::new().interval(std::time::Duration::from_secs(15)))
+        .into_response()
 }
 
 pub fn format_timestamp_now() -> String {
