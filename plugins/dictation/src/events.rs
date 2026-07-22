@@ -24,9 +24,7 @@ pub enum DictationPhase {
 
 /// Where recognized speech goes (mirrors the `dictation_output_mode` setting;
 /// serialized as `"type"` / `"batch"` so the two representations match).
-#[derive(
-    Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, specta::Type,
-)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "kebab-case")]
 pub enum DictationOutputMode {
     /// Final transcript segments are typed into the focused app as they
@@ -52,6 +50,20 @@ pub struct DictationStateEvent {
     /// Output mode of the running session (the orb shows a subtle hint while
     /// batch mode records). `type` when idle.
     pub mode: DictationOutputMode,
+}
+
+/// High-frequency (~30 Hz) microphone amplitude channel, broadcast alongside
+/// [`DictationStateEvent`] while a session is listening. Deliberately a
+/// separate, thinner event from the state broadcast: the orb's visual
+/// responsiveness wants a much denser amplitude stream (~30 Hz) than the 10 Hz
+/// lifecycle/state cadence, and pushing state at 30 Hz would spam re-renders.
+/// The frontend consumes this into a ref (no React state) so it never triggers
+/// a render; a later PR feeds it to a RAF envelope follower for the orb ring.
+/// `amplitude` is the same RMS -> dB -> [0, 1] value the state event carries.
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(rename_all = "camelCase")]
+pub struct DictationAmplitudeEvent {
+    pub amplitude: f32,
 }
 
 /// Emitted by the orb webview when the user clicks the orb; the main window
