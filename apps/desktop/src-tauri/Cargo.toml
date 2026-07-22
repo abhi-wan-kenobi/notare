@@ -76,6 +76,7 @@ tauri-plugin-sidecar2 = { workspace = true }
 tauri-plugin-single-instance = { workspace = true }
 tauri-plugin-store = { workspace = true }
 tauri-plugin-store2 = { workspace = true }
+tauri-plugin-embedding-search = { workspace = true }
 tauri-plugin-tantivy = { workspace = true }
 tauri-plugin-template = { workspace = true }
 tauri-plugin-todo = { workspace = true }
@@ -93,6 +94,7 @@ hypr-db-core = { workspace = true }
 hypr-diarization = { workspace = true }
 hypr-host = { workspace = true }
 hypr-storage = { workspace = true }
+hypr-text-embedding = { workspace = true }
 hypr-supervisor = { workspace = true }
 
 dirs = { workspace = true }
