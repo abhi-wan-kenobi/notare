@@ -1,25 +1,56 @@
 mod commands;
+pub mod delivery;
 mod error;
 mod ext;
 mod openapi;
+pub mod types;
 
 pub use error::*;
 pub use ext::*;
 pub use openapi::*;
 
+use std::collections::VecDeque;
+use std::sync::Mutex;
+use std::time::Duration;
+
 const PLUGIN_NAME: &str = "webhook";
 
 use tauri::Manager;
 
-#[derive(Default)]
-pub struct State {}
+/// Plugin runtime state: a shared HTTP client and the in-memory delivery log.
+pub struct State {
+    pub client: reqwest::Client,
+    pub log: Mutex<VecDeque<types::DeliveryRecord>>,
+}
+
+impl Default for State {
+    fn default() -> Self {
+        let client = reqwest::Client::builder()
+            .timeout(Duration::from_secs(15))
+            .connect_timeout(Duration::from_secs(10))
+            .user_agent(concat!("notare-webhook/", env!("CARGO_PKG_VERSION")))
+            .build()
+            .unwrap_or_else(|_| reqwest::Client::new());
+
+        Self {
+            client,
+            log: Mutex::new(VecDeque::with_capacity(types::DELIVERY_LOG_CAP)),
+        }
+    }
+}
 
 fn make_specta_builder() -> tauri_specta::Builder<tauri::Wry> {
     tauri_specta::Builder::<tauri::Wry>::new()
         .plugin_name(PLUGIN_NAME)
         .events(tauri_specta::collect_events![])
         .commands(tauri_specta::collect_commands![
-            commands::todo::<tauri::Wry>,
+            commands::get_settings::<tauri::Wry>,
+            commands::set_settings::<tauri::Wry>,
+            commands::set_secret::<tauri::Wry>,
+            commands::clear_secret::<tauri::Wry>,
+            commands::recent_deliveries::<tauri::Wry>,
+            commands::send_webhook::<tauri::Wry>,
+            commands::test_webhook::<tauri::Wry>,
         ])
         .error_handling(tauri_specta::ErrorHandlingMode::Result)
 }

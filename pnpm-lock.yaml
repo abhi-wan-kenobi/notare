@@ -214,6 +214,9 @@ importers:
       '@hypr/plugin-updater2':
         specifier: workspace:*
         version: link:../../plugins/updater2
+      '@hypr/plugin-webhook':
+        specifier: workspace:*
+        version: link:../../plugins/webhook
       '@hypr/plugin-windows':
         specifier: workspace:*
         version: link:../../plugins/windows

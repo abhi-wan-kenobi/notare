@@ -1,3 +1,11 @@
 [default]
 description = "Default permissions for the plugin"
-permissions = []
+permissions = [
+    "allow-get-settings",
+    "allow-set-settings",
+    "allow-set-secret",
+    "allow-clear-secret",
+    "allow-recent-deliveries",
+    "allow-send-webhook",
+    "allow-test-webhook",
+]

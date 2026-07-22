@@ -4889,6 +4889,7 @@ dependencies = [
  "tauri-plugin-transcription",
  "tauri-plugin-updater",
  "tauri-plugin-updater2",
+ "tauri-plugin-webhook",
  "tauri-plugin-window-state",
  "tauri-plugin-windows",
  "tauri-specta",
@@ -19507,15 +19508,22 @@ dependencies = [
 name = "tauri-plugin-webhook"
 version = "0.1.0"
 dependencies = [
+ "chrono",
+ "hex",
+ "hmac 0.13.0",
+ "reqwest 0.13.4",
  "serde",
  "serde_json",
+ "sha2 0.11.0",
  "specta",
  "specta-typescript",
  "strum 0.28.0",
  "tauri",
  "tauri-plugin",
+ "tauri-plugin-store2",
  "tauri-specta",
  "thiserror 2.0.18",
+ "tokio",
  "utoipa",
  "uuid",
 ]
