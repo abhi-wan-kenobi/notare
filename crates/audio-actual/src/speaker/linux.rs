@@ -15,10 +15,7 @@ use pulse::sample::{Format, Spec};
 use pulse::stream::{FlagSet as StreamFlagSet, Stream as PaStream};
 use pw::properties::properties;
 use pw::spa::utils::Direction;
-use ringbuf::{
-    HeapCons, HeapProd, HeapRb,
-    traits::{Producer, Split},
-};
+use ringbuf::{HeapCons, HeapProd, HeapRb, traits::Split};
 
 use crate::async_ring::RingbufAsyncReader;
 use crate::rt_ring::push_f32le_bytes_first_channel_to_ringbuf;

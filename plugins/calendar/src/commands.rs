@@ -3,6 +3,10 @@ use hypr_calendar_interface::{
 };
 use tauri::Manager;
 use tauri_plugin_auth::AuthPluginExt;
+// Only used by the macOS calendar-permission check below; gate the import to the
+// same cfg so non-macOS builds don't see it as unused (it looks dead on Linux —
+// the .permissions() call is in a #[cfg(target_os = "macos")] block).
+#[cfg(target_os = "macos")]
 use tauri_plugin_permissions::PermissionsPluginExt;
 
 use crate::error::Error;
