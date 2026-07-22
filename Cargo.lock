@@ -17343,6 +17343,7 @@ dependencies = [
  "anyhow",
  "axum 0.8.9",
  "clap",
+ "data",
  "local-model",
  "model-downloader",
  "reqwest 0.13.4",
