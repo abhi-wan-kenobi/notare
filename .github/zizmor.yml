@@ -1,0 +1,9 @@
+# zizmor configuration — https://docs.zizmor.sh/configuration/
+rules:
+  cache-poisoning:
+    ignore:
+      # The release workflow is tag-triggered (maintainer-only) and uses branch-scoped
+      # build caches (Swatinem/rust-cache, setup-node). The cache-poisoning risk is a
+      # known, accepted trade-off against the already-long release build times. Revisit
+      # with a release-isolated cache scope if the threat model changes.
+      - release.yaml

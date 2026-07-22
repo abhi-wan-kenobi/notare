@@ -9,11 +9,16 @@ on:
     paths:
       - crates/llm-proxy/**
 
+permissions:
+  contents: read
+
 jobs:
   proxy-non-streaming:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: ./.github/actions/rust_install
         with:
           platform: linux
@@ -28,6 +33,8 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: ./.github/actions/rust_install
         with:
           platform: linux

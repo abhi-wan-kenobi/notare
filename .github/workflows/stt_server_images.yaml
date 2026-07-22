@@ -33,11 +33,13 @@ jobs:
         variant: [cpu, vulkan, cuda]
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       # CUDA base images are large; reclaim runner disk before building.
       - name: Free disk space
         if: matrix.variant == 'cuda'
-        uses: jlumbroso/free-disk-space@v1.3.1
+        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be # v1.3.1
         with:
           tool-cache: true
           large-packages: false
