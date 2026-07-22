@@ -289,6 +289,11 @@ jobs:
       - uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
         with:
           name: Notare ${{ github.ref_name }}
+          # Any tag with a pre-release suffix (e.g. v0.4.1-rc1) is published as a
+          # GitHub pre-release, so `releases/latest` (and the updater's latest.json
+          # endpoint) keep pointing at the newest STABLE release — an rc never
+          # auto-updates production users.
+          prerelease: ${{ contains(github.ref_name, '-') }}
           generate_release_notes: true
           body: |
             > **macOS (Apple Silicon only for now):** the `.dmg` is **unsigned**
