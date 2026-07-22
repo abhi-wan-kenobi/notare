@@ -22,9 +22,32 @@ use serde::{Deserialize, Serialize};
 use tauri::Manager;
 use tauri_plugin_store2::Store2PluginExt;
 
+#[cfg(target_os = "macos")]
+use tauri_nspanel::tauri_panel;
+
 use crate::error::Error;
 
 pub const WINDOW_LABEL: &str = "dictation";
+
+/// BUG 1 fix (macOS): the orb is an `NSPanel` with the `.nonactivatingPanel`
+/// style mask, NOT a plain `NSWindow`. `.focusable(false)` on a plain
+/// `NSWindow` does not stop AppKit's "click a background app's window ->
+/// activate the app" behavior, so every orb click raised the app. A real
+/// `NSPanel` styled `nonactivatingPanel` receives the click without
+/// activating. The orb must NOT become key (it is non-focusable, unlike
+/// `plugins/windows/src/window/composer.rs::ComposerPanel` which sets
+/// `can_become_key_window: true`), so it never steals keyboard focus from
+/// the app receiving the dictated text.
+#[cfg(target_os = "macos")]
+tauri_panel! {
+    panel!(OrbPanel {
+        config: {
+            can_become_key_window: false,
+            can_become_main_window: false,
+            is_floating_panel: true,
+        }
+    })
+}
 
 /// Logical window size the orb is CREATED at (the cobalt-variant chassis).
 /// The orb webview resizes the window per orb variant once it knows the
@@ -91,10 +114,41 @@ pub fn app_handle() -> Result<&'static tauri::AppHandle<tauri::Wry>, Error> {
 pub fn show() -> Result<(), Error> {
     let app = app_handle()?;
     let window = get_or_create_window(app)?;
-    window.show().map_err(|error| {
-        tracing::error!(%error, label = WINDOW_LABEL, "failed to show dictation orb window");
-        Error::OrbWindow(error.to_string())
-    })?;
+
+    // BUG 2 fix: re-clamp on every show so a monitor unplug/dock/DPI change
+    // that left the persisted position off-screen self-heals here instead of
+    // needing an app restart. `restore_position` previously ran only on the
+    // fresh-build path (`get_or_create_window`), so a reused orb kept stale,
+    // now-off-screen coordinates forever.
+    restore_position(app, &window);
+
+    #[cfg(target_os = "macos")]
+    {
+        // BUG 1 fix: show through the NSPanel handle, not the plain webview
+        // window, so the non-activating panel appears without raising the app.
+        // Use `show()` (not `show_and_make_key()`): the orb must never become
+        // key (it is non-focusable).
+        use tauri_nspanel::ManagerExt;
+
+        let app_clone = app.clone();
+        let handle = app.clone();
+        run_on_main_thread(&handle, move || {
+            let panel = app_clone
+                .get_webview_panel(WINDOW_LABEL)
+                .map_err(|error| Error::OrbWindow(format!("{error:?}")))?;
+            panel.show();
+            Ok::<(), Error>(())
+        })??;
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        window.show().map_err(|error| {
+            tracing::error!(%error, label = WINDOW_LABEL, "failed to show dictation orb window");
+            Error::OrbWindow(error.to_string())
+        })?;
+    }
+
     let _ = window.set_always_on_top(true);
 
     // The caption window rides along hidden; its webview shows it only while
@@ -116,11 +170,31 @@ pub fn hide() -> Result<(), Error> {
     if let Some(caption) = app.get_webview_window(CAPTION_WINDOW_LABEL) {
         let _ = caption.hide();
     }
-    if let Some(window) = app.get_webview_window(WINDOW_LABEL) {
-        window
-            .hide()
-            .map_err(|error| Error::OrbWindow(error.to_string()))?;
+
+    #[cfg(target_os = "macos")]
+    {
+        // BUG 1 fix: hide through the NSPanel handle for parity with `show()`.
+        use tauri_nspanel::ManagerExt;
+
+        let app_clone = app.clone();
+        let handle = app.clone();
+        let _ = run_on_main_thread(&handle, move || {
+            if let Ok(panel) = app_clone.get_webview_panel(WINDOW_LABEL) {
+                panel.hide();
+            }
+            Ok::<(), Error>(())
+        });
     }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        if let Some(window) = app.get_webview_window(WINDOW_LABEL) {
+            window
+                .hide()
+                .map_err(|error| Error::OrbWindow(error.to_string()))?;
+        }
+    }
+
     Ok(())
 }
 
@@ -132,7 +206,13 @@ fn get_or_create_window(
         // the manager as a "ghost": commands against it are silently dropped.
         // Probe it through the event loop; recreate if it has no OS backing.
         match window.is_visible() {
-            Ok(_) => return Ok(window),
+            Ok(_) => {
+                // BUG 2 fix: the reuse path also re-clamps, so a monitor
+                // change that stranded the orb off-screen self-heals without an
+                // app restart (previously only the fresh-build path clamped).
+                restore_position(app, &window);
+                return Ok(window);
+            }
             Err(error) => {
                 tracing::warn!(
                     %error,
@@ -166,51 +246,147 @@ fn get_or_create_window(
 
     restore_position(app, &window);
     watch_moves(&window);
-    apply_macos_orb_traits(&window);
 
     Ok(window)
 }
 
-/// macOS-only: the webview builder cannot express the NSPanel collection-
-/// behavior traits the orb needs to stay put. `visible_on_all_workspaces(true)`
-/// already set `CanJoinAllSpaces`, but without `FullScreenAuxiliary` the orb
-/// vanishes over full-screen apps, and without `Stationary` it drifts/hides
-/// when the user switches Spaces. Mirror the meeting bar
-/// (`plugins/windows/src/window/floating_bar.rs::apply_macos_panel_traits`).
-/// No-op off macOS.
+/// Run `f` on the AppKit main thread and return its value. Mirrors
+/// `plugins/windows/src/ext::run_on_main_thread` (the dictation plugin has no
+/// equivalent): the macOS panel build/show/hide must happen on the main thread.
+/// macOS-only.
 #[cfg(target_os = "macos")]
-fn apply_macos_orb_traits(window: &tauri::WebviewWindow<tauri::Wry>) {
-    use objc2_app_kit::{NSWindow, NSWindowCollectionBehavior};
+fn run_on_main_thread<R: Send + 'static>(
+    app: &tauri::AppHandle<tauri::Wry>,
+    f: impl FnOnce() -> R + Send + 'static,
+) -> Result<R, Error> {
+    let (tx, rx) = std::sync::mpsc::sync_channel(1);
 
-    let win = window.clone();
-    let result = window.app_handle().run_on_main_thread(move || {
-        let Ok(ptr) = win.ns_window() else {
-            return;
-        };
-        // SAFETY: `ns_window()` returns the live NSWindow owned by the still-
-        // alive tauri window; `run_on_main_thread` guarantees AppKit main-thread
-        // access.
-        unsafe {
-            let ns_window = &*(ptr as *mut NSWindow);
-            let mut behavior = ns_window.collectionBehavior();
-            behavior |= NSWindowCollectionBehavior::FullScreenAuxiliary;
-            behavior |= NSWindowCollectionBehavior::Stationary;
-            ns_window.setCollectionBehavior(behavior);
-        }
-    });
+    app.run_on_main_thread(move || {
+        let _ = tx.send(f());
+    })
+    .map_err(|error| Error::OrbWindow(format!("failed to schedule on main thread: {error}")))?;
 
-    if let Err(error) = result {
-        tracing::warn!(
+    rx.recv()
+        .map_err(|_| Error::OrbWindow("main thread panel callback dropped".to_string()))
+}
+
+#[cfg(target_os = "macos")]
+fn build_window(
+    app: &tauri::AppHandle<tauri::Wry>,
+    transparent: bool,
+) -> Result<tauri::WebviewWindow<tauri::Wry>, Error> {
+    // BUG 1 fix: build the orb as a real NSPanel (`.nonactivatingPanel` style
+    // mask) so clicking it never raises/activates the app. Mirrors
+    // `plugins/windows/src/window/composer.rs::create`. The collection-behavior
+    // bits `apply_macos_orb_traits` used to OR in by hand are set here at panel
+    // construction: `full_screen_auxiliary` + `can_join_all_spaces` +
+    // `stationary`, so the orb survives full-screen apps and Space switches.
+    use tauri::{LogicalPosition, LogicalSize, Position, Size, WebviewUrl};
+    use tauri_nspanel::{CollectionBehavior, PanelBuilder, PanelLevel, StyleMask};
+
+    let url = if transparent {
+        WINDOW_URL
+    } else {
+        SOLID_WINDOW_URL
+    };
+
+    let app_clone = app.clone();
+    let title = app
+        .config()
+        .product_name
+        .clone()
+        .unwrap_or_else(|| "Notare".to_string());
+
+    run_on_main_thread(app, move || {
+        PanelBuilder::<_, OrbPanel>::new(&app_clone, WINDOW_LABEL)
+            .url(WebviewUrl::App(url.into()))
+            .title(title)
+            .position(Position::Logical(LogicalPosition::new(0.0, 0.0)))
+            .size(Size::Logical(LogicalSize::new(ORB_SIZE, ORB_SIZE)))
+            .level(PanelLevel::Floating)
+            .has_shadow(false)
+            .collection_behavior(
+                CollectionBehavior::new()
+                    .full_screen_auxiliary()
+                    .can_join_all_spaces()
+                    .stationary(),
+            )
+            .hides_on_deactivate(false)
+            .works_when_modal(true)
+            .no_activate(true)
+            .with_window(move |window| {
+                let window = window
+                    .visible(false)
+                    .decorations(false)
+                    .transparent(transparent)
+                    .focused(false)
+                    .focusable(false)
+                    .accept_first_mouse(true)
+                    .skip_taskbar(true)
+                    .resizable(false)
+                    .maximizable(false)
+                    .minimizable(false);
+                if !transparent {
+                    window.background_color(SOLID_BACKGROUND)
+                } else {
+                    window
+                }
+            })
+            .style_mask(StyleMask::empty().nonactivating_panel())
+            .build()
+            .map_err(|error| {
+                tracing::error!(
+                    %error,
+                    label = WINDOW_LABEL,
+                    url,
+                    transparent,
+                    "failed to build dictation orb panel"
+                );
+                Error::OrbWindow(format!(
+                    "failed to create dictation orb panel `{WINDOW_LABEL}` (url `{url}`): {error}"
+                ))
+            })?;
+
+        Ok::<(), Error>(())
+    })??;
+
+    // PanelBuilder registers the underlying webview window under WINDOW_LABEL
+    // (same as composer.rs `ensure()`), so retrieve it for position/caption
+    // handling. Position is set later by `restore_position`, not at build time.
+    let window = app.get_webview_window(WINDOW_LABEL).ok_or_else(|| {
+        Error::OrbWindow("dictation orb panel did not register a webview window".to_string())
+    })?;
+
+    // Materialization probe (same rationale as the non-macOS path): a panel
+    // whose OS-side creation failed stays a ghost. `build()` ran on the main
+    // thread above, so this round-trips through the event loop and surfaces a
+    // failed creation as an error instead of an invisible panel.
+    if let Err(error) = window.is_visible() {
+        tracing::error!(
             %error,
             label = WINDOW_LABEL,
-            "failed to apply macOS collectionBehavior bits to the dictation orb"
+            url,
+            transparent,
+            "dictation orb panel did not materialize after build; check the \
+             log for `tauri_runtime_wry` window/webview creation errors"
         );
+        let _ = window.destroy();
+        return Err(Error::OrbWindow(format!(
+            "dictation orb panel `{WINDOW_LABEL}` was not created by the OS event loop: {error}"
+        )));
     }
+
+    tracing::info!(
+        label = WINDOW_LABEL,
+        url,
+        transparent,
+        "created dictation orb panel"
+    );
+
+    Ok(window)
 }
 
 #[cfg(not(target_os = "macos"))]
-fn apply_macos_orb_traits(_window: &tauri::WebviewWindow<tauri::Wry>) {}
-
 fn build_window(
     app: &tauri::AppHandle<tauri::Wry>,
     transparent: bool,
@@ -363,10 +539,7 @@ fn position_bottom_center(
 /// Place a newly created orb window at the persisted position (clamped to a
 /// visible monitor), falling back to the default bottom-center spot when
 /// nothing usable was saved (first run, or the saved monitor is gone).
-fn restore_position(
-    app: &tauri::AppHandle<tauri::Wry>,
-    window: &tauri::WebviewWindow<tauri::Wry>,
-) {
+fn restore_position(app: &tauri::AppHandle<tauri::Wry>, window: &tauri::WebviewWindow<tauri::Wry>) {
     if let Some(saved) = load_saved_position(app)
         && let Some(clamped) = clamp_to_visible_monitor(window, saved)
     {
@@ -623,8 +796,7 @@ fn sync_caption_position(
 
         x = x.clamp(
             monitor_position.x,
-            (monitor_position.x + monitor_size.width - CAPTION_WIDTH)
-                .max(monitor_position.x),
+            (monitor_position.x + monitor_size.width - CAPTION_WIDTH).max(monitor_position.x),
         );
         if y < monitor_position.y {
             // No room above (orb at the top edge): drop below the orb.
