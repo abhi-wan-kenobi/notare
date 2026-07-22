@@ -30,11 +30,11 @@ tauri-plugin-shortcut = { workspace = true }
 # longer wired to anything live).
 arboard = { workspace = true }
 bytes = { workspace = true }
-tauri-plugin-store2 = { workspace = true }
 enigo = { workspace = true }
 futures-util = { workspace = true }
 hypr-audio = { workspace = true }
 hypr-audio-utils = { workspace = true }
+hypr-transcribe-soniqo = { workspace = true }
 # "local" pulls in `LocalSoniqoLiveClient`: soniqo-*/am-* (Apple-native)
 # models have no WS server behind `base_url` (the sentinel `soniqo://local`),
 # so they are served in-process through the same Swift-bridge client the
@@ -42,11 +42,15 @@ hypr-audio-utils = { workspace = true }
 # instead of the generic `ListenClient` WS path below.
 owhisper-client = { workspace = true, features = ["local"] }
 owhisper-interface = { workspace = true }
-hypr-transcribe-soniqo = { workspace = true }
+tauri-plugin-store2 = { workspace = true }
 tokio = { workspace = true, features = ["macros", "rt", "sync", "time"] }
 tokio-stream = { workspace = true }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 hypr-dictation-ui-macos = { workspace = true }
-objc2 = { workspace = true }
-objc2-app-kit = { workspace = true, features = ["NSWindow"] }
+# BUG 1 fix: the orb must be a real NSPanel (`.nonactivatingPanel` style mask)
+# so clicking it never raises/activates the app. `focusable(false)` on a plain
+# NSWindow does NOT stop AppKit's "click a background app's window -> activate"
+# behavior. Mirrors `plugins/windows` (see `window/composer.rs`). macOS-gated:
+# the crate is an NSPanel/AppKit wrapper and won't compile on Linux.
+tauri-nspanel = { git = "https://github.com/ahkohd/tauri-nspanel", branch = "v2.1" }
