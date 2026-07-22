@@ -314,9 +314,13 @@ pub async fn window_restore_width(
         .get_mut(&window.label().to_string())
         .and_then(|stack| stack.pop());
 
-    let Some((previous_w, expanded_w, expand_left)) = entry else {
+    let Some(entry) = entry else {
         return Ok(());
     };
+    #[cfg(target_os = "macos")]
+    let (previous_w, expanded_w, expand_left) = entry;
+    #[cfg(not(target_os = "macos"))]
+    let (previous_w, expanded_w, _expand_left) = entry;
 
     #[cfg(target_os = "macos")]
     {
