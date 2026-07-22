@@ -27,6 +27,10 @@ export type CustomSttModel = {
   active: boolean;
   installed: boolean;
   corrupt: boolean;
+  // True when the server omitted `integrity` or reported a state we don't
+  // recognize — we can't confidently claim installed/not-installed, so the
+  // row renders neutrally instead of offering a misleading Download CTA.
+  unknown: boolean;
 };
 
 export type ListCustomSttModelsResult =
@@ -67,6 +71,24 @@ function authHeaders(apiKey: string): Record<string, string> {
   return headers;
 }
 
+// The server serializes `ModelIntegrity` as a serde-tagged object, not a bare
+// string: `{ "state": "verified" }` / `{ "state": "corrupt", "detail": "…" }`
+// (crates/model-downloader/src/integrity.rs derives
+// `#[serde(tag = "state", content = "detail")]`). Read `.state`; also tolerate a
+// plain string so an older/alternate server shape still classifies correctly.
+function readIntegrityState(raw: unknown): CustomSttModelIntegrity | undefined {
+  if (typeof raw === "string") {
+    return raw as CustomSttModelIntegrity;
+  }
+  if (typeof raw === "object" && raw !== null) {
+    const state = (raw as Record<string, unknown>).state;
+    if (typeof state === "string") {
+      return state as CustomSttModelIntegrity;
+    }
+  }
+  return undefined;
+}
+
 function parseCustomSttModel(raw: unknown): CustomSttModel | null {
   if (typeof raw !== "object" || raw === null) {
     return null;
@@ -77,12 +99,15 @@ function parseCustomSttModel(raw: unknown): CustomSttModel | null {
     return null;
   }
 
-  const integrity = record.integrity as CustomSttModelIntegrity | undefined;
+  const integrity = readIntegrityState(record.integrity);
   // "installed" covers verified files and present-but-unverified ones (still
   // usable); "notInstalled" needs a download; "corrupt" is re-downloadable.
   const installed =
     integrity === "verified" || integrity === "presentUnverified";
   const corrupt = integrity === "corrupt";
+  // Absent (`undefined`/`null`) or unrecognized integrity is "unknown": neither
+  // installed nor confidently not-installed, so it must not render as Download.
+  const unknown = !installed && !corrupt && integrity !== "notInstalled";
 
   return {
     id: record.id,
@@ -95,6 +120,7 @@ function parseCustomSttModel(raw: unknown): CustomSttModel | null {
     active: record.active === true,
     installed,
     corrupt,
+    unknown,
   };
 }
 
@@ -116,6 +142,7 @@ export function parseCustomSttModels(json: unknown): CustomSttModel[] {
 export async function listCustomSttModels(
   baseUrl: string,
   apiKey: string,
+  signal?: AbortSignal,
 ): Promise<ListCustomSttModelsResult> {
   const trimmedBaseUrl = baseUrl.trim();
   if (!trimmedBaseUrl) {
@@ -131,6 +158,18 @@ export async function listCustomSttModels(
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  // Thread react-query's AbortSignal in so a stale in-flight request (the URL
+  // or key changed mid-flight) is cancelled and its result ignored, keeping the
+  // loading/empty/error states mutually exclusive. We forward external aborts
+  // onto our own controller so the timeout still applies independently.
+  const onExternalAbort = () => controller.abort();
+  if (signal) {
+    if (signal.aborted) {
+      controller.abort();
+    } else {
+      signal.addEventListener("abort", onExternalAbort, { once: true });
+    }
+  }
 
   try {
     const response = await tauriFetch(url, {
@@ -147,7 +186,18 @@ export async function listCustomSttModels(
     const models = parseCustomSttModels(json);
     return { ok: true, models };
   } catch (error) {
-    if (error instanceof Error && error.name === "AbortError") {
+    // Aborts surface as a DOMException named "AbortError", which is NOT reliably
+    // `instanceof Error` (webview/jsdom differ), so match on `.name` directly.
+    const name =
+      typeof error === "object" && error !== null
+        ? (error as { name?: unknown }).name
+        : undefined;
+    if (name === "AbortError") {
+      // An abort triggered by the caller (not our timeout) means this query is
+      // stale; react-query discards the result anyway, so label it as such.
+      if (signal?.aborted) {
+        return { ok: false, error: "Cancelled." };
+      }
       return { ok: false, error: "Timed out waiting for a response." };
     }
     return {
@@ -156,6 +206,9 @@ export async function listCustomSttModels(
     };
   } finally {
     clearTimeout(timeout);
+    if (signal) {
+      signal.removeEventListener("abort", onExternalAbort);
+    }
   }
 }
 

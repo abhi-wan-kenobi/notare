@@ -104,6 +104,10 @@ msgid "Activate"
 msgstr ""
 
 #: src/settings/ai/stt/select.tsx
+msgid "Activated, but the server didn't confirm it as active."
+msgstr ""
+
+#: src/settings/ai/stt/select.tsx
 msgid "Active"
 msgstr ""
 
@@ -731,6 +735,10 @@ msgstr ""
 
 #: src/settings/ai/stt/select.tsx
 msgid "Download failed."
+msgstr ""
+
+#: src/settings/ai/stt/select.tsx
+msgid "Download stalled — retry."
 msgstr ""
 
 #: src/calendar/components/google/content.tsx
@@ -2481,6 +2489,7 @@ msgid "Type as you speak"
 msgstr ""
 
 #: src/session/components/note-input/transcript/renderer/speaker-assign.tsx
+#: src/settings/ai/stt/select.tsx
 msgid "Unknown"
 msgstr ""
 

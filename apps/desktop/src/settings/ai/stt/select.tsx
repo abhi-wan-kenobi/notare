@@ -362,7 +362,7 @@ export function SelectBatchModel() {
  * stays available below so an unreachable server or an unlisted id never
  * regresses the manual workflow.
  */
-function CustomSttModelSection({
+export function CustomSttModelSection({
   baseUrl,
   apiKey,
   selectedId,
@@ -380,7 +380,8 @@ function CustomSttModelSection({
 
   const modelsQuery = useQuery({
     queryKey,
-    queryFn: () => listCustomSttModels(trimmedBaseUrl, apiKey),
+    queryFn: ({ signal }) =>
+      listCustomSttModels(trimmedBaseUrl, apiKey, signal),
     enabled: trimmedBaseUrl.length > 0,
     staleTime: 1000 * 5,
     retry: false,
@@ -443,6 +444,10 @@ function CustomSttModelSection({
   );
 }
 
+// After this many consecutive null/failed progress polls, stop polling and
+// surface a "download stalled — retry" state instead of spinning forever.
+export const PROGRESS_MAX_CONSECUTIVE_FAILURES = 5;
+
 function CustomSttModelRow({
   model,
   baseUrl,
@@ -484,7 +489,7 @@ function CustomSttModelRow({
     }
   };
 
-  const pollProgress = () => {
+  const pollProgress = (consecutiveFailures = 0) => {
     stopPolling();
     pollRef.current = setTimeout(async () => {
       const progress = await fetchCustomSttModelProgress(
@@ -493,9 +498,16 @@ function CustomSttModelRow({
         model.id,
       );
       if (!progress) {
-        // Can't read progress — keep the indeterminate spinner going and
-        // retry; the download itself may still be running server-side.
-        pollProgress();
+        // Can't read progress — the download may still be running server-side,
+        // so retry. But bound it: after N consecutive failed polls the server
+        // is likely gone, so stop spinning forever and surface a retry state
+        // via the existing error display instead of an infinite spinner.
+        if (consecutiveFailures + 1 >= PROGRESS_MAX_CONSECUTIVE_FAILURES) {
+          setDownloadPercent(null);
+          setError(t`Download stalled — retry.`);
+          return;
+        }
+        pollProgress(consecutiveFailures + 1);
         return;
       }
 
@@ -512,7 +524,8 @@ function CustomSttModelRow({
       }
 
       setDownloadPercent(progress.percent ?? downloadPercent);
-      pollProgress();
+      // A successful poll resets the failure streak.
+      pollProgress(0);
     }, 1500);
   };
 
@@ -537,9 +550,28 @@ function CustomSttModelRow({
     setError(null);
     setActivating(true);
     const result = await activateCustomSttModel(baseUrl, apiKey, model.id);
-    setActivating(false);
     if (!result.ok) {
+      setActivating(false);
       setError(result.error);
+      return;
+    }
+    // A 200 only means the server accepted the request, not that the model is
+    // actually active. Refetch and confirm the server reports this model as
+    // active before treating it as such; otherwise warn and refresh the list
+    // so the row reflects the real state instead of a false "Active".
+    const verified = await listCustomSttModels(baseUrl, apiKey);
+    setActivating(false);
+    if (!verified.ok) {
+      onDownloaded();
+      setError(t`Activated, but the server didn't confirm it as active.`);
+      return;
+    }
+    const confirmed = verified.models.some(
+      (m) => m.id === model.id && m.active,
+    );
+    if (!confirmed) {
+      onDownloaded();
+      setError(t`Activated, but the server didn't confirm it as active.`);
       return;
     }
     onActivated();
@@ -653,7 +685,7 @@ function CustomSttModelRow({
             )}
             <Trans>Activate</Trans>
           </Button>
-        ) : !model.installed || model.corrupt ? (
+        ) : !model.unknown && (!model.installed || model.corrupt) ? (
           <Button
             type="button"
             variant="outline"
@@ -709,6 +741,19 @@ function CustomSttModelStatusBadge({ model }: { model: CustomSttModel }) {
         ])}
       >
         <Trans>Installed</Trans>
+      </span>
+    );
+  }
+
+  if (model.unknown) {
+    return (
+      <span
+        className={cn([
+          "shrink-0 rounded-md border px-1.5 py-0.5 text-[10px] leading-none font-medium",
+          modelBadgeNeutralClassName,
+        ])}
+      >
+        <Trans>Unknown</Trans>
       </span>
     );
   }
