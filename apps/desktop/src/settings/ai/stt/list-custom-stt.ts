@@ -67,6 +67,24 @@ function authHeaders(apiKey: string): Record<string, string> {
   return headers;
 }
 
+// The server serializes `ModelIntegrity` as a serde-tagged object, not a bare
+// string: `{ "state": "verified" }` / `{ "state": "corrupt", "detail": "…" }`
+// (crates/model-downloader/src/integrity.rs derives
+// `#[serde(tag = "state", content = "detail")]`). Read `.state`; also tolerate a
+// plain string so an older/alternate server shape still classifies correctly.
+function readIntegrityState(raw: unknown): CustomSttModelIntegrity | undefined {
+  if (typeof raw === "string") {
+    return raw as CustomSttModelIntegrity;
+  }
+  if (typeof raw === "object" && raw !== null) {
+    const state = (raw as Record<string, unknown>).state;
+    if (typeof state === "string") {
+      return state as CustomSttModelIntegrity;
+    }
+  }
+  return undefined;
+}
+
 function parseCustomSttModel(raw: unknown): CustomSttModel | null {
   if (typeof raw !== "object" || raw === null) {
     return null;
@@ -77,7 +95,7 @@ function parseCustomSttModel(raw: unknown): CustomSttModel | null {
     return null;
   }
 
-  const integrity = record.integrity as CustomSttModelIntegrity | undefined;
+  const integrity = readIntegrityState(record.integrity);
   // "installed" covers verified files and present-but-unverified ones (still
   // usable); "notInstalled" needs a download; "corrupt" is re-downloadable.
   const installed =
