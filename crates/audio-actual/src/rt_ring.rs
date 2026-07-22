@@ -98,6 +98,7 @@ where
     }
 }
 
+#[cfg_attr(any(target_os = "linux", target_os = "windows"), allow(dead_code))]
 pub(crate) fn convert_and_push_to_ringbuf<T, P>(
     samples: &[T],
     scratch: &mut [f32],
@@ -148,6 +149,7 @@ where
     }
 }
 
+#[cfg_attr(any(target_os = "linux", target_os = "windows"), allow(dead_code))]
 pub(crate) fn push_f32_to_ringbuf<P>(data: &[f32], producer: &mut P) -> PushStats
 where
     P: Producer<Item = f32>,

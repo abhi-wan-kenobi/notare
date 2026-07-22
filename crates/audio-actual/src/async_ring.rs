@@ -7,6 +7,10 @@ use std::time::{Duration, Instant};
 
 pub(crate) struct PollNextSample {
     pub(crate) poll: Poll<Option<f32>>,
+    #[cfg_attr(
+        any(target_os = "linux", target_os = "windows"),
+        allow(dead_code)
+    )]
     pub(crate) did_pop_chunk: bool,
 }
 
@@ -16,6 +20,10 @@ pub(crate) struct PollNextSample {
 )]
 pub(crate) struct PollNextChunk {
     pub(crate) poll: Poll<Option<Vec<f32>>>,
+    #[cfg_attr(
+        any(target_os = "linux", target_os = "windows"),
+        allow(dead_code)
+    )]
     pub(crate) did_pop_chunk: bool,
 }
 
@@ -75,6 +83,10 @@ where
         self
     }
 
+    #[cfg_attr(
+        any(target_os = "linux", target_os = "windows"),
+        allow(dead_code)
+    )]
     pub(crate) fn has_buffered_samples(&self) -> bool {
         self.read_idx < self.read_len
     }

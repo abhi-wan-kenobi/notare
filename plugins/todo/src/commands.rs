@@ -78,25 +78,20 @@ pub async fn read_path<R: tauri::Runtime>(
     cursor: Option<String>,
 ) -> Result<ReadPathResult, Error> {
     match ReadPath::parse(&path)? {
+        #[cfg(target_os = "macos")]
         ReadPath::Apple(path) => {
-            #[cfg(target_os = "macos")]
-            {
-                let handle = hypr_apple_todo::Handle;
-                match handle.read_path(path)? {
-                    hypr_apple_todo::ReadPathResult::Lists(items) => {
-                        Ok(ReadPathResult::ReminderLists(items))
-                    }
-                    hypr_apple_todo::ReadPathResult::Reminders(items) => {
-                        Ok(ReadPathResult::Reminders(items))
-                    }
+            let handle = hypr_apple_todo::Handle;
+            match handle.read_path(path)? {
+                hypr_apple_todo::ReadPathResult::Lists(items) => {
+                    Ok(ReadPathResult::ReminderLists(items))
+                }
+                hypr_apple_todo::ReadPathResult::Reminders(items) => {
+                    Ok(ReadPathResult::Reminders(items))
                 }
             }
-
-            #[cfg(not(target_os = "macos"))]
-            {
-                Err(Error::UnsupportedPlatform)
-            }
         }
+        #[cfg(not(target_os = "macos"))]
+        ReadPath::Apple(_) => Err(Error::UnsupportedPlatform),
         ReadPath::LinearTeams { connection_id } => {
             let config = app.state::<crate::PluginConfig>();
             let token = require_access_token(&app)?;

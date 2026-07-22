@@ -6,12 +6,6 @@ pub enum Error {
     PosthogError(String),
 }
 
-impl From<posthog_rs::Error> for Error {
-    fn from(e: posthog_rs::Error) -> Self {
-        Error::PosthogError(e.to_string())
-    }
-}
-
 impl Serialize for Error {
     fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
     where
