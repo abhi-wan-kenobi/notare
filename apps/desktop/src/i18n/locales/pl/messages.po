@@ -602,13 +602,12 @@ msgstr ""
 msgid "Could not start trial"
 msgstr ""
 
-#. placeholder {0}: result.error
 #: src/dictation/host.tsx
-msgid "Couldn't start dictation: {0}"
+msgid "Couldn't start dictation — the transcription engine is busy. If a recording is still transcribing, try again once it finishes."
 msgstr ""
 
 #: src/dictation/host.tsx
-msgid "Couldn't start dictation."
+msgid "Couldn't start dictation. Check that a local model is selected, then try again."
 msgstr ""
 
 #: src/calendar/components/google/content.tsx

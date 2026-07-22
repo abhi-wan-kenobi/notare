@@ -602,14 +602,13 @@ msgstr "Could not connect."
 msgid "Could not start trial"
 msgstr "Could not start trial"
 
-#. placeholder {0}: result.error
 #: src/dictation/host.tsx
-msgid "Couldn't start dictation: {0}"
-msgstr "Couldn't start dictation: {0}"
+msgid "Couldn't start dictation — the transcription engine is busy. If a recording is still transcribing, try again once it finishes."
+msgstr "Couldn't start dictation — the transcription engine is busy. If a recording is still transcribing, try again once it finishes."
 
 #: src/dictation/host.tsx
-msgid "Couldn't start dictation."
-msgstr "Couldn't start dictation."
+msgid "Couldn't start dictation. Check that a local model is selected, then try again."
+msgstr "Couldn't start dictation. Check that a local model is selected, then try again."
 
 #: src/calendar/components/google/content.tsx
 msgid "Create a project in the Google Cloud console (any name, it's free)."
