@@ -31,8 +31,6 @@ pub fn list_mic_using_apps() -> Result<Vec<InstalledApp>, crate::Error> {
     use std::cell::RefCell;
     use std::rc::Rc;
 
-    let mut apps = Vec::new();
-
     let mut mainloop = Mainloop::new().ok_or(crate::Error::PulseMainloop)?;
 
     let mut context =
@@ -79,7 +77,7 @@ pub fn list_mic_using_apps() -> Result<Vec<InstalledApp>, crate::Error> {
 
     context.disconnect();
 
-    apps = apps_rc.borrow().clone();
+    let mut apps = apps_rc.borrow().clone();
     apps.sort_by(|a, b| a.id.cmp(&b.id));
     apps.dedup_by(|a, b| a.id == b.id);
     apps.sort_by(|a, b| a.name.cmp(&b.name));
