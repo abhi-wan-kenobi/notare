@@ -17,6 +17,20 @@ pub async fn open_desktop_db(identifier: &str) -> Arc<Db> {
     Arc::new(db)
 }
 
+/// Directory the on-device embedding model is downloaded to / loaded from,
+/// under the same app-data base as the database. The download-on-first-run
+/// manager (WS-B1 follow-up) populates it; `embedding_index_status` reports it
+/// empty until then.
+pub fn desktop_models_dir(identifier: &str) -> std::path::PathBuf {
+    let base = desktop_db_dir(identifier).unwrap_or_else(|| {
+        dirs::data_dir()
+            .expect("data_dir must be available")
+            .join(identifier)
+    });
+    base.join("models")
+        .join(hypr_text_embedding::MODEL_DIR_NAME)
+}
+
 fn desktop_db_dir(identifier: &str) -> Option<std::path::PathBuf> {
     let data_dir = dirs::data_dir().expect("data_dir must be available");
     let default_dir =
