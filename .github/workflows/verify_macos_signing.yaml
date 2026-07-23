@@ -76,7 +76,7 @@ jobs:
       # Publish the signed build so it can be installed for shakedown testing
       # (uploaded even if the assertions below fail, e.g. notarization still
       # processing, so the .dmg is still retrievable).
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: notare-macos-signed

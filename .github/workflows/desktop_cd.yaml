@@ -189,7 +189,7 @@ jobs:
           framework: tauri
           working-directory: ./apps/desktop
       - if: ${{ inputs.channel == 'staging' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: hyprnote-staging-macos-${{ matrix.artifact_name }}
           path: apps/desktop/src-tauri/target/${{ matrix.target }}/release/bundle/dmg/*.dmg
