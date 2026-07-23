@@ -177,9 +177,89 @@ jobs:
           persist-credentials: false
       - run: swift build --package-path plugins/windows/swift-lib
 
+  # WS-F1 PR3: Linux coverage for crates the macOS workspace-test job excludes.
+  # Lists derive from an empirical per-crate probe on Linux (2026-07-23, results
+  # table in the PR): every crate below passed `cargo check --locked`; the test
+  # list additionally passed its full test suite. Excluded-with-reason:
+  # - db-core: covered by cli_ci (--lib); its e2e needs SQLITECLOUD_URL.
+  # - email: its test asserts macOS-only behavior (check-only here).
+  # - mobile-bridge, tauri-plugin-tantivy: tests FAIL on Linux today (latent —
+  #   tantivy's test_english_stemmer_tokenizer; tracked as WS-F1 follow-ups).
+  # - tauri-plugin-screen: check passes, test target does not compile on Linux.
+  # - heavy native family (aec/agc/am/audio/audio-device/vad*/whisper*/
+  #   pyannote-local/transcribe-whisper-local): probed green locally but kept
+  #   out of the per-PR path for runner cost; candidates for a scheduled job.
+  linux_crate_check:
+    if: ${{ !startsWith(github.head_ref || '', 'blog/') }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          submodules: recursive
+          persist-credentials: false
+      # Several excluded crates pull in tauri/gtk (glib-sys), which needs the
+      # Linux desktop system libraries — same deps the macOS desktop job installs.
+      - uses: ./.github/actions/install_desktop_deps
+        with:
+          target: linux
+      - uses: ./.github/actions/rust_install
+        with:
+          platform: linux
+      - name: Check wrongly-excluded crates (check-only tier)
+        run: |
+          cargo check --locked \
+            -p onnx \
+            -p db-core \
+            -p email \
+            -p mobile-bridge \
+            -p tauri-plugin-tantivy \
+            -p tauri-plugin-screen
+      - name: Test wrongly-excluded crates (proven green on Linux)
+        run: |
+          cargo test --locked --no-fail-fast \
+            -p device-monitor \
+            -p frontmatter \
+            -p host \
+            -p intercept \
+            -p local-llm-core \
+            -p notification-linux \
+            -p openstatus \
+            -p tauri-plugin-analytics \
+            -p tauri-plugin-audio-priority \
+            -p tauri-plugin-auth \
+            -p tauri-plugin-bedrock \
+            -p tauri-plugin-deeplink2 \
+            -p tauri-plugin-detect \
+            -p tauri-plugin-fs2 \
+            -p tauri-plugin-fs-sync \
+            -p tauri-plugin-hooks \
+            -p tauri-plugin-icon \
+            -p tauri-plugin-importer \
+            -p tauri-plugin-js \
+            -p tauri-plugin-local-llm \
+            -p tauri-plugin-local-stt \
+            -p tauri-plugin-misc \
+            -p tauri-plugin-notification \
+            -p tauri-plugin-notify \
+            -p tauri-plugin-opener2 \
+            -p tauri-plugin-overlay \
+            -p tauri-plugin-path2 \
+            -p tauri-plugin-permissions \
+            -p tauri-plugin-settings \
+            -p tauri-plugin-sfx \
+            -p tauri-plugin-sidecar2 \
+            -p tauri-plugin-store2 \
+            -p tauri-plugin-template \
+            -p tauri-plugin-tracing \
+            -p tauri-plugin-updater2 \
+            -p tauri-plugin-webhook
+
   ci:
     if: always()
-    needs: [desktop_ci, desktop_i18n, desktop_swift]
+    needs: [desktop_ci, desktop_i18n, desktop_swift, linux_crate_check]
     runs-on: ubuntu-latest
     steps:
       - run: exit 1
