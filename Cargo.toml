@@ -170,6 +170,7 @@ hypr-template-app-legacy = { path = "crates/template-app-legacy", package = "tem
 hypr-template-cli = { path = "crates/template-cli", package = "template-cli" }
 hypr-template-eval = { path = "crates/template-eval", package = "template-eval" }
 hypr-template-support = { path = "crates/template-support", package = "template-support" }
+hypr-text-embedding = { path = "crates/text-embedding", package = "text-embedding" }
 hypr-ticket-interface = { path = "crates/ticket-interface", package = "ticket-interface" }
 hypr-tiptap = { path = "crates/tiptap", package = "tiptap" }
 hypr-transcribe-core = { path = "crates/transcribe-core", package = "transcribe-core" }

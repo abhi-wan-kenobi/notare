@@ -29,6 +29,7 @@
     "**/permissions/**",
     "**/migrations/**/*.sql",
     "**/tests/*.sql",
+    "**/tests/fixtures/**",
     "**/charts/**",
     "**/schema.json",
     "**/netlify/edge-functions"
