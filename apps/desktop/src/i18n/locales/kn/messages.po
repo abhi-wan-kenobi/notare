@@ -195,6 +195,10 @@ msgstr ""
 msgid "Allow microphone access"
 msgstr ""
 
+#: src/settings/ai/llm/routing.tsx
+msgid "Allow smaller models for structured tasks"
+msgstr ""
+
 #: src/onboarding/permissions.tsx
 msgid "Allow system audio access"
 msgstr ""
@@ -1227,6 +1231,10 @@ msgstr ""
 msgid "Loading…"
 msgstr ""
 
+#: src/settings/ai/llm/routing.tsx
+msgid "Local-first: Notare prefers a local model (Ollama or LM Studio) and only uses a cloud provider when you explicitly select one above."
+msgstr ""
+
 #: src/onboarding/account/before-login.tsx
 msgid "Login with existing account"
 msgstr ""
@@ -1943,6 +1951,10 @@ msgstr ""
 msgid "Ring"
 msgstr ""
 
+#: src/settings/ai/llm/routing.tsx
+msgid "Routing"
+msgstr ""
+
 #: src/settings/ai/shared/index.tsx
 #: src/settings/ai/stt/select.tsx
 msgid "Runs after the recording finishes, not during the meeting."
@@ -2594,6 +2606,10 @@ msgstr ""
 
 #: src/settings/general/storage/notes-location.tsx
 msgid "Use"
+msgstr ""
+
+#: src/settings/ai/llm/routing.tsx
+msgid "Use the selected model for action items and other structured-output tasks even when its size can't be confirmed. Turn this on only if you trust your model's output quality; Notare still rejects malformed results downstream."
 msgstr ""
 
 #: src/settings/ai/stt/select.tsx
