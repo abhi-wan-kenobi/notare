@@ -112,6 +112,14 @@ export interface DictationOrbVariantProps {
   phase: DictationPhase;
   amplitude: number;
   size: number;
+  /**
+   * High-frequency (~30 Hz) mic amplitude mirror from the orb window. A variant
+   * that drives its visuals from a requestAnimationFrame loop reads this ref
+   * inside the loop (never as React state) so the 30 Hz stream never re-renders.
+   * Optional: variants without a RAF envelope ignore it and fall back to the
+   * 10 Hz `amplitude` prop.
+   */
+  amplitudeRef?: { current: number };
 }
 
 /**
@@ -132,12 +140,14 @@ export function DictationOrb({
   size = 40,
   variant = DEFAULT_ORB_VARIANT,
   className,
+  amplitudeRef,
 }: {
   phase: DictationPhase;
   amplitude?: number;
   size?: number;
   variant?: DictationOrbVariant;
   className?: string;
+  amplitudeRef?: { current: number };
 }) {
   const Variant = ORB_VARIANTS[variant] ?? CobaltOrb;
   const renderedSize = orbSizeForVariant(variant, size);
@@ -149,7 +159,12 @@ export function DictationOrb({
       data-dictation-variant={variant}
       className={cn(["relative inline-flex", className])}
     >
-      <Variant phase={phase} amplitude={amplitude} size={renderedSize} />
+      <Variant
+        phase={phase}
+        amplitude={amplitude}
+        size={renderedSize}
+        amplitudeRef={amplitudeRef}
+      />
       <PhaseOverlay phase={phase} size={renderedSize} />
     </span>
   );
