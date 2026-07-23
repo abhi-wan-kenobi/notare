@@ -58,3 +58,9 @@ pub(crate) async fn postinstall<R: tauri::Runtime>(
 pub(crate) fn maybe_emit_updated<R: tauri::Runtime>(app: tauri::AppHandle<R>) {
     app.updater2().maybe_emit_updated();
 }
+
+#[tauri::command]
+#[specta::specta]
+pub(crate) fn can_self_update<R: tauri::Runtime>(app: tauri::AppHandle<R>) -> Result<bool, String> {
+    Ok(app.updater2().can_self_update())
+}

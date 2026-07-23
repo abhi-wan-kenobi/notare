@@ -27,6 +27,7 @@ use crate::state::AppState;
 /// restart.
 pub fn build_router(state: Arc<AppState>) -> axum::Router {
     let listen_auth_state = state.clone();
+    let health_state = state.clone();
     let core = axum::Router::new()
         .route_service(
             hypr_transcribe_whisper_local::LISTEN_PATH,
@@ -42,7 +43,14 @@ pub fn build_router(state: Arc<AppState>) -> axum::Router {
         }))
         .route(
             hypr_transcribe_whisper_local::HEALTH_PATH,
-            get(|| async { "ok" }),
+            // Stateful liveness: 200 "ok" while the periodic RTF monitor
+            // (WS-G, `crate::health`) considers the service healthy, 503
+            // "degraded" once it latches sustained throughput decay. Stays
+            // outside the auth layer so container HEALTHCHECKs never break.
+            get(move || {
+                let state = health_state.clone();
+                async move { crate::health::health_handler(state).await }
+            }),
         );
 
     core.merge(admin::router(state))

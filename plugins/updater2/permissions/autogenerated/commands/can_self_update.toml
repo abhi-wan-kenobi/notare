@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-can-self-update"
+description = "Enables the can_self_update command without any pre-configured scope."
+commands.allow = ["can_self_update"]
+
+[[permission]]
+identifier = "deny-can-self-update"
+description = "Denies the can_self_update command without any pre-configured scope."
+commands.deny = ["can_self_update"]

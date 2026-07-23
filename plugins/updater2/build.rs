@@ -4,6 +4,8 @@ const COMMANDS: &[&str] = &[
     "install",
     "is_downloaded",
     "postinstall",
+    "maybe_emit_updated",
+    "can_self_update",
 ];
 
 fn main() {

@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-export-action-items"
+description = "Enables the export_action_items command without any pre-configured scope."
+commands.allow = ["export_action_items"]
+
+[[permission]]
+identifier = "deny-export-action-items"
+description = "Denies the export_action_items command without any pre-configured scope."
+commands.deny = ["export_action_items"]

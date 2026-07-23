@@ -30,8 +30,6 @@ import { Spinner } from "@hypr/ui/components/ui/spinner";
 import { sonnerToast } from "@hypr/ui/components/ui/toast";
 import { cn } from "@hypr/utils";
 
-import { checkStructuredCapability } from "~/services/action-items/structured-capability";
-
 import { buildExtractionInput } from "./extraction-input";
 import {
   insertSessionActionItems,
@@ -42,6 +40,7 @@ import {
 } from "./queries";
 
 import { extractActionItems } from "~/services/action-items/extract";
+import { checkStructuredCapability } from "~/services/action-items/structured-capability";
 import { useTaskModel } from "~/services/llm-router";
 import { loadSessionContentSnapshot } from "~/session/content-queries";
 import { useOwnerUserId } from "~/shared/owner-user";
