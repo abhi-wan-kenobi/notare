@@ -1,9 +1,9 @@
 [package]
 name = "desktop"
 version = "0.0.0"
-authors = ["you"]
+authors = ["Abhishek Gupta <abhi-wan-kenobi@users.noreply.github.com>"]
 edition = "2024"
-description = "Anarlog Desktop App"
+description = "Notare — local-first meeting notetaker and insert-anywhere dictation"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

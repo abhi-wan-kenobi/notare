@@ -37,6 +37,18 @@ async embeddingIndexStatus() : Promise<Result<IndexStatus, string>> {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
+},
+/**
+ * Download-on-first-run: fetch the pinned EmbeddingGemma artifacts into the
+ * model dir, streaming SHA-256-verified progress over `on_progress`. Idempotent.
+ */
+async downloadEmbeddingModel(onProgress: TAURI_CHANNEL<DownloadProgress>) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:embedding-search|download_embedding_model", { onProgress }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 }
 }
 
@@ -72,6 +84,30 @@ startMs: number | null;
  */
 contentHash: string }
 /**
+ * Streaming download progress, emitted per chunk over the command's Channel.
+ */
+export type DownloadProgress = { 
+/**
+ * Artifact currently downloading.
+ */
+file: string; 
+/**
+ * Bytes of THIS artifact downloaded so far.
+ */
+file_downloaded: number; 
+/**
+ * Total bytes of THIS artifact.
+ */
+file_total: number; 
+/**
+ * Bytes across ALL artifacts so far.
+ */
+downloaded: number; 
+/**
+ * Total bytes across all artifacts.
+ */
+total: number }
+/**
  * Reported by `embedding_index_status`.
  */
 export type IndexStatus = { 
@@ -91,6 +127,7 @@ export type SearchHit = { chunkId: string; sessionId: string; sourceType: string
  * sqlite-vec L2 distance; smaller is closer.
  */
 distance: number }
+export type TAURI_CHANNEL<TSend> = null
 
 /** tauri-specta globals **/
 

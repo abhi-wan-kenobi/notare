@@ -15,6 +15,7 @@ import WaveSurfer from "wavesurfer.js";
 import { commands as fsSyncCommands } from "@hypr/plugin-fs-sync";
 
 import { useBillingAccess } from "~/auth/billing";
+import { consumeSeek, subscribePendingSeek } from "./pending-seek";
 
 const TIME_UPDATE_STEP_SECONDS = 0.1;
 
@@ -300,6 +301,24 @@ export function AudioPlayerProvider({
     },
     [isPro, wavesurfer],
   );
+
+  // Cross-mount jump-to-source: a search/action-item hit in another tab can
+  // request a seek for this session (pending-seek channel). Consume it once the
+  // waveform is ready — both on mount (a request queued before this tab opened)
+  // and when a new request arrives while we're already open.
+  useEffect(() => {
+    if (!wavesurfer) {
+      return;
+    }
+    const tryConsume = () => {
+      const ms = consumeSeek(sessionId);
+      if (ms !== null) {
+        seek(ms / 1000);
+      }
+    };
+    tryConsume();
+    return subscribePendingSeek(tryConsume);
+  }, [wavesurfer, sessionId, seek]);
 
   useEffect(() => {
     if (!wavesurfer) {
