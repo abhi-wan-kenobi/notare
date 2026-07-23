@@ -99,6 +99,10 @@ msgstr ""
 msgid "Account"
 msgstr ""
 
+#: src/session/components/action-items/index.tsx
+msgid "Action items"
+msgstr ""
+
 #: src/settings/ai/stt/select.tsx
 msgid "Activate"
 msgstr ""
@@ -815,6 +819,10 @@ msgstr ""
 msgid "Enable {0}"
 msgstr ""
 
+#: src/session/components/action-items/index.tsx
+msgid "Enable a local or cloud model"
+msgstr ""
+
 #: src/calendar/components/google/content.tsx
 msgid "Enable the Google Calendar API for that project."
 msgstr ""
@@ -878,6 +886,14 @@ msgstr ""
 
 #: src/session/components/outer-header/overflow/export-modal.tsx
 msgid "Exporting..."
+msgstr ""
+
+#: src/session/components/action-items/index.tsx
+msgid "Extract action items"
+msgstr ""
+
+#: src/session/components/action-items/index.tsx
+msgid "Extraction failed. Please try again."
 msgstr ""
 
 #: src/calendar/components/ics/content.tsx
@@ -1062,6 +1078,14 @@ msgstr ""
 msgid "Hide setup steps"
 msgstr ""
 
+#: src/session/components/action-items/index.tsx
+msgid "High"
+msgstr ""
+
+#: src/session/components/action-items/index.tsx
+msgid "High confidence"
+msgstr ""
+
 #: src/settings/ai/stt/shared.tsx
 msgid "Highest accuracy; needs the most compute."
 msgstr ""
@@ -1147,6 +1171,10 @@ msgstr ""
 msgid "Join our community and stay updated:"
 msgstr ""
 
+#: src/session/components/action-items/index.tsx
+msgid "Jump to source"
+msgstr ""
+
 #: src/settings/dictation/index.tsx
 msgid "Keep a small always-on-top orb on screen. Click it, or press the shortcut, to start typing what you say into the focused app."
 msgstr ""
@@ -1209,6 +1237,10 @@ msgstr ""
 msgid "Live transcription model"
 msgstr ""
 
+#: src/session/components/action-items/index.tsx
+msgid "Loading action items…"
+msgstr ""
+
 #: src/onboarding/transcription.tsx
 msgid "Loading available models…"
 msgstr ""
@@ -1239,6 +1271,14 @@ msgstr ""
 msgid "Login with existing account"
 msgstr ""
 
+#: src/session/components/action-items/index.tsx
+msgid "Low"
+msgstr ""
+
+#: src/session/components/action-items/index.tsx
+msgid "Low confidence"
+msgstr ""
+
 #: src/settings/general/main-language.tsx
 msgid "Main language"
 msgstr "Zimanê sereke"
@@ -1261,6 +1301,14 @@ msgstr ""
 
 #: src/session/components/note-input/search/bar.tsx
 msgid "Match whole word"
+msgstr ""
+
+#: src/session/components/action-items/index.tsx
+msgid "Medium"
+msgstr ""
+
+#: src/session/components/action-items/index.tsx
+msgid "Medium confidence"
 msgstr ""
 
 #: src/sidebar/timeline/index.tsx
@@ -1399,6 +1447,14 @@ msgstr ""
 msgid "Next match"
 msgstr ""
 
+#: src/session/components/action-items/index.tsx
+msgid "No action items found in this meeting."
+msgstr ""
+
+#: src/session/components/action-items/index.tsx
+msgid "No action items yet"
+msgstr ""
+
 #: src/dictation/host.tsx
 msgid "No AI model is configured for dictation cleanup - used basic cleanup instead."
 msgstr ""
@@ -1499,6 +1555,10 @@ msgstr ""
 
 #: src/templates/details.tsx
 msgid "No templates yet"
+msgstr ""
+
+#: src/session/components/action-items/index.tsx
+msgid "No transcript to extract from yet."
 msgstr ""
 
 #: src/settings/dictation/index.tsx
@@ -2034,6 +2094,14 @@ msgstr ""
 msgid "See all templates"
 msgstr ""
 
+#: src/session/components/action-items/index.tsx
+msgid "Select a capable model"
+msgstr ""
+
+#: src/session/components/action-items/index.tsx
+msgid "Select a cloud model to use"
+msgstr ""
+
 #: src/settings/ai/shared/model-combobox.tsx
 msgid "Select a model"
 msgstr ""
@@ -2085,6 +2153,10 @@ msgstr ""
 
 #: src/chat/components/input/index.tsx
 msgid "Send message"
+msgstr ""
+
+#: src/session/components/action-items/index.tsx
+msgid "Session content is not available yet."
 msgstr ""
 
 #: src/session/components/note-input/header.tsx
@@ -2246,6 +2318,10 @@ msgstr ""
 
 #: src/contacts/shared.tsx
 msgid "Sort options"
+msgstr ""
+
+#: src/session/components/action-items/index.tsx
+msgid "Source"
 msgstr ""
 
 #: src/settings/general/app-settings.tsx
@@ -2442,6 +2518,10 @@ msgstr ""
 msgid "This combination cannot be used as a global shortcut. Try another one."
 msgstr ""
 
+#: src/session/components/action-items/index.tsx
+msgid "This model can't produce structured output. Pick a different model."
+msgstr ""
+
 #. placeholder {0}: status.fileCount
 #. placeholder {1}: formatBytes(status.totalBytes)
 #: src/settings/general/storage/legacy-cleanup.tsx
@@ -2462,6 +2542,10 @@ msgstr ""
 
 #: src/session/components/note-input/enhanced/streaming.tsx
 msgid "Tip: The Notare team loves our users!"
+msgstr ""
+
+#: src/session/components/action-items/index.tsx
+msgid "Toggle action item"
 msgstr ""
 
 #: src/settings/dictation/shortcut-recorder.tsx
