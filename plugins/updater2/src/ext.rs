@@ -220,6 +220,13 @@ impl<'a, R: tauri::Runtime, M: tauri::Manager<R>> Updater2<'a, R, M> {
     pub async fn postinstall(&self, result: InstallResult) -> Result<(), crate::Error> {
         match result {
             InstallResult::RelaunchCurrent => {
+                // DRAFT / data-loss follow-up (crash-resilience hardening pass):
+                // like the dock restart, this bypasses `RunEvent::ExitRequested`
+                // + the frontend `flushAndExit` finalize, so an update applied
+                // mid-recording would drop the in-flight capture. Route through
+                // the shared "finalize active capture, then restart" choke point
+                // (see `finalize_capture_before_restart` in the app supervisor)
+                // once it exists. Not wired here to avoid a cross-crate dep.
                 self.manager.app_handle().restart();
             }
         }
