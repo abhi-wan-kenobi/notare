@@ -105,13 +105,20 @@ export function getRenderTranscriptRequestKey(
     assignmentCount += transcript.assignments.length;
 
     for (const word of transcript.words) {
+      // PERF (macOS rename-hang fix): hash only the fields the render command
+      // (`RenderTranscriptWordInput`) actually consumes. Word `metadata` is
+      // stripped before the command and reattached client-side, so it can never
+      // change the rendered output — including it here was pure over-hashing,
+      // and its per-word `JSON.stringify` was the dominant cost of this O(all
+      // words) key, which reruns on every transcripts live-query emission
+      // (every streamed word + every table-level invalidation, e.g. a speaker
+      // rename). Excluding it keeps the key correct and much cheaper.
       writeValue(word.id);
       writeValue(word.text);
       writeValue(word.start_ms);
       writeValue(word.end_ms);
       writeValue(word.channel);
       writeValue(word.speaker_index);
-      writeValue((word as { metadata?: unknown }).metadata);
     }
 
     for (const assignment of transcript.assignments) {

@@ -4,6 +4,7 @@ import React, { useEffect, useRef } from "react";
 
 import { commands as fsSyncCommands } from "@hypr/plugin-fs-sync";
 
+import { ActionItemsPanel } from "./components/action-items";
 import { FloatingActionButton } from "./components/floating";
 import {
   NoteInput,
@@ -258,6 +259,11 @@ function TabContentNoteInner({
               <SessionContentLoading />
             )}
           </div>
+          {session ? (
+            <div className="shrink-0 px-1 pt-1 pb-1">
+              <ActionItemsPanel sessionId={sessionId} />
+            </div>
+          ) : null}
         </div>
       </SessionSurface>
     </>

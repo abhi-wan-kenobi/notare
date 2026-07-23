@@ -36,6 +36,7 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
         ])
         .events(tauri_specta::collect_events![
             DictationStateEvent,
+            DictationAmplitudeEvent,
             DictationOrbClicked,
             DictationTranscriptEvent,
             DictationFinishedEvent
