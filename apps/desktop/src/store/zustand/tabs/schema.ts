@@ -17,12 +17,20 @@ export type {
   TemplatesState,
 };
 
-export type TabInput = Exclude<
+/** The subset of the Rust/windows-generated tab inputs the desktop app renders. */
+export type WindowsSupportedTabInput = Exclude<
   WindowsTabInput,
   { type: "extension" } | { type: "extensions" } | { type: "folders" }
 >;
 
-export const isTabInputSupported = (tab: WindowsTabInput): tab is TabInput => {
+export type TabInput =
+  | WindowsSupportedTabInput
+  // App-only tab input (no Rust/windows binding): the hybrid search surface.
+  | { type: "search"; query?: string };
+
+export const isTabInputSupported = (
+  tab: WindowsTabInput,
+): tab is WindowsSupportedTabInput => {
   return (
     tab.type !== "extension" &&
     tab.type !== "extensions" &&
@@ -123,6 +131,7 @@ export type Tab =
   | (BaseTab & { type: "organizations"; id: string })
   | (BaseTab & { type: "empty" })
   | (BaseTab & { type: "calendar" })
+  | (BaseTab & { type: "search"; query?: string })
   | (BaseTab & {
       type: "changelog";
       state: ChangelogState;
@@ -183,6 +192,8 @@ export const getDefaultState = (tab: TabInput): Tab => {
       return { ...base, type: "empty" };
     case "calendar":
       return { ...base, type: "calendar" };
+    case "search":
+      return { ...base, type: "search", query: tab.query };
     case "changelog":
       return {
         ...base,
@@ -226,6 +237,8 @@ export const uniqueIdfromTab = (tab: Tab): string => {
       return `empty-${tab.slotId}`;
     case "calendar":
       return `calendar`;
+    case "search":
+      return `search`;
     case "changelog":
       return "changelog";
     case "settings":

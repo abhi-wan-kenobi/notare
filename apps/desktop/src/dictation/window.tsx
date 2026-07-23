@@ -196,6 +196,7 @@ export function DictationOrbWindow({ solid = false }: { solid?: boolean }) {
           amplitude={state.amplitude}
           size={50}
           variant={variant}
+          amplitudeRef={amplitudeRef}
         />
         {batchMode && dictating ? (
           // Subtle batch-mode hint: a small cobalt dot marks "collecting, will
@@ -351,10 +352,16 @@ function useDictationState() {
  */
 function useDictationAmplitude(target: { current: number }) {
   useEffect(() => {
+    const channel = dictationEvents.dictationAmplitudeEvent;
+    if (!channel) {
+      // Partially-mocked plugin (tests/storybook): no 30 Hz stream to mirror,
+      // so the orb visuals fall back to the 10 Hz `amplitude` prop.
+      return;
+    }
     let cancelled = false;
     let unlisten: (() => void) | null = null;
 
-    void dictationEvents.dictationAmplitudeEvent
+    void channel
       .listen((event) => {
         if (!cancelled) {
           target.current = event.payload.amplitude;

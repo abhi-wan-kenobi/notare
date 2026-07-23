@@ -4,6 +4,7 @@ import { TabContentContact } from "~/contacts";
 import { TabContentHuman } from "~/contacts/humans";
 import { TabContentEdit } from "~/edit";
 import { TabContentOnboarding } from "~/onboarding";
+import { TabContentSearch } from "~/search/page";
 import { TabContentNote } from "~/session";
 import { TabContentSettings } from "~/settings";
 import { type Tab } from "~/store/zustand/tabs";
@@ -22,6 +23,9 @@ export function MainTabContent({ tab }: { tab: Tab }) {
   }
   if (tab.type === "calendar") {
     return <TabContentCalendar />;
+  }
+  if (tab.type === "search") {
+    return <TabContentSearch tab={tab} />;
   }
   if (tab.type === "changelog") {
     return <TabContentChangelog tab={tab} />;

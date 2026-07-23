@@ -347,6 +347,10 @@ msgstr "Bloom"
 msgid "Browser handoff not working? Paste the callback link instead"
 msgstr "Browser handoff not working? Paste the callback link instead"
 
+#: src/search/page/index.tsx
+msgid "Building the search index…"
+msgstr "Building the search index…"
+
 #: src/calendar/components/sidebar.tsx
 #: src/settings/general/permissions.tsx
 #: src/sidebar/calendar.tsx
@@ -972,6 +976,10 @@ msgstr "Filter synced items by {0}."
 #: src/shared/open-note-dialog.tsx
 msgid "Find a note..."
 msgstr "Find a note..."
+
+#: src/search/page/index.tsx
+msgid "Find anything across your notes and transcripts — by keyword or by meaning."
+msgstr "Find anything across your notes and transcripts — by keyword or by meaning."
 
 #: src/instruction/index.tsx
 msgid "Finish checkout in your browser, then return to Notare."
@@ -1600,6 +1608,10 @@ msgstr "No recent chats"
 msgid "No related notes found"
 msgstr "No related notes found"
 
+#: src/search/page/index.tsx
+msgid "No results"
+msgstr "No results"
+
 #: src/settings/ai/shared/model-combobox.tsx
 #: src/settings/general/searchable-select.tsx
 msgid "No results found."
@@ -1677,6 +1689,10 @@ msgstr "Nothing here yet - finished dictations appear here so you can copy them 
 #: src/settings/dictation/index.tsx
 msgid "Nothing is typed while you talk; stopping cleans up the transcript and copies it. Best for terminals."
 msgstr "Nothing is typed while you talk; stopping cleans up the transcript and copies it. Best for terminals."
+
+#: src/search/page/index.tsx
+msgid "Nothing matched \"{trimmedQuery}\". Try different words."
+msgstr "Nothing matched \"{trimmedQuery}\". Try different words."
 
 #: src/session/components/note-input/header.tsx
 #: src/stt/useLiveTranscriptCopyShortcuts.ts
@@ -2093,6 +2109,14 @@ msgstr "Save"
 msgid "Save date"
 msgstr "Save date"
 
+#: src/sidebar/surface-nav.tsx
+msgid "Search"
+msgstr "Search"
+
+#: src/search/page/index.tsx
+msgid "Search across all your meetings..."
+msgstr "Search across all your meetings..."
+
 #: src/contacts/shared.tsx
 msgid "Search contacts..."
 msgstr "Search contacts..."
@@ -2100,6 +2124,14 @@ msgstr "Search contacts..."
 #: src/templates/template-icon-picker.tsx
 msgid "Search emoji..."
 msgstr "Search emoji..."
+
+#: src/shared/open-note-dialog.tsx
+msgid "Search everything"
+msgstr "Search everything"
+
+#: src/shared/open-note-dialog.tsx
+msgid "Search everything for \"{trimmedQuery}\""
+msgstr "Search everything for \"{trimmedQuery}\""
 
 #: src/templates/template-icon-picker.tsx
 msgid "Search icons..."
@@ -2141,6 +2173,10 @@ msgstr "Search templates..."
 #: src/settings/general/timezone.tsx
 msgid "Search timezone..."
 msgstr "Search timezone..."
+
+#: src/search/page/index.tsx
+msgid "Search your meetings"
+msgstr "Search your meetings"
 
 #: src/session/components/note-input/search/bar.tsx
 #: src/settings/general/searchable-select.tsx
@@ -2697,6 +2733,7 @@ msgstr "Unknown date"
 msgid "Unnamed"
 msgstr "Unnamed"
 
+#: src/search/page/index.tsx
 #: src/session/components/outer-header/overflow/export-modal.tsx
 #: src/session/components/title-input.tsx
 #: src/shared/open-note-dialog.tsx

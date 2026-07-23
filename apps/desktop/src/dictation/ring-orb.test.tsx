@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { RingOrb } from "./ring-orb";
@@ -75,5 +75,58 @@ describe("RingOrb", () => {
     expect(baseRing(container)?.getAttribute("stroke")).toBe(
       "hsl(var(--destructive))",
     );
+  });
+});
+
+// 30 Hz amplitude-ref path: a requestAnimationFrame envelope follower writes
+// the ring straight to the DOM (no React state). jsdom has no matchMedia, so
+// prefersReducedMotion() is false and the imperative path is active here.
+describe("RingOrb 30Hz amplitude ref", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("keeps the CSS spin on the listening arc in the static fallback", () => {
+    const { container } = render(
+      <RingOrb phase="listening" amplitude={0.5} size={56} />,
+    );
+
+    const arc = container.querySelector("g");
+    expect(arc?.className.baseVal ?? "").toContain("animate-spin");
+  });
+
+  it("lets the rAF loop own the listening arc when a ref is wired", () => {
+    const { container } = render(
+      <RingOrb
+        phase="listening"
+        amplitude={0.5}
+        size={56}
+        amplitudeRef={{ current: 0.5 }}
+      />,
+    );
+
+    // No CSS animate-spin while listening: the rAF loop drives the rotation.
+    const arc = container.querySelector("g");
+    expect(arc?.className.baseVal ?? "").not.toContain("animate-spin");
+  });
+
+  it("drives the ring stroke from the ref envelope, not the 10Hz prop", async () => {
+    // amplitude prop is 0 (static level would pin stroke-width at 1.5); the
+    // envelope attacks from 0 toward the 0.9 in the ref, so the ring thickens
+    // past the static value once rAF frames fire.
+    const { container } = render(
+      <RingOrb
+        phase="listening"
+        amplitude={0}
+        size={56}
+        amplitudeRef={{ current: 0.9 }}
+      />,
+    );
+
+    const ring = baseRing(container);
+    expect(ring).not.toBeNull();
+    await waitFor(() => {
+      expect(Number(ring?.getAttribute("stroke-width"))).toBeGreaterThan(2);
+    });
   });
 });
