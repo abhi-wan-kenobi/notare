@@ -62,15 +62,35 @@ pub fn monitor_supervisor<R: tauri::Runtime>(
             Ok(()) => {
                 if !is_exiting.load(Ordering::SeqCst) {
                     tracing::error!("root_supervisor_meltdown");
+                    finalize_capture_before_restart(&app_handle).await;
                     app_handle.restart();
                 }
             }
             Err(e) => {
                 if !is_exiting.load(Ordering::SeqCst) {
                     tracing::error!("root_supervisor_panicked: {:?}", e);
+                    finalize_capture_before_restart(&app_handle).await;
                     app_handle.restart();
                 }
             }
         }
     });
+}
+
+/// DATA-LOSS FIX (macOS recording survives app restart): gate `restart()` behind
+/// finalizing any in-flight recording to disk. This is the backstop for the
+/// paths the frontend `flushAndExit` can't cover — chiefly a UI HANG (e.g. the
+/// speaker-rename bug) that trips this supervisor meltdown while the webview is
+/// unresponsive, so the JS-side finalize never runs. Best-effort: `stop_capture`
+/// messages the RootActor, which finalizes the session; if the supervisor
+/// meltdown already took the actor down there is nothing to flush.
+///
+/// KNOWN LIMITATION (see the crash/interrupt-resilience hardening pass): if the
+/// capture actor tree is already dead, buffered-but-unwritten audio is still
+/// lost. True durability needs incremental on-disk persistence of the capture
+/// stream, not just finalize-on-teardown.
+async fn finalize_capture_before_restart<R: tauri::Runtime>(app_handle: &tauri::AppHandle<R>) {
+    use tauri_plugin_transcription::ListenerPluginExt;
+    tracing::info!("finalizing_active_capture_before_restart");
+    app_handle.listener().stop_capture().await;
 }
