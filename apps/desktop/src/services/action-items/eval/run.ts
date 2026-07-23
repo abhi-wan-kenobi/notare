@@ -13,13 +13,13 @@
 
 import type { LanguageModel } from "ai";
 
-import { extractActionItems, type GenerateObjectFn } from "../extract";
+import { type ExtractDeps, extractActionItems } from "../extract";
 import { EVAL_CASES } from "./fixtures";
 import { aggregate, type EvalReport, scoreCase } from "./scoring";
 
 export async function runEval(
   model: LanguageModel,
-  deps: { generateObjectFn?: GenerateObjectFn } = {},
+  deps: ExtractDeps = {},
 ): Promise<EvalReport> {
   const cases = [];
   for (const c of EVAL_CASES) {
