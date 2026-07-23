@@ -8,7 +8,11 @@ thiserror = { workspace = true }
 
 aws-config = { version = "1.5.11", features = ["behavior-version-latest"] }
 aws-credential-types = { version = "1.2.1", features = ["hardcoded-credentials"] }
-aws-sdk-s3 = { version = "1.66.0", features = ["behavior-version-latest"] }
+# default-features disabled to drop the legacy `rustls` feature (aws-smithy-runtime/tls-rustls
+# -> aws-smithy-http-client/legacy-rustls-ring -> rustls 0.21 + rustls-webpki 0.101.7, a HIGH
+# advisory). Modern TLS is retained via `default-https-client` (rustls 0.23 + aws-lc-rs, already
+# in-tree via aws-config). Remaining features mirror the crate's default set minus `rustls`.
+aws-sdk-s3 = { version = "1.66.0", default-features = false, features = ["behavior-version-latest", "sigv4a", "http-1x", "default-https-client", "rt-tokio"] }
 
 [dev-dependencies]
 testcontainers-modules = { workspace = true, features = ["minio"] }

@@ -3,12 +3,20 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { DownloadIcon, RotateCwIcon } from "lucide-react";
 import { useCallback, useMemo, useState, type ReactNode } from "react";
 
+import { commands as openerCommands } from "@hypr/plugin-opener2";
 import {
   commands as updaterCommands,
   events as updaterEvents,
   type Result,
 } from "@hypr/plugin-updater2";
 import { cn } from "@hypr/utils";
+
+/**
+ * Where `.deb`/`.rpm` (and any other non-self-updatable install) users are sent
+ * to update manually — Tauri's in-app updater is AppImage-only on Linux.
+ */
+const RELEASES_URL =
+  "https://github.com/abhi-wan-kenobi/notare/releases/latest";
 
 import { useMountEffect } from "~/shared/hooks/useMountEffect";
 import { useDevtoolsOtaPreview } from "~/store/zustand/devtools-ota-preview";
@@ -17,7 +25,10 @@ export type UpdateBannerStatus =
   | "available"
   | "downloading"
   | "ready"
-  | "failed";
+  | "failed"
+  // An update exists but this install format can't self-update (Linux
+  // .deb/.rpm) — the action opens GitHub Releases instead of downloading.
+  | "unsupported";
 
 export type DesktopUpdateControl = {
   status: UpdateBannerStatus | null;
@@ -41,6 +52,7 @@ type UpdateEventState = {
 type UpdateCheckState = {
   version: string;
   ready: boolean;
+  selfUpdatable: boolean;
 } | null;
 
 /**
@@ -189,6 +201,7 @@ export function useDesktopUpdateControl(): DesktopUpdateControl {
       const nextUpdate = {
         version,
         ready: unwrapResult(await updaterCommands.isDownloaded(version)),
+        selfUpdatable: unwrapResult(await updaterCommands.canSelfUpdate()),
       };
 
       setEventState((current) =>
@@ -267,13 +280,19 @@ export function useDesktopUpdateControl(): DesktopUpdateControl {
     checkedUpdate.ready
       ? "ready"
       : eventState?.status;
-  const status: UpdateBannerStatus | null = eventStatus
-    ? eventStatus
-    : checkedUpdate
-      ? checkedUpdate.ready
-        ? "ready"
-        : "available"
-      : null;
+  // A non-self-updatable install (Linux .deb/.rpm) can't OTA — surface the
+  // update as "unsupported" (manual download) and never enter the download/
+  // install/failed flow. This wins over any event-derived status.
+  const notSelfUpdatable = !!checkedUpdate && !checkedUpdate.selfUpdatable;
+  const status: UpdateBannerStatus | null = notSelfUpdatable
+    ? "unsupported"
+    : eventStatus
+      ? eventStatus
+      : checkedUpdate
+        ? checkedUpdate.ready
+          ? "ready"
+          : "available"
+        : null;
   const progress = useMemo(() => {
     if (
       !eventState ||
@@ -302,6 +321,10 @@ export function useDesktopUpdateControl(): DesktopUpdateControl {
     }
     installUpdate(version);
   }, [installUpdate, version]);
+
+  const openReleases = useCallback(() => {
+    void openerCommands.openUrl(RELEASES_URL, null);
+  }, []);
 
   const handleDevtoolsDownload = useCallback(() => {
     showDevtoolsOtaPreview("downloading");
@@ -334,8 +357,10 @@ export function useDesktopUpdateControl(): DesktopUpdateControl {
     errorMessage: eventState?.errorMessage ?? null,
     downloadStarting,
     installing,
-    downloadUpdate: handleDownload,
-    installUpdate: handleInstall,
+    // For a non-self-updatable install, both affordances open GitHub Releases
+    // instead of triggering the (unsupported) download/install path.
+    downloadUpdate: notSelfUpdatable ? openReleases : handleDownload,
+    installUpdate: notSelfUpdatable ? openReleases : handleInstall,
   };
 }
 

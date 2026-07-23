@@ -13,6 +13,20 @@ async export(path: string, input: ExportInput) : Promise<Result<null, string>> {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
+},
+/**
+ * Export a session's (or, when `session_id` is `None`, every session's) action
+ * items to `path` as CSV or JSON. SQLite is authoritative; this is a read-only
+ * projection. A `path` argument is included to mirror the file-writing shape of
+ * the sibling `export` (PDF) command.
+ */
+async exportActionItems(path: string, sessionId: string | null, format: ExportActionItemsFormat) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:export|export_action_items", { path, sessionId, format }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 }
 }
 
@@ -26,6 +40,10 @@ async export(path: string, input: ExportInput) : Promise<Result<null, string>> {
 
 /** user-defined types **/
 
+/**
+ * Output format for [`export_action_items`](crate::commands::export_action_items).
+ */
+export type ExportActionItemsFormat = "csv" | "json"
 export type ExportInput = { enhancedMd: string; memoMd: string | null; transcript: Transcript | null; metadata: ExportMetadata | null }
 export type ExportMetadata = { title: string; createdAt: string; participants: string[]; eventTitle: string | null; duration: string | null }
 export type Transcript = { items: TranscriptItem[] }

@@ -149,6 +149,46 @@ pub(super) fn finalize_disk_sink(sink: &mut DiskSink) -> Result<(), ActorProcess
     Ok(())
 }
 
+/// Finalize an `audio.wav` left behind by a hard process kill (supervisor
+/// meltdown, OOM, `kill -9`, power loss) when NO recorder actor is alive to run
+/// `finalize_disk_sink`. Because the live recorder flushes the hound writer
+/// every second and hound's `flush()` rewrites the RIFF/`data` sizes, the
+/// orphaned `audio.wav` is a valid, readable WAV up to the last flush (≤ ~1s of
+/// tail lost — "≤ the last buffer", not the session). Encode it to the final
+/// `audio.mp3`, fsync, and drop the WAV — mirroring `finalize_disk_sink`'s
+/// encode tail but without an in-memory writer.
+///
+/// Returns `Ok(true)` when a recording was recovered, `Ok(false)` when there is
+/// nothing to do (already finalized, or no WAV present). Never touches a dir
+/// that already has `audio.mp3` (that recording finalized cleanly).
+pub(super) fn finalize_orphaned_wav(session_dir: &Path) -> Result<bool, ActorProcessingErr> {
+    let wav_path = session_dir.join(WAV_FILE);
+    let encoded_path = session_dir.join(FINAL_AUDIO_FILE);
+
+    if encoded_path.exists() || !wav_path.exists() {
+        return Ok(false);
+    }
+
+    match hypr_mp3::encode_wav(&wav_path, &encoded_path) {
+        Ok(()) => {
+            sync_file(&encoded_path);
+            sync_dir(&encoded_path);
+            std::fs::remove_file(&wav_path)?;
+            sync_dir(&wav_path);
+            Ok(true)
+        }
+        Err(error) => {
+            // Keep the WAV for manual recovery rather than deleting evidence.
+            tracing::error!(
+                dir = %session_dir.display(),
+                "orphan recovery encode failed, keeping wav: {}",
+                error
+            );
+            Ok(false)
+        }
+    }
+}
+
 fn prepare_existing_audio_state(
     encoded_path: &Path,
     ogg_path: &Path,
@@ -348,12 +388,90 @@ mod tests {
         assert!(!session_dir.join(FINAL_AUDIO_FILE).exists());
     }
 
+    #[test]
+    fn finalize_orphaned_wav_recovers_unfinalized_wav() {
+        // Simulate a hard kill mid-recording: write samples, FLUSH (as the live
+        // recorder does every second), then drop the writer WITHOUT finalize —
+        // exactly the on-disk state after `kill -9`. hound's flush keeps the
+        // header valid, so the WAV is readable and recoverable.
+        let dir = tempdir().unwrap();
+        let session_dir = dir.path().join("11111111-1111-1111-1111-111111111111");
+        std::fs::create_dir_all(&session_dir).unwrap();
+        let wav_path = session_dir.join(WAV_FILE);
+        let frames = SAMPLE_RATE as usize; // 1 second
+
+        write_flushed_but_unfinalized_wav(&wav_path, frames);
+        // Header is valid after flush even though finalize() never ran.
+        assert!(hound::WavReader::open(&wav_path).is_ok());
+
+        let recovered = finalize_orphaned_wav(&session_dir).unwrap();
+        assert!(recovered, "orphaned wav should be recovered");
+
+        let mp3_path = session_dir.join(FINAL_AUDIO_FILE);
+        assert!(mp3_path.exists(), "recovered mp3 must exist");
+        assert!(!wav_path.exists(), "wav dropped after successful encode");
+        // The recovered audio must contain (almost) all captured frames — we
+        // lose at most the sub-second tail written after the last flush.
+        let recovered_frames = decoded_frame_count(&mp3_path);
+        assert!(
+            recovered_frames as f64 >= frames as f64 * 0.8,
+            "recovered {recovered_frames} frames, expected ~{frames}"
+        );
+    }
+
+    #[test]
+    fn finalize_orphaned_wav_skips_finalized_session() {
+        // A session that finalized cleanly (audio.mp3 present) must never be
+        // touched, even if a stale wav also lingers.
+        let dir = tempdir().unwrap();
+        let session_dir = dir.path().join("session");
+        std::fs::create_dir_all(&session_dir).unwrap();
+        let mp3_path = session_dir.join(FINAL_AUDIO_FILE);
+        std::fs::copy(hypr_data::english_1::AUDIO_MP3_PATH, &mp3_path).unwrap();
+        write_test_wav(&session_dir.join(WAV_FILE), 128);
+
+        let recovered = finalize_orphaned_wav(&session_dir).unwrap();
+        assert!(!recovered, "finalized session must be skipped");
+        assert!(
+            session_dir.join(WAV_FILE).exists(),
+            "stale wav left untouched"
+        );
+    }
+
+    #[test]
+    fn finalize_orphaned_wav_noop_without_wav() {
+        let dir = tempdir().unwrap();
+        let session_dir = dir.path().join("session");
+        std::fs::create_dir_all(&session_dir).unwrap();
+        assert!(!finalize_orphaned_wav(&session_dir).unwrap());
+    }
+
     fn decoded_frame_count(path: &Path) -> usize {
         use hypr_audio_utils::Source;
 
         let source = hypr_audio_utils::source_from_path(path).unwrap();
         let channels = u16::from(source.channels()).max(1) as usize;
         source.count() / channels
+    }
+
+    fn write_flushed_but_unfinalized_wav(path: &Path, frames: usize) {
+        let spec = hound::WavSpec {
+            channels: 1,
+            sample_rate: SAMPLE_RATE,
+            bits_per_sample: 32,
+            sample_format: hound::SampleFormat::Float,
+        };
+        let mut writer = hound::WavWriter::create(path, spec).unwrap();
+        for i in 0..frames {
+            // Non-trivial signal so the mp3 encoder retains real content.
+            let t = i as f32 / SAMPLE_RATE as f32;
+            writer
+                .write_sample((t * 440.0 * std::f32::consts::TAU).sin() * 0.25)
+                .unwrap();
+        }
+        writer.flush().unwrap();
+        // Drop WITHOUT finalize() — the kill -9 state.
+        std::mem::drop(writer);
     }
 
     fn write_test_wav(path: &Path, frames: usize) {
