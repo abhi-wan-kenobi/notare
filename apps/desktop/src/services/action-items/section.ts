@@ -37,7 +37,8 @@ function renderLine(item: ActionItemLine): string {
   const box = item.done ? "[x]" : "[ ]";
   const parts = [`- ${box} ${item.text.trim()}`];
   if (item.dueAt) parts.push(`📅 ${item.dueAt}`);
-  if (item.ownerLabel) parts.push(`@${item.ownerLabel.trim().replace(/\s+/g, "-")}`);
+  if (item.ownerLabel)
+    parts.push(`@${item.ownerLabel.trim().replace(/\s+/g, "-")}`);
   return parts.join(" ");
 }
 
@@ -82,7 +83,12 @@ export function upsertActionItemsSection(
   if (!rendered) {
     // Remove the section and collapse the blank lines it leaves behind.
     const merged = `${before.replace(/\s+$/, "")}\n${after.replace(/^\s+/, "")}`;
-    return merged.replace(/\n{3,}/g, "\n\n").replace(/^\n+/, "").replace(/\s+$/, "") + "\n";
+    return (
+      merged
+        .replace(/\n{3,}/g, "\n\n")
+        .replace(/^\n+/, "")
+        .replace(/\s+$/, "") + "\n"
+    );
   }
 
   const beforeTrimmed = before.replace(/\s+$/, "");
@@ -95,6 +101,59 @@ export function upsertActionItemsSection(
 /** Whether the note currently contains a rendered action-items section. */
 export function hasActionItemsSection(markdown: string): boolean {
   return (markdown ?? "").includes(SECTION_START);
+}
+
+/** A checkbox state parsed back out of a rendered action-items line. */
+export type ParsedActionItemLine = {
+  /** The item text with the trailing `📅 date` / `@owner` chips stripped. */
+  text: string;
+  done: boolean;
+};
+
+/**
+ * Strip the trailing render chips (`📅 YYYY-MM-DD` then `@owner`, appended in
+ * that order by `renderLine`) to recover the identity text. Chips are removed
+ * from the end so text that itself contains an `@` earlier in the line is
+ * preserved.
+ *
+ * KNOWN LIMITATION (inbound is checkbox-toggle only): we recover identity by
+ * text, so a user editing the *text* of a line on disk will simply fail to
+ * match a SQLite row (the toggle is ignored) — text edits are NOT synced back.
+ */
+function stripRenderChips(rest: string): string {
+  let text = rest;
+  // Trailing `@owner` chip (owner labels are hyphen-joined, no whitespace).
+  text = text.replace(/\s+@\S+\s*$/u, "");
+  // Trailing `📅 YYYY-MM-DD` chip.
+  text = text.replace(/\s+📅\s+\S+\s*$/u, "");
+  return text.trim();
+}
+
+/**
+ * Parse the checkbox lines inside the marked action-items region back into
+ * `{ text, done }` states. Lines outside the markers are ignored. This is the
+ * inbound half of the round-trip: it lets an external `- [ ]`↔`- [x]` edit in
+ * the memo be reconciled against SQLite (status only — see `stripRenderChips`).
+ */
+export function parseActionItemsSection(
+  markdown: string,
+): ParsedActionItemLine[] {
+  const source = markdown ?? "";
+  const startIdx = source.indexOf(SECTION_START);
+  if (startIdx === -1) return [];
+  const endMarkerIdx = source.indexOf(SECTION_END, startIdx);
+  const regionEnd = endMarkerIdx === -1 ? source.length : endMarkerIdx;
+  const region = source.slice(startIdx + SECTION_START.length, regionEnd);
+
+  const results: ParsedActionItemLine[] = [];
+  for (const line of region.split("\n")) {
+    const match = /^\s*-\s+\[([ xX])\]\s+(.*)$/u.exec(line);
+    if (!match) continue;
+    const done = match[1]!.toLowerCase() === "x";
+    const text = stripRenderChips(match[2]!);
+    if (text) results.push({ text, done });
+  }
+  return results;
 }
 
 /** A subset of an action_items row needed to render a line. */

@@ -48,6 +48,14 @@ async postinstall(result: InstallResult) : Promise<Result<null, string>> {
 },
 async maybeEmitUpdated() : Promise<void> {
     await TAURI_INVOKE("plugin:updater2|maybe_emit_updated");
+},
+async canSelfUpdate() : Promise<Result<boolean, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:updater2|can_self_update") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 }
 }
 

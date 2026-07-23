@@ -168,7 +168,7 @@ pub async fn main() {
         .plugin(tauri_plugin_fs2::init())
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_path2::init())
-        .plugin(tauri_plugin_export::init())
+        .plugin(tauri_plugin_export::init(db.clone()))
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_mcp::init())
         .plugin(tauri_plugin_messenger::init())
