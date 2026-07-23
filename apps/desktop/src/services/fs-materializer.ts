@@ -5,6 +5,7 @@ import {
 } from "@hypr/plugin-fs-sync";
 
 import { liveQueryClient } from "~/db";
+import { writeActionItemsToMarkdown } from "~/services/action-items/section";
 import {
   loadSessionContentSnapshot,
   type SessionContentSnapshot,
@@ -52,6 +53,11 @@ export const SESSION_DIRTY_SQL = `
         SELECT MAX(participant.updated_at)
         FROM session_participants AS participant
         WHERE participant.session_id = session.id
+      ), ''),
+      COALESCE((
+        SELECT MAX(action_item.updated_at)
+        FROM action_items AS action_item
+        WHERE action_item.session_id = session.id
       ), '')
     ) AS dirty_key
   FROM sessions AS session
@@ -93,7 +99,27 @@ export function buildSessionFiles(
     "_meta.json",
   ]);
 
-  if (snapshot.rawNoteId || snapshot.rawMarkdown.trim()) {
+  // SQLite is authoritative for action items: render them as a marker-delimited
+  // `## Action Items` section into the memo, replacing only that region so any
+  // user prose around it survives the round-trip. Owner is the raw
+  // `owner_speaker_id` — there's no speaker→human label map at this layer, and
+  // identity/inbound matching is by text, not owner, so this is safe.
+  const memoContent = writeActionItemsToMarkdown(
+    snapshot.rawMarkdown,
+    snapshot.actionItems.map((item) => ({
+      text: item.text,
+      status: item.status,
+      due_at: item.dueAt,
+      owner_speaker_id: item.ownerSpeakerId,
+    })),
+    (ownerSpeakerId) => ownerSpeakerId,
+  );
+
+  if (
+    snapshot.rawNoteId ||
+    snapshot.rawMarkdown.trim() ||
+    snapshot.actionItems.length > 0
+  ) {
     documents.push([
       {
         frontmatter: {
@@ -101,7 +127,7 @@ export function buildSessionFiles(
           session_id: snapshot.sessionId,
           ...(snapshot.title ? { title: snapshot.title } : {}),
         },
-        content: snapshot.rawMarkdown,
+        content: memoContent,
       },
       "_memo.md",
     ]);

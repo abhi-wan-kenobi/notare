@@ -68,6 +68,9 @@ const PHASE_LOOKS: Record<DictationPhase, PhaseLook> = {
     ringBoost: 0.06,
   },
   error: { intensityTarget: 0, spin: 0, bloom: 0, ringBoost: 0 },
+  // The positive flourish is the shared SuccessCheck overlay; the body rests at
+  // the calm idle look (matches how every variant handles `success`).
+  success: { intensityTarget: 0, spin: 0, bloom: 0.7, ringBoost: 0 },
 };
 
 interface RendererState {

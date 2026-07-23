@@ -37,7 +37,7 @@ import { RecordingOrb } from "~/meeting-float/orb";
  * - "pip": a friendly squishy blob that reacts through expression
  *   (`pip-orb.tsx`);
  * - "cobalt-halo": twin cobalt hairline rings inside a canvas-drawn bloom
- *   (`cobalt-halo-orb.tsx`) - the default look.
+ *   (`cobalt-halo-orb.tsx`).
  *
  * Adding a variant here (union + `ORB_VARIANT_REGISTRY` entry) is all it
  * takes: the settings picker (`OrbVariantGroup`) renders from the registry.
@@ -56,7 +56,7 @@ export type DictationOrbVariant =
   | "pip"
   | "cobalt-halo";
 
-export const DEFAULT_ORB_VARIANT: DictationOrbVariant = "cobalt-halo";
+export const DEFAULT_ORB_VARIANT: DictationOrbVariant = "cobalt";
 
 /** Map whatever the settings store holds onto a known variant. */
 export function normalizeOrbVariant(
@@ -121,6 +121,9 @@ export interface DictationOrbVariantProps {
  * - idle: matte core, slow rim drift (orb visible, not dictating).
  * - listening: rim glow + liquid level track the mic amplitude.
  * - processing: idle core with a pulse while the final segments flush.
+ * - success: a one-shot positive check that frames the orb for a beat before
+ *   it settles back to idle (a variant-agnostic overlay, so every look shows
+ *   it even though the underlying orb renders its calm idle state).
  * - error: desaturated core with the destructive badge dot.
  */
 export function DictationOrb({
@@ -147,9 +150,51 @@ export function DictationOrb({
       className={cn(["relative inline-flex", className])}
     >
       <Variant phase={phase} amplitude={amplitude} size={renderedSize} />
-      {phase === "processing" ? <ProcessingRing size={renderedSize} /> : null}
+      <PhaseOverlay phase={phase} size={renderedSize} />
     </span>
   );
+}
+
+/**
+ * The variant-agnostic overlay for a phase, painted on top of whichever orb
+ * look is active. Centralizing it here means every variant gets the same
+ * "flushing" and "done" affordances for free (the orb bodies only need to not
+ * crash on a phase they don't specifically paint).
+ *
+ * The exhaustive `switch` + `assertNever` is the guard the task asks for: add a
+ * phase to `DictationPhase` and this stops compiling until someone decides its
+ * overlay, so a new phase can never be silently dropped. At runtime an unknown
+ * phase still degrades safely (no overlay - the orb shows its idle body).
+ */
+function PhaseOverlay({
+  phase,
+  size,
+}: {
+  phase: DictationPhase;
+  size: number;
+}) {
+  switch (phase) {
+    case "processing":
+      return <ProcessingRing size={size} />;
+    case "success":
+      return <SuccessCheck size={size} />;
+    case "idle":
+    case "listening":
+    case "error":
+      return null;
+    default:
+      return assertNever(phase);
+  }
+}
+
+/**
+ * Compile-time exhaustiveness guard: reachable only if a `DictationPhase`
+ * variant is left unhandled above (then `phase` is not `never` and this errors
+ * at the call site). Returns `null` so that if the bindings ever drift ahead of
+ * the UI at runtime, an unknown phase renders nothing rather than throwing.
+ */
+function assertNever(_phase: never): null {
+  return null;
 }
 
 /**
@@ -183,6 +228,44 @@ function ProcessingRing({ size }: { size: number }) {
           strokeWidth="5"
           strokeLinecap="round"
           strokeDasharray="64 240"
+        />
+      </svg>
+    </span>
+  );
+}
+
+/**
+ * Variant-agnostic "done" affordance: the counterpart to `ProcessingRing`.
+ * When a session finishes cleanly the Rust side emits a one-shot `success`
+ * phase before settling to `idle`; overlay a brief emerald check ring so the
+ * user gets positive confirmation regardless of which orb look is active.
+ * `aria-hidden`; the pop-in honors reduced motion.
+ */
+function SuccessCheck({ size }: { size: number }) {
+  const ring = Math.round(size * 1.18);
+  return (
+    <span
+      aria-hidden
+      data-testid="dictation-orb-success"
+      className="animate-orb-success pointer-events-none absolute inset-0 flex items-center justify-center text-emerald-400 motion-reduce:animate-none"
+    >
+      <svg width={ring} height={ring} viewBox="0 0 100 100">
+        <circle
+          cx="50"
+          cy="50"
+          r="45"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="5"
+          strokeOpacity="0.9"
+        />
+        <path
+          d="M30 52 L45 66 L71 36"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="7"
+          strokeLinecap="round"
+          strokeLinejoin="round"
         />
       </svg>
     </span>

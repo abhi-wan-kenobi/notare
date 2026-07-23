@@ -50,6 +50,29 @@ describe("DictationOrb", () => {
     expect(screen.getByTestId("recording-orb-error-badge")).not.toBeNull();
   });
 
+  it("shows the success check over an idle-resting body on success", () => {
+    render(<DictationOrb phase="success" />);
+
+    // The one-shot positive flourish is a variant-agnostic overlay...
+    expect(screen.getByTestId("dictation-orb-success")).not.toBeNull();
+    expect(screen.getByTestId("dictation-orb").dataset.dictationPhase).toBe(
+      "success",
+    );
+    // ...while the orb body itself rests at the calm idle look (not error,
+    // not the processing spinner).
+    expect(screen.getByTestId("recording-orb").dataset.orbState).toBe("idle");
+    expect(screen.queryByTestId("recording-orb-error-badge")).toBeNull();
+    expect(screen.queryByTestId("dictation-orb-processing")).toBeNull();
+  });
+
+  it("shows the success overlay only for the success phase", () => {
+    for (const phase of ["idle", "listening", "processing", "error"] as const) {
+      cleanup();
+      render(<DictationOrb phase={phase} />);
+      expect(screen.queryByTestId("dictation-orb-success")).toBeNull();
+    }
+  });
+
   it("records the rendered variant for the style picker", () => {
     render(<DictationOrb phase="idle" variant="cobalt" />);
 
@@ -198,13 +221,37 @@ describe("new orb variants", () => {
     ).not.toBeNull();
   });
 
-  it("uses Cobalt Halo as the default variant", () => {
+  it("keeps the cobalt orb as the default variant", () => {
     render(<DictationOrb phase="idle" />);
 
     expect(screen.getByTestId("dictation-orb").dataset.dictationVariant).toBe(
-      "cobalt-halo",
+      "cobalt",
     );
-    expect(screen.getByTestId("dictation-cobalt-halo-orb")).not.toBeNull();
+    expect(screen.getByTestId("recording-orb")).not.toBeNull();
+    expect(screen.queryByTestId("dictation-cobalt-halo-orb")).toBeNull();
+  });
+});
+
+describe("every variant handles the success phase", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  // Widening DictationPhase with `success` must leave every registered variant
+  // renderable: the Record-driven looks fall back to their idle entry and the
+  // ternary variants fall through to idle, so none crash or render blank, and
+  // the shared success overlay is present on top of all of them.
+  it("renders success for all 11 variants with the overlay on top", () => {
+    for (const variant of ORB_VARIANT_ORDER) {
+      cleanup();
+      render(
+        <DictationOrb phase="success" amplitude={0.4} variant={variant} />,
+      );
+      const orb = screen.getByTestId("dictation-orb");
+      expect(orb.dataset.dictationVariant).toBe(variant);
+      expect(orb.dataset.dictationPhase).toBe("success");
+      expect(screen.getByTestId("dictation-orb-success")).not.toBeNull();
+    }
   });
 });
 
@@ -247,8 +294,8 @@ describe("normalizeOrbVariant", () => {
     expect(normalizeOrbVariant("silk")).toBe("silk");
     expect(normalizeOrbVariant("pip")).toBe("pip");
     expect(normalizeOrbVariant("cobalt-halo")).toBe("cobalt-halo");
-    expect(normalizeOrbVariant(undefined)).toBe("cobalt-halo");
-    expect(normalizeOrbVariant("garbage")).toBe("cobalt-halo");
+    expect(normalizeOrbVariant(undefined)).toBe("cobalt");
+    expect(normalizeOrbVariant("garbage")).toBe("cobalt");
   });
 });
 

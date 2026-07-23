@@ -13,10 +13,10 @@ const COMMANDS: &[&str] = &[
 ];
 
 fn main() {
-    let gitcl = vergen_gix::GixBuilder::default()
-        .sha(false)
-        .build()
-        .unwrap();
+    // vergen-gix 10 renamed the entry point: GixBuilder::default() -> Gix::builder()
+    // and build() no longer returns a Result. sha(false) still means "emit the
+    // full (non-short) VERGEN_GIT_SHA" — the only var this plugin reads (ext.rs).
+    let gitcl = vergen_gix::Gix::builder().sha(false).build();
     vergen_gix::Emitter::default()
         .add_instructions(&gitcl)
         .unwrap()

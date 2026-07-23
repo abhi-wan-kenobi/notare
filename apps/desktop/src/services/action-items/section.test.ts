@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   type ActionItemLine,
   hasActionItemsSection,
+  parseActionItemsSection,
   renderActionItemsSection,
   SECTION_END,
   SECTION_START,
@@ -11,7 +12,12 @@ import {
 } from "./section";
 
 const items: ActionItemLine[] = [
-  { text: "Send the revised budget", done: false, dueAt: "2026-07-24", ownerLabel: "Alice" },
+  {
+    text: "Send the revised budget",
+    done: false,
+    dueAt: "2026-07-24",
+    ownerLabel: "Alice",
+  },
   { text: "Book the venue", done: true },
 ];
 
@@ -26,7 +32,9 @@ describe("renderActionItemsSection", () => {
   });
 
   it("multi-word owners are hyphen-joined (@First-Last)", () => {
-    const s = renderActionItemsSection([{ text: "t", done: false, ownerLabel: "Bob Smith" }]);
+    const s = renderActionItemsSection([
+      { text: "t", done: false, ownerLabel: "Bob Smith" },
+    ]);
     expect(s).toContain("@Bob-Smith");
   });
 
@@ -36,7 +44,8 @@ describe("renderActionItemsSection", () => {
 });
 
 describe("upsertActionItemsSection — replace-only-region (Obsidian-safe)", () => {
-  const note = "# Meeting notes\n\nSome body the user wrote.\n\nMore notes below.\n";
+  const note =
+    "# Meeting notes\n\nSome body the user wrote.\n\nMore notes below.\n";
 
   it("appends the section when absent, preserving the note", () => {
     const out = upsertActionItemsSection(note, items);
@@ -44,7 +53,9 @@ describe("upsertActionItemsSection — replace-only-region (Obsidian-safe)", () 
     expect(out).toContain("More notes below.");
     expect(hasActionItemsSection(out)).toBe(true);
     // The user's content comes before the section.
-    expect(out.indexOf("More notes below.")).toBeLessThan(out.indexOf(SECTION_START));
+    expect(out.indexOf("More notes below.")).toBeLessThan(
+      out.indexOf(SECTION_START),
+    );
   });
 
   it("replaces ONLY the marked region on regeneration, preserving surroundings", () => {
@@ -67,7 +78,9 @@ describe("upsertActionItemsSection — replace-only-region (Obsidian-safe)", () 
 
   it("preserves content that sits BEFORE and AFTER an existing section", () => {
     const doc = `Intro paragraph.\n\n${renderActionItemsSection(items)}\n\nClosing paragraph.\n`;
-    const out = upsertActionItemsSection(doc, [{ text: "only this", done: false }]);
+    const out = upsertActionItemsSection(doc, [
+      { text: "only this", done: false },
+    ]);
     expect(out).toContain("Intro paragraph.");
     expect(out).toContain("Closing paragraph.");
     expect(out).toContain("only this");
@@ -99,8 +112,18 @@ describe("writeActionItemsToMarkdown (DB rows -> section)", () => {
     const out = writeActionItemsToMarkdown(
       "Note body.\n",
       [
-        { text: "ship it", status: "todo", due_at: "2026-08-01", owner_speaker_id: "spk_1" },
-        { text: "done thing", status: "done", due_at: "", owner_speaker_id: null },
+        {
+          text: "ship it",
+          status: "todo",
+          due_at: "2026-08-01",
+          owner_speaker_id: "spk_1",
+        },
+        {
+          text: "done thing",
+          status: "done",
+          due_at: "",
+          owner_speaker_id: null,
+        },
       ],
       (id) => (id === "spk_1" ? "Alice" : ""),
     );
@@ -116,5 +139,62 @@ describe("writeActionItemsToMarkdown (DB rows -> section)", () => {
     expect(hasActionItemsSection(withSection)).toBe(true);
     const cleared = writeActionItemsToMarkdown(withSection, []);
     expect(hasActionItemsSection(cleared)).toBe(false);
+  });
+});
+
+describe("parseActionItemsSection (inbound checkbox toggles)", () => {
+  it("returns [] when there is no section", () => {
+    expect(parseActionItemsSection("# Notes\n\nno tasks here")).toEqual([]);
+  });
+
+  it("parses checkbox state and strips the 📅/@owner chips to recover text", () => {
+    const md = renderActionItemsSection(items);
+    expect(parseActionItemsSection(md)).toEqual([
+      { text: "Send the revised budget", done: false },
+      { text: "Book the venue", done: true },
+    ]);
+  });
+
+  it("only reads lines inside the markers, ignoring look-alike lines outside", () => {
+    const md = `- [x] a decoy task outside the section\n\n${renderActionItemsSection(
+      [{ text: "real task", done: false }],
+    )}\n\n- [ ] another decoy after\n`;
+    expect(parseActionItemsSection(md)).toEqual([
+      { text: "real task", done: false },
+    ]);
+  });
+
+  it("treats [x] and [X] as done and [ ] as not done", () => {
+    const md = [
+      SECTION_START,
+      "## Action Items",
+      "",
+      "- [X] upper done",
+      "- [x] lower done",
+      "- [ ] open",
+      SECTION_END,
+    ].join("\n");
+    expect(parseActionItemsSection(md)).toEqual([
+      { text: "upper done", done: true },
+      { text: "lower done", done: true },
+      { text: "open", done: false },
+    ]);
+  });
+
+  it("round-trips render -> parse: text and done state survive", () => {
+    const source: ActionItemLine[] = [
+      {
+        text: "ship the thing",
+        done: false,
+        dueAt: "2026-08-01",
+        ownerLabel: "Bob Smith",
+      },
+      { text: "close the loop", done: true },
+    ];
+    const parsed = parseActionItemsSection(renderActionItemsSection(source));
+    expect(parsed).toEqual([
+      { text: "ship the thing", done: false },
+      { text: "close the loop", done: true },
+    ]);
   });
 });

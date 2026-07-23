@@ -68,7 +68,7 @@ export const SETTING_DEFINITIONS = {
   dictation_orb_variant: {
     type: "string",
     path: ["general", "dictation_orb_variant"],
-    default: "cobalt-halo" as string,
+    default: "cobalt" as string,
   },
   floating_bar_opacity: {
     type: "number",

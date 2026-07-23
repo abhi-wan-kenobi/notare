@@ -73,6 +73,9 @@ const PHASE_LOOKS: Record<DictationPhase, PhaseLook> = {
   idle: { drift: 0.35, brightness: 0.4, intensityTarget: 0 },
   listening: { drift: 1, brightness: 0.75, intensityTarget: 0 },
   processing: { drift: 1.6, brightness: 0.6, intensityTarget: 0.35 },
+  // success is a transient end-of-session flourish (a variant-agnostic overlay
+  // in orb.tsx); the body rests at the idle look.
+  success: { drift: 0.35, brightness: 0.4, intensityTarget: 0 },
   error: { drift: 0, brightness: 0.3, intensityTarget: 0 },
 };
 
@@ -134,7 +137,9 @@ function drawFrame(
     const br = blob.radius * orbRadius * swell;
 
     const color =
-      phase === "error" ? "220 10% 60%" : colors[blob.colorIndex % colors.length];
+      phase === "error"
+        ? "220 10% 60%"
+        : colors[blob.colorIndex % colors.length];
     const gradient = ctx.createRadialGradient(bx, by, 0, bx, by, br);
     gradient.addColorStop(0, hsl(color, clamp01(0.5 * brightness)));
     gradient.addColorStop(0.55, hsl(color, clamp01(0.18 * brightness)));
@@ -251,7 +256,11 @@ export function AuroraOrb({
       className="relative inline-flex shrink-0"
       style={{ width: size, height: size }}
     >
-      <canvas ref={canvasRef} aria-hidden style={{ width: size, height: size }} />
+      <canvas
+        ref={canvasRef}
+        aria-hidden
+        style={{ width: size, height: size }}
+      />
       {phase === "error" && (
         <span
           data-testid="dictation-aurora-error-badge"
