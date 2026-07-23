@@ -75,8 +75,11 @@ describe("OrbVariantGroup", () => {
     render(<OrbVariantGroup value="cobalt" onChange={onChange} />);
 
     expect(
-      (screen.getByRole("radio", { name: /Cobalt/ }) as HTMLInputElement)
-        .checked,
+      (
+        screen.getByRole("radio", {
+          name: /^Cobalt The minimal/,
+        }) as HTMLInputElement
+      ).checked,
     ).toBe(true);
 
     fireEvent.click(screen.getByRole("radio", { name: /Particles/ }));

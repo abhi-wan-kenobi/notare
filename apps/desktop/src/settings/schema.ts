@@ -61,8 +61,10 @@ export const SETTING_DEFINITIONS = {
     path: ["general", "dictation_cleanup"],
     default: "basic" as string,
   },
-  // Orb look: "cobalt" (the mini meeting orb), "particles" (voice-reactive
-  // particle sphere) or "waveform" ("Pulse", the dancing-sticks waveform).
+  // Orb look: "cobalt-halo" (default; twin cobalt rings in a canvas bloom),
+  // "cobalt" (the mini meeting orb), "particles" (voice-reactive particle
+  // sphere), "waveform" ("Pulse", the dancing-sticks waveform), etc. Keep in
+  // sync with `DEFAULT_ORB_VARIANT` in `dictation/orb.tsx`.
   dictation_orb_variant: {
     type: "string",
     path: ["general", "dictation_orb_variant"],
