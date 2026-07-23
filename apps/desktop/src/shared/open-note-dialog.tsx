@@ -1,6 +1,6 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import { Command as CommandPrimitive } from "cmdk";
-import { FileTextIcon, SearchIcon, XIcon } from "lucide-react";
+import { ArrowRightIcon, FileTextIcon, SearchIcon, XIcon } from "lucide-react";
 import {
   createContext,
   useCallback,
@@ -89,6 +89,7 @@ export function OpenNoteDialog({
   const { t } = useLingui();
   const [query, setQuery] = useState("");
   const openCurrent = useTabs((state) => state.openCurrent);
+  const openNew = useTabs((state) => state.openNew);
   const recentlyOpenedSessionIds = useTabs(
     (state) => state.recentlyOpenedSessionIds,
   );
@@ -171,6 +172,14 @@ export function OpenNoteDialog({
     [handleOpenChange, openCurrent],
   );
 
+  const handleSearchEverything = useCallback(() => {
+    const seededQuery = query.trim();
+    handleOpenChange(false);
+    openNew({ type: "search", query: seededQuery || undefined });
+  }, [handleOpenChange, openNew, query]);
+
+  const trimmedQuery = query.trim();
+
   if (!open) return null;
 
   return createPortal(
@@ -232,6 +241,27 @@ export function OpenNoteDialog({
             </div>
 
             <CommandPrimitive.List className="max-h-80 overflow-y-auto p-2">
+              <CommandPrimitive.Item
+                value="__search_everything__"
+                onSelect={handleSearchEverything}
+                className={cn([
+                  "flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5",
+                  "text-muted-foreground text-sm",
+                  "data-[selected=true]:bg-accent/60",
+                  "transition-colors",
+                ])}
+              >
+                <SearchIcon className="text-muted-foreground h-4 w-4 shrink-0" />
+                <span className="flex-1 truncate">
+                  {trimmedQuery ? (
+                    <Trans>Search everything for "{trimmedQuery}"</Trans>
+                  ) : (
+                    <Trans>Search everything</Trans>
+                  )}
+                </span>
+                <ArrowRightIcon className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
+              </CommandPrimitive.Item>
+
               {!hasAnyResults ? (
                 <CommandPrimitive.Empty className="text-muted-foreground py-6 text-center text-sm">
                   <Trans>No notes found.</Trans>

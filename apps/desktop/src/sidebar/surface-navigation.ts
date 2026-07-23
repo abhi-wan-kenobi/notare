@@ -2,6 +2,7 @@ import { type Tab, uniqueIdfromTab, useTabs } from "~/store/zustand/tabs";
 
 export type SurfaceId =
   | "notes"
+  | "search"
   | "calendar"
   | "contacts"
   | "templates"
@@ -18,6 +19,8 @@ export const surfaceFromTabType = (
   type: Tab["type"] | undefined,
 ): SurfaceId => {
   switch (type) {
+    case "search":
+      return "search";
     case "calendar":
       return "calendar";
     case "contacts":
@@ -73,6 +76,9 @@ export const openSurfaceTab = (surface: Exclude<SurfaceId, "notes">) => {
   const { openNew } = useTabs.getState();
 
   switch (surface) {
+    case "search":
+      openNew({ type: "search" });
+      return;
     case "calendar":
       openNew({ type: "calendar" });
       return;

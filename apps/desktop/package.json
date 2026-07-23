@@ -39,6 +39,7 @@
     "@hypr/plugin-db": "workspace:*",
     "@hypr/plugin-deeplink2": "workspace:*",
     "@hypr/plugin-detect": "workspace:*",
+    "@hypr/plugin-embedding-search": "workspace:*",
     "@hypr/plugin-dictation": "workspace:*",
     "@hypr/plugin-embedding-search": "workspace:*",
     "@hypr/plugin-export": "workspace:*",

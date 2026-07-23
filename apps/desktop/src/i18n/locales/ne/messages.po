@@ -339,6 +339,10 @@ msgstr ""
 msgid "Browser handoff not working? Paste the callback link instead"
 msgstr ""
 
+#: src/search/page/index.tsx
+msgid "Building the search index…"
+msgstr ""
+
 #: src/calendar/components/sidebar.tsx
 #: src/settings/general/permissions.tsx
 #: src/sidebar/calendar.tsx
@@ -473,6 +477,10 @@ msgstr ""
 
 #: src/dictation/orb.tsx
 msgid "Cobalt"
+msgstr ""
+
+#: src/dictation/orb.tsx
+msgid "Cobalt Halo"
 msgstr ""
 
 #: src/meeting-float/window.tsx
@@ -939,6 +947,10 @@ msgstr ""
 
 #: src/shared/open-note-dialog.tsx
 msgid "Find a note..."
+msgstr ""
+
+#: src/search/page/index.tsx
+msgid "Find anything across your notes and transcripts — by keyword or by meaning."
 msgstr ""
 
 #: src/instruction/index.tsx
@@ -1548,6 +1560,10 @@ msgstr ""
 msgid "No related notes found"
 msgstr ""
 
+#: src/search/page/index.tsx
+msgid "No results"
+msgstr ""
+
 #: src/settings/ai/shared/model-combobox.tsx
 #: src/settings/general/searchable-select.tsx
 msgid "No results found."
@@ -1624,6 +1640,10 @@ msgstr ""
 
 #: src/settings/dictation/index.tsx
 msgid "Nothing is typed while you talk; stopping cleans up the transcript and copies it. Best for terminals."
+msgstr ""
+
+#: src/search/page/index.tsx
+msgid "Nothing matched \"{trimmedQuery}\". Try different words."
 msgstr ""
 
 #: src/session/components/note-input/header.tsx
@@ -2032,12 +2052,28 @@ msgstr ""
 msgid "Save date"
 msgstr ""
 
+#: src/sidebar/surface-nav.tsx
+msgid "Search"
+msgstr ""
+
+#: src/search/page/index.tsx
+msgid "Search across all your meetings..."
+msgstr ""
+
 #: src/contacts/shared.tsx
 msgid "Search contacts..."
 msgstr ""
 
 #: src/templates/template-icon-picker.tsx
 msgid "Search emoji..."
+msgstr ""
+
+#: src/shared/open-note-dialog.tsx
+msgid "Search everything"
+msgstr ""
+
+#: src/shared/open-note-dialog.tsx
+msgid "Search everything for \"{trimmedQuery}\""
 msgstr ""
 
 #: src/templates/template-icon-picker.tsx
@@ -2079,6 +2115,10 @@ msgstr ""
 
 #: src/settings/general/timezone.tsx
 msgid "Search timezone..."
+msgstr ""
+
+#: src/search/page/index.tsx
+msgid "Search your meetings"
 msgstr ""
 
 #: src/session/components/note-input/search/bar.tsx
@@ -2595,6 +2635,10 @@ msgstr ""
 msgid "Trial activated - 14 days of Pro"
 msgstr ""
 
+#: src/dictation/orb.tsx
+msgid "Twin cobalt rings inside a soft glowing halo."
+msgstr ""
+
 #: src/settings/dictation/index.tsx
 msgid "Type as you speak"
 msgstr ""
@@ -2612,6 +2656,7 @@ msgstr ""
 msgid "Unnamed"
 msgstr ""
 
+#: src/search/page/index.tsx
 #: src/session/components/outer-header/overflow/export-modal.tsx
 #: src/session/components/title-input.tsx
 #: src/shared/open-note-dialog.tsx
