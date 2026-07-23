@@ -23,7 +23,12 @@ Grab the latest installer from **[GitHub Releases](https://github.com/abhi-wan-k
 | Linux (x64) | `.AppImage` or `.deb` |
 | macOS (Apple Silicon) | `.dmg` — unsigned, see note below |
 
-Auto-updates are built in — install once and the app keeps itself current.
+Auto-updates are built in on **Windows (`.msi`)**, **macOS (`.dmg`)**, and the
+**Linux `.AppImage`** — install once and the app keeps itself current. The Linux
+**`.deb`** cannot self-update (the in-app updater is AppImage-only on Linux); it
+detects this and points you to Releases instead of failing — update it with
+`apt install ./Notare_<version>_amd64.deb` (or your package manager) when a new
+version ships.
 
 > **Windows SmartScreen:** builds are not (yet) code-signed, so SmartScreen
 > will warn on first run. Click **More info → Run anyway**.
