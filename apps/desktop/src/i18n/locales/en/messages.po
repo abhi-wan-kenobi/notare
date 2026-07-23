@@ -103,6 +103,10 @@ msgstr "Accessibility"
 msgid "Account"
 msgstr "Account"
 
+#: src/session/components/action-items/index.tsx
+msgid "Action items"
+msgstr "Action items"
+
 #: src/settings/webhook/index.tsx
 msgid "Action items updated"
 msgstr "Action items updated"
@@ -483,6 +487,10 @@ msgstr "Closed"
 msgid "Cobalt"
 msgstr "Cobalt"
 
+#: src/dictation/orb.tsx
+msgid "Cobalt Halo"
+msgstr "Cobalt Halo"
+
 #: src/meeting-float/window.tsx
 msgid "Collapse live transcript"
 msgstr "Collapse live transcript"
@@ -827,6 +835,10 @@ msgstr "Emojis"
 msgid "Enable {0}"
 msgstr "Enable {0}"
 
+#: src/session/components/action-items/index.tsx
+msgid "Enable a local or cloud model"
+msgstr "Enable a local or cloud model"
+
 #: src/calendar/components/google/content.tsx
 msgid "Enable the Google Calendar API for that project."
 msgstr "Enable the Google Calendar API for that project."
@@ -907,6 +919,14 @@ msgstr "Export"
 #: src/session/components/outer-header/overflow/export-modal.tsx
 msgid "Exporting..."
 msgstr "Exporting..."
+
+#: src/session/components/action-items/index.tsx
+msgid "Extract action items"
+msgstr "Extract action items"
+
+#: src/session/components/action-items/index.tsx
+msgid "Extraction failed. Please try again."
+msgstr "Extraction failed. Please try again."
 
 #: src/calendar/components/ics/content.tsx
 msgid "Failed to load imported calendar files"
@@ -1098,6 +1118,14 @@ msgstr "Hide Deleted Events"
 msgid "Hide setup steps"
 msgstr "Hide setup steps"
 
+#: src/session/components/action-items/index.tsx
+msgid "High"
+msgstr "High"
+
+#: src/session/components/action-items/index.tsx
+msgid "High confidence"
+msgstr "High confidence"
+
 #: src/settings/ai/stt/shared.tsx
 msgid "Highest accuracy; needs the most compute."
 msgstr "Highest accuracy; needs the most compute."
@@ -1187,6 +1215,10 @@ msgstr "Join meeting and record"
 msgid "Join our community and stay updated:"
 msgstr "Join our community and stay updated:"
 
+#: src/session/components/action-items/index.tsx
+msgid "Jump to source"
+msgstr "Jump to source"
+
 #: src/settings/dictation/index.tsx
 msgid "Keep a small always-on-top orb on screen. Click it, or press the shortcut, to start typing what you say into the focused app."
 msgstr "Keep a small always-on-top orb on screen. Click it, or press the shortcut, to start typing what you say into the focused app."
@@ -1249,6 +1281,10 @@ msgstr "Live transcription"
 msgid "Live transcription model"
 msgstr "Live transcription model"
 
+#: src/session/components/action-items/index.tsx
+msgid "Loading action items…"
+msgstr "Loading action items…"
+
 #: src/onboarding/transcription.tsx
 msgid "Loading available models…"
 msgstr "Loading available models…"
@@ -1279,6 +1315,14 @@ msgstr "Local-first: Notare prefers a local model (Ollama or LM Studio) and only
 msgid "Login with existing account"
 msgstr "Login with existing account"
 
+#: src/session/components/action-items/index.tsx
+msgid "Low"
+msgstr "Low"
+
+#: src/session/components/action-items/index.tsx
+msgid "Low confidence"
+msgstr "Low confidence"
+
 #: src/settings/general/main-language.tsx
 msgid "Main language"
 msgstr "Main language"
@@ -1306,6 +1350,14 @@ msgstr "Match case"
 #: src/session/components/note-input/search/bar.tsx
 msgid "Match whole word"
 msgstr "Match whole word"
+
+#: src/session/components/action-items/index.tsx
+msgid "Medium"
+msgstr "Medium"
+
+#: src/session/components/action-items/index.tsx
+msgid "Medium confidence"
+msgstr "Medium confidence"
 
 #: src/sidebar/timeline/index.tsx
 msgid "Meeting"
@@ -1443,6 +1495,14 @@ msgstr "Newest"
 msgid "Next match"
 msgstr "Next match"
 
+#: src/session/components/action-items/index.tsx
+msgid "No action items found in this meeting."
+msgstr "No action items found in this meeting."
+
+#: src/session/components/action-items/index.tsx
+msgid "No action items yet"
+msgstr "No action items yet"
+
 #: src/dictation/host.tsx
 msgid "No AI model is configured for dictation cleanup - used basic cleanup instead."
 msgstr "No AI model is configured for dictation cleanup - used basic cleanup instead."
@@ -1548,6 +1608,10 @@ msgstr "No results found."
 #: src/templates/details.tsx
 msgid "No templates yet"
 msgstr "No templates yet"
+
+#: src/session/components/action-items/index.tsx
+msgid "No transcript to extract from yet."
+msgstr "No transcript to extract from yet."
 
 #: src/settings/dictation/index.tsx
 msgid "None"
@@ -2091,6 +2155,14 @@ msgstr "Section actions"
 msgid "See all templates"
 msgstr "See all templates"
 
+#: src/session/components/action-items/index.tsx
+msgid "Select a capable model"
+msgstr "Select a capable model"
+
+#: src/session/components/action-items/index.tsx
+msgid "Select a cloud model to use"
+msgstr "Select a cloud model to use"
+
 #: src/settings/ai/shared/model-combobox.tsx
 msgid "Select a model"
 msgstr "Select a model"
@@ -2151,6 +2223,10 @@ msgstr "Send Notare events to an endpoint you control. Off by default — nothin
 #: src/settings/webhook/index.tsx
 msgid "Send test event"
 msgstr "Send test event"
+
+#: src/session/components/action-items/index.tsx
+msgid "Session content is not available yet."
+msgstr "Session content is not available yet."
 
 #: src/settings/webhook/index.tsx
 msgid "Session enhanced"
@@ -2324,6 +2400,10 @@ msgstr "Something went wrong while generating the summary."
 #: src/contacts/shared.tsx
 msgid "Sort options"
 msgstr "Sort options"
+
+#: src/session/components/action-items/index.tsx
+msgid "Source"
+msgstr "Source"
 
 #: src/settings/general/app-settings.tsx
 msgid "Speakers"
@@ -2519,6 +2599,10 @@ msgstr "Thinking..."
 msgid "This combination cannot be used as a global shortcut. Try another one."
 msgstr "This combination cannot be used as a global shortcut. Try another one."
 
+#: src/session/components/action-items/index.tsx
+msgid "This model can't produce structured output. Pick a different model."
+msgstr "This model can't produce structured output. Pick a different model."
+
 #. placeholder {0}: status.fileCount
 #. placeholder {1}: formatBytes(status.totalBytes)
 #: src/settings/general/storage/legacy-cleanup.tsx
@@ -2540,6 +2624,10 @@ msgstr "Timezone"
 #: src/session/components/note-input/enhanced/streaming.tsx
 msgid "Tip: The Notare team loves our users!"
 msgstr "Tip: The Notare team loves our users!"
+
+#: src/session/components/action-items/index.tsx
+msgid "Toggle action item"
+msgstr "Toggle action item"
 
 #: src/settings/dictation/shortcut-recorder.tsx
 msgid "Toggle shortcut"
@@ -2587,6 +2675,10 @@ msgstr "Trial"
 #: src/onboarding/account/after-login.tsx
 msgid "Trial activated - 14 days of Pro"
 msgstr "Trial activated - 14 days of Pro"
+
+#: src/dictation/orb.tsx
+msgid "Twin cobalt rings inside a soft glowing halo."
+msgstr "Twin cobalt rings inside a soft glowing halo."
 
 #: src/settings/dictation/index.tsx
 msgid "Type as you speak"

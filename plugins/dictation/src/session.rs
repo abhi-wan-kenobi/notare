@@ -30,19 +30,28 @@ use tauri_specta::Event;
 
 use crate::error::Error;
 use crate::events::{
-    DictationFinishedEvent, DictationOutputMode, DictationPhase, DictationStateEvent,
-    DictationTranscriptEvent,
+    DictationAmplitudeEvent, DictationFinishedEvent, DictationOutputMode, DictationPhase,
+    DictationStateEvent, DictationTranscriptEvent,
 };
 use crate::orb;
 
 /// Matches the whisper server's expected input (`TARGET_SAMPLE_RATE`,
 /// `crates/transcribe-core/src/audio.rs`).
 const SAMPLE_RATE: u32 = 16_000;
-/// Throttle for orb amplitude updates (same cadence as the meeting pipeline's
-/// `AmplitudeEmitter`).
+/// Throttle for the 10 Hz orb state broadcast (same cadence as the meeting
+/// pipeline's `AmplitudeEmitter`). Drives `DictationStateEvent`, which carries
+/// lifecycle/phase and mode - a slow re-render channel.
 const AMPLITUDE_INTERVAL: Duration = Duration::from_millis(100);
+/// Throttle for the high-frequency (~30 Hz) `DictationAmplitudeEvent` channel.
+/// 33 ms ≈ 30.3 Hz. Separate from `AMPLITUDE_INTERVAL` so the orb ring can be
+/// driven smoothly without pushing phase/state (and its re-renders) at 30 Hz.
+const AMPLITUDE_FAST_INTERVAL: Duration = Duration::from_millis(33);
 /// How long to wait for the server to flush segments after a Finalize.
-const FINALIZE_TIMEOUT: Duration = Duration::from_secs(5);
+// Must cover the server-side flush: the STT server's WS send timeout is 20s
+// (transcribe-core WS_SEND_TIMEOUT) and it packs VAD chunks up to ~25s before
+// the final transcript arrives. The old 5s here fired mid-flush and truncated
+// the last segments (leaving the session Idle with a partial transcript).
+const FINALIZE_TIMEOUT: Duration = Duration::from_secs(30);
 
 pub struct ActiveSession {
     stop_tx: tokio::sync::oneshot::Sender<()>,
@@ -252,6 +261,7 @@ async fn run_session<E: std::fmt::Debug>(
     // is built from (segments were already typed live).
     let mut transcript = String::new();
     let mut last_amplitude_at = std::time::Instant::now() - AMPLITUDE_INTERVAL;
+    let mut last_amplitude_fast_at = std::time::Instant::now() - AMPLITUDE_FAST_INTERVAL;
 
     let finalize_deadline = tokio::time::sleep(Duration::from_secs(86_400));
     tokio::pin!(finalize_deadline);
@@ -271,21 +281,46 @@ async fn run_session<E: std::fmt::Debug>(
                     Some(Ok(frame)) => {
                         let samples = frame.preferred_mic();
 
-                        if last_amplitude_at.elapsed() >= AMPLITUDE_INTERVAL {
-                            last_amplitude_at = std::time::Instant::now();
-                            emit_state(
-                                &app,
-                                DictationPhase::Listening,
-                                normalized_amplitude(&samples),
-                                mode,
-                            );
+                        // Two independent amplitude channels share the same RMS
+                        // value: the dense ~30 Hz `DictationAmplitudeEvent` (orb
+                        // ring) and the 10 Hz `DictationStateEvent` (phase/state
+                        // + re-renders). Compute the level once when either is
+                        // due; skip the work entirely on frames where neither is.
+                        let now = std::time::Instant::now();
+                        let fast_due = should_emit(now, last_amplitude_fast_at, AMPLITUDE_FAST_INTERVAL);
+                        let state_due = should_emit(now, last_amplitude_at, AMPLITUDE_INTERVAL);
+                        if fast_due || state_due {
+                            let amplitude = normalized_amplitude(&samples);
+                            if fast_due {
+                                last_amplitude_fast_at = now;
+                                emit_amplitude(&app, amplitude);
+                            }
+                            if state_due {
+                                last_amplitude_at = now;
+                                emit_state(&app, DictationPhase::Listening, amplitude, mode);
+                            }
                         }
 
                         let bytes = hypr_audio_utils::f32_to_i16_bytes(samples.iter().copied());
                         if audio_tx.send(MixedMessage::Audio(bytes)).await.is_err() {
-                            tracing::warn!("dictation audio channel closed unexpectedly");
-                            failed = true;
-                            break;
+                            // The audio forward channel to the STT socket closed
+                            // (observed on Windows when the WS write task drops
+                            // mid-session). Do NOT treat this as a hard failure:
+                            // that path set failed=true and broke BEFORE any
+                            // finalize(), which turned the orb red, degraded
+                            // delivery to copy-only, and truncated the transcript
+                            // to whatever streamed so far. Instead, transition to
+                            // finalizing exactly like a user Stop — flush what the
+                            // server already has and deliver via the chosen mode.
+                            tracing::warn!(
+                                "dictation audio channel closed; finalizing gracefully"
+                            );
+                            finalizing = true;
+                            emit_state(&app, DictationPhase::Processing, 0.0, mode);
+                            ws_handle.finalize().await;
+                            finalize_deadline
+                                .as_mut()
+                                .reset(tokio::time::Instant::now() + FINALIZE_TIMEOUT);
                         }
                     }
                     Some(Err(error)) => {
@@ -442,6 +477,18 @@ fn emit_state(
     .emit(app);
 }
 
+/// Broadcast one sample on the dense ~30 Hz amplitude channel.
+fn emit_amplitude(app: &tauri::AppHandle<tauri::Wry>, amplitude: f32) {
+    let _ = DictationAmplitudeEvent { amplitude }.emit(app);
+}
+
+/// Whether a throttled channel whose last emit was at `last` is due to fire at
+/// `now`, given its minimum inter-emit `interval`. Pulled out so the emit
+/// cadence is unit-testable with a simulated clock (see tests).
+fn should_emit(now: std::time::Instant, last: std::time::Instant, interval: Duration) -> bool {
+    now.duration_since(last) >= interval
+}
+
 /// RMS -> dB -> [0, 1], roughly matching the feel of the meeting pipeline's
 /// amplitude without importing it: -50 dBFS maps to 0, 0 dBFS to 1.
 fn normalized_amplitude(samples: &[f32]) -> f32 {
@@ -461,8 +508,75 @@ fn normalized_amplitude(samples: &[f32]) -> f32 {
 
 #[cfg(test)]
 mod tests {
-    use super::{normalized_amplitude, resolve_soniqo_model, terminal_phases};
+    use std::time::{Duration, Instant};
+
+    use super::{
+        AMPLITUDE_FAST_INTERVAL, AMPLITUDE_INTERVAL, normalized_amplitude, resolve_soniqo_model,
+        should_emit, terminal_phases,
+    };
     use crate::events::DictationPhase;
+
+    #[test]
+    fn fast_amplitude_channel_runs_at_about_30hz() {
+        // Simulate one second of mic frames arriving every 5 ms and count how
+        // many pass each throttle, exactly as `run_session` does. The dense
+        // channel should fire ~30x, the state channel ~10x, and the two must
+        // advance independently (a state emit never resets the fast timer).
+        let start = Instant::now();
+        let mut last_fast = start - AMPLITUDE_FAST_INTERVAL;
+        let mut last_state = start - AMPLITUDE_INTERVAL;
+        let mut fast = 0;
+        let mut state = 0;
+
+        for i in 0..200u64 {
+            let now = start + Duration::from_millis(i * 5);
+            if should_emit(now, last_fast, AMPLITUDE_FAST_INTERVAL) {
+                last_fast = now;
+                fast += 1;
+            }
+            if should_emit(now, last_state, AMPLITUDE_INTERVAL) {
+                last_state = now;
+                state += 1;
+            }
+        }
+
+        // 33 ms cadence over ~1 s, quantized to 5 ms frames: ~28-31 emits.
+        assert!(
+            (27..=32).contains(&fast),
+            "fast channel emitted {fast} times"
+        );
+        // 100 ms cadence over ~1 s: ~10 emits.
+        assert!(
+            (10..=11).contains(&state),
+            "state channel emitted {state} times"
+        );
+        // The fast channel is strictly the denser of the two.
+        assert!(fast > state * 2, "fast={fast} should dwarf state={state}");
+    }
+
+    #[test]
+    fn fast_interval_is_faster_than_the_state_interval() {
+        assert!(AMPLITUDE_FAST_INTERVAL < AMPLITUDE_INTERVAL);
+    }
+
+    #[test]
+    fn amplitude_always_stays_in_the_unit_range() {
+        // Whatever the mic hands us - silence, full-scale, clipping beyond
+        // full-scale, alternating - the emitted amplitude must be a clean
+        // [0, 1] the frontend ref can trust without re-clamping.
+        for level in [0.0f32, 1e-6, 0.001, 0.05, 0.5, 1.0, 5.0, -3.0] {
+            let a = normalized_amplitude(&[level; 256]);
+            assert!(
+                (0.0..=1.0).contains(&a),
+                "level {level} -> {a} out of [0,1]"
+            );
+        }
+        let alternating: Vec<f32> = (0..256)
+            .map(|i| if i % 2 == 0 { 0.8 } else { -0.8 })
+            .collect();
+        let a = normalized_amplitude(&alternating);
+        assert!((0.0..=1.0).contains(&a), "alternating -> {a} out of [0,1]");
+    }
 
     #[test]
     fn clean_finish_emits_a_success_flourish_then_settles_to_idle() {
