@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-embed-and-index-chunks"
+description = "Enables the embed_and_index_chunks command without any pre-configured scope."
+commands.allow = ["embed_and_index_chunks"]
+
+[[permission]]
+identifier = "deny-embed-and-index-chunks"
+description = "Denies the embed_and_index_chunks command without any pre-configured scope."
+commands.deny = ["embed_and_index_chunks"]
