@@ -4,6 +4,7 @@ import { commands as tantivy } from "@hypr/plugin-tantivy";
 
 import { buildTantivyFilters } from "./filters";
 import { createSearchIndexSync } from "./indexing";
+import { createSemanticIndexSync } from "./semantic-indexing";
 import type { SearchEntityType, SearchFilters, SearchHit } from "./types";
 import { normalizeQuery } from "./utils";
 
@@ -33,6 +34,7 @@ export function SearchEngineProvider({
 
   useMountEffect(() => {
     const sync = createSearchIndexSync();
+    const semantic = createSemanticIndexSync();
     let disposed = false;
     void sync
       .start()
@@ -43,9 +45,17 @@ export function SearchEngineProvider({
         if (!disposed) setIsIndexing(false);
       });
 
+    // Semantic (dense) indexer runs alongside the lexical one. Any plugin
+    // error (model absent, schema missing, etc.) is caught and logged inside;
+    // it never propagates to the UI or blocks lexical search.
+    void semantic.start().catch((error) => {
+      console.error("Failed to start semantic index:", error);
+    });
+
     return () => {
       disposed = true;
       void sync.stop();
+      void semantic.stop();
     };
   });
 
