@@ -66,9 +66,13 @@ async fn main() -> anyhow::Result<()> {
         }
     }
 
-    let has_gpu = backends.iter().any(|b| b.kind == "GPU" || b.kind == "ACCEL");
+    let has_gpu = backends
+        .iter()
+        .any(|b| b.kind == "GPU" || b.kind == "ACCEL");
     if state.config.require_gpu && !has_gpu {
-        tracing::error!("require_gpu is set to true but no GPU or ACCEL backend is available. Exiting.");
+        tracing::error!(
+            "require_gpu is set to true but no GPU or ACCEL backend is available. Exiting."
+        );
         std::process::exit(1);
     }
 
@@ -84,17 +88,32 @@ async fn main() -> anyhow::Result<()> {
     if model_path.is_file() {
         let state_clone = state.clone();
         tokio::spawn(async move {
-            state_clone.run_probe_for_model(state_clone.config.model.clone()).await;
+            state_clone
+                .run_probe_for_model(state_clone.config.model.clone())
+                .await;
         });
     }
 
-    let app = build_router(state);
+    let app = build_router(state.clone());
 
     let listener = tokio::net::TcpListener::bind((host.as_str(), port)).await?;
     tracing::info!(
         addr = %listener.local_addr()?,
         "listening (GET / admin page, GET /health, GET /api/status, GET/POST /api/models*, POST+WS /v1/listen)"
     );
+
+    // Periodic RTF health monitor (WS-G): re-measures sustained GPU throughput
+    // mid-life, since the one-shot startup probe cannot see the Vulkan decay
+    // that builds up under long uptime + load. Started after the server is
+    // listening + the startup probe was spawned; it sleeps the interval first,
+    // so the startup probe (a few seconds) finishes long before the first tick.
+    // See `src/health.rs` and AGENTS.md for the bug this fixes.
+    {
+        let state_clone = state.clone();
+        tokio::spawn(async move {
+            stt_server::health::run(state_clone).await;
+        });
+    }
 
     axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal())

@@ -19,10 +19,10 @@ use crate::state::AppState;
 pub async fn status_handler(State(state): State<Arc<AppState>>) -> impl IntoResponse {
     let active_model = state.active.read().await.model.clone();
     let model = LocalModel::Whisper(active_model.clone());
-    let integrity =
-        hypr_model_downloader::verify_model(&model, &state.config.model_dir).unwrap_or_else(
-            |error| ModelIntegrity::Corrupt(format!("integrity check failed: {error}")),
-        );
+    let integrity = hypr_model_downloader::verify_model(&model, &state.config.model_dir)
+        .unwrap_or_else(|error| {
+            ModelIntegrity::Corrupt(format!("integrity check failed: {error}"))
+        });
 
     let loaded_model = match &integrity {
         // SEC-05: no absolute filesystem path in this public response — it
@@ -45,8 +45,18 @@ pub async fn status_handler(State(state): State<Arc<AppState>>) -> impl IntoResp
     let probe_realtime_factor = *probe_guard;
     drop(probe_guard);
 
+    // Latest periodic health-monitor RTF (WS-G, `crate::health`): the startup
+    // probe's `probeRealtimeFactor` only reflects boot-time GPU offload; this
+    // is the re-measured mid-life throughput, so a monitor/operator can see the
+    // Vulkan decay the startup probe structurally cannot.
+    let periodic_guard = state.periodic_probe_result.read().await;
+    let periodic_realtime_factor = *periodic_guard;
+    drop(periodic_guard);
+
     let backends = hypr_whisper_local::list_ggml_backends();
-    let has_gpu = backends.iter().any(|b| b.kind == "GPU" || b.kind == "ACCEL");
+    let has_gpu = backends
+        .iter()
+        .any(|b| b.kind == "GPU" || b.kind == "ACCEL");
 
     let gpu_offload = if !has_gpu {
         "cpu"
@@ -67,6 +77,8 @@ pub async fn status_handler(State(state): State<Arc<AppState>>) -> impl IntoResp
         "requireGpu": state.config.require_gpu,
         "gpuOffload": gpu_offload,
         "probeRealtimeFactor": probe_realtime_factor,
+        "periodicRealtimeFactor": periodic_realtime_factor,
+        "healthy": state.is_healthy(),
         "uptimeSecs": state.start_time.elapsed().as_secs(),
     }))
 }
