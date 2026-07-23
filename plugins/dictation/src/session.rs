@@ -42,7 +42,11 @@ const SAMPLE_RATE: u32 = 16_000;
 /// `AmplitudeEmitter`).
 const AMPLITUDE_INTERVAL: Duration = Duration::from_millis(100);
 /// How long to wait for the server to flush segments after a Finalize.
-const FINALIZE_TIMEOUT: Duration = Duration::from_secs(5);
+// Must cover the server-side flush: the STT server's WS send timeout is 20s
+// (transcribe-core WS_SEND_TIMEOUT) and it packs VAD chunks up to ~25s before
+// the final transcript arrives. The old 5s here fired mid-flush and truncated
+// the last segments (leaving the session Idle with a partial transcript).
+const FINALIZE_TIMEOUT: Duration = Duration::from_secs(30);
 
 pub struct ActiveSession {
     stop_tx: tokio::sync::oneshot::Sender<()>,
@@ -283,9 +287,24 @@ async fn run_session<E: std::fmt::Debug>(
 
                         let bytes = hypr_audio_utils::f32_to_i16_bytes(samples.iter().copied());
                         if audio_tx.send(MixedMessage::Audio(bytes)).await.is_err() {
-                            tracing::warn!("dictation audio channel closed unexpectedly");
-                            failed = true;
-                            break;
+                            // The audio forward channel to the STT socket closed
+                            // (observed on Windows when the WS write task drops
+                            // mid-session). Do NOT treat this as a hard failure:
+                            // that path set failed=true and broke BEFORE any
+                            // finalize(), which turned the orb red, degraded
+                            // delivery to copy-only, and truncated the transcript
+                            // to whatever streamed so far. Instead, transition to
+                            // finalizing exactly like a user Stop — flush what the
+                            // server already has and deliver via the chosen mode.
+                            tracing::warn!(
+                                "dictation audio channel closed; finalizing gracefully"
+                            );
+                            finalizing = true;
+                            emit_state(&app, DictationPhase::Processing, 0.0, mode);
+                            ws_handle.finalize().await;
+                            finalize_deadline
+                                .as_mut()
+                                .reset(tokio::time::Instant::now() + FINALIZE_TIMEOUT);
                         }
                     }
                     Some(Err(error)) => {
