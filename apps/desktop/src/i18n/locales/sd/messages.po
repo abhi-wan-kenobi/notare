@@ -2518,6 +2518,10 @@ msgstr ""
 msgid "This combination cannot be used as a global shortcut. Try another one."
 msgstr ""
 
+#: src/session/components/action-items/index.tsx
+msgid "This model can't produce structured output. Pick a different model."
+msgstr ""
+
 #. placeholder {0}: status.fileCount
 #. placeholder {1}: formatBytes(status.totalBytes)
 #: src/settings/general/storage/legacy-cleanup.tsx

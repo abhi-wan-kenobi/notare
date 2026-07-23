@@ -30,6 +30,8 @@ import { Spinner } from "@hypr/ui/components/ui/spinner";
 import { sonnerToast } from "@hypr/ui/components/ui/toast";
 import { cn } from "@hypr/utils";
 
+import { checkStructuredCapability } from "~/services/action-items/structured-capability";
+
 import { buildExtractionInput } from "./extraction-input";
 import {
   insertSessionActionItems,
@@ -52,7 +54,7 @@ export function ActionItemsPanel({ sessionId }: { sessionId: string }) {
   const { items, isLoading } = useSessionActionItems(sessionId);
   const ownerUserId = useOwnerUserId() || DEFAULT_USER_ID;
 
-  const { model, resolution } = useTaskModel("action_items");
+  const { model, resolution, target } = useTaskModel("action_items");
   const [isExtracting, setIsExtracting] = useState(false);
   const [extractError, setExtractError] = useState<string | null>(null);
 
@@ -82,7 +84,7 @@ export function ActionItemsPanel({ sessionId }: { sessionId: string }) {
   const handleExtract = useCallback(async () => {
     setExtractError(null);
 
-    if (resolution.status !== "ok" || !model) {
+    if (resolution.status !== "ok" || !model || !target) {
       setExpanded(true);
       setExtractError(resolutionMessage);
       return;
@@ -91,6 +93,16 @@ export function ActionItemsPanel({ sessionId }: { sessionId: string }) {
     setIsExtracting(true);
     setExpanded(true);
     try {
+      // Runtime PG gate: refuse a BYO endpoint that can't actually emit
+      // structured output (ollama is exempt — it uses the native format path).
+      const capability = await checkStructuredCapability(target);
+      if (!capability.ok) {
+        setExtractError(
+          t`This model can't produce structured output. Pick a different model.`,
+        );
+        return;
+      }
+
       const snapshot = await loadSessionContentSnapshot(sessionId);
       if (!snapshot) {
         setExtractError(t`Session content is not available yet.`);
@@ -105,14 +117,19 @@ export function ActionItemsPanel({ sessionId }: { sessionId: string }) {
       }
 
       const meetingDate = new Date(snapshot.createdAt || Date.now());
-      const result = await extractActionItems(model, {
-        transcript,
-        words,
-        roster,
-        meetingDate: Number.isNaN(meetingDate.getTime())
-          ? new Date()
-          : meetingDate,
-      });
+      const result = await extractActionItems(
+        model,
+        {
+          transcript,
+          words,
+          roster,
+          meetingDate: Number.isNaN(meetingDate.getTime())
+            ? new Date()
+            : meetingDate,
+        },
+        // ollama routes to the native `format` endpoint via this target.
+        { target },
+      );
 
       setOwnerLabels(new Map(labelBySpeakerId));
 
@@ -133,7 +150,7 @@ export function ActionItemsPanel({ sessionId }: { sessionId: string }) {
     } finally {
       setIsExtracting(false);
     }
-  }, [model, ownerUserId, resolution, resolutionMessage, sessionId, t]);
+  }, [model, target, ownerUserId, resolution, resolutionMessage, sessionId, t]);
 
   const handleToggle = useCallback(
     (item: SessionActionItemRecord) => {

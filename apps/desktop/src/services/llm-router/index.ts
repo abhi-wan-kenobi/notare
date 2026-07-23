@@ -219,9 +219,23 @@ function asCharTask(task: LlmTask): CharTask | undefined {
     : undefined;
 }
 
+/**
+ * Provider routing target for the structured-output path. When present and
+ * `providerId === "ollama"`, `generateStructured`/`extractActionItems` use
+ * ollama's native `/api/chat` `format` endpoint (reasoning models return prose
+ * to the openai-compat path). `null` when nothing is resolved.
+ */
+export type ModelTarget = {
+  providerId: string;
+  modelId: string;
+  baseUrl: string;
+};
+
 export type TaskModel = {
   model: ReturnType<typeof useLanguageModel>;
   resolution: ResolveResult;
+  /** Non-null only when resolution succeeded; feeds `deps.target`. */
+  target: ModelTarget | null;
 };
 
 /**
@@ -254,9 +268,19 @@ export function useTaskModel(task: LlmTask): TaskModel {
       capsUserOverride: llm_caps_override === true,
     });
 
+    const target: ModelTarget | null =
+      resolution.status === "ok" && conn
+        ? {
+            providerId: conn.providerId,
+            modelId: conn.modelId,
+            baseUrl: conn.baseUrl ?? providerDef?.baseUrl ?? "",
+          }
+        : null;
+
     return {
       model: resolution.status === "ok" ? model : null,
       resolution,
+      target,
     };
   }, [conn, task, model, llm_caps_override]);
 }
