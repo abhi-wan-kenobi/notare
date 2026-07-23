@@ -71,6 +71,7 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
             commands::delete_session_chunks,
             commands::semantic_search,
             commands::embedding_index_status,
+            commands::download_embedding_model,
         ])
         .error_handling(tauri_specta::ErrorHandlingMode::Result)
 }

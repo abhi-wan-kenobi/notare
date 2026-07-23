@@ -1,4 +1,23 @@
+use tauri::ipc::Channel;
+
+use crate::runtime::DownloadProgress;
 use crate::{ChunkInput, IndexStatus, ManagedState, SearchHit};
+
+/// Download-on-first-run: fetch the pinned EmbeddingGemma artifacts into the
+/// model dir, streaming SHA-256-verified progress over `on_progress`. Idempotent.
+#[tauri::command]
+#[specta::specta]
+pub(crate) async fn download_embedding_model(
+    state: tauri::State<'_, ManagedState>,
+    on_progress: Channel<DownloadProgress>,
+) -> Result<(), String> {
+    state
+        .download_model(move |p| {
+            let _ = on_progress.send(p);
+        })
+        .await
+        .map_err(|e| e.to_string())
+}
 
 #[tauri::command]
 #[specta::specta]

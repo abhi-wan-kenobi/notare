@@ -13,16 +13,18 @@ tauri-plugin = { workspace = true, features = ["build"] }
 [dev-dependencies]
 anyhow = { workspace = true }
 specta-typescript = { workspace = true }
+hypr-db-core = { workspace = true }
 tempfile = { workspace = true }
-tokio = { workspace = true, features = ["macros", "rt", "sync"] }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "sync"] }
 
 [dependencies]
 hypr-db-app = { workspace = true }
 hypr-db-core = { workspace = true }
+reqwest = { workspace = true, features = ["stream"] }
 hypr-tauri-utils = { workspace = true }
 hypr-text-embedding = { workspace = true }
 
-serde = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 sha2 = { workspace = true }
 specta = { workspace = true, features = ["serde_json"] }

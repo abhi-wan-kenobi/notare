@@ -15,6 +15,57 @@ use crate::{ChunkInput, IndexStatus, SearchHit};
 const MODEL_FILE: &str = "model_quantized.onnx";
 const TOKENIZER_FILE: &str = "tokenizer.json";
 
+/// Streaming download progress, emitted per chunk over the command's Channel.
+#[derive(Debug, Clone, serde::Serialize, specta::Type)]
+pub struct DownloadProgress {
+    /// Artifact currently downloading.
+    pub file: String,
+    /// Bytes of THIS artifact downloaded so far.
+    pub file_downloaded: u64,
+    /// Total bytes of THIS artifact.
+    pub file_total: u64,
+    /// Bytes across ALL artifacts so far.
+    pub downloaded: u64,
+    /// Total bytes across all artifacts.
+    pub total: u64,
+}
+
+impl DownloadProgress {
+    fn new(file: &str, fd: u64, ft: u64, downloaded: u64, total: u64) -> Self {
+        Self {
+            file: file.to_string(),
+            file_downloaded: fd,
+            file_total: ft,
+            downloaded,
+            total,
+        }
+    }
+}
+
+fn hex_lower(bytes: &[u8]) -> String {
+    let mut s = String::with_capacity(bytes.len() * 2);
+    for b in bytes {
+        use std::fmt::Write as _;
+        let _ = write!(s, "{b:02x}");
+    }
+    s
+}
+
+fn sha256_file_matches(path: &std::path::Path, expected: &str) -> Result<bool> {
+    use std::io::Read as _;
+    let mut file = std::fs::File::open(path)?;
+    let mut hasher = Sha256::new();
+    let mut buf = vec![0u8; 1 << 20];
+    loop {
+        let n = file.read(&mut buf)?;
+        if n == 0 {
+            break;
+        }
+        hasher.update(&buf[..n]);
+    }
+    Ok(hex_lower(&hasher.finalize()) == expected)
+}
+
 /// A chunk whose vector has already been produced. Pulling the embedding step
 /// out of the storage step lets tests exercise the real SQL/vec0 wiring with
 /// hand-crafted vectors, without loading the model.
@@ -60,6 +111,81 @@ impl EmbeddingSearchRuntime {
     /// Whether the model artifacts required for a real embed are present on disk.
     fn model_downloaded(&self) -> bool {
         self.model_dir.join(MODEL_FILE).is_file() && self.model_dir.join(TOKENIZER_FILE).is_file()
+    }
+
+    /// Download-on-first-run: fetch every artifact in the pinned manifest into
+    /// `model_dir`, streaming to a `.part` file while SHA-256-hashing, verifying
+    /// against the pinned digest before the atomic rename. Idempotent: an
+    /// artifact already present with the right hash is skipped. `on_progress`
+    /// receives per-artifact byte counts so the UI can render a bar. On any
+    /// failure the partial `.part` is left for a retry to overwrite; no
+    /// half-written final file is ever exposed.
+    pub async fn download_model<F: Fn(DownloadProgress)>(&self, on_progress: F) -> Result<()> {
+        std::fs::create_dir_all(&self.model_dir)?;
+        let total_bytes: u64 = hypr_text_embedding::ARTIFACTS.iter().map(|a| a.size).sum();
+        let mut done_bytes: u64 = 0;
+        let client = reqwest::Client::new();
+
+        for artifact in hypr_text_embedding::ARTIFACTS {
+            let final_path = self.model_dir.join(artifact.name);
+            if final_path.is_file() && sha256_file_matches(&final_path, artifact.sha256)? {
+                done_bytes += artifact.size;
+                on_progress(DownloadProgress::new(
+                    artifact.name,
+                    artifact.size,
+                    artifact.size,
+                    done_bytes,
+                    total_bytes,
+                ));
+                continue;
+            }
+
+            let part_path = self.model_dir.join(format!("{}.part", artifact.name));
+            let mut resp = client
+                .get(artifact.url)
+                .send()
+                .await
+                .map_err(|e| Error::Download(e.to_string()))?
+                .error_for_status()
+                .map_err(|e| Error::Download(e.to_string()))?;
+
+            let mut file = tokio::fs::File::create(&part_path).await?;
+            let mut hasher = Sha256::new();
+            let mut written: u64 = 0;
+            use tokio::io::AsyncWriteExt as _;
+            while let Some(chunk) = resp
+                .chunk()
+                .await
+                .map_err(|e| Error::Download(e.to_string()))?
+            {
+                hasher.update(&chunk);
+                file.write_all(&chunk).await?;
+                written += chunk.len() as u64;
+                on_progress(DownloadProgress::new(
+                    artifact.name,
+                    written,
+                    artifact.size,
+                    done_bytes + written,
+                    total_bytes,
+                ));
+            }
+            let _ = &mut resp;
+            file.flush().await?;
+            drop(file);
+
+            let actual = hex_lower(&hasher.finalize());
+            if actual != artifact.sha256 {
+                let _ = std::fs::remove_file(&part_path);
+                return Err(Error::Integrity {
+                    name: artifact.name.to_string(),
+                    expected: artifact.sha256.to_string(),
+                    actual,
+                });
+            }
+            std::fs::rename(&part_path, &final_path)?;
+            done_bytes += artifact.size;
+        }
+        Ok(())
     }
 
     /// Load the embedder into the mutex on first use, then reuse it. The load is
