@@ -8,6 +8,7 @@ import {
   SettingsPermissions,
 } from "./general";
 import { SettingsTodo } from "./todo";
+import { SettingsWebhook } from "./webhook";
 
 import { LLM } from "~/settings/ai/llm";
 import { STT } from "~/settings/ai/stt";
@@ -51,6 +52,8 @@ function SettingsView({ tab }: { tab: Extract<Tab, { type: "settings" }> }) {
         return <SettingsDictation />;
       case "todo":
         return <SettingsTodo />;
+      case "webhook":
+        return <SettingsWebhook />;
       default:
         return <SettingsApp />;
     }

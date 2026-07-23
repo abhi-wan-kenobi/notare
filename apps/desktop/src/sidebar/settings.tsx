@@ -13,6 +13,7 @@ import {
   SparklesIcon,
   type LucideIcon,
   UsersIcon,
+  WebhookIcon,
 } from "lucide-react";
 import { useCallback } from "react";
 
@@ -103,6 +104,10 @@ export function SettingsNav() {
           icon: SlidersHorizontalIcon,
         },
       ],
+    },
+    {
+      label: t`Integrations`,
+      items: [{ id: "webhook", label: t`Webhooks`, icon: WebhookIcon }],
     },
   ];
   const isMacos = platform() === "macos";

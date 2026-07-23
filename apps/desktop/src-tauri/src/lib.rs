@@ -155,6 +155,7 @@ pub async fn main() {
         .plugin(tauri_plugin_bedrock::init())
         .plugin(tauri_plugin_calendar::init())
         .plugin(tauri_plugin_todo::init())
+        .plugin(tauri_plugin_webhook::init())
         .plugin(tauri_plugin_auth::init())
         .plugin(tauri_plugin_hooks::init())
         .plugin(tauri_plugin_icon::init())

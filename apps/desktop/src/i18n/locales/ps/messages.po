@@ -75,6 +75,10 @@ msgstr ""
 msgid "A quiet graphite disc with a single state dot."
 msgstr ""
 
+#: src/settings/webhook/index.tsx
+msgid "A secret is stored in your OS keychain. Enter a new value to rotate it."
+msgstr ""
+
 #: src/dictation/orb.tsx
 msgid "A thin cobalt ring that pulses as you speak."
 msgstr ""
@@ -101,6 +105,10 @@ msgstr ""
 
 #: src/session/components/action-items/index.tsx
 msgid "Action items"
+msgstr ""
+
+#: src/settings/webhook/index.tsx
+msgid "Action items updated"
 msgstr ""
 
 #: src/settings/ai/stt/select.tsx
@@ -442,6 +450,10 @@ msgstr ""
 
 #: src/settings/dictation/index.tsx
 msgid "Cleanup"
+msgstr ""
+
+#: src/settings/webhook/index.tsx
+msgid "Clear"
 msgstr ""
 
 #: src/settings/dictation/index.tsx
@@ -835,6 +847,14 @@ msgstr ""
 msgid "Enable the Google Calendar API for that project."
 msgstr ""
 
+#: src/settings/webhook/index.tsx
+msgid "Enable webhooks"
+msgstr ""
+
+#: src/settings/webhook/index.tsx
+msgid "Endpoint URL"
+msgstr ""
+
 #: src/session/components/outer-header/metadata/participants/chip.tsx
 msgid "Enhance contact"
 msgstr ""
@@ -845,6 +865,10 @@ msgstr ""
 
 #: src/settings/ai/stt/select.tsx
 msgid "Enter a model identifier"
+msgstr ""
+
+#: src/settings/webhook/index.tsx
+msgid "Enter a signing secret"
 msgstr ""
 
 #: src/session/components/outer-header/metadata/date.tsx
@@ -873,6 +897,10 @@ msgstr ""
 
 #: src/calendar/components/ics/content.tsx
 msgid "events"
+msgstr ""
+
+#: src/settings/webhook/index.tsx
+msgid "Events to send"
 msgstr ""
 
 #: src/settings/personalization/index.tsx
@@ -959,6 +987,14 @@ msgstr ""
 
 #: src/settings/general/account.tsx
 msgid "Finish sign-in"
+msgstr ""
+
+#: src/settings/webhook/index.tsx
+msgid "Fires when a note's action items change."
+msgstr ""
+
+#: src/settings/webhook/index.tsx
+msgid "Fires when a session's AI summary is generated."
 msgstr ""
 
 #: src/settings/general/week-start.tsx
@@ -1162,6 +1198,10 @@ msgstr ""
 msgid "Installed"
 msgstr ""
 
+#: src/sidebar/settings.tsx
+msgid "Integrations"
+msgstr ""
+
 #: src/settings/ai/llm/index.tsx
 #: src/sidebar/settings.tsx
 msgid "Intelligence"
@@ -1305,6 +1345,10 @@ msgstr ""
 
 #: src/settings/general/app-settings.tsx
 msgid "Manual"
+msgstr ""
+
+#: src/settings/webhook/index.tsx
+msgid "Master switch for outbound delivery."
 msgstr ""
 
 #: src/session/components/note-input/search/bar.tsx
@@ -1489,6 +1533,10 @@ msgstr ""
 
 #: src/task/resource-view.tsx
 msgid "No content."
+msgstr ""
+
+#: src/settings/webhook/index.tsx
+msgid "No deliveries yet."
 msgstr ""
 
 #: src/task/resource-view.tsx
@@ -1868,6 +1916,10 @@ msgstr ""
 msgid "Recent"
 msgstr ""
 
+#: src/settings/webhook/index.tsx
+msgid "Recent deliveries"
+msgstr ""
+
 #: src/settings/dictation/index.tsx
 msgid "Recognized text is typed straight into the focused app while you talk."
 msgstr ""
@@ -2031,6 +2083,10 @@ msgstr ""
 msgid "Ring"
 msgstr ""
 
+#: src/settings/webhook/index.tsx
+msgid "Rotate"
+msgstr ""
+
 #: src/settings/ai/llm/routing.tsx
 msgid "Routing"
 msgstr ""
@@ -2045,6 +2101,7 @@ msgid "Same as live model"
 msgstr ""
 
 #: src/settings/personalization/index.tsx
+#: src/settings/webhook/index.tsx
 msgid "Save"
 msgstr ""
 
@@ -2195,8 +2252,20 @@ msgstr ""
 msgid "Send message"
 msgstr ""
 
+#: src/settings/webhook/index.tsx
+msgid "Send Notare events to an endpoint you control. Off by default — nothing leaves your device unless you enable it and pick which events to share. Each request is signed with HMAC-SHA256 in the <0>X-Notare-Signature</0> header so your receiver can verify it."
+msgstr ""
+
+#: src/settings/webhook/index.tsx
+msgid "Send test event"
+msgstr ""
+
 #: src/session/components/action-items/index.tsx
 msgid "Session content is not available yet."
+msgstr ""
+
+#: src/settings/webhook/index.tsx
+msgid "Session enhanced"
 msgstr ""
 
 #: src/session/components/note-input/header.tsx
@@ -2205,6 +2274,10 @@ msgstr ""
 
 #: src/session/components/title-input.tsx
 msgid "Session title"
+msgstr ""
+
+#: src/settings/webhook/index.tsx
+msgid "Set a shared secret. Requests are refused (no-op) until one is set."
 msgstr ""
 
 #: src/templates/details.tsx
@@ -2326,6 +2399,10 @@ msgstr ""
 
 #: src/settings/general/account.tsx
 msgid "Signing out..."
+msgstr ""
+
+#: src/settings/webhook/index.tsx
+msgid "Signing secret"
 msgstr ""
 
 #: src/dictation/orb.tsx
@@ -2770,6 +2847,11 @@ msgstr ""
 
 #: src/dictation/orb.tsx
 msgid "Warm petals that bloom and breathe with your voice."
+msgstr ""
+
+#: src/settings/webhook/index.tsx
+#: src/sidebar/settings.tsx
+msgid "Webhooks"
 msgstr ""
 
 #: src/settings/general/week-start.tsx

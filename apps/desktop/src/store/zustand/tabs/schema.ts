@@ -47,7 +47,8 @@ export type SettingsTab =
   | "transcription"
   | "intelligence"
   | "dictation"
-  | "todo";
+  | "todo"
+  | "webhook";
 
 const isSettingsTab = (tab: string | null | undefined): tab is SettingsTab => {
   switch (tab) {
@@ -60,6 +61,7 @@ const isSettingsTab = (tab: string | null | undefined): tab is SettingsTab => {
     case "intelligence":
     case "dictation":
     case "todo":
+    case "webhook":
       return true;
     default:
       return false;
@@ -78,6 +80,7 @@ export const normalizeSettingsTab = (
     case "intelligence":
     case "dictation":
     case "todo":
+    case "webhook":
       return tab;
     case "account":
     default:
