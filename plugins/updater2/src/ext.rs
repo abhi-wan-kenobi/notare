@@ -193,7 +193,37 @@ impl<'a, R: tauri::Runtime, M: tauri::Manager<R>> Updater2<'a, R, M> {
         Ok(())
     }
 
+    /// Whether the current install format can apply an in-app (OTA) update.
+    /// Tauri's updater only supports AppImage on Linux plus the Windows/macOS
+    /// installers. A `.deb`/`.rpm` install cannot self-update — Tauri would try
+    /// to apply an AppImage over the dpkg install and error — so those users are
+    /// pointed at GitHub Releases instead. Uses Tauri's build-time-embedded
+    /// bundle type, the same signal its own updater uses to pick an installer.
+    pub fn can_self_update(&self) -> bool {
+        use tauri::utils::config::BundleType;
+        match tauri::utils::platform::bundle_type() {
+            Some(bt) => matches!(
+                bt,
+                BundleType::AppImage
+                    | BundleType::Msi
+                    | BundleType::Nsis
+                    | BundleType::App
+                    | BundleType::Dmg
+            ),
+            // Unknown (dev / unpackaged) → not self-updatable. The background
+            // check loop is already debug-gated and dev builds never OTA.
+            None => false,
+        }
+    }
+
     pub async fn install(&self, version: &str) -> Result<InstallResult, crate::Error> {
+        // Safety net: the frontend gates on `can_self_update`, but never let a
+        // `.deb`/`.rpm` reach `update.install` (it would fail with an opaque
+        // AppImage error). Fail fast with an actionable message instead.
+        if !self.can_self_update() {
+            return Err(crate::Error::SelfUpdateUnsupported);
+        }
+
         let bytes = self.get_cached_update_bytes(version)?;
 
         let updater = self.manager.updater()?;

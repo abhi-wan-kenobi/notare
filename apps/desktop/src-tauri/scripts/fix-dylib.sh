@@ -90,9 +90,15 @@ case "$OS" in
     ;;
 
   Linux)
-    BINARY="${1:-}"
-    if [ -z "$BINARY" ] || [ ! -f "$BINARY" ]; then
-      echo "[fix-dylib] No binary provided or not found, skipping."
+    # $1 is the cargo release output dir (passed by before-bundle.mjs). The app
+    # dynamically links sherpa's libsherpa-onnx-c-api.so + libonnxruntime.so,
+    # emitted here by build scripts. The AppImage bundles them via linuxdeploy,
+    # but the .deb bundler does NOT — we ship them under /usr/lib/notare/ (see
+    # bundle.linux.deb.files) and must fix RPATHs so ld.so resolves them post
+    # install (/usr/bin/notare -> $ORIGIN/../lib/notare == /usr/lib/notare).
+    RELEASE_DIR="${1:-}"
+    if [ -z "$RELEASE_DIR" ] || [ ! -d "$RELEASE_DIR" ]; then
+      echo "[fix-dylib] No release dir provided or not found, skipping."
       exit 0
     fi
 
@@ -101,15 +107,32 @@ case "$OS" in
       exit 0
     fi
 
-    BINARY_DIR=$(dirname "$BINARY")
-    SO_FILES=$(find "$BINARY_DIR" -name "*.so*" 2>/dev/null)
+    SO_FILES=$(find "$RELEASE_DIR" -maxdepth 1 -name "*.so*" -type f 2>/dev/null)
     if [ -z "$SO_FILES" ]; then
-      echo "[fix-dylib] No .so files found, skipping."
+      echo "[fix-dylib] No .so files in $RELEASE_DIR, skipping."
       exit 0
     fi
 
-    echo "[fix-dylib] Setting RPATH on: $BINARY"
-    patchelf --set-rpath '$ORIGIN' "$BINARY"
+    # Bundled libs sit together in /usr/lib/notare, so let each resolve its
+    # siblings (libsherpa-onnx-c-api.so NEEDs libonnxruntime.so) via $ORIGIN.
+    for so in $SO_FILES; do
+      echo "[fix-dylib] RPATH \$ORIGIN on $(basename "$so")"
+      patchelf --set-rpath '$ORIGIN' "$so" 2>/dev/null || true
+    done
+
+    # Point every app executable that links our bundled libs at both the deb's
+    # private dir (installed layout) and $ORIGIN (dev/local run + AppImage, where
+    # linuxdeploy re-writes RPATH anyway so a missing dir here is harmless).
+    for bin in $(find "$RELEASE_DIR" -maxdepth 1 -type f -executable 2>/dev/null); do
+      case "$bin" in
+        *.so|*.so.*|*.d) continue ;;
+      esac
+      needed=$(patchelf --print-needed "$bin" 2>/dev/null) || continue
+      if echo "$needed" | grep -q 'libsherpa-onnx-c-api\.so\|libonnxruntime\.so'; then
+        echo "[fix-dylib] RPATH \$ORIGIN/../lib/notare:\$ORIGIN on $(basename "$bin")"
+        patchelf --set-rpath '$ORIGIN/../lib/notare:$ORIGIN' "$bin"
+      fi
+    done
     echo "[fix-dylib] Done."
     ;;
 

@@ -203,6 +203,10 @@ msgstr "Allow access"
 msgid "Allow microphone access"
 msgstr "Allow microphone access"
 
+#: src/settings/ai/llm/routing.tsx
+msgid "Allow smaller models for structured tasks"
+msgstr "Allow smaller models for structured tasks"
+
 #: src/onboarding/permissions.tsx
 msgid "Allow system audio access"
 msgstr "Allow system audio access"
@@ -1267,6 +1271,10 @@ msgstr "Loading..."
 msgid "Loading…"
 msgstr "Loading…"
 
+#: src/settings/ai/llm/routing.tsx
+msgid "Local-first: Notare prefers a local model (Ollama or LM Studio) and only uses a cloud provider when you explicitly select one above."
+msgstr "Local-first: Notare prefers a local model (Ollama or LM Studio) and only uses a cloud provider when you explicitly select one above."
+
 #: src/onboarding/account/before-login.tsx
 msgid "Login with existing account"
 msgstr "Login with existing account"
@@ -1999,6 +2007,10 @@ msgstr "Ring"
 msgid "Rotate"
 msgstr "Rotate"
 
+#: src/settings/ai/llm/routing.tsx
+msgid "Routing"
+msgstr "Routing"
+
 #: src/settings/ai/shared/index.tsx
 #: src/settings/ai/stt/select.tsx
 msgid "Runs after the recording finishes, not during the meeting."
@@ -2673,6 +2685,10 @@ msgstr "Upload transcript"
 msgid "Use"
 msgstr "Use"
 
+#: src/settings/ai/llm/routing.tsx
+msgid "Use the selected model for action items and other structured-output tasks even when its size can't be confirmed. Turn this on only if you trust your model's output quality; Notare still rejects malformed results downstream."
+msgstr "Use the selected model for action items and other structured-output tasks even when its size can't be confirmed. Turn this on only if you trust your model's output quality; Notare still rejects malformed results downstream."
+
 #: src/settings/ai/stt/select.tsx
 msgid "Used for the accurate pass after a recording ends, imported files, and re-transcription. Pick a larger on-device model, a custom self-hosted server, or a cloud provider — independent of the live model."
 msgstr "Used for the accurate pass after a recording ends, imported files, and re-transcription. Pick a larger on-device model, a custom self-hosted server, or a cloud provider — independent of the live model."
@@ -2685,6 +2701,11 @@ msgstr "Verifying the SQLite migration status"
 #: src/settings/general/app-settings.tsx
 msgid "Version {0} is available."
 msgstr "Version {0} is available."
+
+#. placeholder {0}: update.version ?? ""
+#: src/settings/general/app-settings.tsx
+msgid "Version {0} is available. Download it from GitHub Releases (in-app updates aren't supported for this install)."
+msgstr "Version {0} is available. Download it from GitHub Releases (in-app updates aren't supported for this install)."
 
 #. placeholder {0}: update.version ?? ""
 #: src/settings/general/app-settings.tsx

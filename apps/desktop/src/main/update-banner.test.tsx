@@ -16,6 +16,8 @@ const {
   installMock,
   isDownloadedMock,
   postinstallMock,
+  canSelfUpdateMock,
+  openUrlMock,
   updateAvailableListenMock,
   updateDownloadingListenMock,
   updateDownloadProgressListenMock,
@@ -29,6 +31,8 @@ const {
   installMock: vi.fn(),
   isDownloadedMock: vi.fn(),
   postinstallMock: vi.fn(),
+  canSelfUpdateMock: vi.fn(),
+  openUrlMock: vi.fn(),
   updateAvailableListenMock: vi.fn(),
   updateDownloadingListenMock: vi.fn(),
   updateDownloadProgressListenMock: vi.fn(),
@@ -65,6 +69,12 @@ const {
   },
 }));
 
+vi.mock("@hypr/plugin-opener2", () => ({
+  commands: {
+    openUrl: openUrlMock,
+  },
+}));
+
 vi.mock("@hypr/plugin-updater2", () => ({
   commands: {
     check: checkMock,
@@ -72,6 +82,7 @@ vi.mock("@hypr/plugin-updater2", () => ({
     install: installMock,
     isDownloaded: isDownloadedMock,
     postinstall: postinstallMock,
+    canSelfUpdate: canSelfUpdateMock,
   },
   events: {
     updateAvailableEvent: {
@@ -111,6 +122,8 @@ describe("SidebarTimelineUpdateButton", () => {
     installMock.mockReset();
     isDownloadedMock.mockReset();
     postinstallMock.mockReset();
+    canSelfUpdateMock.mockReset();
+    openUrlMock.mockReset();
     updateAvailableListenMock.mockReset();
     updateDownloadingListenMock.mockReset();
     updateDownloadProgressListenMock.mockReset();
@@ -133,6 +146,10 @@ describe("SidebarTimelineUpdateButton", () => {
     });
     isDownloadedMock.mockResolvedValue({ status: "ok", data: false });
     postinstallMock.mockResolvedValue({ status: "ok", data: null });
+    // Default: a self-updatable install (AppImage/msi/dmg) — existing OTA tests
+    // exercise the download/install path.
+    canSelfUpdateMock.mockResolvedValue({ status: "ok", data: true });
+    openUrlMock.mockResolvedValue({ status: "ok", data: null });
 
     updateAvailableListenMock.mockImplementation(async (handler) => {
       eventHandlers.updateAvailable = handler;
@@ -191,6 +208,31 @@ describe("SidebarTimelineUpdateButton", () => {
     fireEvent.click(button);
 
     await waitFor(() => expect(downloadMock).toHaveBeenCalledWith("1.0.34"));
+  });
+
+  it("opens Releases instead of downloading when the install can't self-update (.deb)", async () => {
+    checkMock.mockResolvedValue({ status: "ok", data: "1.0.34" });
+    canSelfUpdateMock.mockResolvedValue({ status: "ok", data: false });
+
+    renderSidebarUpdateButton();
+
+    const button = await screen.findByRole("button", {
+      name: "Download update",
+    });
+    expect(button.textContent).toContain("Update available");
+    expect(button.textContent).toContain("v1.0.34");
+
+    fireEvent.click(button);
+
+    // Manual-download path: opens GitHub Releases, never the OTA download/install.
+    await waitFor(() =>
+      expect(openUrlMock).toHaveBeenCalledWith(
+        "https://github.com/abhi-wan-kenobi/notare/releases/latest",
+        null,
+      ),
+    );
+    expect(downloadMock).not.toHaveBeenCalled();
+    expect(installMock).not.toHaveBeenCalled();
   });
 
   it("labels the pill per state", async () => {

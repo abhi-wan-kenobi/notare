@@ -1,0 +1,38 @@
+# Fast lockfile-drift guard (WS-F1).
+# `cargo metadata --locked` fails if Cargo.lock is out of sync with the manifests without
+# building anything, so a stale lock is caught in seconds on every PR instead of surfacing
+# as a `--locked` failure deep inside a matrix build (the bug class that hit every 0.4.1 PR).
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "**/Cargo.toml"
+      - Cargo.lock
+      - .github/workflows/lockfile.yaml
+  pull_request:
+    paths:
+      - "**/Cargo.toml"
+      - Cargo.lock
+      - .github/workflows/lockfile.yaml
+
+permissions:
+  contents: read
+
+jobs:
+  lockfile_drift:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - uses: ./.github/actions/rust_install
+        with:
+          platform: linux
+      - name: Verify Cargo.lock is in sync (no drift)
+        run: cargo metadata --locked --format-version=1 > /dev/null

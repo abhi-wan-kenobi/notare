@@ -7,7 +7,16 @@
   "bundle": {
     "publisher": "Abhishek Gupta",
     "createUpdaterArtifacts": true,
-    "targets": ["msi", "deb", "appimage"]
+    "targets": ["msi", "deb", "appimage"],
+    "linux": {
+      "deb": {
+        "depends": ["libgomp1"],
+        "files": {
+          "/usr/lib/notare/libsherpa-onnx-c-api.so": "target/release/libsherpa-onnx-c-api.so",
+          "/usr/lib/notare/libonnxruntime.so": "target/release/libonnxruntime.so"
+        }
+      }
+    }
   },
   "plugins": {
     "deep-link": {

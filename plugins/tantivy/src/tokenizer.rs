@@ -1,8 +1,8 @@
 use hypr_language::ISO639;
 use tantivy::Index;
 use tantivy::tokenizer::{
-    AsciiFoldingFilter, Language, LowerCaser, NgramTokenizer, RemoveLongFilter, Stemmer,
-    TextAnalyzer,
+    AsciiFoldingFilter, Language, LowerCaser, NgramTokenizer, RemoveLongFilter, SimpleTokenizer,
+    Stemmer, TextAnalyzer,
 };
 
 fn to_tantivy_language(lang: &hypr_language::Language) -> Option<Language> {
@@ -85,7 +85,15 @@ pub fn register_tokenizers(index: &Index) {
     ];
 
     for (name, lang) in languages {
-        let tokenizer = TextAnalyzer::builder(NgramTokenizer::new(1, 3, false).unwrap())
+        // Per-language analyzers tokenize on WORD boundaries (SimpleTokenizer)
+        // and then stem — the `Stemmer` filter is a word stemmer, so running it
+        // on the previous `NgramTokenizer(1,3)` character n-grams was a no-op
+        // (it never produced "running" -> "run"). These analyzers are keyed by
+        // `get_tokenizer_name_for_language` for future per-language indexing;
+        // the live schema field uses `multilang` (n-gram) and is unchanged, so
+        // this fix is behavior-neutral for current search and only makes the
+        // dead-but-tested per-language path correct for WS-B2.
+        let tokenizer = TextAnalyzer::builder(SimpleTokenizer::default())
             .filter(RemoveLongFilter::limit(40))
             .filter(LowerCaser)
             .filter(AsciiFoldingFilter)

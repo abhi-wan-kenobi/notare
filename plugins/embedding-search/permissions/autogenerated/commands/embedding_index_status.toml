@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-embedding-index-status"
+description = "Enables the embedding_index_status command without any pre-configured scope."
+commands.allow = ["embedding_index_status"]
+
+[[permission]]
+identifier = "deny-embedding-index-status"
+description = "Denies the embedding_index_status command without any pre-configured scope."
+commands.deny = ["embedding_index_status"]

@@ -1,0 +1,36 @@
+[package]
+name = "tauri-plugin-embedding-search"
+version = "0.1.0"
+authors = ["You"]
+edition = "2024"
+exclude = ["/js", "/node_modules"]
+links = "tauri-plugin-embedding-search"
+description = "On-device semantic search plugin (EmbeddingGemma + sqlite-vec)"
+
+[build-dependencies]
+tauri-plugin = { workspace = true, features = ["build"] }
+
+[dev-dependencies]
+anyhow = { workspace = true }
+specta-typescript = { workspace = true }
+hypr-db-core = { workspace = true }
+tempfile = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "sync"] }
+
+[dependencies]
+hypr-db-app = { workspace = true }
+hypr-db-core = { workspace = true }
+reqwest = { workspace = true, features = ["stream"] }
+hypr-tauri-utils = { workspace = true }
+hypr-text-embedding = { workspace = true }
+
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+sha2 = { workspace = true }
+specta = { workspace = true, features = ["serde_json"] }
+sqlx = { workspace = true, features = ["runtime-tokio", "sqlite", "sqlite-unbundled", "macros"] }
+tauri = { workspace = true, features = ["test"] }
+tauri-specta = { workspace = true, features = ["derive", "typescript"] }
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["sync"] }
+tracing = { workspace = true }

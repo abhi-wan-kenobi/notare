@@ -39,10 +39,38 @@ interface PhaseLook {
 }
 
 const PHASE_LOOKS: Record<DictationPhase, PhaseLook> = {
-  idle: { wobble: 0.5, wobbleDepth: 0.03, breathePeriod: 3.4, intensityTarget: 0 },
-  listening: { wobble: 1.4, wobbleDepth: 0.05, breathePeriod: 1.6, intensityTarget: 0 },
-  processing: { wobble: 2.6, wobbleDepth: 0.07, breathePeriod: 1, intensityTarget: 0.4 },
-  error: { wobble: 0, wobbleDepth: 0.015, breathePeriod: 5, intensityTarget: 0 },
+  idle: {
+    wobble: 0.5,
+    wobbleDepth: 0.03,
+    breathePeriod: 3.4,
+    intensityTarget: 0,
+  },
+  listening: {
+    wobble: 1.4,
+    wobbleDepth: 0.05,
+    breathePeriod: 1.6,
+    intensityTarget: 0,
+  },
+  processing: {
+    wobble: 2.6,
+    wobbleDepth: 0.07,
+    breathePeriod: 1,
+    intensityTarget: 0.4,
+  },
+  // success is a transient end-of-session flourish (a variant-agnostic overlay
+  // in orb.tsx); the body rests at the idle look.
+  success: {
+    wobble: 0.5,
+    wobbleDepth: 0.03,
+    breathePeriod: 3.4,
+    intensityTarget: 0,
+  },
+  error: {
+    wobble: 0,
+    wobbleDepth: 0.015,
+    breathePeriod: 5,
+    intensityTarget: 0,
+  },
 };
 
 /** Seconds between idle blinks. */
@@ -181,7 +209,13 @@ function drawFace(
       ctx.stroke();
     }
     ctx.beginPath();
-    ctx.arc(cx, cy + radius * 0.52, radius * 0.24, Math.PI * 1.2, Math.PI * 1.8);
+    ctx.arc(
+      cx,
+      cy + radius * 0.52,
+      radius * 0.24,
+      Math.PI * 1.2,
+      Math.PI * 1.8,
+    );
     ctx.stroke();
     return;
   }
