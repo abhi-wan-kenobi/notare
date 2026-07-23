@@ -492,3 +492,31 @@ export const storageMigrationState = sqliteTable("storage_migration_state", {
   lastError: text("last_error").notNull().default(""),
   updatedAt: text("updated_at").notNull().default(currentTimestamp),
 });
+
+// On-device semantic search index (WS-B1). Mirrors
+// crates/db-app/migrations/20260723120000_embedding_chunks.sql. The dense
+// vectors live in a sqlite-vec `vec0` virtual table (embedding_vectors) that
+// drizzle does not model; only the metadata + rowid map are declared here.
+export const embeddingChunks = sqliteTable(
+  "embedding_chunks",
+  {
+    chunkId: text("chunk_id").primaryKey().notNull(),
+    sessionId: text("session_id").notNull(),
+    // "note" | "transcript"
+    sourceType: text("source_type").notNull(),
+    contentHash: text("content_hash").notNull(),
+    text: text("text").notNull(),
+    // Word-timing anchor (ms) for transcript chunks; null for note chunks.
+    startMs: integer("start_ms"),
+    createdAt: integer("created_at").notNull(),
+  },
+  (table) => [
+    index("idx_embedding_chunks_session").on(table.sessionId),
+    index("idx_embedding_chunks_content_hash").on(table.contentHash),
+  ],
+);
+
+export const embeddingVectorMap = sqliteTable("embedding_vector_map", {
+  rowid: integer("rowid").primaryKey().notNull(),
+  chunkId: text("chunk_id").notNull().unique(),
+});

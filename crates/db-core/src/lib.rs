@@ -2,7 +2,7 @@ mod cloudsync;
 
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, Once};
 use std::time::Duration;
 
 use sqlx::SqlitePool;
@@ -251,7 +251,44 @@ async fn connect_with_options(
 }
 
 fn apply_internal_connect_policy(connect_options: SqliteConnectOptions) -> SqliteConnectOptions {
+    register_sqlite_vec();
     connect_options.busy_timeout(SQLITE_BUSY_TIMEOUT)
+}
+
+static SQLITE_VEC_INIT: Once = Once::new();
+
+/// Register the `sqlite-vec` extension as a SQLite auto-extension exactly once
+/// per process, BEFORE any pool is created. `sqlite3_auto_extension` installs
+/// the init hook globally, so every connection SQLite opens afterwards — via
+/// any of db-core's connect paths, and the migration runner that rides on
+/// them — has the `vec0` virtual table and `vec_*` functions available.
+///
+/// Static registration (vs `SqliteConnectOptions::extension("vec0")`) is
+/// deliberate: it needs no loadable dylib, so nothing new has to be shipped or
+/// notarized on macOS (S0 spike decision, 2026-07-22). Verified on the
+/// workspace stack (sqlx 0.9.0-alpha.1 + sqlite-unbundled + libsqlite3-sys
+/// 0.35): the auto-extension fires on sqlx-opened connections.
+fn register_sqlite_vec() {
+    SQLITE_VEC_INIT.call_once(|| {
+        // SAFETY: `sqlite3_vec_init` is the extension entry point provided by
+        // the `sqlite-vec` crate; `sqlite3_auto_extension` takes a C function
+        // pointer to it. The explicit transmute annotation matches the
+        // `sqlite3_auto_extension` argument type (required by
+        // clippy::missing_transmute_annotations). Called once, before any
+        // connection is opened.
+        unsafe {
+            libsqlite3_sys::sqlite3_auto_extension(Some(std::mem::transmute::<
+                *const (),
+                unsafe extern "C" fn(
+                    *mut libsqlite3_sys::sqlite3,
+                    *mut *mut std::os::raw::c_char,
+                    *const libsqlite3_sys::sqlite3_api_routines,
+                ) -> std::os::raw::c_int,
+            >(
+                sqlite_vec::sqlite3_vec_init as *const (),
+            )));
+        }
+    });
 }
 
 #[cfg(test)]
@@ -285,6 +322,54 @@ mod tests {
         let db = Db::connect_local_plain(&db_path).await.unwrap();
         assert!(db_path.exists());
         drop(db);
+    }
+
+    /// The sqlite-vec auto-extension is live on connections db-core opens, so a
+    /// `vec0` virtual table can be created and KNN-queried (the WS-B1 backend
+    /// contract). This is the guarantee migrations and the embedding-search
+    /// plugin rely on.
+    #[tokio::test]
+    async fn sqlite_vec_extension_is_registered_on_connections() {
+        let db = Db::connect_memory_plain().await.unwrap();
+
+        let version: String = sqlx::query_scalar("SELECT vec_version()")
+            .fetch_one(db.pool())
+            .await
+            .expect("vec_version() should resolve when sqlite-vec is registered");
+        assert!(
+            version.starts_with('v'),
+            "unexpected vec version: {version}"
+        );
+
+        sqlx::query("CREATE VIRTUAL TABLE t USING vec0(embedding float[4])")
+            .execute(db.pool())
+            .await
+            .unwrap();
+        for (id, e) in [
+            (1i64, [0.1f32, 0.1, 0.1, 0.1]),
+            (2, [0.9, 0.9, 0.9, 0.9]),
+            (3, [0.2, 0.15, 0.1, 0.05]),
+        ] {
+            let bytes: Vec<u8> = e.iter().flat_map(|f| f.to_le_bytes()).collect();
+            sqlx::query("INSERT INTO t(rowid, embedding) VALUES (?, ?)")
+                .bind(id)
+                .bind(bytes)
+                .execute(db.pool())
+                .await
+                .unwrap();
+        }
+        let query: Vec<u8> = [0.12f32, 0.11, 0.1, 0.09]
+            .iter()
+            .flat_map(|f| f.to_le_bytes())
+            .collect();
+        let nearest: i64 = sqlx::query_scalar(
+            "SELECT rowid FROM t WHERE embedding MATCH ? ORDER BY distance LIMIT 1",
+        )
+        .bind(query)
+        .fetch_one(db.pool())
+        .await
+        .unwrap();
+        assert_eq!(nearest, 1, "KNN should return the closest vector");
     }
 
     #[tokio::test]

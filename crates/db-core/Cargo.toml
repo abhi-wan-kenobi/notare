@@ -10,6 +10,7 @@ hypr-db-change = { workspace = true }
 backon = { workspace = true }
 libsqlite3-sys = "0.35"
 serde = { workspace = true, features = ["derive"] }
+sqlite-vec = "0.1"
 sqlx = { workspace = true, features = ["runtime-tokio", "sqlite"] }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["macros", "rt", "sync", "time"] }
