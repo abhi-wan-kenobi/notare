@@ -65,7 +65,10 @@ fn create_probe_wav() -> (Vec<u8>, f32) {
 /// so without it the request 401s and the offload factor can never be measured.
 pub async fn run_probe(port: u16, token: Option<&str>) -> Option<f32> {
     let client = reqwest::Client::new();
-    let url = format!("http://127.0.0.1:{}/v1/listen?channels=1&sample_rate=16000", port);
+    let url = format!(
+        "http://127.0.0.1:{}/v1/listen?channels=1&sample_rate=16000",
+        port
+    );
     let (wav_data, audio_secs) = create_probe_wav();
 
     let mut attempts = 0;
@@ -160,7 +163,10 @@ mod tests {
         assert!(decoder.is_ok());
         let decoder = decoder.unwrap();
         assert_eq!(decoder.channels(), std::num::NonZero::new(1).unwrap());
-        assert_eq!(decoder.sample_rate(), std::num::NonZero::new(16000).unwrap());
+        assert_eq!(
+            decoder.sample_rate(),
+            std::num::NonZero::new(16000).unwrap()
+        );
     }
 
     #[tokio::test]
@@ -195,7 +201,9 @@ mod tests {
                 let has_bearer = head.contains("authorization: bearer secret-probe-token");
                 // Respond 200 so the probe treats it as success and returns.
                 let _ = sock
-                    .write_all(b"HTTP/1.1 200 OK\r\ncontent-length: 2\r\nconnection: close\r\n\r\nok")
+                    .write_all(
+                        b"HTTP/1.1 200 OK\r\ncontent-length: 2\r\nconnection: close\r\n\r\nok",
+                    )
                     .await;
                 let _ = tx.send(has_bearer);
             }
