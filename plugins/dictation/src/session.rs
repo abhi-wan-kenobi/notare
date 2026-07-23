@@ -365,10 +365,21 @@ async fn run_session<E: std::fmt::Debug>(
     let state = app.state::<SessionState>();
     let _ = state.take();
 
+    for phase in terminal_phases(failed) {
+        emit_state(&app, *phase, 0.0, mode);
+    }
+}
+
+/// The ordered orb phases emitted when a session ends. A clean finish
+/// (`failed == false`) shows a one-shot [`DictationPhase::Success`] flourish
+/// and then settles to [`DictationPhase::Idle`]; a failure goes straight to
+/// [`DictationPhase::Error`]. Kept pure (no app handle) so the end-of-session
+/// transition is unit-testable without a running session.
+fn terminal_phases(failed: bool) -> &'static [DictationPhase] {
     if failed {
-        emit_state(&app, DictationPhase::Error, 0.0, mode);
+        &[DictationPhase::Error]
     } else {
-        emit_state(&app, DictationPhase::Idle, 0.0, mode);
+        &[DictationPhase::Success, DictationPhase::Idle]
     }
 }
 
@@ -482,8 +493,9 @@ mod tests {
 
     use super::{
         AMPLITUDE_FAST_INTERVAL, AMPLITUDE_INTERVAL, normalized_amplitude, resolve_soniqo_model,
-        should_emit,
+        should_emit, terminal_phases,
     };
+    use crate::events::DictationPhase;
 
     #[test]
     fn fast_amplitude_channel_runs_at_about_30hz() {
@@ -545,6 +557,19 @@ mod tests {
             .collect();
         let a = normalized_amplitude(&alternating);
         assert!((0.0..=1.0).contains(&a), "alternating -> {a} out of [0,1]");
+    }
+
+    #[test]
+    fn clean_finish_emits_a_success_flourish_then_settles_to_idle() {
+        assert_eq!(
+            terminal_phases(false),
+            &[DictationPhase::Success, DictationPhase::Idle]
+        );
+    }
+
+    #[test]
+    fn failed_finish_emits_only_error() {
+        assert_eq!(terminal_phases(true), &[DictationPhase::Error]);
     }
 
     #[test]

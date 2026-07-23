@@ -16,6 +16,10 @@ pub enum Error {
     CachedUpdateNotFound,
     #[error("update not available")]
     UpdateNotAvailable,
+    #[error(
+        "in-app updates are not supported for this install format; download from GitHub Releases"
+    )]
+    SelfUpdateUnsupported,
     #[error("version mismatch: expected {expected}, got {actual}")]
     VersionMismatch { expected: String, actual: String },
     #[error("failed to determine current app path")]

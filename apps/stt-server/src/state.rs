@@ -1,10 +1,13 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::{Arc, Mutex as StdMutex};
 use std::time::Instant;
 
 use hypr_local_model::{LocalModel, WhisperModel};
-use hypr_model_downloader::{DownloadStatus, ModelDownloadManager, ModelDownloaderRuntime, ModelIntegrity};
+use hypr_model_downloader::{
+    DownloadStatus, ModelDownloadManager, ModelDownloaderRuntime, ModelIntegrity,
+};
 use hypr_transcribe_whisper_local::TranscribeService;
 use tokio::sync::RwLock;
 
@@ -65,6 +68,20 @@ pub struct AppState {
     pub(crate) progress: Arc<StdMutex<HashMap<String, DownloadStatus>>>,
     pub(crate) active: RwLock<ActiveService>,
     pub(crate) probe_result: RwLock<Option<f32>>,
+    /// Latest periodic health-monitor probe realtime factor (`None` until the
+    /// first periodic tick completes, or if the latest probe could not run).
+    /// Distinct from `probe_result` (the one-shot startup probe) so `/api/status`
+    /// can show both. See `src/health.rs`.
+    pub(crate) periodic_probe_result: RwLock<Option<f32>>,
+    /// Health flag the periodic monitor flips to `false` on sustained RTF
+    /// degradation; `GET /health` returns 503 while this is false. Defaults
+    /// true. Latches: an operator restart clears it (with autorestart on the
+    /// process exits to force that; with it off `/health` stays 503).
+    healthy: AtomicBool,
+    /// Consecutive low/failed periodic-probe count, driven by
+    /// `health::update_streak`. Single-writer (the one monitor task) +
+    /// multiple readers (`/health`, `/api/status`), hence the atomic.
+    low_streak: AtomicU32,
 }
 
 /// `POST /api/models/{id}/activate` failure modes, mapped to HTTP status by
@@ -100,6 +117,9 @@ impl AppState {
             downloader,
             progress,
             probe_result: RwLock::new(None),
+            periodic_probe_result: RwLock::new(None),
+            healthy: AtomicBool::new(true),
+            low_streak: AtomicU32::new(0),
             start_time: Instant::now(),
             config,
         }
@@ -152,6 +172,28 @@ impl AppState {
         LocalModel::Whisper(model.clone()).install_path(&self.config.model_dir)
     }
 
+    /// Whether the periodic health monitor has flipped the service unhealthy
+    /// (sustained RTF degradation). `GET /health` returns 503 while false.
+    pub fn is_healthy(&self) -> bool {
+        self.healthy.load(Ordering::Relaxed)
+    }
+
+    /// Latch the service unhealthy (503). Only the periodic monitor calls this.
+    pub(crate) fn set_unhealthy(&self) {
+        self.healthy.store(false, Ordering::Relaxed);
+    }
+
+    /// Current consecutive-low/failed periodic-probe count (for `/api/status`
+    /// diagnostics and the monitor's own hysteresis).
+    pub(crate) fn low_streak(&self) -> u32 {
+        self.low_streak.load(Ordering::Relaxed)
+    }
+
+    /// Set the consecutive-low streak (monitor only writer).
+    pub(crate) fn set_low_streak(&self, value: u32) {
+        self.low_streak.store(value, Ordering::Relaxed);
+    }
+
     /// `POST /api/models/{id}/activate`: verify the model is installed
     /// (`Verified` or `PresentUnverified`) via
     /// `hypr_model_downloader::verify_model`, then rebuild the `/v1/listen`
@@ -161,7 +203,10 @@ impl AppState {
     /// "activate" both loads (eagerly, via warmup) and satisfies "lazy load
     /// on first request" (`ModelManager::get` loads on demand if the warmup
     /// hasn't finished or the model was since evicted for inactivity).
-    pub(crate) async fn activate(&self, model: WhisperModel) -> Result<ModelIntegrity, ActivateError> {
+    pub(crate) async fn activate(
+        &self,
+        model: WhisperModel,
+    ) -> Result<ModelIntegrity, ActivateError> {
         let local = LocalModel::Whisper(model.clone());
         let integrity = self
             .downloader
@@ -201,9 +246,6 @@ impl AppState {
     pub async fn reconcile_on_startup(&self) {
         let models: Vec<LocalModel> = CATALOG.iter().cloned().map(LocalModel::Whisper).collect();
         let results = self.downloader.reconcile(&models).await;
-        tracing::info!(
-            checked = results.len(),
-            "stt_server_model_reconcile_done"
-        );
+        tracing::info!(checked = results.len(), "stt_server_model_reconcile_done");
     }
 }

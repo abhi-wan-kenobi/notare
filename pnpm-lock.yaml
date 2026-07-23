@@ -145,6 +145,9 @@ importers:
       '@hypr/plugin-dictation':
         specifier: workspace:*
         version: link:../../plugins/dictation
+      '@hypr/plugin-embedding-search':
+        specifier: workspace:*
+        version: link:../../plugins/embedding-search
       '@hypr/plugin-export':
         specifier: workspace:*
         version: link:../../plugins/export
@@ -945,6 +948,12 @@ importers:
         version: 2.10.1
 
   plugins/dictation:
+    dependencies:
+      '@tauri-apps/api':
+        specifier: ^2.10.1
+        version: 2.10.1
+
+  plugins/embedding-search:
     dependencies:
       '@tauri-apps/api':
         specifier: ^2.10.1
@@ -6011,8 +6020,8 @@ packages:
     resolution: {integrity: sha512-0je+qPKHEMohvfRTCEo3CrPG6cAzAYgmzKyxRiYSSDkS6eGJdyVJm7WaYA5ECaAD9wLB2T4EEeymA5aFVcYXCA==}
     engines: {node: '>=6'}
 
-  deslop-js@0.8.1:
-    resolution: {integrity: sha512-a8wpwOPo6HsYyRndn17C88mNzeQD6t17yhZ8qpyFWTxj5jQeWtXDj+zJfnuT8++5A4LaNeNAnKs1edVWuadNdQ==}
+  deslop-js@0.8.3:
+    resolution: {integrity: sha512-axNV/iX3Zq9xt0MYesmbBGxneeeY/HrYgXTsaM4+GOrdxXP9JyCfTdC4j8zx09bBML94oSIpFNyn9U1f0oEPqQ==}
 
   destr@2.0.5:
     resolution: {integrity: sha512-ugFTXCtDZunbzasqBxrK93Ik/DRYsO6S/fedkWEMKqt04xZ4csmnmwGDBAb07QWNaGMAmnTIemsYZCksjATwsA==}
@@ -7865,8 +7874,8 @@ packages:
     engines: {node: ^20.19.0 || >=22.12.0}
     hasBin: true
 
-  oxlint-plugin-react-doctor@0.8.1:
-    resolution: {integrity: sha512-ETjgoKrY0EYpK51BsbvgpWySkWaLgJ6z7yB/BfOosi+TUY4+GiDmhWfjJCeul+tpDJEFKR5MnpENjlUrmtZ5Dw==}
+  oxlint-plugin-react-doctor@0.8.3:
+    resolution: {integrity: sha512-S1Gq1H9+BpziApWcZ/sWPNYYy1FMkFmtSEGiqIJ4/Aac76LfkeutPFtSRlkJF1JlcrbYFf7LXcfcxZCJgmVBBQ==}
     engines: {node: ^20.19.0 || >=22.13.0}
 
   oxlint-tsgolint@0.21.1:
@@ -8273,8 +8282,8 @@ packages:
       react: '>=16.8.0'
       react-dom: '>=16.8.0'
 
-  react-doctor@0.8.1:
-    resolution: {integrity: sha512-lP/MaS7dDMeVFpWBjh8qYp6NYcb/1TmsAwSixqkqOI50fea9kfh89fyn+UUAC3vb53FGIqwvDPZIjlJR6BgGAQ==}
+  react-doctor@0.8.3:
+    resolution: {integrity: sha512-FfG7YQKb1yv1UNk2gknZzLAPx6L3RMOhYsYbslr4MSpVMNk5xBHlu9VxjtS0br0DEBWjkZovrf/C1MrchiIzAw==}
     engines: {node: ^20.19.0 || >=22.13.0}
     hasBin: true
 
@@ -14614,7 +14623,7 @@ snapshots:
 
   dequal@2.0.3: {}
 
-  deslop-js@0.8.1:
+  deslop-js@0.8.3:
     dependencies:
       '@oxc-project/types': 0.138.0
       fast-glob: 3.3.3
@@ -16915,7 +16924,7 @@ snapshots:
       '@oxfmt/binding-win32-ia32-msvc': 0.45.0
       '@oxfmt/binding-win32-x64-msvc': 0.45.0
 
-  oxlint-plugin-react-doctor@0.8.1:
+  oxlint-plugin-react-doctor@0.8.3:
     dependencies:
       '@typescript-eslint/types': 8.62.1
       eslint-scope: 9.1.2
@@ -17440,19 +17449,19 @@ snapshots:
       react: 19.2.5
       react-dom: 19.2.5(react@19.2.5)
 
-  react-doctor@0.8.1(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))(eslint@9.39.4(jiti@2.7.0))(oxlint-tsgolint@0.21.1):
+  react-doctor@0.8.3(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))(eslint@9.39.4(jiti@2.7.0))(oxlint-tsgolint@0.21.1):
     dependencies:
       '@babel/code-frame': 7.29.0
       '@sentry/node': 10.63.0(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))
       agent-install: 0.0.5
       conf: 15.1.0
       confbox: 0.2.4
-      deslop-js: 0.8.1
+      deslop-js: 0.8.3
       eslint-plugin-react-hooks: 7.1.1(eslint@9.39.4(jiti@2.7.0))
       jiti: 2.7.0
       magicast: 0.5.3
       oxlint: 1.66.0(oxlint-tsgolint@0.21.1)
-      oxlint-plugin-react-doctor: 0.8.1
+      oxlint-plugin-react-doctor: 0.8.3
       prompts: 2.4.2
       typescript: 5.9.3
       vscode-languageserver: 9.0.1
@@ -17593,7 +17602,7 @@ snapshots:
       preact: 10.29.1
       prompts: 2.4.2
       react: 19.2.5
-      react-doctor: 0.8.1(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))(eslint@9.39.4(jiti@2.7.0))(oxlint-tsgolint@0.21.1)
+      react-doctor: 0.8.3(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))(eslint@9.39.4(jiti@2.7.0))(oxlint-tsgolint@0.21.1)
       react-dom: 19.2.5(react@19.2.5)
       react-grab: 0.1.48(react@19.2.5)
     optionalDependencies:

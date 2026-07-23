@@ -209,6 +209,14 @@ export const SETTING_DEFINITIONS = {
     type: "string",
     path: ["ai", "current_llm_provider"],
   },
+  // "My model is capable, stop second-guessing me": bypasses the llm-router
+  // minimum-size heuristic for structured-output tasks (action items). The
+  // structural verbatim-source gates still apply downstream.
+  llm_caps_override: {
+    type: "boolean",
+    path: ["ai", "llm_caps_override"],
+    default: false as boolean,
+  },
   current_llm_model: {
     type: "string",
     path: ["ai", "current_llm_model"],

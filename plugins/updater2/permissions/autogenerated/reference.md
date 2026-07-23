@@ -10,6 +10,7 @@ Default permissions for the plugin
 - `allow-is-downloaded`
 - `allow-postinstall`
 - `allow-maybe-emit-updated`
+- `allow-can-self-update`
 
 ## Permission Table
 
@@ -19,6 +20,32 @@ Default permissions for the plugin
 <th>Description</th>
 </tr>
 
+
+<tr>
+<td>
+
+`updater2:allow-can-self-update`
+
+</td>
+<td>
+
+Enables the can_self_update command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`updater2:deny-can-self-update`
+
+</td>
+<td>
+
+Denies the can_self_update command without any pre-configured scope.
+
+</td>
+</tr>
 
 <tr>
 <td>

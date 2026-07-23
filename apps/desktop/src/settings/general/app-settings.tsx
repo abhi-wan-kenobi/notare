@@ -420,19 +420,21 @@ export function UpdatesSection() {
   };
 
   const stateText =
-    update.status === "available"
-      ? t`Version ${update.version ?? ""} is available.`
-      : update.status === "downloading"
-        ? update.progress === null
-          ? t`Downloading version ${update.version ?? ""}…`
-          : t`Downloading version ${update.version ?? ""}… ${Math.round(
-              (update.progress ?? 0) * 100,
-            )}%`
-        : update.status === "ready"
-          ? t`Version ${update.version ?? ""} is ready to install.`
-          : update.status === "failed"
-            ? (update.errorMessage ?? t`The update failed to download.`)
-            : null;
+    update.status === "unsupported"
+      ? t`Version ${update.version ?? ""} is available. Download it from GitHub Releases (in-app updates aren't supported for this install).`
+      : update.status === "available"
+        ? t`Version ${update.version ?? ""} is available.`
+        : update.status === "downloading"
+          ? update.progress === null
+            ? t`Downloading version ${update.version ?? ""}…`
+            : t`Downloading version ${update.version ?? ""}… ${Math.round(
+                (update.progress ?? 0) * 100,
+              )}%`
+          : update.status === "ready"
+            ? t`Version ${update.version ?? ""} is ready to install.`
+            : update.status === "failed"
+              ? (update.errorMessage ?? t`The update failed to download.`)
+              : null;
 
   return (
     <section data-testid="updates-section">

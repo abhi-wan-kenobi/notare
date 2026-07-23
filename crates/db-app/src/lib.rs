@@ -80,6 +80,16 @@ pub const APP_MIGRATION_STEPS: &[hypr_db_migrate::MigrationStep] = &[
         scope: hypr_db_migrate::MigrationScope::Plain,
         sql: include_str!("../migrations/20260720151807_voice_profiles.sql"),
     },
+    hypr_db_migrate::MigrationStep {
+        id: "20260723120000_embedding_chunks",
+        scope: hypr_db_migrate::MigrationScope::Plain,
+        sql: include_str!("../migrations/20260723120000_embedding_chunks.sql"),
+    },
+    hypr_db_migrate::MigrationStep {
+        id: "20260723130000_action_items_v2",
+        scope: hypr_db_migrate::MigrationScope::Plain,
+        sql: include_str!("../migrations/20260723130000_action_items_v2.sql"),
+    },
 ];
 
 pub fn schema() -> hypr_db_migrate::DbSchema {
@@ -261,6 +271,14 @@ mod tests {
                 "chat_messages",
                 "daily_notes",
                 "dictation_history",
+                "embedding_chunks",
+                "embedding_vector_map",
+                // embedding_vectors + its vec0 shadow tables.
+                "embedding_vectors",
+                "embedding_vectors_chunks",
+                "embedding_vectors_info",
+                "embedding_vectors_rowids",
+                "embedding_vectors_vector_chunks00",
                 "entity_mentions",
                 "events",
                 "humans",

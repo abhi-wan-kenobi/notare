@@ -134,6 +134,15 @@ const PHASE_LOOKS: Record<DictationPhase, PhaseLook> = {
     brightness: 0.95,
     intensityTarget: 0.3,
   },
+  // success is a transient end-of-session flourish (a variant-agnostic overlay
+  // in orb.tsx); the body rests at the idle look.
+  success: {
+    rotY: 0.0015,
+    rotX: 0,
+    turbulence: 0.1,
+    brightness: 0.85,
+    intensityTarget: 0,
+  },
   error: {
     rotY: 0,
     rotX: 0,

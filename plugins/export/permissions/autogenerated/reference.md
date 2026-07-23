@@ -5,6 +5,7 @@ Default permissions for the plugin
 #### This default permission set includes the following:
 
 - `allow-export`
+- `allow-export-action-items`
 
 ## Permission Table
 
@@ -37,6 +38,32 @@ Enables the export command without any pre-configured scope.
 <td>
 
 Denies the export command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`export:allow-export-action-items`
+
+</td>
+<td>
+
+Enables the export_action_items command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`export:deny-export-action-items`
+
+</td>
+<td>
+
+Denies the export_action_items command without any pre-configured scope.
 
 </td>
 </tr>

@@ -11,14 +11,17 @@ description = ""
 tauri-plugin = { workspace = true, features = ["build"] }
 
 [dev-dependencies]
+hypr-db-app = { workspace = true }
 specta-typescript = { workspace = true }
-tokio = { workspace = true, features = ["macros"] }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
 [dependencies]
 tauri = { workspace = true, features = ["test"] }
 tauri-specta = { workspace = true, features = ["derive", "typescript"] }
 
 hypr-export-core = { workspace = true }
+hypr-db-core = { workspace = true }
 serde = { workspace = true }
 specta = { workspace = true }
+sqlx = { workspace = true, features = ["runtime-tokio", "sqlite", "sqlite-unbundled", "macros"] }
 thiserror = { workspace = true }

@@ -50,7 +50,15 @@ interface PhaseLook {
 const PHASE_LOOKS: Record<DictationPhase, PhaseLook> = {
   idle: { sweep: 0.35, bandAlpha: 0.4, intensityTarget: 0, sparkles: 0 },
   listening: { sweep: 0.7, bandAlpha: 0.75, intensityTarget: 0, sparkles: 5 },
-  processing: { sweep: 1.7, bandAlpha: 0.65, intensityTarget: 0.5, sparkles: 8 },
+  processing: {
+    sweep: 1.7,
+    bandAlpha: 0.65,
+    intensityTarget: 0.5,
+    sparkles: 8,
+  },
+  // success is a transient end-of-session flourish (a variant-agnostic overlay
+  // in orb.tsx); the body rests at the idle look.
+  success: { sweep: 0.35, bandAlpha: 0.4, intensityTarget: 0, sparkles: 0 },
   error: { sweep: 0, bandAlpha: 0.35, intensityTarget: 0, sparkles: 0 },
 };
 
@@ -70,7 +78,11 @@ function rgba(rgb: string, alpha: number): string {
   return `rgba(${rgb.split(" ").join(", ")}, ${alpha.toFixed(3)})`;
 }
 
-function stepState(state: EmberState, phase: DictationPhase, amplitude: number) {
+function stepState(
+  state: EmberState,
+  phase: DictationPhase,
+  amplitude: number,
+) {
   const look = PHASE_LOOKS[phase];
   const target =
     phase === "listening"
@@ -196,9 +208,13 @@ function drawFrame(
       // Deterministic pseudo-random placement that drifts with time.
       const seed = i * 2.399;
       const sx =
-        center + Math.sin(seed * 3.1 + time * 0.5) * radius * 0.45 - radius * 0.2;
+        center +
+        Math.sin(seed * 3.1 + time * 0.5) * radius * 0.45 -
+        radius * 0.2;
       const sy =
-        center + Math.cos(seed * 2.3 + time * 0.4) * radius * 0.4 - radius * 0.3;
+        center +
+        Math.cos(seed * 2.3 + time * 0.4) * radius * 0.4 -
+        radius * 0.3;
       const twinkle = (Math.sin(time * 3 + seed * 5) + 1) / 2;
       ctx.fillStyle = rgba("255 235 250", 0.25 + twinkle * 0.5 * bright);
       ctx.beginPath();

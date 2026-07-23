@@ -9,9 +9,23 @@ use std::time::{Duration, Instant};
 const PROBE_AUDIO_SECS: usize = 8;
 const PROBE_SAMPLE_RATE: usize = 16000;
 
-/// Generates a `PROBE_AUDIO_SECS`-second 16kHz mono silence WAV file in memory.
-fn create_silence_wav() -> Vec<u8> {
-    let n_samples = PROBE_AUDIO_SECS * PROBE_SAMPLE_RATE;
+/// Builds a WAV (16kHz, mono, 16-bit PCM) for the probe from real speech PCM.
+///
+/// `hypr_data::english_2::AUDIO` is raw 16kHz mono s16le PCM with the 44-byte
+/// WAV header already stripped. We take up to `PROBE_AUDIO_SECS` seconds of it
+/// and prepend the same 44-byte header the probe has always built. The probe
+/// must send real speech, not silence: whisper.cpp's VAD/encoder path largely
+/// short-circuits on silence, which inflates the measured realtime factor and
+/// is not representative of the GPU-offload work the probe is meant to measure.
+/// Returns the WAV bytes and the duration (in seconds) of the speech it
+/// actually contains — fewer than `PROBE_AUDIO_SECS` if the source PCM is
+/// shorter than requested.
+fn create_probe_wav() -> (Vec<u8>, f32) {
+    let want_bytes = PROBE_AUDIO_SECS * PROBE_SAMPLE_RATE * 2;
+    let pcm = &hypr_data::english_2::AUDIO[..want_bytes.min(hypr_data::english_2::AUDIO.len())];
+    let n_samples = pcm.len() / 2;
+    let actual_secs = n_samples as f32 / PROBE_SAMPLE_RATE as f32;
+
     let subchunk2_size: u32 = (n_samples * 2) as u32; // 2 bytes/sample (16-bit PCM)
     let chunk_size: u32 = 36 + subchunk2_size;
 
@@ -32,23 +46,30 @@ fn create_silence_wav() -> Vec<u8> {
     header[40..44].copy_from_slice(&subchunk2_size.to_le_bytes());
 
     wav.extend_from_slice(&header);
-    wav.extend(std::iter::repeat(0).take(n_samples * 2));
-    wav
+    wav.extend_from_slice(pcm);
+    (wav, actual_secs)
 }
 
 /// Runs a short transcription probe via an HTTP self-request to verify GPU offload and measure performance.
 ///
-/// It sends a multi-second silent WAV segment (PROBE_AUDIO_SECS) to the local `/v1/listen` endpoint.
-/// If the request succeeds, it returns the calculated realtime factor (audio duration / elapsed time).
-/// If the server is starting up and not yet accepting connections, it retries briefly.
+/// It sends a multi-second real-speech WAV segment (PROBE_AUDIO_SECS, sourced
+/// from `hypr_data::english_2`) to the local `/v1/listen` endpoint. Real speech
+/// keeps the VAD/encoder path representative of actual transcription work;
+/// silence short-circuits that path and inflates the measured factor.
+/// If the request succeeds, it returns the calculated realtime factor (audio
+/// duration / elapsed time). If the server is starting up and not yet accepting
+/// connections, it retries briefly.
 /// Returns `None` if the request fails or if the server returns an error.
 /// `token` must match the server's configured shared secret when one is set
 /// (`NOTARE_STT_TOKEN`); the probe hits the same auth-gated `/v1/listen` route,
 /// so without it the request 401s and the offload factor can never be measured.
 pub async fn run_probe(port: u16, token: Option<&str>) -> Option<f32> {
     let client = reqwest::Client::new();
-    let url = format!("http://127.0.0.1:{}/v1/listen?channels=1&sample_rate=16000", port);
-    let wav_data = create_silence_wav();
+    let url = format!(
+        "http://127.0.0.1:{}/v1/listen?channels=1&sample_rate=16000",
+        port
+    );
+    let (wav_data, audio_secs) = create_probe_wav();
 
     let mut attempts = 0;
     let max_attempts = 30;
@@ -69,7 +90,7 @@ pub async fn run_probe(port: u16, token: Option<&str>) -> Option<f32> {
                 let elapsed = start.elapsed().as_secs_f32();
                 if resp.status().is_success() {
                     let elapsed = if elapsed <= 0.0 { 0.0001 } else { elapsed };
-                    let factor = PROBE_AUDIO_SECS as f32 / elapsed;
+                    let factor = audio_secs / elapsed;
                     tracing::info!(
                         elapsed_secs = elapsed,
                         realtime_factor = factor,
@@ -113,13 +134,28 @@ mod tests {
     use rodio::Source;
 
     #[test]
-    fn test_create_silence_wav_valid() {
-        let wav_data = create_silence_wav();
-        assert_eq!(wav_data.len(), 44 + PROBE_AUDIO_SECS * PROBE_SAMPLE_RATE * 2);
+    fn test_create_probe_wav_valid() {
+        let (wav_data, audio_secs) = create_probe_wav();
+        let expected_samples = PROBE_AUDIO_SECS * PROBE_SAMPLE_RATE;
+        assert_eq!(wav_data.len(), 44 + expected_samples * 2);
+        assert_eq!(audio_secs, PROBE_AUDIO_SECS as f32);
+
+        // WAV header magic and format fields.
         assert_eq!(&wav_data[0..4], b"RIFF");
         assert_eq!(&wav_data[8..12], b"WAVE");
         assert_eq!(&wav_data[12..16], b"fmt ");
         assert_eq!(&wav_data[36..40], b"data");
+        assert_eq!(&wav_data[24..28], 16000u32.to_le_bytes()); // 16kHz
+        assert_eq!(&wav_data[22..24], 1u16.to_le_bytes()); // mono
+        assert_eq!(&wav_data[34..36], 16u16.to_le_bytes()); // 16-bit
+
+        // The payload must be real speech, not silence: this is the regression
+        // the fix prevents (silence short-circuits VAD and inflates the factor).
+        let payload = &wav_data[44..];
+        assert!(
+            payload.iter().any(|&b| b != 0),
+            "probe payload must contain non-zero speech samples"
+        );
 
         // Verify with rodio that it parses as a valid WAV
         let cursor = std::io::Cursor::new(wav_data);
@@ -127,7 +163,10 @@ mod tests {
         assert!(decoder.is_ok());
         let decoder = decoder.unwrap();
         assert_eq!(decoder.channels(), std::num::NonZero::new(1).unwrap());
-        assert_eq!(decoder.sample_rate(), std::num::NonZero::new(16000).unwrap());
+        assert_eq!(
+            decoder.sample_rate(),
+            std::num::NonZero::new(16000).unwrap()
+        );
     }
 
     #[tokio::test]
@@ -162,7 +201,9 @@ mod tests {
                 let has_bearer = head.contains("authorization: bearer secret-probe-token");
                 // Respond 200 so the probe treats it as success and returns.
                 let _ = sock
-                    .write_all(b"HTTP/1.1 200 OK\r\ncontent-length: 2\r\nconnection: close\r\n\r\nok")
+                    .write_all(
+                        b"HTTP/1.1 200 OK\r\ncontent-length: 2\r\nconnection: close\r\n\r\nok",
+                    )
                     .await;
                 let _ = tx.send(has_bearer);
             }
