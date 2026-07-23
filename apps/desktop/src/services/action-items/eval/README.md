@@ -36,13 +36,21 @@ const report = await runEval(ollama.chatModel("qwen3:8b"));
 console.log(formatReport(report));
 ```
 
-**Known caveat (found 2026-07-23):** `qwen3:8b` via the AI-SDK
-`@ai-sdk/openai-compatible` provider returns prose, not schema-valid JSON, so
-`generateObject` raises `AI_NoObjectGeneratedError`. ollama's structured output
-wants its native `format: <json-schema>` field, which the openai-compat provider
-doesn't forward the way `generateObject` expects. This is precisely the runtime
-gap the WS-A caps layer guards (`providerSupportsStructuredOutputs` + the live
-`json_schema` probe in PR14): the router should only route `action_items` to an
-endpoint that passes the probe. The live eval therefore needs either (a) an
-ollama model/path that honors `format`, or (b) the AI-SDK ollama-native provider
-— tracked as the follow-up to wire the live numbers into the Production Gate.
+…pass an ollama target so the pipeline uses the native `format` endpoint:
+
+```ts
+const target = { providerId: "ollama", modelId: "qwen3:8b", baseUrl: "http://127.0.0.1:11434/v1" };
+const report = await runEval({} as never, { target, fetchFn: fetch });
+```
+
+**Resolved (2026-07-23):** `qwen3:8b` via the AI-SDK `@ai-sdk/openai-compatible`
+provider returned prose / empty content (reasoning models aren't grammar-
+constrained on `/v1/chat/completions` `response_format`), so `generateObject`
+raised `AI_NoObjectGeneratedError`. **Fix:** `structured-generate.ts` routes
+ollama structured calls through the NATIVE `/api/chat` with `format: <json-schema>`
++ `think: false`, which grammar-constrains the decode → valid JSON every time.
+`extract.ts` uses it whenever `deps.target.providerId === "ollama"`. The WS-A
+runtime probe (`structured-capability.ts` wrapping `probeStructuredOutputs`)
+remains the gate for *non*-ollama BYO endpoints (ollama is exempt — the native
+path guarantees it). Live precision numbers now land; record them in the 0.5
+Production Gate.
