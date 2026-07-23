@@ -8,6 +8,7 @@ name = "stt-server"
 path = "src/main.rs"
 
 [dependencies]
+hypr-data = { workspace = true }
 hypr-local-model = { workspace = true }
 hypr-model-downloader = { workspace = true }
 hypr-transcribe-core = { workspace = true }
@@ -16,11 +17,11 @@ hypr-whisper-local = { workspace = true }
 
 anyhow = { workspace = true }
 clap = { workspace = true, features = ["derive", "env"] }
+reqwest = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
-reqwest = { workspace = true }
 
 axum = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "net", "signal", "sync"] }
@@ -30,19 +31,19 @@ tower-http = { workspace = true, features = ["cors", "trace"] }
 [features]
 default = []
 vulkan = [
-    "hypr-transcribe-whisper-local/vulkan",
-    "hypr-whisper-local/vulkan",
+  "hypr-transcribe-whisper-local/vulkan",
+  "hypr-whisper-local/vulkan",
 ]
 cuda = [
-    "hypr-transcribe-whisper-local/cuda",
-    "hypr-whisper-local/cuda",
+  "hypr-transcribe-whisper-local/cuda",
+  "hypr-whisper-local/cuda",
 ]
 # AMD ROCm/HIP backend (whisper.cpp HIP). Build with AMDGPU_TARGETS=gfx1030 for
 # the RX 6600 (gfx1032) and run with HSA_OVERRIDE_GFX_VERSION=10.3.0 — the same
 # recipe proven on this GPU by the Voxtral ROCm spike.
 hipblas = [
-    "hypr-transcribe-whisper-local/hipblas",
-    "hypr-whisper-local/hipblas",
+  "hypr-transcribe-whisper-local/hipblas",
+  "hypr-whisper-local/hipblas",
 ]
 
 [dev-dependencies]
