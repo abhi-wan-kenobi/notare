@@ -62,6 +62,33 @@ pub struct Config {
     /// both places.
     #[arg(long, env = "NOTARE_STT_TOKEN")]
     pub token: Option<String>,
+
+    /// Periodic RTF health monitor interval in seconds (WS-G). The monitor
+    /// sleeps this long, then — only when no real transcription is in flight
+    /// — runs the same `probe::run_probe` used at startup to re-measure
+    /// sustained GPU throughput, since the one-shot startup probe cannot see
+    /// the Vulkan throughput decay that builds up under long uptime + load
+    /// (see `src/health.rs`).
+    #[arg(long, env = "NOTARE_STT_HEALTH_INTERVAL_SECS", default_value_t = 300)]
+    pub health_interval_secs: u64,
+
+    /// Minimum realtime factor a periodic probe must sustain to count as
+    /// healthy. Below this the consecutive-low streak increments; at or above
+    /// it the streak resets to 0.
+    #[arg(long, env = "NOTARE_STT_HEALTH_MIN_RTF", default_value_t = 5.0)]
+    pub health_min_rtf: f32,
+
+    /// Consecutive low/failed periodic probes required to declare sustained
+    /// degradation (flip `/health` to 503 +, unless autorestart is off, exit).
+    /// 2 = one transient blip does not trip it.
+    #[arg(long, env = "NOTARE_STT_HEALTH_FAIL_STREAK", default_value_t = 2)]
+    pub health_fail_streak: u32,
+
+    /// On sustained degradation, exit(1) so `restart: unless-stopped` clears
+    /// the Vulkan decay. Default true; set `NOTARE_STT_HEALTH_AUTORESTART=false`
+    /// to leave `/health` at 503 for an operator to decide instead.
+    #[arg(long, env = "NOTARE_STT_HEALTH_AUTORESTART", default_value_t = true)]
+    pub health_autorestart: bool,
 }
 
 impl Default for Config {
@@ -73,6 +100,10 @@ impl Default for Config {
             model: DEFAULT_MODEL,
             require_gpu: false,
             token: None,
+            health_interval_secs: 300,
+            health_min_rtf: 5.0,
+            health_fail_streak: 2,
+            health_autorestart: true,
         }
     }
 }

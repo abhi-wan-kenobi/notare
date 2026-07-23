@@ -108,6 +108,7 @@ function makeSnapshot(
       },
     ],
     participants: [{ humanId: "human-1", name: "Alice", jobTitle: "PM" }],
+    actionItems: [],
     ...overrides,
   };
 }
@@ -190,6 +191,50 @@ describe("buildSessionFiles", () => {
 
     expect(files.json.map(([, name]) => name)).toEqual(["_meta.json"]);
     expect(files.documents).toEqual([]);
+  });
+
+  test("renders action items into _memo.md as an Obsidian task section", () => {
+    const files = buildSessionFiles(
+      makeSnapshot({
+        rawMarkdown: "meeting body",
+        actionItems: [
+          {
+            text: "Send budget",
+            status: "todo",
+            dueAt: "2026-07-24",
+            ownerSpeakerId: "spk_1",
+          },
+          { text: "Book venue", status: "done", dueAt: "", ownerSpeakerId: "" },
+        ],
+      }),
+      null,
+    );
+
+    const memo = files.documents.find(([, name]) => name === "_memo.md");
+    const content = memo?.[0].content ?? "";
+    expect(content).toContain("meeting body");
+    expect(content).toContain("<!-- notare:action-items -->");
+    expect(content).toContain("## Action Items");
+    expect(content).toContain("- [ ] Send budget 📅 2026-07-24 @spk_1");
+    expect(content).toContain("- [x] Book venue");
+  });
+
+  test("writes _memo.md for action items even when the note body is empty", () => {
+    const files = buildSessionFiles(
+      makeSnapshot({
+        rawNoteId: null,
+        rawMarkdown: "",
+        enhancedNotes: [],
+        transcripts: [],
+        actionItems: [
+          { text: "Only task", status: "todo", dueAt: "", ownerSpeakerId: "" },
+        ],
+      }),
+      null,
+    );
+
+    const memo = files.documents.find(([, name]) => name === "_memo.md");
+    expect(memo?.[0].content).toContain("- [ ] Only task");
   });
 });
 

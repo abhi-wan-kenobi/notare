@@ -344,7 +344,7 @@ insta = "1.46"
 quickcheck = "1"
 quickcheck_macros = "1"
 serial_test = "3"
-testcontainers-modules = "0.12.1"
+testcontainers-modules = "0.15.0"
 wiremock = "0.6"
 
 axum = "0.8"
@@ -364,7 +364,7 @@ gbnf-validator = { git = "https://github.com/fastrepl/gbnf-validator", rev = "3d
 
 jsonwebtoken = { version = "10", features = ["rust_crypto"] }
 sentry = "=0.42.0"
-vergen-gix = "9"
+vergen-gix = "10"
 
 askama = "0.15"
 askama_parser = "0.15"

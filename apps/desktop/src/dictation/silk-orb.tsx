@@ -67,6 +67,9 @@ const PHASE_LOOKS: Record<DictationPhase, PhaseLook> = {
   idle: { spin: 1, lineAlpha: 0.22, intensityTarget: 0 },
   listening: { spin: 2.4, lineAlpha: 0.34, intensityTarget: 0 },
   processing: { spin: 5, lineAlpha: 0.3, intensityTarget: 0.45 },
+  // success is a transient end-of-session flourish (a variant-agnostic overlay
+  // in orb.tsx); the body rests at the idle look.
+  success: { spin: 1, lineAlpha: 0.22, intensityTarget: 0 },
   error: { spin: 0, lineAlpha: 0.16, intensityTarget: 0 },
 };
 
@@ -231,7 +234,10 @@ function drawFrame(
   );
   term.addColorStop(0, rgba(isError ? ERROR_RGB : SHADOW, 0));
   term.addColorStop(0.55, rgba(isError ? ERROR_RGB : SHADOW, 0));
-  term.addColorStop(1, rgba(isError ? ERROR_RGB : SHADOW, 0.5 + intensity * 0.2));
+  term.addColorStop(
+    1,
+    rgba(isError ? ERROR_RGB : SHADOW, 0.5 + intensity * 0.2),
+  );
   ctx.strokeStyle = term;
   ctx.lineWidth = Math.max(0.6, radius * 0.05);
   ctx.beginPath();
