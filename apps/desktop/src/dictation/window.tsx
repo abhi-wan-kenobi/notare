@@ -10,14 +10,14 @@ import {
 } from "@hypr/plugin-dictation";
 import { cn } from "@hypr/utils";
 
-import { useConfigValues } from "~/shared/config";
-
 import {
   DictationOrb,
   type DictationOrbVariant,
   normalizeOrbVariant,
   orbWindowSizeForVariant,
 } from "./orb";
+
+import { useConfigValues } from "~/shared/config";
 
 const IDLE_STATE: DictationStateEvent = {
   phase: "idle",
@@ -50,6 +50,12 @@ const DRAG_THRESHOLD_PX = 4;
 export function DictationOrbWindow({ solid = false }: { solid?: boolean }) {
   const { t } = useLingui();
   const state = useDictationState();
+  // High-frequency (~30 Hz) mic amplitude, mirrored into a ref so it never
+  // re-renders the orb. Not read by the visuals yet; a later PR (WS-E) feeds it
+  // to a requestAnimationFrame envelope follower for the orb ring. Subscribing
+  // here is what keeps the `DictationAmplitudeEvent` channel live.
+  const amplitudeRef = useRef(0);
+  useDictationAmplitude(amplitudeRef);
   const { dictation_orb_variant, dictation_paste_at_cursor } = useConfigValues([
     "dictation_orb_variant",
     "dictation_paste_at_cursor",
@@ -330,4 +336,42 @@ function useDictationState() {
   }, []);
 
   return state;
+}
+
+/**
+ * Subscribe to the high-frequency (~30 Hz) `DictationAmplitudeEvent` channel
+ * and mirror the newest sample into `target.current`. Deliberately writes a
+ * ref and never calls `setState`: at 30 Hz a state update would re-render the
+ * orb on every frame. This is the thin, separate companion to
+ * `useDictationState` (10 Hz, phase/mode -> renders). A later PR reads this ref
+ * from a requestAnimationFrame envelope follower to drive the orb ring
+ * smoothly; for now it only keeps the latest amplitude available at zero render
+ * cost. `target` is typed structurally so it accepts a `useRef` object across
+ * React versions.
+ */
+function useDictationAmplitude(target: { current: number }) {
+  useEffect(() => {
+    let cancelled = false;
+    let unlisten: (() => void) | null = null;
+
+    void dictationEvents.dictationAmplitudeEvent
+      .listen((event) => {
+        if (!cancelled) {
+          target.current = event.payload.amplitude;
+        }
+      })
+      .then((next) => {
+        if (cancelled) {
+          next();
+          return;
+        }
+
+        unlisten = next;
+      });
+
+    return () => {
+      cancelled = true;
+      unlisten?.();
+    };
+  }, [target]);
 }

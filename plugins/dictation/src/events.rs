@@ -68,6 +68,20 @@ pub struct DictationStateEvent {
     pub mode: DictationOutputMode,
 }
 
+/// High-frequency (~30 Hz) microphone amplitude channel, broadcast alongside
+/// [`DictationStateEvent`] while a session is listening. Deliberately a
+/// separate, thinner event from the state broadcast: the orb's visual
+/// responsiveness wants a much denser amplitude stream (~30 Hz) than the 10 Hz
+/// lifecycle/state cadence, and pushing state at 30 Hz would spam re-renders.
+/// The frontend consumes this into a ref (no React state) so it never triggers
+/// a render; a later PR feeds it to a RAF envelope follower for the orb ring.
+/// `amplitude` is the same RMS -> dB -> [0, 1] value the state event carries.
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(rename_all = "camelCase")]
+pub struct DictationAmplitudeEvent {
+    pub amplitude: f32,
+}
+
 /// Emitted by the orb webview when the user clicks the orb; the main window
 /// host toggles the dictation session in response.
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type, tauri_specta::Event)]
