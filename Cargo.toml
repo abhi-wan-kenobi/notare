@@ -344,7 +344,7 @@ insta = "1.46"
 quickcheck = "1"
 quickcheck_macros = "1"
 serial_test = "3"
-testcontainers-modules = "0.12.1"
+testcontainers-modules = "0.15.0"
 wiremock = "0.6"
 
 axum = "0.8"
