@@ -20,7 +20,7 @@ describe("SETTING_DEFINITIONS meeting_bar_theme", () => {
     expect(SETTING_DEFINITIONS.dictation_orb_variant).toEqual({
       type: "string",
       path: ["general", "dictation_orb_variant"],
-      default: "cobalt",
+      default: "cobalt-halo",
     });
   });
 

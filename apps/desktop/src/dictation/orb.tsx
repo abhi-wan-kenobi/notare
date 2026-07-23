@@ -6,6 +6,7 @@ import { cn } from "@hypr/utils";
 
 import { AuroraOrb } from "./aurora-orb";
 import { BloomOrb } from "./bloom-orb";
+import { CobaltHaloOrb } from "./cobalt-halo-orb";
 import { EmberOrb } from "./ember-orb";
 import { HaloOrb } from "./halo-orb";
 import { MonoOrb } from "./mono-orb";
@@ -34,7 +35,9 @@ import { RecordingOrb } from "~/meeting-float/orb";
  * - "silk": a soft lavender ball with turning combed striations
  *   (`silk-orb.tsx`);
  * - "pip": a friendly squishy blob that reacts through expression
- *   (`pip-orb.tsx`).
+ *   (`pip-orb.tsx`);
+ * - "cobalt-halo": twin cobalt hairline rings inside a canvas-drawn bloom
+ *   (`cobalt-halo-orb.tsx`) - the default look.
  *
  * Adding a variant here (union + `ORB_VARIANT_REGISTRY` entry) is all it
  * takes: the settings picker (`OrbVariantGroup`) renders from the registry.
@@ -50,9 +53,10 @@ export type DictationOrbVariant =
   | "halo"
   | "ember"
   | "silk"
-  | "pip";
+  | "pip"
+  | "cobalt-halo";
 
-export const DEFAULT_ORB_VARIANT: DictationOrbVariant = "cobalt";
+export const DEFAULT_ORB_VARIANT: DictationOrbVariant = "cobalt-halo";
 
 /** Map whatever the settings store holds onto a known variant. */
 export function normalizeOrbVariant(
@@ -81,6 +85,7 @@ export const ORB_VARIANT_SCALE: Record<DictationOrbVariant, number> = {
   ember: 1,
   silk: 1,
   pip: 1,
+  "cobalt-halo": 1,
 };
 
 /** Orb pixel size for `variant`, scaled from the caller's base size. */
@@ -142,9 +147,7 @@ export function DictationOrb({
       className={cn(["relative inline-flex", className])}
     >
       <Variant phase={phase} amplitude={amplitude} size={renderedSize} />
-      {phase === "processing" ? (
-        <ProcessingRing size={renderedSize} />
-      ) : null}
+      {phase === "processing" ? <ProcessingRing size={renderedSize} /> : null}
     </span>
   );
 }
@@ -267,6 +270,11 @@ export const ORB_VARIANT_REGISTRY: Record<DictationOrbVariant, OrbVariantInfo> =
       description: (
         <Trans>A friendly blob that listens through its face.</Trans>
       ),
+    },
+    "cobalt-halo": {
+      component: CobaltHaloOrb,
+      title: <Trans>Cobalt Halo</Trans>,
+      description: <Trans>Twin cobalt rings inside a soft glowing halo.</Trans>,
     },
   };
 
