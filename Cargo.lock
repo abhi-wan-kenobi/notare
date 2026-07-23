@@ -5787,6 +5787,7 @@ dependencies = [
  "chrono",
  "pulldown-cmark",
  "serde",
+ "serde_json",
  "specta",
  "thiserror 2.0.18",
  "typst",
@@ -18759,10 +18760,13 @@ dependencies = [
 name = "tauri-plugin-export"
 version = "0.1.0"
 dependencies = [
+ "db-app",
+ "db-core",
  "export-core",
  "serde",
  "specta",
  "specta-typescript",
+ "sqlx",
  "tauri",
  "tauri-plugin",
  "tauri-specta",

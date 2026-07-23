@@ -16,6 +16,15 @@ type SessionContentSqlRow = {
   enhanced_notes_json: string;
   transcripts_json: string;
   participants_json: string;
+  action_items_json: string;
+};
+
+type ActionItemJson = {
+  text: string;
+  status: string;
+  due_at: string;
+  owner_speaker_id: string;
+  source_order: number;
 };
 
 type EnhancedNoteJson = {
@@ -76,6 +85,12 @@ export type SessionContentSnapshot = {
     name: string;
     jobTitle: string;
   }>;
+  actionItems: Array<{
+    text: string;
+    status: string;
+    dueAt: string;
+    ownerSpeakerId: string;
+  }>;
 };
 
 const SESSION_CONTENT_SQL = `
@@ -130,7 +145,19 @@ const SESSION_CONTENT_SQL = `
         AND participant.human_id <> ''
         AND participant.source <> 'excluded'
         AND participant.deleted_at IS NULL
-    ), '[]') AS participants_json
+    ), '[]') AS participants_json,
+    COALESCE((
+      SELECT json_group_array(json_object(
+        'text', action_item.text,
+        'status', action_item.status,
+        'due_at', action_item.due_at,
+        'owner_speaker_id', action_item.owner_speaker_id,
+        'source_order', action_item.source_order
+      ))
+      FROM action_items AS action_item
+      WHERE action_item.session_id = session.id
+        AND action_item.deleted_at IS NULL
+    ), '[]') AS action_items_json
   FROM sessions AS session
   LEFT JOIN session_documents AS note
     ON note.id = COALESCE(
@@ -231,6 +258,19 @@ function mapSessionContentRow(
         left.humanId.localeCompare(right.humanId),
     );
 
+  const actionItems = parseJsonArray<ActionItemJson>(row.action_items_json)
+    .map((item, index) => ({
+      text: item.text,
+      status: item.status,
+      dueAt: item.due_at,
+      ownerSpeakerId: item.owner_speaker_id,
+      sourceOrder: Number.isFinite(Number(item.source_order))
+        ? Number(item.source_order)
+        : index,
+    }))
+    .sort((left, right) => left.sourceOrder - right.sourceOrder)
+    .map(({ sourceOrder: _sourceOrder, ...item }) => item);
+
   return {
     sessionId: row.id,
     ownerUserId: row.owner_user_id,
@@ -245,6 +285,7 @@ function mapSessionContentRow(
     enhancedNotes,
     transcripts,
     participants,
+    actionItems,
   };
 }
 
