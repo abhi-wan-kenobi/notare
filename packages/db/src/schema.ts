@@ -1,5 +1,11 @@
 import { sql } from "drizzle-orm";
-import { index, integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import {
+  index,
+  integer,
+  real,
+  sqliteTable,
+  text,
+} from "drizzle-orm/sqlite-core";
 
 const currentTimestamp = sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`;
 
@@ -392,9 +398,7 @@ export const dictationHistory = sqliteTable(
     cleaned: integer("cleaned", { mode: "boolean" }).notNull().default(false),
     createdAt: text("created_at").notNull().default(currentTimestamp),
   },
-  (table) => [
-    index("idx_dictation_history_created_at").on(table.createdAt),
-  ],
+  (table) => [index("idx_dictation_history_created_at").on(table.createdAt)],
 );
 
 export const appSettings = sqliteTable("app_settings", {
