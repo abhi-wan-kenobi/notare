@@ -85,6 +85,11 @@ pub const APP_MIGRATION_STEPS: &[hypr_db_migrate::MigrationStep] = &[
         scope: hypr_db_migrate::MigrationScope::Plain,
         sql: include_str!("../migrations/20260723120000_embedding_chunks.sql"),
     },
+    hypr_db_migrate::MigrationStep {
+        id: "20260723130000_action_items_v2",
+        scope: hypr_db_migrate::MigrationScope::Plain,
+        sql: include_str!("../migrations/20260723130000_action_items_v2.sql"),
+    },
 ];
 
 pub fn schema() -> hypr_db_migrate::DbSchema {

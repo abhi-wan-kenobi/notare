@@ -295,6 +295,18 @@
       "type": "string",
       "oneOf": [
         {
+          "description": "Enables the can_self_update command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-can-self-update",
+          "markdownDescription": "Enables the can_self_update command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the can_self_update command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-can-self-update",
+          "markdownDescription": "Denies the can_self_update command without any pre-configured scope."
+        },
+        {
           "description": "Enables the check command without any pre-configured scope.",
           "type": "string",
           "const": "allow-check",
@@ -367,10 +379,10 @@
           "markdownDescription": "Denies the postinstall command without any pre-configured scope."
         },
         {
-          "description": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-check`\n- `allow-download`\n- `allow-install`\n- `allow-is-downloaded`\n- `allow-postinstall`\n- `allow-maybe-emit-updated`",
+          "description": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-check`\n- `allow-download`\n- `allow-install`\n- `allow-is-downloaded`\n- `allow-postinstall`\n- `allow-maybe-emit-updated`\n- `allow-can-self-update`",
           "type": "string",
           "const": "default",
-          "markdownDescription": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-check`\n- `allow-download`\n- `allow-install`\n- `allow-is-downloaded`\n- `allow-postinstall`\n- `allow-maybe-emit-updated`"
+          "markdownDescription": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-check`\n- `allow-download`\n- `allow-install`\n- `allow-is-downloaded`\n- `allow-postinstall`\n- `allow-maybe-emit-updated`\n- `allow-can-self-update`"
         }
       ]
     }

@@ -203,6 +203,13 @@ export type DictationPhase =
  */
 "processing" | 
 /**
+ * One-shot positive flourish emitted the instant a session finishes
+ * successfully (`DictationFinishedEvent.failed == false`), immediately
+ * before the orb settles back to [`DictationPhase::Idle`]. Never a
+ * resting state - the orb only shows it for a beat.
+ */
+"success" | 
+/**
  * The session died (mic/server/injection failure). Cleared on next start.
  */
 "error"
@@ -221,6 +228,19 @@ mode: DictationOutputMode }
  * (`type` mode) or accumulated for the deliver-on-stop buffer (`batch`).
  */
 export type DictationTranscriptEvent = { text: string }
+/**
+ * Drives the native macOS mini-panel (`hypr-dictation-ui-macos`), a minimal
+ * NSPanel affordance with just two states.
+ * 
+ * DECISION (dictation `success` phase): this enum is deliberately NOT given a
+ * `Success` variant. `success` is a transient positive flourish that belongs
+ * to the cross-platform webview orb ([`DictationPhase::Success`]); the native
+ * panel is a bare recording indicator, so folding a one-shot end-of-session
+ * pulse into it would add native-only surface (new NSPanel look/trait) with no
+ * cross-platform payoff and nothing Linux-verifiable. Keep `Phase` and its
+ * NSPanel traits a no-diff; the success affordance lives entirely in the
+ * webview path.
+ */
 export type Phase = "recording" | "processing"
 
 /** tauri-specta globals **/

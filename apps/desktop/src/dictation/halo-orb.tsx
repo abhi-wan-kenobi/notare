@@ -70,6 +70,15 @@ const PHASE_LOOKS: Record<DictationPhase, PhaseLook> = {
     intensityTarget: 0.6,
     hairlineSpin: 0.4,
   },
+  // success is a transient end-of-session flourish (a variant-agnostic overlay
+  // in orb.tsx); the body rests at the idle look.
+  success: {
+    envelopeSpin: 0.11,
+    arcWidth: 0.42,
+    rimAlpha: 0.3,
+    intensityTarget: 0,
+    hairlineSpin: 0.05,
+  },
   error: {
     envelopeSpin: 0,
     arcWidth: 0.42,

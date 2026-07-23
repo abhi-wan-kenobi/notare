@@ -127,6 +127,24 @@ pub fn init() -> tauri::plugin::TauriPlugin<tauri::Wry> {
                 session_state_cache,
             });
 
+            // Durability backstop: before any new capture can begin, recover a
+            // recording orphaned by a hard kill of the previous process (encode
+            // the leftover, still-valid `audio.wav` into the final `audio.mp3`).
+            // Any WAV on disk at startup is genuinely orphaned — the actor tree
+            // that owned it died with the previous process. mp3 encode is
+            // CPU-bound, so run it off the async runtime.
+            {
+                use hypr_storage::StorageRuntime as _;
+                if let Ok(base) = runtime.vault_base() {
+                    let sessions_base = base.join("sessions");
+                    tauri::async_runtime::spawn_blocking(move || {
+                        hypr_transcription_core::listener::actors::recorder::recover_orphaned_recordings(
+                            &sessions_base,
+                        );
+                    });
+                }
+            }
+
             tauri::async_runtime::spawn(async move {
                 Actor::spawn(
                     Some(RootActor::name()),

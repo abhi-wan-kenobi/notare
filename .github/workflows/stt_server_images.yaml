@@ -30,7 +30,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        variant: [cpu, vulkan, cuda]
+        variant: [cpu, vulkan, cuda, rocm]
     steps:
       - uses: actions/checkout@v4
         with:

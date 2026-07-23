@@ -1,7 +1,7 @@
 import { useRouteContext } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef } from "react";
 
-import { useLanguageModel, useLLMConnection } from "~/ai/hooks";
+import { useLLMConnection } from "~/ai/hooks";
 import { useAuth } from "~/auth";
 import { searchCalendarEvents } from "~/calendar/queries";
 import { useSessionTab } from "~/chat/components/use-session-tab";
@@ -11,6 +11,7 @@ import { useRegisterTools } from "~/contexts/tool";
 import { takePendingWelcomeSession } from "~/onboarding/welcome-note";
 import { useSearchEngine } from "~/search/contexts/engine";
 import { initEnhancerService } from "~/services/enhancer";
+import { useTaskModel } from "~/services/llm-router";
 import { useConfigValue } from "~/shared/config";
 import { useDesktopTabLifecycle } from "~/shared/desktop-tab-lifecycle";
 import { useTabs } from "~/store/zustand/tabs";
@@ -92,7 +93,10 @@ function EnhancerInit() {
     from: "__root__",
   });
 
-  const model = useLanguageModel("enhance");
+  // Routed through the WS-A llm-router: same model-construction path as
+  // before, but resolution (tier + capability gating + the cloud-opt-in
+  // invariant) now goes through resolveModel('enhance').
+  const { model } = useTaskModel("enhance");
   const { conn: llmConn } = useLLMConnection();
   const selectedTemplateId = useConfigValue("selected_template_id");
 

@@ -8,4 +8,6 @@ pub enum Error {
     TypstCompile(String),
     #[error("Typst PDF error: {0}")]
     TypstPdf(String),
+    #[error("JSON error: {0}")]
+    Json(String),
 }

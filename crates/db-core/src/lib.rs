@@ -272,11 +272,19 @@ fn register_sqlite_vec() {
     SQLITE_VEC_INIT.call_once(|| {
         // SAFETY: `sqlite3_vec_init` is the extension entry point provided by
         // the `sqlite-vec` crate; `sqlite3_auto_extension` takes a C function
-        // pointer to it. The transmute target is inferred from the
-        // `sqlite3_auto_extension` argument type. Called once, before any
+        // pointer to it. The explicit transmute annotation matches the
+        // `sqlite3_auto_extension` argument type (required by
+        // clippy::missing_transmute_annotations). Called once, before any
         // connection is opened.
         unsafe {
-            libsqlite3_sys::sqlite3_auto_extension(Some(std::mem::transmute(
+            libsqlite3_sys::sqlite3_auto_extension(Some(std::mem::transmute::<
+                *const (),
+                unsafe extern "C" fn(
+                    *mut libsqlite3_sys::sqlite3,
+                    *mut *mut std::os::raw::c_char,
+                    *const libsqlite3_sys::sqlite3_api_routines,
+                ) -> std::os::raw::c_int,
+            >(
                 sqlite_vec::sqlite3_vec_init as *const (),
             )));
         }

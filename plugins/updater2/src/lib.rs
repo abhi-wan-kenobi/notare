@@ -23,6 +23,7 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
             commands::is_downloaded::<tauri::Wry>,
             commands::postinstall::<tauri::Wry>,
             commands::maybe_emit_updated::<tauri::Wry>,
+            commands::can_self_update::<tauri::Wry>,
         ])
         .events(tauri_specta::collect_events![
             events::UpdateAvailableEvent,
@@ -69,6 +70,13 @@ async fn check_and_download<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
     }
 
     let updater2 = app.updater2();
+
+    // A `.deb`/`.rpm` install can't self-update, so pre-downloading the update
+    // bytes is wasted bandwidth — the frontend surfaces "download from Releases"
+    // via its own check. Skip the background download for those formats.
+    if !updater2.can_self_update() {
+        return;
+    }
 
     let version = match updater2.check().await {
         Ok(Some(v)) => v,
