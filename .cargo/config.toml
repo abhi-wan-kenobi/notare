@@ -1,5 +1,7 @@
 [alias]
-xtask = "run --package xtask --"
+# --locked keeps `cargo xtask ...` from silently mutating Cargo.lock in CD (e.g. desktop_cd
+# `prepare-binaries`). Every cargo invocation in CI/CD must be lockfile-pinned (WS-F1).
+xtask = "run --locked --package xtask --"
 
 [env]
 MACOSX_DEPLOYMENT_TARGET = { value = "14.2", force = true }
