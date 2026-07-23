@@ -1,6 +1,8 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
+import type { DictationPhase } from "@hypr/plugin-dictation";
+
 import {
   DictationOrb,
   normalizeOrbVariant,
@@ -16,7 +18,7 @@ describe("DictationOrb", () => {
   });
 
   it("maps idle to the idle orb state", () => {
-    render(<DictationOrb phase="idle" />);
+    render(<DictationOrb phase="idle" variant="cobalt" />);
 
     expect(screen.getByTestId("recording-orb").dataset.orbState).toBe("idle");
     expect(screen.getByTestId("dictation-orb").dataset.dictationPhase).toBe(
@@ -25,7 +27,7 @@ describe("DictationOrb", () => {
   });
 
   it("maps listening to the listening orb state with amplitude", () => {
-    render(<DictationOrb phase="listening" amplitude={0.7} />);
+    render(<DictationOrb phase="listening" amplitude={0.7} variant="cobalt" />);
 
     expect(screen.getByTestId("recording-orb").dataset.orbState).toBe(
       "listening",
@@ -33,7 +35,7 @@ describe("DictationOrb", () => {
   });
 
   it("maps processing to a pulsing idle orb", () => {
-    render(<DictationOrb phase="processing" />);
+    render(<DictationOrb phase="processing" variant="cobalt" />);
 
     expect(screen.getByTestId("recording-orb").dataset.orbState).toBe("idle");
     expect(
@@ -42,7 +44,7 @@ describe("DictationOrb", () => {
   });
 
   it("maps error to the error orb state", () => {
-    render(<DictationOrb phase="error" />);
+    render(<DictationOrb phase="error" variant="cobalt" />);
 
     expect(screen.getByTestId("recording-orb").dataset.orbState).toBe("error");
     expect(screen.getByTestId("recording-orb-error-badge")).not.toBeNull();
@@ -195,6 +197,39 @@ describe("new orb variants", () => {
     );
     expect(screen.getByTestId("dictation-mono-orb")).not.toBeNull();
   });
+
+  it.each<DictationPhase>(["idle", "listening", "processing", "error"])(
+    "renders the Cobalt Halo variant in the %s phase",
+    (phase) => {
+      render(
+        <DictationOrb phase={phase} amplitude={0.5} variant="cobalt-halo" />,
+      );
+
+      expect(screen.getByTestId("dictation-orb").dataset.dictationVariant).toBe(
+        "cobalt-halo",
+      );
+      expect(screen.getByTestId("dictation-cobalt-halo-orb")).not.toBeNull();
+      expect(screen.queryByTestId("recording-orb")).toBeNull();
+    },
+  );
+
+  it("shows the destructive badge for the Cobalt Halo error phase", () => {
+    render(<DictationOrb phase="error" variant="cobalt-halo" />);
+
+    expect(
+      screen.getByTestId("dictation-cobalt-halo-error-badge"),
+    ).not.toBeNull();
+  });
+
+  it("keeps the cobalt orb as the default variant", () => {
+    render(<DictationOrb phase="idle" />);
+
+    expect(screen.getByTestId("dictation-orb").dataset.dictationVariant).toBe(
+      "cobalt",
+    );
+    expect(screen.getByTestId("recording-orb")).not.toBeNull();
+    expect(screen.queryByTestId("dictation-cobalt-halo-orb")).toBeNull();
+  });
 });
 
 describe("every variant handles the success phase", () => {
@@ -234,6 +269,7 @@ describe("orb variant registry", () => {
       "ember",
       "silk",
       "pip",
+      "cobalt-halo",
     ]);
     for (const variant of ORB_VARIANT_ORDER) {
       const info = ORB_VARIANT_REGISTRY[variant];
@@ -257,6 +293,7 @@ describe("normalizeOrbVariant", () => {
     expect(normalizeOrbVariant("ember")).toBe("ember");
     expect(normalizeOrbVariant("silk")).toBe("silk");
     expect(normalizeOrbVariant("pip")).toBe("pip");
+    expect(normalizeOrbVariant("cobalt-halo")).toBe("cobalt-halo");
     expect(normalizeOrbVariant(undefined)).toBe("cobalt");
     expect(normalizeOrbVariant("garbage")).toBe("cobalt");
   });
@@ -274,6 +311,7 @@ describe("orb variant sizing", () => {
     expect(orbSizeForVariant("ember", 40)).toBe(40);
     expect(orbSizeForVariant("silk", 40)).toBe(40);
     expect(orbSizeForVariant("pip", 40)).toBe(40);
+    expect(orbSizeForVariant("cobalt-halo", 40)).toBe(40);
     expect(orbSizeForVariant("particles", 40)).toBe(60);
     expect(orbSizeForVariant("particles", 28)).toBe(42);
   });
@@ -290,5 +328,6 @@ describe("orb variant sizing", () => {
     expect(orbWindowSizeForVariant("ember")).toBe(70);
     expect(orbWindowSizeForVariant("silk")).toBe(70);
     expect(orbWindowSizeForVariant("pip")).toBe(70);
+    expect(orbWindowSizeForVariant("cobalt-halo")).toBe(70);
   });
 });

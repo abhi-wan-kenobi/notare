@@ -1,12 +1,5 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import {
-  afterEach,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { DictationPhase } from "@hypr/plugin-dictation";
 
@@ -292,6 +285,107 @@ describe("orb canvas renderers (real-context safety)", () => {
 
         unmount();
       }, `variant "${variant}" threw across a phase transition`).not.toThrow();
+    }
+  });
+});
+
+describe("Cobalt Halo idle rAF pause + static fallbacks", () => {
+  let fake: ReturnType<typeof installFakeCanvas>;
+
+  beforeEach(() => {
+    fake = installFakeCanvas();
+  });
+
+  afterEach(() => {
+    cleanup();
+    fake.restore();
+  });
+
+  const rafCalls = () =>
+    (window.requestAnimationFrame as unknown as { mock: { calls: unknown[] } })
+      .mock.calls.length;
+
+  it.each<DictationPhase>(["idle", "error"])(
+    "schedules no animation frame while %s (no busy loop at rest)",
+    (phase) => {
+      render(
+        <DictationOrb
+          phase={phase}
+          amplitude={0}
+          size={PREVIEW_SIZE}
+          variant="cobalt-halo"
+        />,
+      );
+
+      expect(rafCalls()).toBe(0);
+    },
+  );
+
+  it.each<DictationPhase>(["listening", "processing"])(
+    "runs the rAF loop while %s",
+    (phase) => {
+      render(
+        <DictationOrb
+          phase={phase}
+          amplitude={0.5}
+          size={PREVIEW_SIZE}
+          variant="cobalt-halo"
+        />,
+      );
+
+      const initial = rafCalls();
+      expect(initial).toBeGreaterThan(0);
+      fake.flushFrames(3);
+      expect(rafCalls()).toBeGreaterThan(initial);
+    },
+  );
+
+  it("stops the loop when a listening orb transitions back to idle", () => {
+    const { rerender } = render(
+      <DictationOrb
+        phase="listening"
+        amplitude={0.5}
+        size={PREVIEW_SIZE}
+        variant="cobalt-halo"
+      />,
+    );
+    fake.flushFrames(3);
+    const whileListening = rafCalls();
+    expect(whileListening).toBeGreaterThan(0);
+
+    rerender(
+      <DictationOrb
+        phase="idle"
+        amplitude={0}
+        size={PREVIEW_SIZE}
+        variant="cobalt-halo"
+      />,
+    );
+    // The cleanup cancels the pending frame; no new frame is queued at idle.
+    fake.flushFrames(5);
+    expect(rafCalls()).toBe(whileListening);
+  });
+
+  it("renders a single static frame under reduced motion (no rAF)", () => {
+    const original = window.matchMedia;
+    window.matchMedia = vi.fn().mockReturnValue({
+      matches: true,
+    }) as unknown as typeof window.matchMedia;
+
+    try {
+      expect(() => {
+        render(
+          <DictationOrb
+            phase="listening"
+            amplitude={0.8}
+            size={PREVIEW_SIZE}
+            variant="cobalt-halo"
+          />,
+        );
+      }).not.toThrow();
+      expect(rafCalls()).toBe(0);
+    } finally {
+      window.matchMedia = original;
     }
   });
 });
