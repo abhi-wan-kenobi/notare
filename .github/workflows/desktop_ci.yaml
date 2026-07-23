@@ -200,6 +200,11 @@ jobs:
         with:
           submodules: recursive
           persist-credentials: false
+      # Several excluded crates pull in tauri/gtk (glib-sys), which needs the
+      # Linux desktop system libraries — same deps the macOS desktop job installs.
+      - uses: ./.github/actions/install_desktop_deps
+        with:
+          target: linux
       - uses: ./.github/actions/rust_install
         with:
           platform: linux
