@@ -428,7 +428,14 @@ objc2-user-notifications = "0.3.2"
 hmac = "0.13"
 sha2 = "0.11"
 
-tokenizers = "0.22"
+# default-features disabled to drop `esaxx_fast` (→ esaxx-rs/cpp), whose build.rs
+# hardcodes `.static_crt(true)` (/MT) regardless of the workspace's -crt-static
+# (/MD) — the sole /MT object, it broke the Windows release link with LNK2038/
+# LNK1169 (RuntimeLibrary MT vs MD). esaxx_fast only speeds the Unigram *trainer*;
+# text-embedding is inference-only (loads tokenizer.json + encodes), so this is a
+# pure build fix. Keep `onig` (regex pre-tokenizers; already /MD). Drop the
+# `progressbar` training UI too.
+tokenizers = { version = "0.22", default-features = false, features = ["onig"] }
 whichlang = "0.1"
 
 swift-rs = { git = "https://github.com/yujonglee/swift-rs", rev = "41a1605" }
