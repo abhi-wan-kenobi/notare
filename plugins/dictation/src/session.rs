@@ -94,9 +94,25 @@ pub async fn start(
         .inner()
         .clone();
     let chunk_size = hypr_audio_utils::chunk_size_for_stt(SAMPLE_RATE);
-    let mic = audio
-        .open_mic_capture(None, SAMPLE_RATE, chunk_size)
-        .map_err(|e| Error::Audio(e.to_string()))?;
+
+    // Open the mic device CONCURRENTLY with the STT connect below. The cpal
+    // cold-open (host + device enumeration, `build_input_stream`, audio-thread
+    // spawn, `play()`) is a heavy blocking step - the dominant press->capture
+    // latency on Windows/macOS. It used to run strictly BEFORE the STT websocket
+    // handshake (session start paid mic-open + ws-connect serially); running it
+    // on the blocking pool while the handshake proceeds overlaps the two largest
+    // start costs, so the segment is ~max(mic, ws) instead of their sum.
+    // `CaptureStream` is `Send`, so it can cross the spawn_blocking boundary.
+    let audio_for_mic = audio.clone();
+    let mic_open = tokio::task::spawn_blocking(move || {
+        let started = std::time::Instant::now();
+        let result = audio_for_mic.open_mic_capture(None, SAMPLE_RATE, chunk_size);
+        tracing::debug!(
+            elapsed_ms = started.elapsed().as_millis() as u64,
+            "dictation mic cold-open"
+        );
+        result
+    });
 
     let (audio_tx, audio_rx) =
         tokio::sync::mpsc::channel::<MixedMessage<bytes::Bytes, ControlMessage>>(32);
@@ -104,6 +120,7 @@ pub async fn start(
 
     let (stop_tx, stop_rx) = tokio::sync::oneshot::channel::<()>();
 
+    let connect_started = std::time::Instant::now();
     match resolve_soniqo_model(&base_url, &model)? {
         Some(soniqo_model) => {
             // In-process Swift bridge - no WS handshake, so no connect_policy
@@ -116,7 +133,12 @@ pub async fn start(
                 )
                 .await
                 .map_err(|e| Error::Session(format!("soniqo_live_start_failed: {e}")))?;
+            tracing::debug!(
+                elapsed_ms = connect_started.elapsed().as_millis() as u64,
+                "dictation stt connect (soniqo, in-process)"
+            );
 
+            let mic = await_mic_open(mic_open).await?;
             commit_and_run(
                 app,
                 mic,
@@ -156,7 +178,12 @@ pub async fn start(
                 .from_realtime_audio(outbound)
                 .await
                 .map_err(|e| Error::Session(format!("listen_ws_connect_failed: {e:?}")))?;
+            tracing::debug!(
+                elapsed_ms = connect_started.elapsed().as_millis() as u64,
+                "dictation stt connect (websocket handshake)"
+            );
 
+            let mic = await_mic_open(mic_open).await?;
             commit_and_run(
                 app,
                 mic,
@@ -177,6 +204,18 @@ pub async fn start(
 /// obtained (from either serving path): register the session so `stop()`/
 /// `is_running()` see it, flip the orb to listening and hand the stream off
 /// to `run_session`.
+/// Join the concurrent mic cold-open started at session start. Runs after the
+/// STT connect so the two costs overlap; maps a task panic or a device-open
+/// failure into the session error.
+async fn await_mic_open(
+    handle: tokio::task::JoinHandle<Result<hypr_audio::CaptureStream, hypr_audio::Error>>,
+) -> Result<hypr_audio::CaptureStream, Error> {
+    handle
+        .await
+        .map_err(|e| Error::Audio(format!("mic open task panicked: {e}")))?
+        .map_err(|e| Error::Audio(e.to_string()))
+}
+
 #[allow(clippy::too_many_arguments)]
 fn commit_and_run<E: std::fmt::Debug + Send + 'static>(
     app: tauri::AppHandle<tauri::Wry>,
