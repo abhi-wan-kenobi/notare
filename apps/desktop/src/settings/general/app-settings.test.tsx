@@ -22,6 +22,7 @@ const mocks = vi.hoisted(() => ({
   getVersion: vi.fn(async () => "0.2.0"),
   configValues: { mic_denoise: false } as Record<string, unknown>,
   setSettingValue: vi.fn(),
+  clearSettingValue: vi.fn(),
 }));
 
 vi.mock("~/main/update-banner", () => ({
@@ -43,6 +44,7 @@ vi.mock("~/shared/config", () => ({
 
 vi.mock("~/settings/queries", () => ({
   useSetSettingValue: () => mocks.setSettingValue,
+  useClearSettingValue: () => mocks.clearSettingValue,
 }));
 
 import { AppSettingsView } from "./app-settings";
