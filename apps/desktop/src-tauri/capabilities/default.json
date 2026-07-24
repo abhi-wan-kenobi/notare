@@ -79,6 +79,7 @@
     "relay:default",
     "shortcut:default",
     "dictation:default",
+    "webhook:default",
     {
       "identifier": "http:default",
       "deny": [],
