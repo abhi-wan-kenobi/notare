@@ -22,16 +22,16 @@ import os
 from PIL import Image, ImageDraw, ImageFont
 
 # ---- config -------------------------------------------------------------
-SIZE = 160                      # final canvas (matches the original assets)
-SS = 4                          # supersample factor for anti-aliasing
-BIG = SIZE * SS                 # 640
+SIZE = 160  # final canvas (matches the original assets)
+SS = 4  # supersample factor for anti-aliasing
+BIG = SIZE * SS  # 640
 GLYPH = "N"
 FONT_CANDIDATES = [
     "/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf",
     "/usr/share/fonts/truetype/liberation/LiberationSerif-Bold.ttf",
 ]
 BLACK = (0, 0, 0, 255)
-TARGET_GLYPH_FRAC = 0.72        # glyph occupies ~72% of the canvas height
+TARGET_GLYPH_FRAC = 0.72  # glyph occupies ~72% of the canvas height
 
 OUT_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -116,10 +116,10 @@ def main():
     # radius reads as a pulsing REC indicator. Monochrome: we modulate BOTH the
     # radius and the alpha (small/faint -> large/solid -> small/faint).
     pulse = [
-        (0.055, 150),   # frame 0: small, faint
-        (0.085, 210),   # frame 1: medium
-        (0.110, 255),   # frame 2: large, solid  (peak)
-        (0.085, 210),   # frame 3: medium (falling)
+        (0.055, 150),  # frame 0: small, faint
+        (0.085, 210),  # frame 1: medium
+        (0.110, 255),  # frame 2: large, solid  (peak)
+        (0.085, 210),  # frame 3: medium (falling)
     ]
     for i, (r_frac, alpha) in enumerate(pulse):
         img = base_canvas()
