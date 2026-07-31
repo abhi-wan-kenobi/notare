@@ -405,7 +405,9 @@ describe("session correction chat tool", () => {
   it("skips a derived mapping whose wrong-key already exists", async () => {
     mocks.loadSessionContentSnapshot.mockResolvedValue(
       snapshot({
-        notes: [summary("We should follow up with Far Eye about the contract.")],
+        notes: [
+          summary("We should follow up with Far Eye about the contract."),
+        ],
       }),
     );
     const existing = { wrong: "far eye", right: "FarEye", caseSensitive: true };

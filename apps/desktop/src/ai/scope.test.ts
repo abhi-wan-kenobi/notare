@@ -6,7 +6,9 @@ import {
   type ScopeSelectionInput,
 } from "./scope";
 
-function input(overrides: Partial<ScopeSelectionInput> = {}): ScopeSelectionInput {
+function input(
+  overrides: Partial<ScopeSelectionInput> = {},
+): ScopeSelectionInput {
   return {
     hasOverride: true,
     overrideKnown: true,

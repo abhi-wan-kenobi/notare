@@ -113,11 +113,15 @@ function mapHistoryRow(row: DictationHistorySqlRow): DictationHistoryEntry {
  * the day an id ever carries non-Latin-1 text.
  */
 function encodeCursor(row: { createdAt: string; id: string }): string {
-  const bytes = new TextEncoder().encode(JSON.stringify([row.createdAt, row.id]));
+  const bytes = new TextEncoder().encode(
+    JSON.stringify([row.createdAt, row.id]),
+  );
   return btoa(String.fromCharCode(...bytes));
 }
 
-function decodeCursor(cursor: string): { createdAt: string; id: string } | null {
+function decodeCursor(
+  cursor: string,
+): { createdAt: string; id: string } | null {
   try {
     const bytes = Uint8Array.from(atob(cursor), (c) => c.charCodeAt(0));
     const parsed = JSON.parse(new TextDecoder().decode(bytes));
@@ -171,9 +175,7 @@ export async function listDictationHistory(opts?: {
     params.push(toFtsQuery(query));
   }
   if (after) {
-    where.push(
-      `(h.created_at < ? OR (h.created_at = ? AND h.id < ?))`,
-    );
+    where.push(`(h.created_at < ? OR (h.created_at = ? AND h.id < ?))`);
     params.push(after.createdAt, after.createdAt, after.id);
   }
 

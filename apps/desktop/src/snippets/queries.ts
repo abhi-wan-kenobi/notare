@@ -1,5 +1,16 @@
-import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
 
+import type { CorrectionCandidate } from "./correction-suggest";
+
+import {
+  type DictionaryMapping,
+  parseDictionaryEntries,
+  serializeDictionaryEntries,
+} from "~/dictation/dictionary";
 import {
   deleteDictationHistoryEntry,
   DICTATION_HISTORY_PAGE_SIZE,
@@ -7,14 +18,7 @@ import {
   setDictationHistoryPinned,
   updateDictationHistoryText,
 } from "~/dictation/history";
-import {
-  type DictionaryMapping,
-  parseDictionaryEntries,
-  serializeDictionaryEntries,
-} from "~/dictation/dictionary";
 import { updateSettingValue } from "~/settings/queries";
-
-import type { CorrectionCandidate } from "./correction-suggest";
 
 /**
  * Shared prefix for every Snippets list query. Mutations invalidate the
@@ -120,39 +124,42 @@ export async function addSuggestedDictionaryMappings(
   }
 
   let added: DictionaryMapping[] = [];
-  await updateSettingValue("personalization_dictionary_terms", (storedValue) => {
-    const entries = parseDictionaryEntries(
-      typeof storedValue === "string" ? storedValue : "[]",
-    );
-    const existingKeys = new Set<string>();
-    for (const entry of entries) {
-      if (typeof entry === "string") {
-        existingKeys.add(mappingKey(entry));
-      } else {
-        existingKeys.add(mappingKey(entry.wrong));
-        existingKeys.add(mappingKey(entry.right));
+  await updateSettingValue(
+    "personalization_dictionary_terms",
+    (storedValue) => {
+      const entries = parseDictionaryEntries(
+        typeof storedValue === "string" ? storedValue : "[]",
+      );
+      const existingKeys = new Set<string>();
+      for (const entry of entries) {
+        if (typeof entry === "string") {
+          existingKeys.add(mappingKey(entry));
+        } else {
+          existingKeys.add(mappingKey(entry.wrong));
+          existingKeys.add(mappingKey(entry.right));
+        }
       }
-    }
 
-    added = [];
-    const newMappings: DictionaryMapping[] = [];
-    for (const candidate of candidates) {
-      const key = mappingKey(candidate.wrong);
-      if (existingKeys.has(key)) {
-        continue;
+      added = [];
+      const newMappings: DictionaryMapping[] = [];
+      for (const candidate of candidates) {
+        const key = mappingKey(candidate.wrong);
+        if (existingKeys.has(key)) {
+          continue;
+        }
+        existingKeys.add(key);
+        const mapping: DictionaryMapping = {
+          wrong: candidate.wrong,
+          right: candidate.right,
+          caseSensitive: false,
+        };
+        newMappings.push(mapping);
+        added.push(mapping);
       }
-      existingKeys.add(key);
-      const mapping: DictionaryMapping = {
-        wrong: candidate.wrong,
-        right: candidate.right,
-        caseSensitive: false,
-      };
-      newMappings.push(mapping);
-      added.push(mapping);
-    }
 
-    return serializeDictionaryEntries([...entries, ...newMappings]);
-  });
+      return serializeDictionaryEntries([...entries, ...newMappings]);
+    },
+  );
 
   return { added };
 }

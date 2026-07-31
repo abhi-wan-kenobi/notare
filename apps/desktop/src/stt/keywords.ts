@@ -20,7 +20,9 @@ function keywordHint(source: KeywordSource): string | null {
  * dictionary mappings interchangeably (a mapping contributes its `right`),
  * so callers that already hold a plain `string[]` are unaffected.
  */
-export function normalizeKeywordList(words: readonly KeywordSource[]): string[] {
+export function normalizeKeywordList(
+  words: readonly KeywordSource[],
+): string[] {
   const seen = new Set<string>();
   const result: string[] = [];
 

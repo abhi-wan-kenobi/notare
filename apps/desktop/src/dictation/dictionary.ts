@@ -148,25 +148,27 @@ interface PreparedRule {
 }
 
 function prepareRules(entries: DictionaryEntry[]): PreparedRule[] {
-  return entries
-    .filter(isMapping)
-    // Drop empty terms and no-op mappings (`wrong === right`): a no-op can
-    // never usefully fire and guarantees no self-replacement loop.
-    .filter((m) => m.wrong.length > 0 && m.wrong !== m.right)
-    .map((m) => ({
-      wrong: m.wrong,
-      wrongLower: m.wrong.toLowerCase(),
-      right: m.right,
-      caseSensitive: m.caseSensitive,
-      len: m.wrong.length,
-      // Code-point-aware on both edges: an astral-plane letter is two UTF-16
-      // units and a lone surrogate never matches WORD_CHAR.
-      firstIsWord: isWordCharAt(m.wrong, 0),
-      lastIsWord: isWordCharBefore(m.wrong, m.wrong.length),
-    }))
-    // Longest wrong first: overlapping terms ("notare" vs "note") resolve to
-    // the most specific match at any given position.
-    .sort((a, b) => b.len - a.len);
+  return (
+    entries
+      .filter(isMapping)
+      // Drop empty terms and no-op mappings (`wrong === right`): a no-op can
+      // never usefully fire and guarantees no self-replacement loop.
+      .filter((m) => m.wrong.length > 0 && m.wrong !== m.right)
+      .map((m) => ({
+        wrong: m.wrong,
+        wrongLower: m.wrong.toLowerCase(),
+        right: m.right,
+        caseSensitive: m.caseSensitive,
+        len: m.wrong.length,
+        // Code-point-aware on both edges: an astral-plane letter is two UTF-16
+        // units and a lone surrogate never matches WORD_CHAR.
+        firstIsWord: isWordCharAt(m.wrong, 0),
+        lastIsWord: isWordCharBefore(m.wrong, m.wrong.length),
+      }))
+      // Longest wrong first: overlapping terms ("notare" vs "note") resolve to
+      // the most specific match at any given position.
+      .sort((a, b) => b.len - a.len)
+  );
 }
 
 /**

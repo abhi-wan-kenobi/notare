@@ -1,10 +1,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import {
-  normalizeTranslationTarget,
-  TranslationSettings,
-} from "./translation";
+import { normalizeTranslationTarget, TranslationSettings } from "./translation";
 
 describe("normalizeTranslationTarget", () => {
   it("keeps a known target code", () => {
@@ -56,9 +53,7 @@ describe("TranslationSettings", () => {
       />,
     );
 
-    expect(
-      screen.getByText(/insert the text in Hindi/),
-    ).toBeTruthy();
+    expect(screen.getByText(/insert the text in Hindi/)).toBeTruthy();
   });
 
   it("hides the target-language picker while disabled, shows it once enabled", () => {

@@ -1,4 +1,10 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
 import { TestConnectionButton } from "./test-connection-button";
@@ -31,7 +37,10 @@ describe("TestConnectionButton", () => {
       json: async () => ({
         engine: "whisper-local",
         gpuOffload: "verified",
-        loadedModel: { id: "QuantizedLargeTurbo", file: "ggml-large-v3-turbo-q8_0.bin" },
+        loadedModel: {
+          id: "QuantizedLargeTurbo",
+          file: "ggml-large-v3-turbo-q8_0.bin",
+        },
         version: "0.1.0",
       }),
     });
@@ -72,7 +81,10 @@ describe("TestConnectionButton", () => {
     fetchMock.mockResolvedValueOnce({ ok: false, status: 401 });
 
     render(
-      <TestConnectionButton baseUrl="http://192.168.0.91:8383/v1" apiKey="wrong" />,
+      <TestConnectionButton
+        baseUrl="http://192.168.0.91:8383/v1"
+        apiKey="wrong"
+      />,
     );
 
     fireEvent.click(screen.getByRole("button", { name: /test connection/i }));

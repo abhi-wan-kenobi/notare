@@ -47,9 +47,7 @@ export class ContentErrorBoundary extends Component<
 > {
   state: ContentErrorBoundaryState = { error: null };
 
-  static getDerivedStateFromError(
-    error: unknown,
-  ): ContentErrorBoundaryState {
+  static getDerivedStateFromError(error: unknown): ContentErrorBoundaryState {
     return {
       error: error instanceof Error ? error : new Error(String(error)),
     };
@@ -90,8 +88,8 @@ export class ContentErrorBoundary extends Component<
                 This section hit a problem
               </h1>
               <p className="text-muted-foreground text-sm leading-relaxed">
-                Something here failed to render. The rest of the app is fine
-                - try again, or switch away and back.
+                Something here failed to render. The rest of the app is fine -
+                try again, or switch away and back.
               </p>
             </div>
 

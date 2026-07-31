@@ -159,13 +159,7 @@ pub(super) fn transcribe_recorded_file<E: SttEngine>(
     audio_path: &Path,
 ) -> Result<Vec<owhisper_interface::Word2>, crate::Error> {
     let source = hypr_audio_utils::source_from_path(audio_path)?;
-    let response = transcribe_source(
-        source,
-        &ListenParams::default(),
-        engine,
-        model_path,
-        None,
-    )?;
+    let response = transcribe_source(source, &ListenParams::default(), engine, model_path, None)?;
     let words = response
         .results
         .channels

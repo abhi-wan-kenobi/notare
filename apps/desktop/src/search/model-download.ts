@@ -11,9 +11,17 @@
 import { Channel } from "@tauri-apps/api/core";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { commands as embedding, type DownloadProgress } from "@hypr/plugin-embedding-search";
+import {
+  commands as embedding,
+  type DownloadProgress,
+} from "@hypr/plugin-embedding-search";
 
-export type ModelState = "checking" | "absent" | "downloading" | "ready" | "error";
+export type ModelState =
+  | "checking"
+  | "absent"
+  | "downloading"
+  | "ready"
+  | "error";
 
 export type EmbeddingModel = {
   state: ModelState;

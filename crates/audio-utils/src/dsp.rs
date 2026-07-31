@@ -290,7 +290,10 @@ mod tests {
 
         let legacy = crate::mix_audio_f32(&mic, &speaker);
         let clipped = legacy.iter().filter(|s| s.abs() >= 1.0).count();
-        assert!(clipped > 100, "expected legacy clamp to clip, clipped = {clipped}");
+        assert!(
+            clipped > 100,
+            "expected legacy clamp to clip, clipped = {clipped}"
+        );
 
         let mut mixdown = MonoMixdown::new(SAMPLE_RATE);
         let mixed = mixdown.mix(&mic, &speaker);

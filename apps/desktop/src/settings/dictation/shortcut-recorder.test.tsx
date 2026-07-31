@@ -296,9 +296,7 @@ describe("ShortcutRecorderRow", () => {
     renderRow();
 
     expect(screen.getByText("Toggle shortcut")).toBeTruthy();
-    expect(
-      screen.getByText(/starts or stops dictation/),
-    ).toBeTruthy();
+    expect(screen.getByText(/starts or stops dictation/)).toBeTruthy();
   });
 
   it("renders a custom title and description when provided", () => {
@@ -321,7 +319,12 @@ describe("ShortcutRecorderRow", () => {
     });
 
     fireEvent.click(recorder());
-    fireEvent.keyDown(recorder(), { key: "d", code: "KeyD", ctrlKey: true, shiftKey: true });
+    fireEvent.keyDown(recorder(), {
+      key: "d",
+      code: "KeyD",
+      ctrlKey: true,
+      shiftKey: true,
+    });
 
     expect(screen.getByTestId("shortcut-recorder-error").textContent).toBe(
       "Already used by the other shortcut.",

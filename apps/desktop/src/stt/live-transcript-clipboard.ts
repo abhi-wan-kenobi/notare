@@ -52,15 +52,17 @@ export function getLiveSegmentText(segment: LiveTranscriptSegment): string {
 export function getLatestLiveTranscriptChunk(
   source: LiveTranscriptTextSource,
 ): string {
-  const latestSegment = source.liveSegments.reduce<LiveTranscriptSegment | null>(
-    (latest, segment) =>
-      !latest ||
-      segment.start_ms > latest.start_ms ||
-      (segment.start_ms === latest.start_ms && segment.end_ms >= latest.end_ms)
-        ? segment
-        : latest,
-    null,
-  );
+  const latestSegment =
+    source.liveSegments.reduce<LiveTranscriptSegment | null>(
+      (latest, segment) =>
+        !latest ||
+        segment.start_ms > latest.start_ms ||
+        (segment.start_ms === latest.start_ms &&
+          segment.end_ms >= latest.end_ms)
+          ? segment
+          : latest,
+      null,
+    );
 
   if (latestSegment) {
     const text = getLiveSegmentText(latestSegment);

@@ -67,8 +67,17 @@ describe("dictation history writes", () => {
     const [insert, prune] = statements();
 
     expect(insert.sql).toContain("INSERT INTO dictation_history");
-    const [id, text, rawText, mode, cleaned, source, model, durationMs, status] =
-      insert.params;
+    const [
+      id,
+      text,
+      rawText,
+      mode,
+      cleaned,
+      source,
+      model,
+      durationMs,
+      status,
+    ] = insert.params;
     expect(typeof id).toBe("string");
     expect(text).toBe("Hello world");
     expect(rawText).toBe("um hello world");
@@ -142,7 +151,9 @@ describe("dictation history writes", () => {
     await deleteDictationHistoryEntry("some-id");
 
     const [statement] = statements();
-    expect(statement.sql).toContain("DELETE FROM dictation_history WHERE id = ?");
+    expect(statement.sql).toContain(
+      "DELETE FROM dictation_history WHERE id = ?",
+    );
     expect(statement.params).toEqual(["some-id"]);
   });
 

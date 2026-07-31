@@ -1,10 +1,7 @@
 import type { DictationOutputMode } from "@hypr/plugin-dictation";
 
 import { applyDictionary, type DictionaryEntry } from "./dictionary";
-import type {
-  DictationHistorySource,
-  DictationHistoryStatus,
-} from "./history";
+import type { DictationHistorySource, DictationHistoryStatus } from "./history";
 
 /**
  * The finish line of a dictation session. The Rust session accumulates the
@@ -449,7 +446,9 @@ async function runLlmPass(
         continue;
       }
       try {
-        const answer = (await cleanLlm(chunk, systemPrompt, abort.signal)).trim();
+        const answer = (
+          await cleanLlm(chunk, systemPrompt, abort.signal)
+        ).trim();
         if (passesGuard(chunk, answer, maxGrowthRatio)) {
           out.push(answer);
           deliveredLlm = true;

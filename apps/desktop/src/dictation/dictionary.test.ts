@@ -33,7 +33,9 @@ describe("parseDictionaryEntries", () => {
 
   it("coerces a missing caseSensitive to false and a missing right to empty", () => {
     expect(
-      parseDictionaryEntries('[{"wrong":"foo"},{"wrong":"a","right":"b","caseSensitive":1}]'),
+      parseDictionaryEntries(
+        '[{"wrong":"foo"},{"wrong":"a","right":"b","caseSensitive":1}]',
+      ),
     ).toEqual([map("foo", ""), map("a", "b", true)]);
   });
 
@@ -52,7 +54,10 @@ describe("parseDictionaryEntries", () => {
   });
 
   it("round-trips through serialize", () => {
-    const entries: DictionaryEntry[] = ["Notare", map("far eye", "FarEye", true)];
+    const entries: DictionaryEntry[] = [
+      "Notare",
+      map("far eye", "FarEye", true),
+    ];
     expect(parseDictionaryEntries(serializeDictionaryEntries(entries))).toEqual(
       entries,
     );
@@ -124,9 +129,9 @@ describe("applyDictionary precedence and passes", () => {
 
 describe("applyDictionary case sensitivity", () => {
   it("matches case-insensitively by default", () => {
-    expect(applyDictionary("FAR EYE and Far Eye", [map("far eye", "FarEye")])).toBe(
-      "FarEye and FarEye",
-    );
+    expect(
+      applyDictionary("FAR EYE and Far Eye", [map("far eye", "FarEye")]),
+    ).toBe("FarEye and FarEye");
   });
 
   it("honors the caseSensitive flag", () => {
@@ -163,7 +168,10 @@ describe("applyDictionary Unicode / Devanagari", () => {
 
 describe("importDictionaryText / exportDictionaryText", () => {
   it("imports bare lines as flat terms", () => {
-    expect(importDictionaryText("FarEye\nNotare")).toEqual(["FarEye", "Notare"]);
+    expect(importDictionaryText("FarEye\nNotare")).toEqual([
+      "FarEye",
+      "Notare",
+    ]);
   });
 
   it("imports 'wrong => right' as a mapping", () => {
@@ -191,7 +199,9 @@ describe("importDictionaryText / exportDictionaryText", () => {
       map("far eye", "FarEye"),
       map("api", "API", true),
     ];
-    expect(importDictionaryText(exportDictionaryText(entries))).toEqual(entries);
+    expect(importDictionaryText(exportDictionaryText(entries))).toEqual(
+      entries,
+    );
   });
 
   it("round-trips '=>' embedded inside a term (split on the first ' => ')", () => {
@@ -203,7 +213,9 @@ describe("importDictionaryText / exportDictionaryText", () => {
 
   it("round-trips '[cs]' appearing inside a term (only a trailing marker counts)", () => {
     const entries: DictionaryEntry[] = [map("x", "y [cs] z")];
-    expect(importDictionaryText(exportDictionaryText(entries))).toEqual(entries);
+    expect(importDictionaryText(exportDictionaryText(entries))).toEqual(
+      entries,
+    );
   });
 });
 

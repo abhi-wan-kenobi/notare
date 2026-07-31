@@ -6,6 +6,11 @@ import { md2json } from "@hypr/editor/markdown";
 import type { ToolDependencies } from "./types";
 
 import {
+  type DictionaryMapping,
+  parseDictionaryEntries,
+  serializeDictionaryEntries,
+} from "~/dictation/dictionary";
+import {
   applySessionContentCorrections,
   type SummaryContentCorrection,
   type TranscriptContentCorrection,
@@ -14,13 +19,8 @@ import {
   loadSessionContentSnapshot,
   type SessionContentSnapshot,
 } from "~/session/content-queries";
-import {
-  type DictionaryMapping,
-  parseDictionaryEntries,
-  serializeDictionaryEntries,
-} from "~/dictation/dictionary";
-import { suggestCorrections } from "~/snippets/correction-suggest";
 import { updateSettingValue } from "~/settings/queries";
+import { suggestCorrections } from "~/snippets/correction-suggest";
 import { normalizeKeywordList } from "~/stt/keywords";
 
 type CorrectionTarget = "summary" | "transcript" | "summary_and_transcript";

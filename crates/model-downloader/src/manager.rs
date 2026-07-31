@@ -116,10 +116,7 @@ impl<M: DownloadableModel> ModelDownloadManager<M> {
         tokio::task::spawn_blocking(move || {
             let destination = model_clone.download_destination(&models_base);
             integrity::remove_stamp(&destination);
-            let mut name = destination
-                .file_name()
-                .unwrap_or_default()
-                .to_os_string();
+            let mut name = destination.file_name().unwrap_or_default().to_os_string();
             name.push(".corrupt");
             let quarantine_path = destination.with_file_name(name);
             if destination.is_file() {

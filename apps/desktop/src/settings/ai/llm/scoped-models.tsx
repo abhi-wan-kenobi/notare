@@ -14,8 +14,8 @@ import { PROVIDERS } from "./shared";
 
 import { isCloudProvider } from "~/ai/scope";
 import { ModelCombobox } from "~/settings/ai/shared/model-combobox";
-import { useSetSettingValues } from "~/settings/queries";
 import { useAiProvider } from "~/settings/providers";
+import { useSetSettingValues } from "~/settings/queries";
 import { useConfigValues } from "~/shared/config";
 
 /**
@@ -86,16 +86,16 @@ export function ScopedModelSettings() {
         <div className="mt-4 flex flex-col gap-4">
           <p className="text-muted-foreground text-xs">
             <Trans>
-              Override the model used for specific tasks. Anything left on
-              "Use default model" falls back to the model selected above.
+              Override the model used for specific tasks. Anything left on "Use
+              default model" falls back to the model selected above.
             </Trans>
           </p>
           {!globalIsCloud ? (
             <p className="text-muted-foreground text-xs">
               <Trans>
                 Cloud providers won't appear here until you pick one as the
-                default model above - an override can't reach the cloud on
-                its own.
+                default model above - an override can't reach the cloud on its
+                own.
               </Trans>
             </p>
           ) : null}

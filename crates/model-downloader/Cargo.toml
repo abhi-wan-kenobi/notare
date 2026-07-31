@@ -20,7 +20,7 @@ tracing = { workspace = true }
 zip = "2"
 
 [dev-dependencies]
-tempfile = { workspace = true }
 crc32fast = "1"
+tempfile = { workspace = true }
 tokio = { workspace = true, features = ["time"] }
 wiremock = { workspace = true }

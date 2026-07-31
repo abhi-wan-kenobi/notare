@@ -140,9 +140,12 @@ const useScopedLanguageModelInner = (
 
   const globalProviderId = cfg.current_llm_provider;
   const globalModelId = cfg.current_llm_model;
-  const overrideProviderId = ((cfg[keys.provider] as string | undefined) ?? "")
-    .trim();
-  const overrideModelId = ((cfg[keys.model] as string | undefined) ?? "").trim();
+  const overrideProviderId = (
+    (cfg[keys.provider] as string | undefined) ?? ""
+  ).trim();
+  const overrideModelId = (
+    (cfg[keys.model] as string | undefined) ?? ""
+  ).trim();
 
   const globalProviderConfig = useAiProvider("llm", globalProviderId) as
     | AIProviderStorage

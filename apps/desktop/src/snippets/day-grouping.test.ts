@@ -1,5 +1,6 @@
-import { addHours, startOfDay, subDays } from "@hypr/utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import { addHours, startOfDay, subDays } from "@hypr/utils";
 
 import { groupEntriesByDay } from "./day-grouping";
 

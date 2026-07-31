@@ -211,8 +211,8 @@ export function ShortcutRecorderRow({
           {description ?? (
             <Trans>
               Global shortcut that starts or stops dictation. Click the combo,
-              then press the keys you want - at least one of Ctrl, Alt, Shift
-              or Super plus a key.
+              then press the keys you want - at least one of Ctrl, Alt, Shift or
+              Super plus a key.
             </Trans>
           )}
         </p>
@@ -234,7 +234,9 @@ export function ShortcutRecorderRow({
           data-recording={recording || undefined}
           aria-labelledby={titleId}
           aria-describedby={descriptionId}
-          title={recording ? t`Press the shortcut, Esc cancels` : t`Change shortcut`}
+          title={
+            recording ? t`Press the shortcut, Esc cancels` : t`Change shortcut`
+          }
           onClick={() => {
             if (!recording) {
               startRecording();
@@ -299,13 +301,7 @@ export function ShortcutRecorderRow({
 }
 
 /** Presentation of one accelerator token as a keycap. */
-function KeycapChip({
-  label,
-  isMacos,
-}: {
-  label: string;
-  isMacos: boolean;
-}) {
+function KeycapChip({ label, isMacos }: { label: string; isMacos: boolean }) {
   return (
     <kbd
       className={cn([

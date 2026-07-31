@@ -15,10 +15,7 @@ import {
   SttTierBadge,
 } from "~/settings/ai/stt/shared";
 import { useSetSettingValues } from "~/settings/queries";
-import {
-  localSttQueries,
-  useLocalModelDownload,
-} from "~/stt/useLocalSttModel";
+import { localSttQueries, useLocalModelDownload } from "~/stt/useLocalSttModel";
 
 export function TranscriptionSection({
   onContinue,

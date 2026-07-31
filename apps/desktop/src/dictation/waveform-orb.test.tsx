@@ -66,9 +66,7 @@ describe("WaveformOrb", () => {
     );
 
     expect(queryDancingSticks(container)).toHaveLength(0);
-    expect(
-      screen.getByTestId("dictation-waveform-error-badge"),
-    ).not.toBeNull();
+    expect(screen.getByTestId("dictation-waveform-error-badge")).not.toBeNull();
   });
 
   it("freezes descendant animations under reduced motion via CSS", () => {
@@ -77,8 +75,8 @@ describe("WaveformOrb", () => {
     // The static-frame behavior is CSS-only: a motion-reduce variant that
     // kills every descendant animation (jsdom does not apply media queries,
     // so assert the class is wired).
-    expect(
-      screen.getByTestId("dictation-waveform-orb").className,
-    ).toContain("motion-reduce:[&_*]:animate-none");
+    expect(screen.getByTestId("dictation-waveform-orb").className).toContain(
+      "motion-reduce:[&_*]:animate-none",
+    );
   });
 });

@@ -1,4 +1,10 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -137,7 +143,10 @@ vi.mock("~/dictation/dictionary", () => {
   };
 });
 
-import { DictionarySettings, mergeDictionaryEntries } from "./dictionary-settings";
+import {
+  DictionarySettings,
+  mergeDictionaryEntries,
+} from "./dictionary-settings";
 
 afterEach(() => {
   cleanup();
@@ -173,7 +182,9 @@ describe("DictionarySettings", () => {
     render(<DictionarySettings raw="[]" onSave={onSave} />);
 
     fireEvent.change(
-      screen.getByRole("textbox", { name: "Wrong text, or names/jargon to prefer" }),
+      screen.getByRole("textbox", {
+        name: "Wrong text, or names/jargon to prefer",
+      }),
       { target: { value: "far eye" } },
     );
     fireEvent.change(
@@ -183,25 +194,35 @@ describe("DictionarySettings", () => {
     fireEvent.click(screen.getByRole("switch"));
 
     const addButton = screen.getByRole("button", { name: "Add" });
-    await waitFor(() => expect((addButton as HTMLButtonElement).disabled).toBe(false));
+    await waitFor(() =>
+      expect((addButton as HTMLButtonElement).disabled).toBe(false),
+    );
     fireEvent.click(addButton);
 
     expect(onSave).toHaveBeenCalledWith(
-      JSON.stringify([{ wrong: "far eye", right: "FarEye", caseSensitive: true }]),
+      JSON.stringify([
+        { wrong: "far eye", right: "FarEye", caseSensitive: true },
+      ]),
     );
   });
 
   it("adds a batch of flat terms when no replacement is given", async () => {
     const onSave = vi.fn();
-    render(<DictionarySettings raw={JSON.stringify(["Notare"])} onSave={onSave} />);
+    render(
+      <DictionarySettings raw={JSON.stringify(["Notare"])} onSave={onSave} />,
+    );
 
     fireEvent.change(
-      screen.getByRole("textbox", { name: "Wrong text, or names/jargon to prefer" }),
+      screen.getByRole("textbox", {
+        name: "Wrong text, or names/jargon to prefer",
+      }),
       { target: { value: " FastConformer, Parakeet TDT " } },
     );
 
     const addButton = screen.getByRole("button", { name: "Add" });
-    await waitFor(() => expect((addButton as HTMLButtonElement).disabled).toBe(false));
+    await waitFor(() =>
+      expect((addButton as HTMLButtonElement).disabled).toBe(false),
+    );
     fireEvent.click(addButton);
 
     expect(onSave).toHaveBeenCalledWith(
@@ -211,17 +232,23 @@ describe("DictionarySettings", () => {
 
   it("warns on duplicate (case-insensitive) and disables add", async () => {
     const onSave = vi.fn();
-    render(<DictionarySettings raw={JSON.stringify(["Notare"])} onSave={onSave} />);
+    render(
+      <DictionarySettings raw={JSON.stringify(["Notare"])} onSave={onSave} />,
+    );
 
     fireEvent.change(
-      screen.getByRole("textbox", { name: "Wrong text, or names/jargon to prefer" }),
+      screen.getByRole("textbox", {
+        name: "Wrong text, or names/jargon to prefer",
+      }),
       { target: { value: "notare" } },
     );
 
     await waitFor(() =>
       expect(screen.getByText(/already in your dictionary/)).toBeTruthy(),
     );
-    const addButton = screen.getByRole("button", { name: "Add" }) as HTMLButtonElement;
+    const addButton = screen.getByRole("button", {
+      name: "Add",
+    }) as HTMLButtonElement;
     expect(addButton.disabled).toBe(true);
 
     fireEvent.click(addButton);
@@ -231,13 +258,16 @@ describe("DictionarySettings", () => {
   it("rejects empty-field submission (Add stays disabled)", () => {
     render(<DictionarySettings raw="[]" onSave={vi.fn()} />);
     expect(
-      (screen.getByRole("button", { name: "Add" }) as HTMLButtonElement).disabled,
+      (screen.getByRole("button", { name: "Add" }) as HTMLButtonElement)
+        .disabled,
     ).toBe(true);
   });
 
   it("edits an entry in place, converting a term into a mapping", async () => {
     const onSave = vi.fn();
-    render(<DictionarySettings raw={JSON.stringify(["Notare"])} onSave={onSave} />);
+    render(
+      <DictionarySettings raw={JSON.stringify(["Notare"])} onSave={onSave} />,
+    );
 
     fireEvent.click(screen.getByRole("button", { name: /Edit Notare/ }));
 
@@ -249,7 +279,9 @@ describe("DictionarySettings", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
     expect(onSave).toHaveBeenCalledWith(
-      JSON.stringify([{ wrong: "Notare", right: "Notare Inc.", caseSensitive: false }]),
+      JSON.stringify([
+        { wrong: "Notare", right: "Notare Inc.", caseSensitive: false },
+      ]),
     );
   });
 
@@ -269,14 +301,17 @@ describe("DictionarySettings", () => {
     fireEvent.change(wrongInput, { target: { value: "FastConformer" } });
 
     expect(
-      (screen.getByRole("button", { name: "Save" }) as HTMLButtonElement).disabled,
+      (screen.getByRole("button", { name: "Save" }) as HTMLButtonElement)
+        .disabled,
     ).toBe(true);
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     expect(onSave).not.toHaveBeenCalled();
   });
 
   it("cancels an in-place edit without saving", () => {
-    render(<DictionarySettings raw={JSON.stringify(["Notare"])} onSave={vi.fn()} />);
+    render(
+      <DictionarySettings raw={JSON.stringify(["Notare"])} onSave={vi.fn()} />,
+    );
 
     fireEvent.click(screen.getByRole("button", { name: /Edit Notare/ }));
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
@@ -354,7 +389,9 @@ describe("DictionarySettings", () => {
     const onSave = vi.fn();
     mocks.selectFile.mockResolvedValue(null);
 
-    render(<DictionarySettings raw={JSON.stringify(["Notare"])} onSave={onSave} />);
+    render(
+      <DictionarySettings raw={JSON.stringify(["Notare"])} onSave={onSave} />,
+    );
     fireEvent.click(screen.getByRole("button", { name: "Import…" }));
 
     await waitFor(() => expect(mocks.selectFile).toHaveBeenCalled());
@@ -364,7 +401,9 @@ describe("DictionarySettings", () => {
 
   it("exports the engine's serialized text and reveals the saved file", async () => {
     mocks.downloadDir.mockResolvedValue("/home/user/Downloads");
-    mocks.join.mockImplementation((...parts: string[]) => Promise.resolve(parts.join("/")));
+    mocks.join.mockImplementation((...parts: string[]) =>
+      Promise.resolve(parts.join("/")),
+    );
     mocks.writeTextFile.mockResolvedValue({ status: "ok", data: null });
     mocks.revealItemInDir.mockResolvedValue({ status: "ok", data: null });
 
@@ -378,17 +417,26 @@ describe("DictionarySettings", () => {
 
     await waitFor(() => expect(mocks.writeTextFile).toHaveBeenCalled());
     const [path, content] = mocks.writeTextFile.mock.calls[0];
-    expect(path).toMatch(/^\/home\/user\/Downloads\/notare-dictionary_.*\.txt$/);
+    expect(path).toMatch(
+      /^\/home\/user\/Downloads\/notare-dictionary_.*\.txt$/,
+    );
     expect(content).toBe("Notare\nfar eye => FarEye [cs]");
     expect(mocks.revealItemInDir).toHaveBeenCalledWith(path);
   });
 
   it("shows an export error instead of crashing when the write fails", async () => {
     mocks.downloadDir.mockResolvedValue("/home/user/Downloads");
-    mocks.join.mockImplementation((...parts: string[]) => Promise.resolve(parts.join("/")));
-    mocks.writeTextFile.mockResolvedValue({ status: "error", error: "disk full" });
+    mocks.join.mockImplementation((...parts: string[]) =>
+      Promise.resolve(parts.join("/")),
+    );
+    mocks.writeTextFile.mockResolvedValue({
+      status: "error",
+      error: "disk full",
+    });
 
-    render(<DictionarySettings raw={JSON.stringify(["Notare"])} onSave={vi.fn()} />);
+    render(
+      <DictionarySettings raw={JSON.stringify(["Notare"])} onSave={vi.fn()} />,
+    );
     fireEvent.click(screen.getByRole("button", { name: "Export" }));
 
     await waitFor(() =>
@@ -405,7 +453,10 @@ describe("DictionarySettings", () => {
 
 describe("mergeDictionaryEntries", () => {
   it("adds new entries and updates existing ones by wrong/term key, case-insensitively", () => {
-    const existing = ["Notare", { wrong: "far eye", right: "FarEye", caseSensitive: false }];
+    const existing = [
+      "Notare",
+      { wrong: "far eye", right: "FarEye", caseSensitive: false },
+    ];
     const incoming = [
       "notare", // same key as existing "Notare"; identical after normalization -> not counted as update
       { wrong: "Far Eye", right: "FarEye Corp", caseSensitive: true },
@@ -428,7 +479,10 @@ describe("mergeDictionaryEntries", () => {
 
   it("never wipes existing entries when incoming is empty", () => {
     const existing = ["Notare"];
-    const { merged, addedCount, updatedCount } = mergeDictionaryEntries(existing, []);
+    const { merged, addedCount, updatedCount } = mergeDictionaryEntries(
+      existing,
+      [],
+    );
 
     expect(merged).toEqual(["Notare"]);
     expect(addedCount).toBe(0);

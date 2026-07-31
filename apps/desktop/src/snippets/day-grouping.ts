@@ -33,9 +33,7 @@ export function groupEntriesByDay(
 
   for (const entry of entries) {
     const parsed = new Date(entry.createdAt);
-    const dayStart = Number.isNaN(parsed.getTime())
-      ? null
-      : startOfDay(parsed);
+    const dayStart = Number.isNaN(parsed.getTime()) ? null : startOfDay(parsed);
     const key = dayStart ? dayStart.toISOString() : "unknown";
 
     const last = buckets[buckets.length - 1];

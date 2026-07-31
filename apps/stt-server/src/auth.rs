@@ -40,7 +40,11 @@ use crate::state::AppState;
 /// mutation sub-router) rather than exposed as a reusable `Layer`, so
 /// callers don't have to fight axum's per-router `State` type — this just
 /// takes the `Arc<AppState>` it needs directly.
-pub async fn require_bearer_token(state: Arc<AppState>, request: Request<Body>, next: Next) -> Response {
+pub async fn require_bearer_token(
+    state: Arc<AppState>,
+    request: Request<Body>,
+    next: Next,
+) -> Response {
     let Some(expected) = state.config.token.as_deref() else {
         return next.run(request).await;
     };
@@ -86,12 +90,18 @@ mod tests {
 
     #[test]
     fn accepts_the_matching_token() {
-        assert!(is_authorized(&headers_with_bearer("Bearer secret"), "secret"));
+        assert!(is_authorized(
+            &headers_with_bearer("Bearer secret"),
+            "secret"
+        ));
     }
 
     #[test]
     fn rejects_a_wrong_token() {
-        assert!(!is_authorized(&headers_with_bearer("Bearer wrong"), "secret"));
+        assert!(!is_authorized(
+            &headers_with_bearer("Bearer wrong"),
+            "secret"
+        ));
     }
 
     #[test]
@@ -101,7 +111,10 @@ mod tests {
 
     #[test]
     fn rejects_a_non_bearer_scheme() {
-        assert!(!is_authorized(&headers_with_bearer("Basic secret"), "secret"));
+        assert!(!is_authorized(
+            &headers_with_bearer("Basic secret"),
+            "secret"
+        ));
     }
 
     #[test]

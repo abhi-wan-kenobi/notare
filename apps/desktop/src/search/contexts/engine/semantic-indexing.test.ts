@@ -11,11 +11,16 @@ const mocks = vi.hoisted(() => {
       options.onData([]);
       return async () => {};
     }),
-    embedAndIndexChunks: vi.fn(async (_sessionId: string, _chunks: unknown[]) => ({
+    embedAndIndexChunks: vi.fn(
+      async (_sessionId: string, _chunks: unknown[]) => ({
+        status: "ok",
+        data: 0,
+      }),
+    ),
+    deleteSessionChunks: vi.fn(async (_sessionId: string) => ({
       status: "ok",
       data: 0,
     })),
-    deleteSessionChunks: vi.fn(async (_sessionId: string) => ({ status: "ok", data: 0 })),
     embeddingIndexStatus: vi.fn(async () => ({
       status: "ok",
       data: { modelDownloaded: true, chunkCount: 0 },
@@ -31,14 +36,21 @@ vi.mock("@hypr/plugin-embedding-search", () => ({
     embeddingIndexStatus: mocks.embeddingIndexStatus,
   },
 }));
-vi.mock("@hypr/editor/markdown", () => ({ json2md: (v: unknown) => String(v) }));
+vi.mock("@hypr/editor/markdown", () => ({
+  json2md: (v: unknown) => String(v),
+}));
 
 import { createSemanticIndexSync } from "./semantic-indexing";
 
 const FAST = { drainDelayMs: 0, drainBatch: 5, modelRetryMs: 5 };
 
 function noteRow(id: string, body: string) {
-  return { id, raw_body: body, enhanced_notes_json: "[]", transcripts_json: "[]" };
+  return {
+    id,
+    raw_body: body,
+    enhanced_notes_json: "[]",
+    transcripts_json: "[]",
+  };
 }
 
 function emit(rows: unknown[]) {
@@ -63,7 +75,9 @@ describe("semantic index sync", () => {
     await sync.start();
     emit([noteRow("s1", "Discuss the Q3 roadmap and assign owners.")]);
 
-    await vi.waitFor(() => expect(mocks.embedAndIndexChunks).toHaveBeenCalledTimes(1));
+    await vi.waitFor(() =>
+      expect(mocks.embedAndIndexChunks).toHaveBeenCalledTimes(1),
+    );
     expect(mocks.embedAndIndexChunks.mock.calls[0][0]).toBe("s1");
 
     // Re-emit identical content -> change detection skips it.
@@ -77,10 +91,14 @@ describe("semantic index sync", () => {
     const sync = createSemanticIndexSync(FAST);
     await sync.start();
     emit([noteRow("s1", "first version of the note")]);
-    await vi.waitFor(() => expect(mocks.embedAndIndexChunks).toHaveBeenCalledTimes(1));
+    await vi.waitFor(() =>
+      expect(mocks.embedAndIndexChunks).toHaveBeenCalledTimes(1),
+    );
 
     emit([noteRow("s1", "a completely different second version")]);
-    await vi.waitFor(() => expect(mocks.embedAndIndexChunks).toHaveBeenCalledTimes(2));
+    await vi.waitFor(() =>
+      expect(mocks.embedAndIndexChunks).toHaveBeenCalledTimes(2),
+    );
     await sync.stop();
   });
 
@@ -88,10 +106,14 @@ describe("semantic index sync", () => {
     const sync = createSemanticIndexSync(FAST);
     await sync.start();
     emit([noteRow("s1", "note that will be removed")]);
-    await vi.waitFor(() => expect(mocks.embedAndIndexChunks).toHaveBeenCalledTimes(1));
+    await vi.waitFor(() =>
+      expect(mocks.embedAndIndexChunks).toHaveBeenCalledTimes(1),
+    );
 
     emit([]); // s1 gone
-    await vi.waitFor(() => expect(mocks.deleteSessionChunks).toHaveBeenCalledWith("s1"));
+    await vi.waitFor(() =>
+      expect(mocks.deleteSessionChunks).toHaveBeenCalledWith("s1"),
+    );
     await sync.stop();
   });
 

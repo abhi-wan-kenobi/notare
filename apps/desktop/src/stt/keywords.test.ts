@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import type { DictionaryMapping } from "~/dictation/dictionary";
-
 import {
   formatDictionaryTerms,
   normalizeKeywordList,
   parseDictionaryTermsText,
 } from "./keywords";
+
+import type { DictionaryMapping } from "~/dictation/dictionary";
 
 const map = (
   wrong: string,
@@ -27,7 +27,9 @@ describe("normalizeKeywordList", () => {
   });
 
   it("uses a mapping's right side as the hint (never the wrong side)", () => {
-    expect(normalizeKeywordList([map("far eye", "FarEye")])).toEqual(["FarEye"]);
+    expect(normalizeKeywordList([map("far eye", "FarEye")])).toEqual([
+      "FarEye",
+    ]);
   });
 
   it("mixes flat terms and mappings, deduping across both", () => {
@@ -38,7 +40,10 @@ describe("normalizeKeywordList", () => {
 
   it("ignores a malformed mapping with a non-string right", () => {
     expect(
-      normalizeKeywordList([{ wrong: "x", right: 1 } as unknown as DictionaryMapping, "ok"]),
+      normalizeKeywordList([
+        { wrong: "x", right: 1 } as unknown as DictionaryMapping,
+        "ok",
+      ]),
     ).toEqual(["ok"]);
   });
 });

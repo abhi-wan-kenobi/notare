@@ -46,10 +46,7 @@ export function DictionarySettings({
   const { t } = useLingui();
 
   const entries = useMemo(() => parseDictionaryEntries(raw), [raw]);
-  const existingKeys = useMemo(
-    () => new Set(entries.map(entryKey)),
-    [entries],
-  );
+  const existingKeys = useMemo(() => new Set(entries.map(entryKey)), [entries]);
 
   const persist = (nextEntries: DictionaryEntry[]) => {
     onSave(serializeDictionaryEntries(nextEntries));
@@ -105,7 +102,9 @@ export function DictionarySettings({
     setEditingIndex(index);
     setEditWrong(typeof entry === "string" ? entry : entry.wrong);
     setEditRight(typeof entry === "string" ? "" : entry.right);
-    setEditCaseSensitive(typeof entry === "string" ? false : entry.caseSensitive);
+    setEditCaseSensitive(
+      typeof entry === "string" ? false : entry.caseSensitive,
+    );
   };
 
   const cancelEdit = () => setEditingIndex(null);
@@ -116,7 +115,11 @@ export function DictionarySettings({
     if (!wrong) return null;
     const right = collapseSpaces(editRight);
     return right
-      ? ({ wrong, right, caseSensitive: editCaseSensitive } as DictionaryMapping)
+      ? ({
+          wrong,
+          right,
+          caseSensitive: editCaseSensitive,
+        } as DictionaryMapping)
       : wrong;
   }, [editingIndex, editWrong, editRight, editCaseSensitive]);
 
@@ -125,7 +128,8 @@ export function DictionarySettings({
       ? -1
       : entries.findIndex(
           (entry, index) =>
-            index !== editingIndex && entryKey(entry) === entryKey(editCandidate),
+            index !== editingIndex &&
+            entryKey(entry) === entryKey(editCandidate),
         );
   const canSaveEdit = editCandidate !== null && editDuplicateIndex === -1;
 
@@ -184,13 +188,17 @@ export function DictionarySettings({
       );
 
       if (addedCount === 0 && updatedCount === 0) {
-        setImportMessage(t`Nothing new to import — every entry already matched.`);
+        setImportMessage(
+          t`Nothing new to import — every entry already matched.`,
+        );
         return;
       }
 
       persist(merged);
       // Count-agnostic phrasing: the app has no plural-rule machinery yet.
-      setImportMessage(t`Import finished: ${addedCount} added, ${updatedCount} updated.`);
+      setImportMessage(
+        t`Import finished: ${addedCount} added, ${updatedCount} updated.`,
+      );
     } catch (error) {
       setImportError(error instanceof Error ? error.message : String(error));
     } finally {
@@ -323,8 +331,7 @@ export function DictionarySettings({
           {duplicateCandidateCount > 0 ? (
             <p className="text-muted-foreground text-xs">
               <Trans>
-                {duplicateCandidateCount} already in your dictionary —
-                skipped.
+                {duplicateCandidateCount} already in your dictionary — skipped.
               </Trans>
             </p>
           ) : (
@@ -556,7 +563,9 @@ export function mergeDictionaryEntries(
   updatedCount: number;
 } {
   const merged = [...existing];
-  const indexByKey = new Map(merged.map((entry, index) => [entryKey(entry), index]));
+  const indexByKey = new Map(
+    merged.map((entry, index) => [entryKey(entry), index]),
+  );
   let addedCount = 0;
   let updatedCount = 0;
 

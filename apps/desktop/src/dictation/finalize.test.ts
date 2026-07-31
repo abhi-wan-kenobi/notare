@@ -117,7 +117,9 @@ describe("finalizeDictation cleanup dispatch", () => {
 
   it("llm falls back to basic when the model call fails", async () => {
     const error = new Error("boom");
-    const deps = makeDeps({ cleanLlm: vi.fn(async () => Promise.reject(error)) });
+    const deps = makeDeps({
+      cleanLlm: vi.fn(async () => Promise.reject(error)),
+    });
     await finalizeDictation(makeInput({ cleanup: "llm" }), deps);
 
     expect(deps.onLlmFallback).toHaveBeenCalledWith(error);
@@ -220,7 +222,9 @@ describe("finalizeDictation discarded-dictation recovery", () => {
     // A failed session degrades to copy-only, and the entry is flagged
     // discarded so it surfaces in recovery rather than the clipboard list.
     expect(deps.deliver).toHaveBeenCalledWith("basic(hello world)", false);
-    expect(deps.saveHistory).toHaveBeenCalledWith(saved({ status: "discarded" }));
+    expect(deps.saveHistory).toHaveBeenCalledWith(
+      saved({ status: "discarded" }),
+    );
   });
 
   it("keeps the raw transcript when cleanup strips everything to nothing", async () => {
@@ -502,7 +506,8 @@ describe("finalizeDictation LLM chunking", () => {
 
   it("cleans a long transcript chunk-by-chunk and re-joins", async () => {
     // 60 sentences x 10 words = 600 words -> two chunks (500 + 100).
-    const sentence = "alpha beta gamma delta epsilon zeta eta theta iota kappa.";
+    const sentence =
+      "alpha beta gamma delta epsilon zeta eta theta iota kappa.";
     const transcript = Array.from({ length: 60 }, () => sentence).join(" ");
     const cleanLlm = vi.fn(async (chunk: string) => `X ${chunk}`);
     const deps = makeLlmDeps(cleanLlm);
@@ -521,7 +526,8 @@ describe("finalizeDictation LLM chunking", () => {
   });
 
   it("falls back per chunk: a failed chunk keeps its rule-cleaned text", async () => {
-    const sentence = "alpha beta gamma delta epsilon zeta eta theta iota kappa.";
+    const sentence =
+      "alpha beta gamma delta epsilon zeta eta theta iota kappa.";
     const transcript = Array.from({ length: 60 }, () => sentence).join(" ");
     let call = 0;
     // First chunk cleans fine; second balloons and is discarded.
@@ -749,7 +755,13 @@ describe("timeout abort propagation", () => {
       const rawText = Array.from({ length: 600 }, (_, i) => `w${i}`).join(" ");
 
       const done = finalizeDictation(
-        { rawText, mode: "batch", failed: false, cleanup: "llm", pasteAtCursor: false },
+        {
+          rawText,
+          mode: "batch",
+          failed: false,
+          cleanup: "llm",
+          pasteAtCursor: false,
+        },
         deps,
       );
       await vi.advanceTimersByTimeAsync(20_000);

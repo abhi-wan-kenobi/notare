@@ -228,8 +228,8 @@ impl LocalModel {
         // path heap-corrupts on RDNA2, ggml-org/llama.cpp#22128) — those are
         // build-feature/GPU-offload concerns layered on top of this gate,
         // same relationship whisper.cpp's GPU features have to `Whisper(_)`.
-        let is_x86_64_win_or_linux =
-            cfg!(target_arch = "x86_64") && (cfg!(target_os = "windows") || cfg!(target_os = "linux"));
+        let is_x86_64_win_or_linux = cfg!(target_arch = "x86_64")
+            && (cfg!(target_os = "windows") || cfg!(target_os = "linux"));
 
         match self {
             LocalModel::Soniqo(model) => model.is_available_on_current_platform(),

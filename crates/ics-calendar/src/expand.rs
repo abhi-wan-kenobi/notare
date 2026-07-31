@@ -74,8 +74,7 @@ pub fn expand_events(calendar: &IcsCalendar, options: ExpandOptions) -> Vec<IcsO
             continue;
         }
 
-        let is_recurring =
-            event.rrule.is_some() || !event.rdate_lines.is_empty();
+        let is_recurring = event.rrule.is_some() || !event.rdate_lines.is_empty();
 
         if !is_recurring {
             if overlaps(event.start, event.end, options) {
@@ -141,10 +140,7 @@ fn expand_rrule(
     let mut lines: Vec<String> = Vec::new();
 
     if event.is_all_day {
-        lines.push(format!(
-            "DTSTART:{}",
-            event.start.format("%Y%m%dT%H%M%SZ")
-        ));
+        lines.push(format!("DTSTART:{}", event.start.format("%Y%m%dT%H%M%SZ")));
     } else {
         lines.push(event.dtstart_line.clone());
     }

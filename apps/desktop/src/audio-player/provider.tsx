@@ -14,8 +14,9 @@ import WaveSurfer from "wavesurfer.js";
 
 import { commands as fsSyncCommands } from "@hypr/plugin-fs-sync";
 
-import { useBillingAccess } from "~/auth/billing";
 import { consumeSeek, subscribePendingSeek } from "./pending-seek";
+
+import { useBillingAccess } from "~/auth/billing";
 
 const TIME_UPDATE_STEP_SECONDS = 0.1;
 

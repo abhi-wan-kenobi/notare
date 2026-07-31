@@ -1,10 +1,11 @@
-import { commands as calendarCommands } from "@hypr/plugin-calendar";
-import type { IcsImportedFile } from "@hypr/plugin-calendar";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { open as selectFile } from "@tauri-apps/plugin-dialog";
 import { RefreshCwIcon, Trash2Icon } from "lucide-react";
 import { useCallback, useState } from "react";
+
+import { commands as calendarCommands } from "@hypr/plugin-calendar";
+import type { IcsImportedFile } from "@hypr/plugin-calendar";
 
 import { useSync } from "../context";
 import {

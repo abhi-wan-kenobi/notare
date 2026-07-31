@@ -221,8 +221,7 @@ vi.mock("~/session/queries", () => ({
 
 vi.mock("~/session/components/note-input/transcript/actions", () => ({
   useRegenerateTranscript: () => hoisted.regenerateTranscript,
-  useRegenerateTranscriptWithModel: () =>
-    hoisted.regenerateTranscriptWithModel,
+  useRegenerateTranscriptWithModel: () => hoisted.regenerateTranscriptWithModel,
 }));
 
 vi.mock("~/stt/final-model", () => ({

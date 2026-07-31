@@ -37,9 +37,7 @@ const CAPTION_SESSION_END_FADE_MS = 1200;
 const CAPTION_FADE_TRANSITION_MS = 220;
 
 export function DictationCaptionWindow({ solid = false }: { solid?: boolean }) {
-  const { dictation_caption } = useConfigValues([
-    "dictation_caption",
-  ] as const);
+  const { dictation_caption } = useConfigValues(["dictation_caption"] as const);
   const enabled = dictation_caption;
 
   const [words, setWords] = useState<string[]>([]);

@@ -17,8 +17,8 @@ import {
 import { sonnerToast } from "@hypr/ui/components/ui/toast";
 
 import { type DictionaryEntry, parseDictionaryEntries } from "./dictionary";
-import { finalizeDictation, normalizeCleanupMode } from "./finalize";
 import { isLikelyEngineBusyError } from "./errors";
+import { finalizeDictation, normalizeCleanupMode } from "./finalize";
 import { addDictationHistoryEntry, listDictationHistory } from "./history";
 import { isLegacyOutputMode, normalizeOutputMode } from "./output-mode";
 

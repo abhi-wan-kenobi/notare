@@ -10,6 +10,8 @@ import { Switch } from "@hypr/ui/components/ui/switch";
 import { sonnerToast } from "@hypr/ui/components/ui/toast";
 import { cn, formatDistanceToNow } from "@hypr/utils";
 
+import { useLLMConnectionStatus } from "~/ai/hooks";
+import { normalizeCleanupMode } from "~/dictation/finalize";
 import {
   clearDictationHistory,
   deleteDictationHistoryEntry,
@@ -24,7 +26,6 @@ import {
   ORB_VARIANT_REGISTRY,
 } from "~/dictation/orb";
 import { normalizeOutputMode } from "~/dictation/output-mode";
-import { normalizeCleanupMode } from "~/dictation/finalize";
 import { ShortcutRecorderRow } from "~/settings/dictation/shortcut-recorder";
 import { TranslationSettings } from "~/settings/dictation/translation";
 import { SettingsPageTitle } from "~/settings/page-title";
@@ -34,7 +35,6 @@ import { useConfigValues } from "~/shared/config";
 import { usePermission } from "~/shared/hooks/usePermissions";
 import { useTabs } from "~/store/zustand/tabs";
 import { useSTTConnection } from "~/stt/useSTTConnection";
-import { useLLMConnectionStatus } from "~/ai/hooks";
 
 /**
  * Dictation settings: the persistent dictation orb that types recognized
@@ -141,9 +141,9 @@ export function SettingsDictation() {
             title={<Trans>Paste last dictation</Trans>}
             description={
               <Trans>
-                Global shortcut that re-pastes your most recent dictation at
-                the cursor, without dictating again. Click the combo, then
-                press the keys you want, or leave it unset to disable.
+                Global shortcut that re-pastes your most recent dictation at the
+                cursor, without dictating again. Click the combo, then press the
+                keys you want, or leave it unset to disable.
               </Trans>
             }
             value={dictation_paste_last_shortcut}
@@ -158,8 +158,8 @@ export function SettingsDictation() {
             title={<Trans>Show live caption over orb</Trans>}
             description={
               <Trans>
-                Show the last few recognized words in a small caption above
-                the orb while you dictate. It fades out when you pause.
+                Show the last few recognized words in a small caption above the
+                orb while you dictate. It fades out when you pause.
               </Trans>
             }
             checked={dictation_caption}
@@ -328,8 +328,8 @@ export function OutputModeGroup({
           title: <Trans>Collect and deliver when you stop</Trans>,
           description: (
             <Trans>
-              Nothing is typed while you talk; stopping cleans up the
-              transcript and copies it. Best for terminals.
+              Nothing is typed while you talk; stopping cleans up the transcript
+              and copies it. Best for terminals.
             </Trans>
           ),
         },
@@ -363,8 +363,8 @@ export function CleanupGroup({
           title: <Trans>Basic</Trans>,
           description: (
             <Trans>
-              Tidy whitespace, capitalize sentences and drop trailing
-              fragments. Instant and fully offline.
+              Tidy whitespace, capitalize sentences and drop trailing fragments.
+              Instant and fully offline.
             </Trans>
           ),
         },
@@ -374,8 +374,8 @@ export function CleanupGroup({
           description: (
             <Trans>
               Fix punctuation and remove fillers and false starts with your
-              configured AI model. Falls back to basic cleanup when no model
-              is available.
+              configured AI model. Falls back to basic cleanup when no model is
+              available.
             </Trans>
           ),
         },
@@ -697,7 +697,7 @@ export function MacosAccessibilityHint({
   const neverRequested = status === undefined || status === "neverRequested";
 
   return (
-    <div className="border-amber-500/40 bg-amber-500/10 flex items-center justify-between gap-3 rounded-lg border p-3">
+    <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3">
       <div className="flex items-center gap-2">
         <AlertCircleIcon className="size-4 shrink-0 text-amber-500" />
         <p className="text-xs">

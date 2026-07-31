@@ -21,8 +21,8 @@ import {
 } from "./queries";
 
 import type { DictationHistoryEntry } from "~/dictation/history";
-import { showTransientToast } from "~/sidebar/toast/transient";
 import { StandardContentWrapper } from "~/shared/main";
+import { showTransientToast } from "~/sidebar/toast/transient";
 
 /**
  * Duration for the "add to dictionary?" suggestion toast - long enough to
@@ -141,7 +141,8 @@ export function TabContentSnippets() {
           label: t`Add`,
           onClick: async () => {
             try {
-              const { added } = await addSuggestedDictionaryMappings(candidates);
+              const { added } =
+                await addSuggestedDictionaryMappings(candidates);
               if (added.length > 0) {
                 sonnerToast.success(
                   added.length === 1
@@ -152,7 +153,10 @@ export function TabContentSnippets() {
             } catch (error) {
               // The Add tap was consumed - a silent failure would read as
               // success.
-              console.error("[snippets] failed to add dictionary mappings", error);
+              console.error(
+                "[snippets] failed to add dictionary mappings",
+                error,
+              );
               sonnerToast.error(t`Couldn't update the dictionary. Try again.`);
             }
           },

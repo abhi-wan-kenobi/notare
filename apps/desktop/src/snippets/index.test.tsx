@@ -31,9 +31,9 @@ const mocks = vi.hoisted(() => ({
       opts?: { onSuccess?: () => void; onError?: () => void },
     ) => opts?.onSuccess?.(),
   ),
-  addSuggestedDictionaryMappings: vi.fn(
-    async () => ({ added: [] as { wrong: string; right: string; caseSensitive: boolean }[] }),
-  ),
+  addSuggestedDictionaryMappings: vi.fn(async () => ({
+    added: [] as { wrong: string; right: string; caseSensitive: boolean }[],
+  })),
   showTransientToast: vi.fn(),
 }));
 
@@ -67,8 +67,7 @@ vi.mock("./queries", () => ({
 }));
 
 vi.mock("~/sidebar/toast/transient", () => ({
-  showTransientToast: (...args: unknown[]) =>
-    mocks.showTransientToast(...args),
+  showTransientToast: (...args: unknown[]) => mocks.showTransientToast(...args),
 }));
 
 import { TabContentSnippets } from "./index";
@@ -93,7 +92,14 @@ function localTimeOn(daysAgo: number, hour = 9): string {
 }
 
 interface QueryResult {
-  data: { pages: { entries: DictationHistoryEntry[]; nextCursor: string | null }[] } | undefined;
+  data:
+    | {
+        pages: {
+          entries: DictationHistoryEntry[];
+          nextCursor: string | null;
+        }[];
+      }
+    | undefined;
   isLoading: boolean;
   isError: boolean;
   hasNextPage: boolean;
@@ -101,7 +107,9 @@ interface QueryResult {
   fetchNextPage: () => void;
 }
 
-function defaultQueryResult(entries: DictationHistoryEntry[] = []): QueryResult {
+function defaultQueryResult(
+  entries: DictationHistoryEntry[] = [],
+): QueryResult {
   return {
     data: { pages: [{ entries, nextCursor: null }] },
     isLoading: false,
@@ -128,7 +136,11 @@ describe("TabContentSnippets", () => {
   });
 
   it("shows a loading skeleton while the first page is loading", () => {
-    setQueryResult({ ...defaultQueryResult(), isLoading: true, data: undefined });
+    setQueryResult({
+      ...defaultQueryResult(),
+      isLoading: true,
+      data: undefined,
+    });
 
     render(<TabContentSnippets />);
 
@@ -241,7 +253,11 @@ describe("TabContentSnippets", () => {
   });
 
   it("copies an entry's cleaned text and shows a success toast", async () => {
-    const entry = makeEntry({ id: "e1", text: "copy me", createdAt: localTimeOn(0) });
+    const entry = makeEntry({
+      id: "e1",
+      text: "copy me",
+      createdAt: localTimeOn(0),
+    });
     setQueryResult(defaultQueryResult([entry]));
     render(<TabContentSnippets />);
 
@@ -256,7 +272,11 @@ describe("TabContentSnippets", () => {
   });
 
   it("inserts an entry at the cursor via deliverText(text, true)", async () => {
-    const entry = makeEntry({ id: "e1", text: "insert me", createdAt: localTimeOn(0) });
+    const entry = makeEntry({
+      id: "e1",
+      text: "insert me",
+      createdAt: localTimeOn(0),
+    });
     setQueryResult(defaultQueryResult([entry]));
     render(<TabContentSnippets />);
 
@@ -275,7 +295,11 @@ describe("TabContentSnippets", () => {
       status: "error",
       error: "no focused app",
     });
-    const entry = makeEntry({ id: "e1", text: "fails", createdAt: localTimeOn(0) });
+    const entry = makeEntry({
+      id: "e1",
+      text: "fails",
+      createdAt: localTimeOn(0),
+    });
     setQueryResult(defaultQueryResult([entry]));
     render(<TabContentSnippets />);
 
@@ -307,7 +331,11 @@ describe("TabContentSnippets", () => {
   });
 
   it("deletes an entry via the delete action", () => {
-    const entry = makeEntry({ id: "e1", text: "delete me", createdAt: localTimeOn(0) });
+    const entry = makeEntry({
+      id: "e1",
+      text: "delete me",
+      createdAt: localTimeOn(0),
+    });
     setQueryResult(defaultQueryResult([entry]));
     render(<TabContentSnippets />);
 
@@ -367,7 +395,11 @@ describe("TabContentSnippets", () => {
   });
 
   it("edits a snippet's text inline and saves it", async () => {
-    const entry = makeEntry({ id: "e1", text: "hello wrld", createdAt: localTimeOn(0) });
+    const entry = makeEntry({
+      id: "e1",
+      text: "hello wrld",
+      createdAt: localTimeOn(0),
+    });
     setQueryResult(defaultQueryResult([entry]));
     render(<TabContentSnippets />);
 
@@ -392,7 +424,11 @@ describe("TabContentSnippets", () => {
   });
 
   it("cancels an inline edit without saving", () => {
-    const entry = makeEntry({ id: "e1", text: "hello", createdAt: localTimeOn(0) });
+    const entry = makeEntry({
+      id: "e1",
+      text: "hello",
+      createdAt: localTimeOn(0),
+    });
     setQueryResult(defaultQueryResult([entry]));
     render(<TabContentSnippets />);
 

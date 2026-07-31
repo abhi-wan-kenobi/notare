@@ -34,9 +34,9 @@ export type DictationTranslationTargetCode =
 export function normalizeTranslationTarget(
   raw: string | undefined,
 ): DictationTranslationTargetCode {
-  return (
-    DICTATION_TRANSLATION_TARGET_CODES as readonly string[]
-  ).includes(raw ?? "")
+  return (DICTATION_TRANSLATION_TARGET_CODES as readonly string[]).includes(
+    raw ?? "",
+  )
     ? (raw as DictationTranslationTargetCode)
     : "en";
 }
@@ -85,8 +85,8 @@ export function TranslationSettings({
           <p id={descriptionId} className="text-muted-foreground text-xs">
             <Trans>
               Dictate in any language, insert the text in {targetLabel}.
-              Requires AI cleanup's language model; falls back to normal
-              cleanup when no model is available.
+              Requires AI cleanup's language model; falls back to normal cleanup
+              when no model is available.
             </Trans>
           </p>
         </div>
@@ -102,8 +102,8 @@ export function TranslationSettings({
         <p className="text-muted-foreground text-xs">
           <Trans>
             AI cleanup isn't using a language model right now, so translation
-            will fall back to normal cleanup. Switch cleanup to "AI cleanup"
-            and configure a model in Settings → Intelligence to translate.
+            will fall back to normal cleanup. Switch cleanup to "AI cleanup" and
+            configure a model in Settings → Intelligence to translate.
           </Trans>
         </p>
       ) : null}

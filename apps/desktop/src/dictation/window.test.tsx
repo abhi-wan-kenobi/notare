@@ -257,9 +257,9 @@ describe("DictationOrbWindow", () => {
       render(<DictationOrbWindow />);
       await act(async () => {});
 
-      expect(
-        screen.getByTestId("dictation-orb").dataset.dictationVariant,
-      ).toBe("particles");
+      expect(screen.getByTestId("dictation-orb").dataset.dictationVariant).toBe(
+        "particles",
+      );
       expect(screen.getByTestId("dictation-particle-orb")).not.toBeNull();
     } finally {
       mocks.config.dictation_orb_variant = "cobalt";
@@ -272,9 +272,9 @@ describe("DictationOrbWindow", () => {
       render(<DictationOrbWindow />);
       await act(async () => {});
 
-      expect(
-        screen.getByTestId("dictation-orb").dataset.dictationVariant,
-      ).toBe("waveform");
+      expect(screen.getByTestId("dictation-orb").dataset.dictationVariant).toBe(
+        "waveform",
+      );
       expect(screen.getByTestId("dictation-waveform-orb")).not.toBeNull();
     } finally {
       mocks.config.dictation_orb_variant = "cobalt";

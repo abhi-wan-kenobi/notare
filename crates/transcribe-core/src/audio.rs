@@ -251,7 +251,11 @@ mod tests {
             chunk_channel_audio_with(&vec![0.0; TARGET_SAMPLE_RATE as usize * 20], &mut chunker)
                 .unwrap();
 
-        assert_eq!(out.len(), 1, "adjacent short chunks should pack into one call");
+        assert_eq!(
+            out.len(),
+            1,
+            "adjacent short chunks should pack into one call"
+        );
         assert_eq!(out[0].sample_start, 0);
         assert_eq!(out[0].sample_end, TARGET_SAMPLE_RATE as usize * 19);
         assert_eq!(out[0].samples.len(), TARGET_SAMPLE_RATE as usize * 19);

@@ -913,8 +913,7 @@ mod tests {
         frames: usize,
         chunk_len: usize,
     ) -> (Vec<Vec<f32>>, Vec<bytes::Bytes>) {
-        let mut pipeline =
-            Pipeline::new(Arc::new(TestRuntime), "session".to_string(), mic_denoise);
+        let mut pipeline = Pipeline::new(Arc::new(TestRuntime), "session".to_string(), mic_denoise);
 
         let (rec_tx, mut rec_rx) = tokio::sync::mpsc::unbounded_channel();
         let (recorder_ref, rec_handle) = Actor::spawn(None, CapturingRecorderProbe(rec_tx), ())

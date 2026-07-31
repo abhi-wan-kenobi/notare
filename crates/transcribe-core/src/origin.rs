@@ -132,9 +132,7 @@ mod tests {
     fn rejects_a_localhost_lookalike_origin() {
         // Must not substring-match — `localhost.evil.example` is not
         // `localhost`.
-        assert!(!is_allowed_origin(&header(
-            "http://localhost.evil.example"
-        )));
+        assert!(!is_allowed_origin(&header("http://localhost.evil.example")));
         assert!(!is_allowed_origin(&header("http://notlocalhost:1422")));
     }
 }

@@ -203,9 +203,9 @@ describe("useRegenerateTranscriptWithModel", () => {
     expect(queueAutoEnhanceIfSummaryEmptyMock).toHaveBeenCalledWith(
       "session-1",
     );
-    expect(
-      runBatchMock.mock.invocationCallOrder[0],
-    ).toBeLessThan(restoreMock.mock.invocationCallOrder[0]);
+    expect(runBatchMock.mock.invocationCallOrder[0]).toBeLessThan(
+      restoreMock.mock.invocationCallOrder[0],
+    );
   });
 
   test("passes no live model for restore when the live provider is external", async () => {
