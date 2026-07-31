@@ -183,8 +183,7 @@ impl IcsStore {
 
     fn save_index(&self, index: &[IcsFileEntry]) -> Result<(), Error> {
         std::fs::create_dir_all(&self.dir)?;
-        let text =
-            serde_json::to_string_pretty(index).map_err(|e| Error::Index(e.to_string()))?;
+        let text = serde_json::to_string_pretty(index).map_err(|e| Error::Index(e.to_string()))?;
         std::fs::write(self.dir.join(INDEX_FILE), text)?;
         Ok(())
     }
@@ -264,7 +263,10 @@ mod tests {
         // Replacing with a broken file keeps the old copy.
         let broken = write_source(tmp.path(), "broken.ics", "nope");
         assert!(store.replace(&info.id, &broken).is_err());
-        assert_eq!(store.read_calendar(&info.id).unwrap().events[0].uid, "evt-2");
+        assert_eq!(
+            store.read_calendar(&info.id).unwrap().events[0].uid,
+            "evt-2"
+        );
     }
 
     #[test]

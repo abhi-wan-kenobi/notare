@@ -41,9 +41,7 @@ describe("RootErrorBoundary", () => {
     expect(screen.getByTestId("root-error-boundary")).toBeTruthy();
     expect(screen.getByText("Notare")).toBeTruthy();
     expect(screen.getByText("Something went wrong")).toBeTruthy();
-    expect(
-      screen.getByText("kaboom during first render"),
-    ).toBeTruthy();
+    expect(screen.getByText("kaboom during first render")).toBeTruthy();
   });
 
   it("reloads the window when the Reload button is clicked", () => {

@@ -1,7 +1,7 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { platform } from "@tauri-apps/plugin-os";
-import { AlertCircleIcon, Trash2Icon } from "lucide-react";
+import { AlertCircleIcon, ScrollTextIcon, Trash2Icon } from "lucide-react";
 import { type ReactNode, useEffect, useId, useState } from "react";
 
 import type { PermissionStatus } from "@hypr/plugin-permissions";
@@ -10,6 +10,8 @@ import { Switch } from "@hypr/ui/components/ui/switch";
 import { sonnerToast } from "@hypr/ui/components/ui/toast";
 import { cn, formatDistanceToNow } from "@hypr/utils";
 
+import { useLLMConnectionStatus } from "~/ai/hooks";
+import { normalizeCleanupMode } from "~/dictation/finalize";
 import {
   clearDictationHistory,
   deleteDictationHistoryEntry,
@@ -24,13 +26,15 @@ import {
   ORB_VARIANT_REGISTRY,
 } from "~/dictation/orb";
 import { normalizeOutputMode } from "~/dictation/output-mode";
-import { normalizeCleanupMode } from "~/dictation/finalize";
+import { HistoryRetentionRow } from "~/settings/dictation/retention";
 import { ShortcutRecorderRow } from "~/settings/dictation/shortcut-recorder";
+import { TranslationSettings } from "~/settings/dictation/translation";
 import { SettingsPageTitle } from "~/settings/page-title";
 import { useSetSettingValue } from "~/settings/queries";
 import { SETTING_DEFINITIONS } from "~/settings/schema";
 import { useConfigValues } from "~/shared/config";
 import { usePermission } from "~/shared/hooks/usePermissions";
+import { useTabs } from "~/store/zustand/tabs";
 import { useSTTConnection } from "~/stt/useSTTConnection";
 
 /**
@@ -40,32 +44,74 @@ import { useSTTConnection } from "~/stt/useSTTConnection";
  * unfinished native panel.
  */
 export function SettingsDictation() {
+  const { t } = useLingui();
   const {
     dictation_enabled,
     dictation_shortcut,
+    // Global shortcut that re-pastes the most recent dictation at the cursor
+    // without dictating again; "" = disabled. Schema key + Rust registration
+    // land alongside this row (owned by the paste-last hotkey lane).
+    dictation_paste_last_shortcut,
     dictation_output_mode,
     dictation_paste_at_cursor,
     dictation_cleanup,
     dictation_orb_variant,
     dictation_caption,
+    dictation_translation_enabled,
+    dictation_translation_target,
+    // Owned by the concurrent PTT / media-auto-pause lane (schema keys land
+    // in `settings/schema.ts` there) - bound here by name for the polish-pack
+    // rows below (activation mode, pause-media, history retention).
+    dictation_activation_mode,
+    dictation_pause_media,
+    dictation_history_retention,
   } = useConfigValues([
     "dictation_enabled",
     "dictation_shortcut",
+    "dictation_paste_last_shortcut",
     "dictation_output_mode",
     "dictation_paste_at_cursor",
     "dictation_cleanup",
     "dictation_orb_variant",
     "dictation_caption",
+    "dictation_translation_enabled",
+    "dictation_translation_target",
+    "dictation_activation_mode",
+    "dictation_pause_media",
+    "dictation_history_retention",
   ] as const);
   const setEnabled = useSetSettingValue("dictation_enabled");
   const setShortcut = useSetSettingValue("dictation_shortcut");
+  const setPasteLastShortcut = useSetSettingValue(
+    "dictation_paste_last_shortcut",
+  );
   const setOutputMode = useSetSettingValue("dictation_output_mode");
   const setPasteAtCursor = useSetSettingValue("dictation_paste_at_cursor");
   const setCleanup = useSetSettingValue("dictation_cleanup");
   const setOrbVariant = useSetSettingValue("dictation_orb_variant");
   const setCaption = useSetSettingValue("dictation_caption");
+  const setTranslationEnabled = useSetSettingValue(
+    "dictation_translation_enabled",
+  );
+  const setTranslationTarget = useSetSettingValue(
+    "dictation_translation_target",
+  );
+  const setActivationMode = useSetSettingValue("dictation_activation_mode");
+  const setPauseMedia = useSetSettingValue("dictation_pause_media");
+  const setHistoryRetention = useSetSettingValue("dictation_history_retention");
 
   const outputMode = normalizeOutputMode(dictation_output_mode);
+  const cleanupMode = normalizeCleanupMode(dictation_cleanup);
+  const activationMode = normalizeActivationMode(dictation_activation_mode);
+  // Translation piggybacks on AI cleanup's language model (see
+  // `finalizeDictation` / the engine's translation step) - it only has a
+  // usable model when cleanup is actually set to "llm" and that model
+  // connects. `dictation_translation_enabled` still gets to be true either
+  // way; TranslationSettings just surfaces the fallback via `modelAvailable`
+  // rather than hard-disabling the toggle.
+  const llmStatus = useLLMConnectionStatus();
+  const translationModelAvailable =
+    cleanupMode === "llm" && llmStatus.status === "success";
 
   const { conn, isLocalModel } = useSTTConnection();
   const modelReady = isLocalModel && !!conn;
@@ -102,17 +148,48 @@ export function SettingsDictation() {
             value={dictation_shortcut}
             defaultValue={SETTING_DEFINITIONS.dictation_shortcut.default}
             onCommit={setShortcut}
+            conflictValue={dictation_paste_last_shortcut || undefined}
+            conflictMessage={t`This combination is already used by the paste-last-dictation shortcut below.`}
+          />
+          <ActivationModeGroup
+            value={activationMode}
+            onChange={setActivationMode}
+          />
+          <ShortcutRecorderRow
+            title={<Trans>Paste last dictation</Trans>}
+            description={
+              <Trans>
+                Global shortcut that re-pastes your most recent dictation at the
+                cursor, without dictating again. Click the combo, then press the
+                keys you want, or leave it unset to disable.
+              </Trans>
+            }
+            value={dictation_paste_last_shortcut}
+            defaultValue={
+              SETTING_DEFINITIONS.dictation_paste_last_shortcut.default
+            }
+            onCommit={setPasteLastShortcut}
+            conflictValue={dictation_shortcut || undefined}
+            conflictMessage={t`This combination is already used by the dictation toggle shortcut above.`}
           />
           <SettingRow
             title={<Trans>Show live caption over orb</Trans>}
             description={
               <Trans>
-                Show the last few recognized words in a small caption above
-                the orb while you dictate. It fades out when you pause.
+                Show the last few recognized words in a small caption above the
+                orb while you dictate. It fades out when you pause.
               </Trans>
             }
             checked={dictation_caption}
             onChange={setCaption}
+          />
+          <SettingRow
+            title={<Trans>Pause media while dictating</Trans>}
+            description={
+              <Trans>Pause music while dictating, resume after.</Trans>
+            }
+            checked={dictation_pause_media}
+            onChange={setPauseMedia}
           />
         </div>
       </section>
@@ -144,10 +221,16 @@ export function SettingsDictation() {
         <h2 className="mb-4 font-sans text-lg font-semibold">
           <Trans>Cleanup</Trans>
         </h2>
-        <CleanupGroup
-          value={normalizeCleanupMode(dictation_cleanup)}
-          onChange={setCleanup}
-        />
+        <div className="flex flex-col gap-4">
+          <CleanupGroup value={cleanupMode} onChange={setCleanup} />
+          <TranslationSettings
+            enabled={dictation_translation_enabled}
+            target={dictation_translation_target}
+            modelAvailable={translationModelAvailable}
+            onToggle={setTranslationEnabled}
+            onTargetChange={setTranslationTarget}
+          />
+        </div>
       </section>
 
       <section>
@@ -160,7 +243,10 @@ export function SettingsDictation() {
         />
       </section>
 
-      <DictationHistorySection />
+      <DictationHistorySection
+        retention={dictation_history_retention}
+        onRetentionChange={setHistoryRetention}
+      />
 
       <section>
         <h2 className="mb-4 font-sans text-lg font-semibold">
@@ -240,6 +326,60 @@ function RadioCardGroup<T extends string>({
 }
 
 /**
+ * `dictation_activation_mode` values (schema owned by the concurrent PTT
+ * lane): "toggle" = press the shortcut once to start, again to stop;
+ * "push_to_talk" = hold the shortcut down to talk, release to stop and
+ * deliver.
+ */
+const ACTIVATION_MODES = ["toggle", "push_to_talk"] as const;
+type DictationActivationMode = (typeof ACTIVATION_MODES)[number];
+
+export function normalizeActivationMode(
+  raw: string | undefined,
+): DictationActivationMode {
+  return (ACTIVATION_MODES as readonly string[]).includes(raw ?? "")
+    ? (raw as DictationActivationMode)
+    : "toggle";
+}
+
+/** Toggle-press vs. hold-to-talk, shown right under the dictation shortcut. */
+export function ActivationModeGroup({
+  value,
+  onChange,
+}: {
+  value: DictationActivationMode;
+  onChange: (next: string) => void;
+}) {
+  return (
+    <RadioCardGroup
+      value={value}
+      onChange={onChange}
+      options={[
+        {
+          value: "toggle",
+          title: <Trans>Toggle press</Trans>,
+          description: (
+            <Trans>
+              Press the shortcut once to start dictating, press it again to stop
+              and deliver.
+            </Trans>
+          ),
+        },
+        {
+          value: "push_to_talk",
+          title: <Trans>Hold to talk</Trans>,
+          description: (
+            <Trans>
+              Hold the dictation shortcut to talk; release to stop and deliver.
+            </Trans>
+          ),
+        },
+      ]}
+    />
+  );
+}
+
+/**
  * Where recognized speech goes. `type` = segments are typed into the focused
  * app as they arrive; `batch` = nothing is typed while dictating and the
  * cleaned transcript is delivered once on stop (terminal-friendly).
@@ -271,8 +411,8 @@ export function OutputModeGroup({
           title: <Trans>Collect and deliver when you stop</Trans>,
           description: (
             <Trans>
-              Nothing is typed while you talk; stopping cleans up the
-              transcript and copies it. Best for terminals.
+              Nothing is typed while you talk; stopping cleans up the transcript
+              and copies it. Best for terminals.
             </Trans>
           ),
         },
@@ -306,8 +446,8 @@ export function CleanupGroup({
           title: <Trans>Basic</Trans>,
           description: (
             <Trans>
-              Tidy whitespace, capitalize sentences and drop trailing
-              fragments. Instant and fully offline.
+              Tidy whitespace, capitalize sentences and drop trailing fragments.
+              Instant and fully offline.
             </Trans>
           ),
         },
@@ -317,8 +457,8 @@ export function CleanupGroup({
           description: (
             <Trans>
               Fix punctuation and remove fillers and false starts with your
-              configured AI model. Falls back to basic cleanup when no model
-              is available.
+              configured AI model. Falls back to basic cleanup when no model is
+              available.
             </Trans>
           ),
         },
@@ -496,11 +636,20 @@ function useSyntheticAmplitude(active: boolean): number {
 
 /**
  * Dictation history - the "in-app clipboard". Click an entry to copy it
- * again; entries are capped at 50 and pruned automatically.
+ * again; entries are capped at 50 and pruned automatically (both by the
+ * rolling count cap and, per `retention`, by age - see
+ * `dictation/history.ts`'s `pruneDictationHistoryByAge`).
  */
-function DictationHistorySection() {
+function DictationHistorySection({
+  retention,
+  onRetentionChange,
+}: {
+  retention: string;
+  onRetentionChange: (next: string) => void;
+}) {
   const { t } = useLingui();
   const entries = useDictationHistory();
+  const openNew = useTabs((state) => state.openNew);
 
   const handleCopy = async (entry: DictationHistoryEntry) => {
     try {
@@ -518,15 +667,28 @@ function DictationHistorySection() {
         <h2 className="font-sans text-lg font-semibold">
           <Trans>History</Trans>
         </h2>
-        {entries.length > 0 ? (
+        <div className="flex items-center gap-1">
+          {entries.length > 0 ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => void clearDictationHistory()}
+            >
+              <Trans>Clear all</Trans>
+            </Button>
+          ) : null}
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => void clearDictationHistory()}
+            onClick={() => openNew({ type: "snippets" })}
           >
-            <Trans>Clear all</Trans>
+            <ScrollTextIcon className="size-3.5" />
+            <Trans>View all in Snippets</Trans>
           </Button>
-        ) : null}
+        </div>
+      </div>
+      <div className="mb-4">
+        <HistoryRetentionRow value={retention} onChange={onRetentionChange} />
       </div>
       <DictationHistoryList
         entries={entries}
@@ -629,7 +791,7 @@ export function MacosAccessibilityHint({
   const neverRequested = status === undefined || status === "neverRequested";
 
   return (
-    <div className="border-amber-500/40 bg-amber-500/10 flex items-center justify-between gap-3 rounded-lg border p-3">
+    <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3">
       <div className="flex items-center gap-2">
         <AlertCircleIcon className="size-4 shrink-0 text-amber-500" />
         <p className="text-xs">

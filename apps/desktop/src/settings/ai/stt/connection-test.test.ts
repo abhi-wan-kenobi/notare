@@ -58,7 +58,10 @@ describe("parseSttServerStatus", () => {
     expect(parseSttServerStatus(raw)).toEqual({
       engine: "whisper-local",
       gpuOffload: "verified",
-      loadedModel: { id: "QuantizedLargeTurbo", file: "ggml-large-v3-turbo-q8_0.bin" },
+      loadedModel: {
+        id: "QuantizedLargeTurbo",
+        file: "ggml-large-v3-turbo-q8_0.bin",
+      },
       version: "0.1.0",
     });
   });
@@ -110,7 +113,10 @@ describe("fetchSttServerStatus", () => {
       json: async () => ({
         engine: "whisper-local",
         gpuOffload: "verified",
-        loadedModel: { id: "QuantizedLargeTurbo", file: "ggml-large-v3-turbo-q8_0.bin" },
+        loadedModel: {
+          id: "QuantizedLargeTurbo",
+          file: "ggml-large-v3-turbo-q8_0.bin",
+        },
         version: "0.1.0",
       }),
     });
@@ -129,7 +135,10 @@ describe("fetchSttServerStatus", () => {
       status: {
         engine: "whisper-local",
         gpuOffload: "verified",
-        loadedModel: { id: "QuantizedLargeTurbo", file: "ggml-large-v3-turbo-q8_0.bin" },
+        loadedModel: {
+          id: "QuantizedLargeTurbo",
+          file: "ggml-large-v3-turbo-q8_0.bin",
+        },
         version: "0.1.0",
       },
     });
@@ -139,7 +148,11 @@ describe("fetchSttServerStatus", () => {
     fetchMock.mockResolvedValueOnce({
       ok: true,
       status: 200,
-      json: async () => ({ engine: "whisper-local", gpuOffload: "cpu", loadedModel: null }),
+      json: async () => ({
+        engine: "whisper-local",
+        gpuOffload: "cpu",
+        loadedModel: null,
+      }),
     });
 
     await fetchSttServerStatus("http://192.168.0.91:8383/v1", "secret-token");
@@ -147,7 +160,9 @@ describe("fetchSttServerStatus", () => {
     expect(fetchMock).toHaveBeenCalledWith(
       expect.any(String),
       expect.objectContaining({
-        headers: expect.objectContaining({ Authorization: "Bearer secret-token" }),
+        headers: expect.objectContaining({
+          Authorization: "Bearer secret-token",
+        }),
       }),
     );
   });
@@ -156,7 +171,11 @@ describe("fetchSttServerStatus", () => {
     fetchMock.mockResolvedValueOnce({
       ok: true,
       status: 200,
-      json: async () => ({ engine: "whisper-local", gpuOffload: "cpu", loadedModel: null }),
+      json: async () => ({
+        engine: "whisper-local",
+        gpuOffload: "cpu",
+        loadedModel: null,
+      }),
     });
 
     await fetchSttServerStatus("http://192.168.0.91:8383/v1", "");
@@ -168,7 +187,10 @@ describe("fetchSttServerStatus", () => {
   test("reports a clear failure for a non-2xx response", async () => {
     fetchMock.mockResolvedValueOnce({ ok: false, status: 401 });
 
-    const result = await fetchSttServerStatus("http://192.168.0.91:8383/v1", "wrong");
+    const result = await fetchSttServerStatus(
+      "http://192.168.0.91:8383/v1",
+      "wrong",
+    );
 
     expect(result).toEqual({ ok: false, error: "Server responded with 401" });
   });
@@ -176,7 +198,10 @@ describe("fetchSttServerStatus", () => {
   test("reports a clear failure when the server is unreachable", async () => {
     fetchMock.mockRejectedValueOnce(new Error("connection refused"));
 
-    const result = await fetchSttServerStatus("http://192.168.0.91:9999/v1", "");
+    const result = await fetchSttServerStatus(
+      "http://192.168.0.91:9999/v1",
+      "",
+    );
 
     expect(result).toEqual({ ok: false, error: "connection refused" });
   });
@@ -188,7 +213,10 @@ describe("fetchSttServerStatus", () => {
       json: async () => ({ hello: "world" }),
     });
 
-    const result = await fetchSttServerStatus("http://192.168.0.91:8383/v1", "");
+    const result = await fetchSttServerStatus(
+      "http://192.168.0.91:8383/v1",
+      "",
+    );
 
     expect(result.ok).toBe(false);
   });

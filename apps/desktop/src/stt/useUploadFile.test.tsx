@@ -480,9 +480,6 @@ describe("useUploadFile", () => {
       expect(runBatchMock).toHaveBeenCalled();
     });
     expect(updateBatchProgressMock).toHaveBeenCalledWith("session-1", 42);
-    expect(updateBatchProgressMock).not.toHaveBeenCalledWith(
-      "session-1",
-      99,
-    );
+    expect(updateBatchProgressMock).not.toHaveBeenCalledWith("session-1", 99);
   });
 });

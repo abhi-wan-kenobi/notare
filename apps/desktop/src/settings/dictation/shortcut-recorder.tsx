@@ -1,7 +1,7 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import { platform } from "@tauri-apps/plugin-os";
 import { RotateCcwIcon } from "lucide-react";
-import { useEffect, useId, useRef, useState } from "react";
+import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 
 import { commands as shortcutCommands } from "@hypr/plugin-shortcut";
 import { Button } from "@hypr/ui/components/ui/button";
@@ -14,25 +14,40 @@ import {
 } from "./accelerator";
 
 /**
- * Auto-capture recorder for the dictation toggle shortcut (replaces the old
- * free-text input). Click the combo to arm it, press the shortcut you want:
- * modifiers show up as keycap chips while held, the first non-modifier key
- * completes the combo. Escape (or clicking away) cancels; a combo needs at
- * least one modifier.
+ * Auto-capture recorder for a global dictation shortcut (replaces the old
+ * free-text input) - used for both the dictation toggle and the paste-last
+ * shortcut, which share one recording/validation/display implementation so
+ * they can never drift. Click the combo to arm it, press the shortcut you
+ * want: modifiers show up as keycap chips while held, the first
+ * non-modifier key completes the combo. Escape (or clicking away) cancels;
+ * a combo needs at least one modifier.
  *
  * Before committing, the candidate is parse-validated through the shortcut
  * plugin (`parse_global_hotkey` - the exact parser that will register it),
  * so a bad combo surfaces inline here instead of failing silently in the
- * orb host's re-register effect.
+ * orb host's re-register effect. It's also checked against `conflictValue`
+ * (the OTHER recorder's current binding, when this app registers more than
+ * one global hotkey) so two rows can never silently commit the same
+ * accelerator out from under each other.
  */
 export function ShortcutRecorderRow({
   value,
   defaultValue,
   onCommit,
+  title,
+  description,
+  conflictValue,
+  conflictMessage,
 }: {
   value: string;
   defaultValue: string;
   onCommit: (next: string) => void;
+  title?: ReactNode;
+  description?: ReactNode;
+  /** Another recorder's current accelerator - committing the same one is rejected. */
+  conflictValue?: string;
+  /** Error text shown when the candidate matches `conflictValue`. */
+  conflictMessage?: string;
 }) {
   const { t } = useLingui();
   const titleId = useId();
@@ -77,6 +92,19 @@ export function ShortcutRecorderRow({
     setHeldModifiers([]);
 
     if (accelerator === value) {
+      return;
+    }
+
+    // Case-insensitive: accelerator casing varies by source but the OS-level
+    // binding is the same key combination either way.
+    if (
+      conflictValue &&
+      accelerator.toLowerCase() === conflictValue.toLowerCase()
+    ) {
+      setError(
+        conflictMessage ??
+          t`This combination is already used by another shortcut.`,
+      );
       return;
     }
 
@@ -177,14 +205,16 @@ export function ShortcutRecorderRow({
     <div className="flex items-start justify-between gap-4">
       <div className="flex-1">
         <h3 id={titleId} className="mb-1 text-sm font-medium">
-          <Trans>Toggle shortcut</Trans>
+          {title ?? <Trans>Toggle shortcut</Trans>}
         </h3>
         <p id={descriptionId} className="text-muted-foreground text-xs">
-          <Trans>
-            Global shortcut that starts or stops dictation. Click the combo,
-            then press the keys you want - at least one of Ctrl, Alt, Shift or
-            Super plus a key.
-          </Trans>
+          {description ?? (
+            <Trans>
+              Global shortcut that starts or stops dictation. Click the combo,
+              then press the keys you want - at least one of Ctrl, Alt, Shift or
+              Super plus a key.
+            </Trans>
+          )}
         </p>
         {error ? (
           <p
@@ -204,7 +234,9 @@ export function ShortcutRecorderRow({
           data-recording={recording || undefined}
           aria-labelledby={titleId}
           aria-describedby={descriptionId}
-          title={recording ? t`Press the shortcut, Esc cancels` : t`Change shortcut`}
+          title={
+            recording ? t`Press the shortcut, Esc cancels` : t`Change shortcut`
+          }
           onClick={() => {
             if (!recording) {
               startRecording();
@@ -269,13 +301,7 @@ export function ShortcutRecorderRow({
 }
 
 /** Presentation of one accelerator token as a keycap. */
-function KeycapChip({
-  label,
-  isMacos,
-}: {
-  label: string;
-  isMacos: boolean;
-}) {
+function KeycapChip({ label, isMacos }: { label: string; isMacos: boolean }) {
   return (
     <kbd
       className={cn([

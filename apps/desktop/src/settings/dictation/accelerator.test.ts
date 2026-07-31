@@ -72,7 +72,9 @@ describe("acceleratorFromKeydown", () => {
 
   it("commits digits, arrows and punctuation by physical key", () => {
     expect(
-      acceleratorFromKeydown(event({ key: "1", code: "Digit1", ctrlKey: true })),
+      acceleratorFromKeydown(
+        event({ key: "1", code: "Digit1", ctrlKey: true }),
+      ),
     ).toEqual({ kind: "commit", accelerator: "ctrl+1" });
     expect(
       acceleratorFromKeydown(
@@ -107,9 +109,7 @@ describe("acceleratorFromKeydown", () => {
 
   it("treats shift-only exactly like the other modifiers", () => {
     expect(
-      acceleratorFromKeydown(
-        event({ key: "A", code: "KeyA", shiftKey: true }),
-      ),
+      acceleratorFromKeydown(event({ key: "A", code: "KeyA", shiftKey: true })),
     ).toEqual({ kind: "commit", accelerator: "shift+a" });
   });
 
@@ -151,9 +151,7 @@ describe("acceleratorFromKeydown", () => {
       ),
     ).toEqual({ kind: "invalid", reason: "unsupported-key" });
     expect(
-      acceleratorFromKeydown(
-        event({ key: "F25", code: "F25", ctrlKey: true }),
-      ),
+      acceleratorFromKeydown(event({ key: "F25", code: "F25", ctrlKey: true })),
     ).toEqual({ kind: "invalid", reason: "unsupported-key" });
     expect(
       acceleratorFromKeydown(

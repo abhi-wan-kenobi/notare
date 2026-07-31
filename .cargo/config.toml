@@ -6,6 +6,13 @@ xtask = "run --locked --package xtask --"
 [env]
 MACOSX_DEPLOYMENT_TARGET = { value = "14.2", force = true }
 
+[net]
+# Clone git dependencies with the git CLI instead of libgit2: Codeberg
+# (whisper-rs) intermittently 403s libgit2's smart-http fetches from GitHub
+# runners, which failed three consecutive CI waves on 2026-07-31. The real
+# git client negotiates the protocol Codeberg expects.
+git-fetch-with-cli = true
+
 [target.'cfg(all(windows, target_env = "msvc"))']
 rustflags = [
   "-C",

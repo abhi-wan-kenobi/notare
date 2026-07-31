@@ -26,7 +26,10 @@ export type WindowsSupportedTabInput = Exclude<
 export type TabInput =
   | WindowsSupportedTabInput
   // App-only tab input (no Rust/windows binding): the hybrid search surface.
-  | { type: "search"; query?: string };
+  | { type: "search"; query?: string }
+  // App-only tab input (no Rust/windows binding): the Snippets (dictation
+  // history) surface, promoted out of Settings > Dictation.
+  | { type: "snippets" };
 
 export const isTabInputSupported = (
   tab: WindowsTabInput,
@@ -132,6 +135,7 @@ export type Tab =
   | (BaseTab & { type: "empty" })
   | (BaseTab & { type: "calendar" })
   | (BaseTab & { type: "search"; query?: string })
+  | (BaseTab & { type: "snippets" })
   | (BaseTab & {
       type: "changelog";
       state: ChangelogState;
@@ -194,6 +198,8 @@ export const getDefaultState = (tab: TabInput): Tab => {
       return { ...base, type: "calendar" };
     case "search":
       return { ...base, type: "search", query: tab.query };
+    case "snippets":
+      return { ...base, type: "snippets" };
     case "changelog":
       return {
         ...base,
@@ -239,6 +245,8 @@ export const uniqueIdfromTab = (tab: Tab): string => {
       return `calendar`;
     case "search":
       return `search`;
+    case "snippets":
+      return `snippets`;
     case "changelog":
       return "changelog";
     case "settings":

@@ -7,6 +7,7 @@ import { TabContentOnboarding } from "~/onboarding";
 import { TabContentSearch } from "~/search/page";
 import { TabContentNote } from "~/session";
 import { TabContentSettings } from "~/settings";
+import { TabContentSnippets } from "~/snippets";
 import { type Tab } from "~/store/zustand/tabs";
 import { TabContentTask } from "~/task";
 import { TabContentTemplate } from "~/templates";
@@ -26,6 +27,9 @@ export function MainTabContent({ tab }: { tab: Tab }) {
   }
   if (tab.type === "search") {
     return <TabContentSearch tab={tab} />;
+  }
+  if (tab.type === "snippets") {
+    return <TabContentSnippets />;
   }
   if (tab.type === "changelog") {
     return <TabContentChangelog tab={tab} />;

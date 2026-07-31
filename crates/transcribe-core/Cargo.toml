@@ -13,8 +13,8 @@ hypr-ws-utils = { workspace = true }
 owhisper-interface = { workspace = true }
 
 bytes = { workspace = true }
-serde_html_form = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
+serde_html_form = { workspace = true }
 serde_json = { workspace = true }
 tempfile = { workspace = true }
 thiserror = { workspace = true }

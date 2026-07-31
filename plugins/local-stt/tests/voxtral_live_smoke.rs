@@ -88,8 +88,7 @@ async fn voxtral_internal_server_transcribes_real_audio_over_http() {
     // (`crates/transcribe-voxtral-llama/tests/real_model.rs`) uses, so the
     // two results are directly comparable.
     let source =
-        hypr_audio_utils::source_from_path(hypr_data::english_1::AUDIO_PART2_16000HZ_PATH)
-            .unwrap();
+        hypr_audio_utils::source_from_path(hypr_data::english_1::AUDIO_PART2_16000HZ_PATH).unwrap();
     let samples = hypr_audio_utils::resample_audio(source, 16_000).unwrap();
     let samples = &samples[..samples.len().min(25 * 16_000)];
     let audio_seconds = samples.len() as f64 / 16_000.0;

@@ -65,14 +65,31 @@ common_event_derives! {
     }
 }
 
+/// Whether a `GlobalHotkeyTriggered` event marks the key going down or coming
+/// back up. Push-to-talk needs both edges (hold to record, release to stop);
+/// toggle-style consumers act on `Pressed` only and ignore `Released`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "lowercase")]
+pub enum HotkeyState {
+    Pressed,
+    Released,
+}
+
 common_event_derives! {
-    /// Fired when a toggle-style global hotkey registered via
-    /// `register_global_hotkey` is pressed, backed by
-    /// `tauri-plugin-global-shortcut` on every platform. Distinct from
-    /// `ShortcutEvent`, which is the macOS-only native push-to-talk
-    /// event-tap path (unused today - see `handler::push_to_talk`).
+    /// Fired when a keyed global hotkey registered via `register_global_hotkey`
+    /// changes state, backed by `tauri-plugin-global-shortcut` on every
+    /// platform. `id` is the caller-chosen registration key (e.g. the dictation
+    /// toggle vs. paste-last hotkeys), so a single listener can route each event
+    /// to the right action; `shortcut` is the accelerator string it was bound
+    /// to; `state` is whether the key was pressed (down) or released (up) - both
+    /// edges are emitted so a push-to-talk consumer can hold-to-record, while a
+    /// toggle consumer simply ignores `released`.
+    /// Distinct from `ShortcutEvent`, which is the macOS-only native
+    /// push-to-talk event-tap path (unused today - see `handler::push_to_talk`).
     #[serde(rename_all = "camelCase")]
     pub struct GlobalHotkeyTriggered {
+        pub id: String,
         pub shortcut: String,
+        pub state: HotkeyState,
     }
 }

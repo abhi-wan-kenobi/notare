@@ -132,9 +132,7 @@ describe("SidebarSurfaceNav", () => {
       "templates",
       "settings",
     ]) {
-      expect(
-        screen.getByTestId(`sidebar-surface-nav-${surface}`),
-      ).toBeTruthy();
+      expect(screen.getByTestId(`sidebar-surface-nav-${surface}`)).toBeTruthy();
     }
   });
 

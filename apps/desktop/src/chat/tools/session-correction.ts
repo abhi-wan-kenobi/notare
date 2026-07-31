@@ -6,6 +6,11 @@ import { md2json } from "@hypr/editor/markdown";
 import type { ToolDependencies } from "./types";
 
 import {
+  type DictionaryMapping,
+  parseDictionaryEntries,
+  serializeDictionaryEntries,
+} from "~/dictation/dictionary";
+import {
   applySessionContentCorrections,
   type SummaryContentCorrection,
   type TranscriptContentCorrection,
@@ -15,6 +20,7 @@ import {
   type SessionContentSnapshot,
 } from "~/session/content-queries";
 import { updateSettingValue } from "~/settings/queries";
+import { suggestCorrections } from "~/snippets/correction-suggest";
 import { normalizeKeywordList } from "~/stt/keywords";
 
 type CorrectionTarget = "summary" | "transcript" | "summary_and_transcript";
@@ -48,6 +54,7 @@ type TranscriptChange = {
 
 type DictionaryChange = {
   addedTerms: string[];
+  addedMappings: DictionaryMapping[];
 };
 
 type SummaryCorrectionPlan = {
@@ -352,48 +359,87 @@ function planTranscriptCorrections({
   return { changes, updates };
 }
 
-function parseStoredDictionaryTerms(value: unknown): string[] {
-  if (typeof value !== "string") {
-    return [];
-  }
-
-  try {
-    const parsed = JSON.parse(value);
-    return Array.isArray(parsed)
-      ? normalizeKeywordList(parsed.filter((term) => typeof term === "string"))
-      : [];
-  } catch {
-    return [];
-  }
-}
-
 function dictionaryKey(value: string): string {
   return value.trim().replace(/\s+/g, " ").toLocaleLowerCase();
 }
 
-async function saveDictionaryTerms(
-  terms?: string[],
-): Promise<DictionaryChange> {
-  if (!terms || terms.length === 0) {
-    return { addedTerms: [] };
+/**
+ * Save both kinds of dictionary learning this tool call can produce:
+ *
+ * - `terms`: the model's explicitly-passed flat hint terms (unchanged
+ *   behavior - appended as bare strings).
+ * - a wrong -> right MAPPING derived from the correction's own
+ *   oldText/newText pair, when it looks term-like (reuses the same
+ *   whitespace-diff suggester the Snippets edit toast uses). Unlike
+ *   Snippets, no separate confirm step is needed here: the user's correction
+ *   message IS the explicit consent ("it's not X, it's Y").
+ *
+ * Both append onto the FULL entry list (flat terms AND mappings) - a
+ * strings-only parse-and-rewrite here would wipe every mapping the user has
+ * built the next time chat adds a term.
+ */
+async function saveDictionaryTerms({
+  terms,
+  oldText,
+  newText,
+}: {
+  terms?: string[];
+  oldText: string;
+  newText: string;
+}): Promise<DictionaryChange> {
+  const mappingCandidates = suggestCorrections(oldText, newText);
+  const hasTerms = !!terms && terms.length > 0;
+  if (!hasTerms && mappingCandidates.length === 0) {
+    return { addedTerms: [], addedMappings: [] };
   }
 
   let addedTerms: string[] = [];
+  let addedMappings: DictionaryMapping[] = [];
   await updateSettingValue(
     "personalization_dictionary_terms",
     (storedValue) => {
-      const currentTerms = parseStoredDictionaryTerms(storedValue);
-      const currentKeys = new Set(currentTerms.map(dictionaryKey));
-      addedTerms = normalizeKeywordList(terms).filter(
+      const entries = parseDictionaryEntries(
+        typeof storedValue === "string" ? storedValue : "[]",
+      );
+      const currentKeys = new Set<string>();
+      for (const entry of entries) {
+        if (typeof entry === "string") {
+          currentKeys.add(dictionaryKey(entry));
+        } else {
+          currentKeys.add(dictionaryKey(entry.wrong));
+          currentKeys.add(dictionaryKey(entry.right));
+        }
+      }
+
+      const newMappings: DictionaryMapping[] = [];
+      for (const candidate of mappingCandidates) {
+        const key = dictionaryKey(candidate.wrong);
+        if (currentKeys.has(key)) {
+          continue;
+        }
+        currentKeys.add(key);
+        currentKeys.add(dictionaryKey(candidate.right));
+        newMappings.push({
+          wrong: candidate.wrong,
+          right: candidate.right,
+          caseSensitive: false,
+        });
+      }
+      addedMappings = newMappings;
+
+      addedTerms = normalizeKeywordList(terms ?? []).filter(
         (term) => !currentKeys.has(dictionaryKey(term)),
       );
-      return JSON.stringify(
-        normalizeKeywordList([...currentTerms, ...addedTerms]),
-      );
+
+      return serializeDictionaryEntries([
+        ...entries,
+        ...newMappings,
+        ...addedTerms,
+      ]);
     },
   );
 
-  return { addedTerms };
+  return { addedTerms, addedMappings };
 }
 
 function shouldEditSummary(target: CorrectionTarget): boolean {
@@ -540,10 +586,17 @@ export const buildApplySessionCorrectionTool = (
         };
       }
 
-      let dictionaryChanges: DictionaryChange = { addedTerms: [] };
+      let dictionaryChanges: DictionaryChange = {
+        addedTerms: [],
+        addedMappings: [],
+      };
       let dictionarySaveFailed = false;
       try {
-        dictionaryChanges = await saveDictionaryTerms(params.dictionaryTerms);
+        dictionaryChanges = await saveDictionaryTerms({
+          terms: params.dictionaryTerms,
+          oldText: params.oldText,
+          newText,
+        });
       } catch (error) {
         dictionarySaveFailed = true;
         console.error("Failed to save correction dictionary terms", error);

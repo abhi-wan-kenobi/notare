@@ -91,9 +91,9 @@ describe("DictationCaptionWindow", () => {
 
     const root = screen.getByTestId("dictation-caption-glass");
     expect(root.className).toContain("pointer-events-none");
-    expect(
-      screen.getByTestId("dictation-caption-bubble").className,
-    ).toContain("opacity-0");
+    expect(screen.getByTestId("dictation-caption-bubble").className).toContain(
+      "opacity-0",
+    );
   });
 
   it("makes the page transparent for the glass variant only", async () => {
@@ -120,9 +120,9 @@ describe("DictationCaptionWindow", () => {
     expect(screen.getByTestId("dictation-caption-text").textContent).toBe(
       "hello world",
     );
-    expect(
-      screen.getByTestId("dictation-caption-bubble").className,
-    ).toContain("opacity-100");
+    expect(screen.getByTestId("dictation-caption-bubble").className).toContain(
+      "opacity-100",
+    );
     expect(mocks.show).toHaveBeenCalled();
   });
 
@@ -143,19 +143,19 @@ describe("DictationCaptionWindow", () => {
     await act(async () => {});
 
     await pushTranscript("hello");
-    expect(
-      screen.getByTestId("dictation-caption-bubble").className,
-    ).toContain("opacity-100");
+    expect(screen.getByTestId("dictation-caption-bubble").className).toContain(
+      "opacity-100",
+    );
 
     await advance(1900);
-    expect(
-      screen.getByTestId("dictation-caption-bubble").className,
-    ).toContain("opacity-100");
+    expect(screen.getByTestId("dictation-caption-bubble").className).toContain(
+      "opacity-100",
+    );
 
     await advance(200);
-    expect(
-      screen.getByTestId("dictation-caption-bubble").className,
-    ).toContain("opacity-0");
+    expect(screen.getByTestId("dictation-caption-bubble").className).toContain(
+      "opacity-0",
+    );
 
     // The OS window hides once the opacity transition has played out.
     await advance(300);
@@ -171,9 +171,9 @@ describe("DictationCaptionWindow", () => {
     await pushTranscript("again");
     await advance(1500);
 
-    expect(
-      screen.getByTestId("dictation-caption-bubble").className,
-    ).toContain("opacity-100");
+    expect(screen.getByTestId("dictation-caption-bubble").className).toContain(
+      "opacity-100",
+    );
   });
 
   it("fades shortly after the session ends", async () => {
@@ -184,9 +184,9 @@ describe("DictationCaptionWindow", () => {
     await pushState({ phase: "idle", amplitude: 0, mode: "type" });
 
     await advance(1300);
-    expect(
-      screen.getByTestId("dictation-caption-bubble").className,
-    ).toContain("opacity-0");
+    expect(screen.getByTestId("dictation-caption-bubble").className).toContain(
+      "opacity-0",
+    );
   });
 
   it("clears the previous tail when a new session starts", async () => {

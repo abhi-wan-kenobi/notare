@@ -21,7 +21,13 @@ import { hybridBySession, type LexicalHit, type SemanticHit } from "./hybrid";
  * plan's "hybrid ≥ each arm" holds when neither arm dominates.
  */
 
-type Q = { id: string; text: string; relevant: string; paraphrase: boolean; vector: number[] };
+type Q = {
+  id: string;
+  text: string;
+  relevant: string;
+  paraphrase: boolean;
+  vector: number[];
+};
 const DOCS: Record<string, string> = golden.docs;
 const DOC_IDS: string[] = golden.doc_ids;
 const DOC_VECS: Record<string, number[]> = golden.doc_vectors;
@@ -30,7 +36,7 @@ const QUERIES: Q[] = golden.queries;
 const K = 5; // top-k each arm feeds into RRF
 
 function terms(s: string): Set<string> {
-  return new Set((s.toLowerCase().match(/[a-z]+/g) ?? []));
+  return new Set(s.toLowerCase().match(/[a-z]+/g) ?? []);
 }
 
 /** Real BM25-ish lexical arm: rank by query/doc term overlap. */
@@ -73,13 +79,18 @@ function reciprocalRank(rankedIds: string[], relevant: string): number {
 }
 
 function mrr(queries: Q[], rank: (q: Q) => string[]): number {
-  return queries.reduce((s, q) => s + reciprocalRank(rank(q), q.relevant), 0) / queries.length;
+  return (
+    queries.reduce((s, q) => s + reciprocalRank(rank(q), q.relevant), 0) /
+    queries.length
+  );
 }
 
 const lexRank = (q: Q) => lexicalArm(q.text).map((h) => h.id);
 const semRank = (q: Q) => semanticArm(q.vector).map((h) => h.sessionId);
 const hybridRank = (q: Q) =>
-  hybridBySession(lexicalArm(q.text), semanticArm(q.vector)).map((r) => r.sessionId);
+  hybridBySession(lexicalArm(q.text), semanticArm(q.vector)).map(
+    (r) => r.sessionId,
+  );
 
 describe("RRF hybrid search quality (golden smoke)", () => {
   const all = QUERIES;

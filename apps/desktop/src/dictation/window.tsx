@@ -167,6 +167,18 @@ export function DictationOrbWindow({ solid = false }: { solid?: boolean }) {
     void dictationEvents.dictationOrbClicked.emit({});
   };
 
+  const handleContextMenu = (event: React.MouseEvent) => {
+    // Right-click dismisses the idle orb until the next dictation session
+    // starts (the host owns the actual hide - see `DictationOrbHost`). While
+    // a session is live the orb doubles as the mic indicator, so dismissing
+    // it then would leave the mic running with no visual trace - ignore.
+    event.preventDefault();
+    if (dictating) {
+      return;
+    }
+    void dictationEvents.dictationOrbHideRequested.emit({});
+  };
+
   return (
     <div
       data-testid={solid ? "dictation-window-solid" : "dictation-window-glass"}
@@ -186,6 +198,7 @@ export function DictationOrbWindow({ solid = false }: { solid?: boolean }) {
         onPointerUp={handlePointerEnd}
         onPointerCancel={handlePointerEnd}
         onClick={handleClick}
+        onContextMenu={handleContextMenu}
         className={cn([
           "relative flex cursor-pointer items-center justify-center rounded-full",
           "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-hidden",

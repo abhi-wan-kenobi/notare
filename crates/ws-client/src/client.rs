@@ -117,6 +117,7 @@ impl WebSocketClient {
         let handle = WebSocketHandle { control_tx };
 
         let _send_task = tokio::spawn(async move {
+            #[derive(Debug)]
             enum SendLoopExit {
                 Finalize,
                 InputEnded,
@@ -213,6 +214,11 @@ impl WebSocketClient {
                     else => break SendLoopExit::InputEnded,
                 }
             };
+
+            // D3 instrumentation (2026-07-31): name the send-task exit in the
+            // log - "audio channel closed" on the session side only says the
+            // task died, not why.
+            tracing::info!(?exit_reason, "ws_send_task_exit");
 
             if matches!(exit_reason, SendLoopExit::Finalize)
                 || (matches!(exit_reason, SendLoopExit::InputEnded) && !waited_for_input_end)

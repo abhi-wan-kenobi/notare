@@ -104,7 +104,10 @@ impl SessionRegistry {
                 cur.audio_secs_processed = audio_secs_processed;
             }
             let audio = cur.audio_secs_processed;
-            g.samples.push_back(Sample { t_ms: now, audio_secs: audio });
+            g.samples.push_back(Sample {
+                t_ms: now,
+                audio_secs: audio,
+            });
             while g.samples.len() > SAMPLE_CAP {
                 g.samples.pop_front();
             }

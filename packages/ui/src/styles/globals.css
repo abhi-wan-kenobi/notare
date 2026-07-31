@@ -60,7 +60,11 @@
 
   /* Glow recipe: outer soft glow + 1px inset border, live states only */
   --shadow-glow-accent:
-    0 0 32px hsl(var(--primary) / 0.12), inset 0 0 0 1px hsl(var(--primary) / 0.4);
+    0 0 32px hsl(var(--primary) / 0.12), inset 0 0 0 1px hsl(
+    var(--primary)
+    /
+    0.4
+  );
   --shadow-glow-rec:
     0 0 32px hsl(var(--rec) / 0.15), inset 0 0 0 1px hsl(var(--rec) / 0.4);
   --shadow-glow-ok:

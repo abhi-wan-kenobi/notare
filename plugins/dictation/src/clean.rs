@@ -128,8 +128,14 @@ mod tests {
 
     #[test]
     fn strips_trailing_bracketed_artifacts_and_stray_punctuation() {
-        assert_eq!(clean_transcript("run the tests [BLANK_AUDIO]"), "Run the tests");
-        assert_eq!(clean_transcript("run the tests (inaudible)"), "Run the tests");
+        assert_eq!(
+            clean_transcript("run the tests [BLANK_AUDIO]"),
+            "Run the tests"
+        );
+        assert_eq!(
+            clean_transcript("run the tests (inaudible)"),
+            "Run the tests"
+        );
         assert_eq!(clean_transcript("run the tests ,"), "Run the tests");
     }
 

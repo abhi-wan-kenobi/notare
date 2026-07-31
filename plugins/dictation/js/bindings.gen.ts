@@ -129,6 +129,32 @@ async cleanText(text: string) : Promise<Result<string, string>> {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
+},
+/**
+ * Pause whatever media is currently playing when a dictation session starts,
+ * remembering what was paused. Returns whether anything was paused. Best-effort
+ * (never errors on a media-control failure); the frontend fires this and
+ * forgets it so it can't delay the mic.
+ */
+async pauseMedia() : Promise<Result<boolean, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:dictation|pause_media") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Resume only the media THIS app paused (via `pause_media`), when a dictation
+ * session ends. A no-op if nothing was paused.
+ */
+async resumeMedia() : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:dictation|resume_media") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 }
 }
 
@@ -139,12 +165,14 @@ export const events = __makeEvents__<{
 dictationAmplitudeEvent: DictationAmplitudeEvent,
 dictationFinishedEvent: DictationFinishedEvent,
 dictationOrbClicked: DictationOrbClicked,
+dictationOrbHideRequested: DictationOrbHideRequested,
 dictationStateEvent: DictationStateEvent,
 dictationTranscriptEvent: DictationTranscriptEvent
 }>({
 dictationAmplitudeEvent: "plugin:dictation:dictation-amplitude-event",
 dictationFinishedEvent: "plugin:dictation:dictation-finished-event",
 dictationOrbClicked: "plugin:dictation:dictation-orb-clicked",
+dictationOrbHideRequested: "plugin:dictation:dictation-orb-hide-requested",
 dictationStateEvent: "plugin:dictation:dictation-state-event",
 dictationTranscriptEvent: "plugin:dictation:dictation-transcript-event"
 })
@@ -180,6 +208,13 @@ export type DictationFinishedEvent = { rawText: string; mode: DictationOutputMod
  * host toggles the dictation session in response.
  */
 export type DictationOrbClicked = Record<string, never>
+/**
+ * Emitted by the orb webview when the user right-clicks the idle orb to
+ * dismiss it. The main window host hides the orb window until the next
+ * dictation session actually starts (phase -> listening), which re-arms
+ * visibility; the suppression is session-scoped and never persisted.
+ */
+export type DictationOrbHideRequested = Record<string, never>
 /**
  * Where recognized speech goes (mirrors the `dictation_output_mode` setting;
  * serialized as `"type"` / `"batch"` so the two representations match).

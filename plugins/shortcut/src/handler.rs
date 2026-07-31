@@ -41,23 +41,27 @@ impl Handler {
         self.push_to_talk.unregister()
     }
 
-    /// Toggle-style global hotkey backed by `tauri-plugin-global-shortcut`
-    /// (must be registered on the app builder - the desktop app does this on
-    /// every platform). `shortcut` uses the plugin's string syntax, e.g.
-    /// `"ctrl+alt+space"`. Fires `GlobalHotkeyTriggered` on key-down.
+    /// Keyed global hotkey backed by `tauri-plugin-global-shortcut` (must be
+    /// registered on the app builder - the desktop app does this on every
+    /// platform). Multiple hotkeys can be live at once, each under its own
+    /// `id`; re-registering an `id` replaces its previous binding. `shortcut`
+    /// uses the plugin's string syntax, e.g. `"ctrl+alt+space"`. Fires
+    /// `GlobalHotkeyTriggered { id, shortcut }` on key-down.
     pub fn register_global<R: tauri::Runtime>(
         &self,
         app: tauri::AppHandle<R>,
+        id: String,
         shortcut: String,
     ) -> Result<(), Error> {
-        self.global.register(app, shortcut)
+        self.global.register(app, id, shortcut)
     }
 
     pub fn unregister_global<R: tauri::Runtime>(
         &self,
         app: tauri::AppHandle<R>,
+        id: String,
     ) -> Result<(), Error> {
-        self.global.unregister(app)
+        self.global.unregister(app, id)
     }
 }
 
@@ -72,6 +76,7 @@ pub fn parse_global(shortcut: &str) -> Result<(), Error> {
 /// Toggle-style global hotkey (`register_global`/`unregister_global`),
 /// backed by `tauri-plugin-global-shortcut` on every platform.
 mod global {
+    use std::collections::HashMap;
     use std::sync::Mutex;
 
     use tauri::{AppHandle, Runtime};
@@ -79,7 +84,7 @@ mod global {
     use tauri_specta::Event;
 
     use super::Error;
-    use crate::events::GlobalHotkeyTriggered;
+    use crate::events::{GlobalHotkeyTriggered, HotkeyState};
 
     pub fn parse(shortcut: &str) -> Result<(), Error> {
         shortcut
@@ -89,21 +94,56 @@ mod global {
     }
 
     pub struct Handler {
-        /// Currently registered toggle hotkey, kept so a re-register or
-        /// teardown can unregister the previous binding.
-        current: Mutex<Option<Shortcut>>,
+        /// Registered hotkeys keyed by caller id, so several can be live at
+        /// once (the dictation toggle and paste-last hotkeys). The original
+        /// accelerator string rides along so a failed re-register can restore
+        /// the previous binding instead of leaving the id unbound.
+        current: Mutex<HashMap<String, (Shortcut, String)>>,
+    }
+
+    /// Bind `parsed` to the OS-level shortcut, emitting the keyed event on
+    /// press. Split out so a failed re-register can re-bind the previous
+    /// accelerator with the same closure shape.
+    fn bind<R: Runtime>(
+        app: &AppHandle<R>,
+        id: &str,
+        shortcut: &str,
+        parsed: Shortcut,
+    ) -> Result<(), Error> {
+        let emitted_id = id.to_string();
+        let emitted_shortcut = shortcut.to_string();
+        app.global_shortcut()
+            .on_shortcut(parsed, move |app, _sc, event| {
+                // Emit BOTH edges: push-to-talk holds to record and stops on
+                // release, while a toggle consumer ignores `Released`. Repeated
+                // `Pressed` events from OS key auto-repeat are passed through
+                // untouched - the frontend dedupes them (a held PTT key on
+                // Windows repeats Pressed).
+                let state = match event.state() {
+                    ShortcutState::Pressed => HotkeyState::Pressed,
+                    ShortcutState::Released => HotkeyState::Released,
+                };
+                let _ = GlobalHotkeyTriggered {
+                    id: emitted_id.clone(),
+                    shortcut: emitted_shortcut.clone(),
+                    state,
+                }
+                .emit(app);
+            })
+            .map_err(|e| Error::GlobalShortcut(e.to_string()))
     }
 
     impl Handler {
         pub fn new() -> Self {
             Self {
-                current: Mutex::new(None),
+                current: Mutex::new(HashMap::new()),
             }
         }
 
         pub fn register<R: Runtime>(
             &self,
             app: AppHandle<R>,
+            id: String,
             shortcut: String,
         ) -> Result<(), Error> {
             let parsed: Shortcut = shortcut
@@ -111,32 +151,49 @@ mod global {
                 .map_err(|e| Error::InvalidShortcut(format!("{shortcut}: {e}")))?;
 
             let mut guard = self.current.lock().unwrap_or_else(|e| e.into_inner());
-            if let Some(previous) = guard.take() {
-                let _ = app.global_shortcut().unregister(previous);
+            // Replace only this id's previous binding; other ids stay live.
+            // The old binding must come off first (re-registering the same
+            // accelerator would otherwise collide with itself) - but a failed
+            // new registration restores it so the id is never left unbound.
+            let previous = guard.remove(&id);
+            if let Some((prev, prev_shortcut)) = &previous {
+                if let Err(e) = app.global_shortcut().unregister(*prev) {
+                    // The old accelerator is still live at the OS - binding
+                    // the new one may collide, and reporting THAT error would
+                    // point at the wrong cause. Keep the old entry and fail
+                    // with the real reason.
+                    guard.insert(id, (*prev, prev_shortcut.clone()));
+                    return Err(Error::GlobalShortcut(format!(
+                        "could not release the previous binding: {e}"
+                    )));
+                }
             }
 
-            let emitted = shortcut.clone();
-            app.global_shortcut()
-                .on_shortcut(parsed, move |app, _sc, event| {
-                    if event.state() == ShortcutState::Pressed {
-                        let _ = GlobalHotkeyTriggered {
-                            shortcut: emitted.clone(),
+            match bind(&app, &id, &shortcut, parsed) {
+                Ok(()) => {
+                    guard.insert(id, (parsed, shortcut));
+                    Ok(())
+                }
+                Err(error) => {
+                    if let Some((prev, prev_shortcut)) = previous {
+                        if bind(&app, &id, &prev_shortcut, prev).is_ok() {
+                            guard.insert(id, (prev, prev_shortcut));
                         }
-                        .emit(app);
                     }
-                })
-                .map_err(|e| Error::GlobalShortcut(e.to_string()))?;
-
-            *guard = Some(parsed);
-            Ok(())
+                    Err(error)
+                }
+            }
         }
 
-        pub fn unregister<R: Runtime>(&self, app: AppHandle<R>) -> Result<(), Error> {
+        pub fn unregister<R: Runtime>(&self, app: AppHandle<R>, id: String) -> Result<(), Error> {
             let mut guard = self.current.lock().unwrap_or_else(|e| e.into_inner());
-            if let Some(previous) = guard.take() {
-                app.global_shortcut()
-                    .unregister(previous)
-                    .map_err(|e| Error::GlobalShortcut(e.to_string()))?;
+            if let Some((previous, shortcut)) = guard.remove(&id) {
+                if let Err(e) = app.global_shortcut().unregister(previous) {
+                    // The OS still fires this binding - keep tracking it so a
+                    // later re-register can still replace it.
+                    guard.insert(id, (previous, shortcut));
+                    return Err(Error::GlobalShortcut(e.to_string()));
+                }
             }
             Ok(())
         }

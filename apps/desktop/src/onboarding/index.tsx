@@ -235,8 +235,8 @@ function OnboardingScreenContent({
             title={<Trans>Transcription model</Trans>}
             description={
               <Trans>
-                Download a speech-to-text model — transcription runs entirely
-                on your device
+                Download a speech-to-text model — transcription runs entirely on
+                your device
               </Trans>
             }
             completedTitle={<Trans>Transcription model configured</Trans>}

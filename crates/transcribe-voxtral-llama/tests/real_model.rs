@@ -27,8 +27,8 @@ fn transcribes_real_english_audio_on_cpu() {
     let model_dir =
         std::env::var("VOXTRAL_MODEL_DIR").expect("set VOXTRAL_MODEL_DIR to the model directory");
 
-    let source = hypr_audio_utils::source_from_path(hypr_data::english_1::AUDIO_PART2_16000HZ_PATH)
-        .unwrap();
+    let source =
+        hypr_audio_utils::source_from_path(hypr_data::english_1::AUDIO_PART2_16000HZ_PATH).unwrap();
     let samples = hypr_audio_utils::resample_audio(source, 16_000).unwrap();
     // Cap at libmtmd's ~30s fixed-chunk ceiling (and Notare's own 25s VAD
     // chunk ceiling) — this is a batch engine, not a streaming one.

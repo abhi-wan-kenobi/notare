@@ -2,9 +2,11 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  ActivationModeGroup,
   CleanupGroup,
   DictationHistoryList,
   MacosAccessibilityHint,
+  normalizeActivationMode,
   OrbVariantGroup,
   OutputModeGroup,
 } from "./index";
@@ -52,6 +54,44 @@ describe("CleanupGroup", () => {
 
     fireEvent.click(screen.getByRole("radio", { name: /None/ }));
     expect(onChange).toHaveBeenCalledWith("none");
+  });
+});
+
+describe("normalizeActivationMode", () => {
+  it('passes through known modes and falls back to "toggle"', () => {
+    expect(normalizeActivationMode("toggle")).toBe("toggle");
+    expect(normalizeActivationMode("push_to_talk")).toBe("push_to_talk");
+    expect(normalizeActivationMode(undefined)).toBe("toggle");
+    expect(normalizeActivationMode("bogus")).toBe("toggle");
+  });
+});
+
+describe("ActivationModeGroup", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("selects the current mode and emits the new one", () => {
+    const onChange = vi.fn();
+    render(<ActivationModeGroup value="toggle" onChange={onChange} />);
+
+    const toggle = screen.getByRole("radio", { name: /Toggle press/ });
+    const holdToTalk = screen.getByRole("radio", { name: /Hold to talk/ });
+    expect((toggle as HTMLInputElement).checked).toBe(true);
+    expect((holdToTalk as HTMLInputElement).checked).toBe(false);
+
+    fireEvent.click(holdToTalk);
+    expect(onChange).toHaveBeenCalledWith("push_to_talk");
+  });
+
+  it("shows the hold-to-talk release copy", () => {
+    render(<ActivationModeGroup value="push_to_talk" onChange={vi.fn()} />);
+
+    expect(
+      screen.getByText(
+        /Hold the dictation shortcut to talk; release to stop and deliver\./,
+      ),
+    ).toBeTruthy();
   });
 });
 
@@ -157,15 +197,23 @@ describe("DictationHistoryList", () => {
     {
       id: "one",
       text: "First dictation",
-      mode: "type",
-      cleaned: true,
+      rawText: "first dictation",
+      source: "dictation",
+      model: null,
+      durationMs: null,
+      pinned: false,
+      status: "delivered",
       createdAt: new Date(NOW - 30_000).toISOString(),
     },
     {
       id: "two",
       text: "Second dictation",
-      mode: "batch",
-      cleaned: false,
+      rawText: null,
+      source: "dictation",
+      model: null,
+      durationMs: null,
+      pinned: false,
+      status: "delivered",
       createdAt: new Date(NOW - 90_000).toISOString(),
     },
   ];

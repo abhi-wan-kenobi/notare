@@ -125,18 +125,18 @@ pub async fn stop_stt_server(
     let child_ids: Vec<&str> = match server_type {
         ServerType::Internal => {
             #[cfg(any(
-    feature = "whisper-cpp",
-    feature = "parakeet-onnx",
-    feature = "voxtral-llama"
-))]
+                feature = "whisper-cpp",
+                feature = "parakeet-onnx",
+                feature = "voxtral-llama"
+            ))]
             {
                 vec![INTERNAL_STT_ACTOR_NAME]
             }
             #[cfg(not(any(
-    feature = "whisper-cpp",
-    feature = "parakeet-onnx",
-    feature = "voxtral-llama"
-)))]
+                feature = "whisper-cpp",
+                feature = "parakeet-onnx",
+                feature = "voxtral-llama"
+            )))]
             {
                 Vec::new()
             }
@@ -161,10 +161,10 @@ pub async fn stop_stt_server(
     match server_type {
         ServerType::Internal => {
             #[cfg(any(
-    feature = "whisper-cpp",
-    feature = "parakeet-onnx",
-    feature = "voxtral-llama"
-))]
+                feature = "whisper-cpp",
+                feature = "parakeet-onnx",
+                feature = "voxtral-llama"
+            ))]
             wait_for_actor_shutdown(InternalSTTActor::name()).await;
         }
         ServerType::External => wait_for_actor_shutdown(ExternalSTTActor::name()).await,

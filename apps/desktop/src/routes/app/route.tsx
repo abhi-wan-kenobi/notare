@@ -14,8 +14,8 @@ import {
   resolveShellEntryPath,
 } from "./-resolve-entry-path";
 
-import { useDeeplinkHandler } from "~/shared/hooks/useDeeplinkHandler";
 import { ContentErrorBoundary } from "~/shared/content-error-boundary";
+import { useDeeplinkHandler } from "~/shared/hooks/useDeeplinkHandler";
 import { ListenerProvider } from "~/stt/contexts";
 
 export const Route = createFileRoute("/app")({
@@ -50,7 +50,9 @@ function Component() {
   // window down to a bare "Reload Notare" screen. Keying the reset off the
   // top-level path clears a caught error the moment the route actually
   // changes, even for a surface that isn't otherwise remounted.
-  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname,
+  });
 
   useDeeplinkHandler();
 

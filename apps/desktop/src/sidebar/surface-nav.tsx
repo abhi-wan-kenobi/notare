@@ -5,6 +5,7 @@ import {
   CalendarDaysIcon,
   type LucideIcon,
   NotebookTextIcon,
+  ScrollTextIcon,
   SearchIcon,
   SettingsIcon,
   UsersIcon,
@@ -68,6 +69,12 @@ export function SidebarSurfaceNav() {
       label: t`Search`,
       icon: SearchIcon,
       onClick: () => openSurface("search"),
+    },
+    {
+      id: "snippets",
+      label: t`Snippets`,
+      icon: ScrollTextIcon,
+      onClick: () => openSurface("snippets"),
     },
     {
       id: "calendar",

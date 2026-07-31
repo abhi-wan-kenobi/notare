@@ -79,6 +79,37 @@ impl<'a, R: tauri::Runtime, M: tauri::Manager<R>> Dictation<'a, R, M> {
     pub fn clean_text(&self, text: &str) -> String {
         crate::clean::clean_transcript(text)
     }
+
+    /// Pause whatever media is currently playing (see `media.rs`), remembering
+    /// what we paused so `resume_media` only un-pauses those exact players.
+    /// Returns whether anything was paused. Best-effort: any backend error
+    /// degrades to `false`. The platform work runs on the blocking pool so it
+    /// never blocks the async executor (or delays the mic).
+    pub async fn pause_media(&self) -> bool {
+        let state = self.manager.state::<crate::media::MediaPauseState>();
+        // Hold the op lock across enumerate+pause+record: a resume racing
+        // into the gap before record() would drain an empty list and strand
+        // the media paused.
+        let _op = state.lock_op().await;
+        let paused = tauri::async_runtime::spawn_blocking(crate::media::pause_playing)
+            .await
+            .unwrap_or_default();
+        let any = !paused.is_empty();
+        state.record(paused);
+        any
+    }
+
+    /// Resume only the media WE paused. A no-op if nothing was paused (or it was
+    /// already resumed), so it's safe to call redundantly.
+    pub async fn resume_media(&self) {
+        let state = self.manager.state::<crate::media::MediaPauseState>();
+        let _op = state.lock_op().await;
+        let targets = state.take();
+        if targets.is_empty() {
+            return;
+        }
+        let _ = tauri::async_runtime::spawn_blocking(move || crate::media::resume(targets)).await;
+    }
 }
 
 pub trait DictationPluginExt<R: tauri::Runtime> {

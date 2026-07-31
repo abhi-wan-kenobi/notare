@@ -1,33 +1,82 @@
 import type { DictationOutputMode } from "@hypr/plugin-dictation";
 
-import { executeTransaction, useLiveQuery } from "~/db";
+import { executeTransaction, liveQueryClient, useLiveQuery } from "~/db";
 import { enqueueDatabaseWrite } from "~/db/write-queue";
 
 /**
- * Dictation history - the "in-app clipboard". Every completed dictation is
- * persisted (final text, mode, cleaned-or-raw flag, timestamp) so it can be
- * re-copied later from Settings -> Dictation.
+ * Dictation history - the searchable "in-app clipboard". Every completed
+ * dictation is persisted (cleaned text + the pre-cleanup raw transcript,
+ * source, model, duration, pin/status flags, timestamp) so it can be searched,
+ * pinned and re-copied later from the History surface.
  *
  * Persistence choice: the app's SQLite DB (`dictation_history` table,
- * migration `20260716120000_dictation_history`), mirroring how every other
- * list in the app persists (chat groups/messages pattern:
- * `useLiveQuery` reads + `enqueueDatabaseWrite`-serialized transactions).
- * A store2/JSON-file store was considered and rejected: the DB gives us the
- * reactive settings UI for free and already has migration plumbing.
+ * migrations `20260716120000_dictation_history` +
+ * `20260731000000_dictation_history_snippets`), mirroring how every other list
+ * in the app persists (chat groups/messages pattern: `useLiveQuery` reads +
+ * `enqueueDatabaseWrite`-serialized transactions; one-shot reads via
+ * `liveQueryClient.execute`, same as `contacts/queries`).
  */
 
-/** Most recent entries kept; older rows are pruned on every insert. */
+/** Recent delivered entries shown in the legacy Settings history list. */
 export const DICTATION_HISTORY_CAP = 50;
+
+/**
+ * Rolling retention cap. Pruning keeps the newest `DICTATION_HISTORY_PRUNE_CAP`
+ * *unpinned* rows and never touches pinned ones, so a fully-pinned table is a
+ * no-op rather than a deadlock.
+ */
+export const DICTATION_HISTORY_PRUNE_CAP = 500;
+
+/** Default page size for {@link listDictationHistory}. */
+export const DICTATION_HISTORY_PAGE_SIZE = 50;
 
 const WRITE_QUEUE_KEY = "dictation-history";
 
+/**
+ * Age-based retention windows, keyed by the `dictation_history_retention`
+ * setting value ("off" | "7d" | "30d" | "90d", schema owned by the
+ * PTT/media-pause lane). "off" and any unrecognized value intentionally have
+ * no entry here, so callers treat them as a no-op.
+ */
+const RETENTION_WINDOW_DAYS: Record<string, number> = {
+  "7d": 7,
+  "30d": 30,
+  "90d": 90,
+};
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+/**
+ * ISO-8601 UTC cutoff for a retention value, or `null` when the retention is
+ * "off"/unrecognized (no age-based pruning should happen). Rows are ISO
+ * strings so a plain lexicographic `created_at < cutoff` comparison is
+ * correct without parsing dates in SQL.
+ */
+function retentionCutoffIso(retention: string | undefined): string | null {
+  if (!retention) {
+    return null;
+  }
+  const days = RETENTION_WINDOW_DAYS[retention];
+  if (!days) {
+    return null;
+  }
+  return new Date(Date.now() - days * MS_PER_DAY).toISOString();
+}
+
+export type DictationHistorySource = "dictation" | "meeting";
+export type DictationHistoryStatus = "delivered" | "discarded";
+
 export interface DictationHistoryEntry {
   id: string;
+  /** Cleaned/delivered text. */
   text: string;
-  /** Output mode of the session that produced the text. */
-  mode: DictationOutputMode;
-  /** Whether cleanup (basic or LLM) was applied to `text`. */
-  cleaned: boolean;
+  /** Pre-cleanup raw transcript, when captured. */
+  rawText: string | null;
+  source: DictationHistorySource;
+  model: string | null;
+  durationMs: number | null;
+  pinned: boolean;
+  status: DictationHistoryStatus;
   /** ISO-8601 UTC timestamp. */
   createdAt: string;
 }
@@ -35,21 +84,34 @@ export interface DictationHistoryEntry {
 type DictationHistorySqlRow = {
   id: string;
   text: string;
-  mode: string;
-  cleaned: number;
+  raw_text: string | null;
+  source: string;
+  model: string | null;
+  duration_ms: number | null;
+  pinned: number;
+  status: string;
   created_at: string;
 };
 
 const EMPTY_HISTORY: DictationHistoryEntry[] = [];
 
+const SELECT_COLUMNS = `
+  id, text, raw_text, source, model, duration_ms, pinned, status, created_at
+`;
+
+/**
+ * Legacy Settings history list: the most recent *delivered* entries. Discarded
+ * (recovery-only) rows are excluded so the copy list stays clean.
+ */
 export function useDictationHistory(): DictationHistoryEntry[] {
   const { data = EMPTY_HISTORY } = useLiveQuery<
     DictationHistorySqlRow,
     DictationHistoryEntry[]
   >({
     sql: `
-      SELECT id, text, mode, cleaned, created_at
+      SELECT ${SELECT_COLUMNS}
       FROM dictation_history
+      WHERE status = 'delivered'
       ORDER BY created_at DESC, id DESC
       LIMIT ?
     `,
@@ -64,43 +126,280 @@ function mapHistoryRow(row: DictationHistorySqlRow): DictationHistoryEntry {
   return {
     id: row.id,
     text: row.text,
-    mode: row.mode === "batch" ? "batch" : "type",
-    cleaned: row.cleaned !== 0,
+    rawText: row.raw_text ?? null,
+    source: row.source === "meeting" ? "meeting" : "dictation",
+    model: row.model ?? null,
+    durationMs: row.duration_ms ?? null,
+    pinned: row.pinned !== 0,
+    status: row.status === "discarded" ? "discarded" : "delivered",
     createdAt: row.created_at,
   };
 }
 
 /**
- * Append a completed dictation and prune everything older than the newest
- * `DICTATION_HISTORY_CAP` rows in the same transaction.
+ * Opaque keyset cursor over (created_at, id). Base64 keeps it treatable as a
+ * blob by callers and out of the query surface. Round-tripped through UTF-8
+ * bytes because btoa/atob alone are Latin-1-only - today's values are ASCII
+ * (ISO timestamp + UUID), but the cursor primitive must not corrupt or throw
+ * the day an id ever carries non-Latin-1 text.
+ */
+function encodeCursor(row: { createdAt: string; id: string }): string {
+  const bytes = new TextEncoder().encode(
+    JSON.stringify([row.createdAt, row.id]),
+  );
+  return btoa(String.fromCharCode(...bytes));
+}
+
+function decodeCursor(
+  cursor: string,
+): { createdAt: string; id: string } | null {
+  try {
+    const bytes = Uint8Array.from(atob(cursor), (c) => c.charCodeAt(0));
+    const parsed = JSON.parse(new TextDecoder().decode(bytes));
+    if (
+      Array.isArray(parsed) &&
+      typeof parsed[0] === "string" &&
+      typeof parsed[1] === "string"
+    ) {
+      return { createdAt: parsed[0], id: parsed[1] };
+    }
+  } catch {
+    // Fall through: a malformed cursor just restarts from the first page.
+  }
+  return null;
+}
+
+/**
+ * Turn free-text into a safe FTS5 MATCH expression: each whitespace token
+ * becomes a quoted prefix term (implicit AND), so user input with FTS operator
+ * characters (`"`, `*`, `:`, `AND`, `-`) can't throw a syntax error.
+ */
+function toFtsQuery(query: string): string {
+  return query
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((token) => `"${token.replace(/"/g, '""')}"*`)
+    .join(" ");
+}
+
+/**
+ * Newest-first page of history, optionally full-text filtered over both the
+ * cleaned text and the raw transcript. Keyset pagination on (created_at, id) -
+ * no OFFSET, so deep pages stay cheap.
+ */
+export async function listDictationHistory(opts?: {
+  query?: string;
+  cursor?: string | null;
+  limit?: number;
+}): Promise<{ entries: DictationHistoryEntry[]; nextCursor: string | null }> {
+  const limit =
+    opts?.limit && opts.limit > 0 ? opts.limit : DICTATION_HISTORY_PAGE_SIZE;
+  const query = opts?.query?.trim() ?? "";
+  const after = opts?.cursor ? decodeCursor(opts.cursor) : null;
+
+  const where: string[] = [];
+  const params: unknown[] = [];
+
+  if (query) {
+    where.push(`dictation_history_fts MATCH ?`);
+    params.push(toFtsQuery(query));
+  }
+  if (after) {
+    where.push(`(h.created_at < ? OR (h.created_at = ? AND h.id < ?))`);
+    params.push(after.createdAt, after.createdAt, after.id);
+  }
+
+  const whereClause = where.length ? `WHERE ${where.join(" AND ")}` : "";
+  // Fetch one extra row to know whether a further page exists.
+  params.push(limit + 1);
+
+  const sql = query
+    ? `
+        SELECT ${SELECT_COLUMNS.replace(/(\w+)/g, "h.$1")}
+        FROM dictation_history h
+        JOIN dictation_history_fts f ON f.id = h.id
+        ${whereClause}
+        ORDER BY h.created_at DESC, h.id DESC
+        LIMIT ?
+      `
+    : `
+        SELECT ${SELECT_COLUMNS.replace(/(\w+)/g, "h.$1")}
+        FROM dictation_history h
+        ${whereClause}
+        ORDER BY h.created_at DESC, h.id DESC
+        LIMIT ?
+      `;
+
+  const rows = await liveQueryClient.execute<DictationHistorySqlRow>(
+    sql,
+    params,
+  );
+
+  const hasMore = rows.length > limit;
+  const page = hasMore ? rows.slice(0, limit) : rows;
+  const entries = page.map(mapHistoryRow);
+  const last = entries[entries.length - 1];
+  const nextCursor = hasMore && last ? encodeCursor(last) : null;
+
+  return { entries, nextCursor };
+}
+
+/**
+ * Append a completed dictation and prune the oldest *unpinned* rows past the
+ * rolling cap in the same transaction. New fields are optional so existing
+ * callers passing only `{ text, mode, cleaned }` keep working.
+ *
+ * When `retention` is passed (the `dictation_history_retention` setting
+ * value), the age-based prune from {@link pruneDictationHistoryByAge} is ALSO
+ * applied in this same transaction - this is the enforcement hook for
+ * write-time retention. It's optional/backward compatible: omitting it (as
+ * every caller does today) only applies the existing count-based cap.
+ *
+ * Reconciliation TODO for the merger: no current caller passes `retention`
+ * yet - `dictation/finalize.ts` (the save path, owned by the PTT/media-pause
+ * lane) should read `dictation_history_retention` and thread it through here
+ * once that file is free to touch. Until then, day-to-day enforcement comes
+ * from {@link pruneDictationHistoryByAge} being fired from the Snippets page
+ * load path (`snippets/queries.ts`).
  */
 export async function addDictationHistoryEntry(entry: {
   text: string;
   mode: DictationOutputMode;
   cleaned: boolean;
+  rawText?: string | null;
+  source?: DictationHistorySource;
+  model?: string | null;
+  durationMs?: number | null;
+  status?: DictationHistoryStatus;
+  /** `dictation_history_retention` setting value; omit/"off" = no age prune. */
+  retention?: string;
 }): Promise<void> {
   const id = crypto.randomUUID();
   const createdAt = new Date().toISOString();
 
-  await enqueueDatabaseWrite(WRITE_QUEUE_KEY, async () => {
-    await executeTransaction([
-      {
-        sql: `
-          INSERT INTO dictation_history (id, text, mode, cleaned, created_at)
-          VALUES (?, ?, ?, ?, ?)
-        `,
-        params: [id, entry.text, entry.mode, entry.cleaned ? 1 : 0, createdAt],
-      },
-      {
-        sql: `
-          DELETE FROM dictation_history
-          WHERE id NOT IN (
+  const statements: { sql: string; params: unknown[] }[] = [
+    {
+      sql: `
+        INSERT INTO dictation_history
+          (id, text, raw_text, mode, cleaned, source, model, duration_ms,
+           status, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `,
+      params: [
+        id,
+        entry.text,
+        entry.rawText ?? null,
+        entry.mode,
+        entry.cleaned ? 1 : 0,
+        entry.source ?? "dictation",
+        entry.model ?? null,
+        entry.durationMs ?? null,
+        entry.status ?? "delivered",
+        createdAt,
+      ],
+    },
+    {
+      // Prune oldest-first among *unpinned* rows only; pinned rows are exempt
+      // and never counted, so an all-pinned table prunes nothing.
+      sql: `
+        DELETE FROM dictation_history
+        WHERE pinned = 0
+          AND id NOT IN (
             SELECT id FROM dictation_history
+            WHERE pinned = 0
             ORDER BY created_at DESC, id DESC
             LIMIT ?
           )
-        `,
-        params: [DICTATION_HISTORY_CAP],
+      `,
+      params: [DICTATION_HISTORY_PRUNE_CAP],
+    },
+  ];
+
+  const ageCutoff = retentionCutoffIso(entry.retention);
+  if (ageCutoff) {
+    statements.push(ageBasedPruneStatement(ageCutoff));
+  }
+
+  await enqueueDatabaseWrite(WRITE_QUEUE_KEY, async () => {
+    await executeTransaction(statements);
+  });
+}
+
+function ageBasedPruneStatement(cutoffIso: string): {
+  sql: string;
+  params: unknown[];
+} {
+  return {
+    // Unpinned rows only, regardless of status - pinned rows are exempt from
+    // age-based retention exactly like the count-based cap above. Audio
+    // files are NOT touched here: `audio_path` is reserved/unused for now
+    // (no audio is currently persisted alongside history rows), so cleaning
+    // up on-disk audio when it lands is future work.
+    sql: `
+      DELETE FROM dictation_history
+      WHERE pinned = 0
+        AND created_at < ?
+    `,
+    params: [cutoffIso],
+  };
+}
+
+/**
+ * Age-based retention prune, independent of the count-based rolling cap:
+ * deletes unpinned rows (any status - delivered or discarded) older than the
+ * `retention` window. No-op for "off" or an unrecognized retention value.
+ * Pinned rows are always exempt.
+ *
+ * This is the day-to-day enforcement path, fired fire-and-forget from the
+ * Snippets page load (`snippets/queries.ts`) rather than from the dictation
+ * save path - see {@link addDictationHistoryEntry}'s reconciliation TODO.
+ *
+ * Audio files are intentionally untouched: `audio_path` is a reserved/unused
+ * column today, so there is no on-disk audio to clean up yet.
+ */
+export async function pruneDictationHistoryByAge(
+  retention: string,
+): Promise<void> {
+  const cutoffIso = retentionCutoffIso(retention);
+  if (!cutoffIso) {
+    return;
+  }
+
+  await enqueueDatabaseWrite(WRITE_QUEUE_KEY, async () => {
+    await executeTransaction([ageBasedPruneStatement(cutoffIso)]);
+  });
+}
+
+export async function setDictationHistoryPinned(
+  id: string,
+  pinned: boolean,
+): Promise<void> {
+  await enqueueDatabaseWrite(WRITE_QUEUE_KEY, async () => {
+    await executeTransaction([
+      {
+        sql: "UPDATE dictation_history SET pinned = ? WHERE id = ?",
+        params: [pinned ? 1 : 0, id],
+      },
+    ]);
+  });
+}
+
+/**
+ * Overwrite an entry's cleaned text (Snippets inline edit). The FTS mirror
+ * follows automatically via the `dictation_history_fts_au` AFTER UPDATE
+ * trigger (migration `20260731000000_dictation_history_snippets`) - no
+ * separate FTS write needed here.
+ */
+export async function updateDictationHistoryText(
+  id: string,
+  text: string,
+): Promise<void> {
+  await enqueueDatabaseWrite(WRITE_QUEUE_KEY, async () => {
+    await executeTransaction([
+      {
+        sql: "UPDATE dictation_history SET text = ? WHERE id = ?",
+        params: [text, id],
       },
     ]);
   });

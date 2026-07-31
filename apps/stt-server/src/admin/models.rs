@@ -137,7 +137,10 @@ pub async fn list_models(State(state): State<Arc<AppState>>) -> impl IntoRespons
 /// manager handles it transparently either way). Responds `404` for an
 /// unknown id, `409` if a download is already in flight, `200` no-op if the
 /// model is already installed, `202` once a new download has been started.
-pub async fn download_model(State(state): State<Arc<AppState>>, Path(id): Path<String>) -> Response {
+pub async fn download_model(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<String>,
+) -> Response {
     let Some(model) = parse_model_id(&id) else {
         return model_not_found(&id);
     };
@@ -187,7 +190,10 @@ pub async fn download_model(State(state): State<Arc<AppState>>, Path(id): Path<S
 /// `GET /api/models/{id}/progress` — the same `progress_snapshot` embedded
 /// per-entry in `GET /api/models`, addressable for a single model. `404` for
 /// an unknown id.
-pub async fn model_progress(State(state): State<Arc<AppState>>, Path(id): Path<String>) -> Response {
+pub async fn model_progress(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<String>,
+) -> Response {
     let Some(model) = parse_model_id(&id) else {
         return model_not_found(&id);
     };
@@ -202,7 +208,10 @@ pub async fn model_progress(State(state): State<Arc<AppState>>, Path(id): Path<S
 /// `POST /api/models/{id}/cancel` — cancel an in-flight download
 /// (`ModelDownloadManager::cancel_download`). `404` unknown id, `409` if
 /// nothing is downloading for it.
-pub async fn cancel_download(State(state): State<Arc<AppState>>, Path(id): Path<String>) -> Response {
+pub async fn cancel_download(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<String>,
+) -> Response {
     let Some(model) = parse_model_id(&id) else {
         return model_not_found(&id);
     };
@@ -289,7 +298,10 @@ pub async fn delete_model(State(state): State<Arc<AppState>>, Path(id): Path<Str
 /// `/v1/listen` serves and `/api/status.loadedModel` reports
 /// (`AppState::activate`). `404` unknown id, `409` if the model is not
 /// installed or fails integrity verification, `200` on success.
-pub async fn activate_model(State(state): State<Arc<AppState>>, Path(id): Path<String>) -> Response {
+pub async fn activate_model(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<String>,
+) -> Response {
     let Some(model) = parse_model_id(&id) else {
         return model_not_found(&id);
     };

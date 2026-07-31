@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-resume-media"
+description = "Enables the resume_media command without any pre-configured scope."
+commands.allow = ["resume_media"]
+
+[[permission]]
+identifier = "deny-resume-media"
+description = "Denies the resume_media command without any pre-configured scope."
+commands.deny = ["resume_media"]

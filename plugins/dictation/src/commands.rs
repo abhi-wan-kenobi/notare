@@ -126,3 +126,26 @@ pub(crate) async fn clean_text<R: tauri::Runtime>(
 ) -> Result<String, String> {
     Ok(app.dictation().clean_text(&text))
 }
+
+/// Pause whatever media is currently playing when a dictation session starts,
+/// remembering what was paused. Returns whether anything was paused. Best-effort
+/// (never errors on a media-control failure); the frontend fires this and
+/// forgets it so it can't delay the mic.
+#[tauri::command]
+#[specta::specta]
+pub(crate) async fn pause_media<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+) -> Result<bool, String> {
+    Ok(app.dictation().pause_media().await)
+}
+
+/// Resume only the media THIS app paused (via `pause_media`), when a dictation
+/// session ends. A no-op if nothing was paused.
+#[tauri::command]
+#[specta::specta]
+pub(crate) async fn resume_media<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+) -> Result<(), String> {
+    app.dictation().resume_media().await;
+    Ok(())
+}

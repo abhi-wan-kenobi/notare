@@ -27,6 +27,10 @@ msgstr ""
 msgid "{0} verified legacy files can be removed"
 msgstr ""
 
+#: src/settings/personalization/dictionary-settings.tsx
+msgid "{duplicateCandidateCount} already in your dictionary — skipped."
+msgstr ""
+
 #: src/settings/general/account.tsx
 msgid "{trialDaysRemaining} day left"
 msgstr ""
@@ -57,6 +61,18 @@ msgstr ""
 
 #: src/settings/general/storage/index.tsx
 msgid "3 days"
+msgstr ""
+
+#: src/settings/dictation/retention.tsx
+msgid "30 days"
+msgstr ""
+
+#: src/settings/dictation/retention.tsx
+msgid "7 days"
+msgstr ""
+
+#: src/settings/dictation/retention.tsx
+msgid "90 days"
 msgstr ""
 
 #: src/dictation/orb.tsx
@@ -95,6 +111,10 @@ msgstr ""
 msgid "A waveform of bars that dance as you speak."
 msgstr ""
 
+#: src/settings/personalization/dictionary-settings.tsx
+msgid "Aa"
+msgstr ""
+
 #: src/settings/general/permissions.tsx
 msgid "Accessibility"
 msgstr ""
@@ -128,8 +148,9 @@ msgid "Activity"
 msgstr ""
 
 #: src/contacts/shared.tsx
-#: src/settings/personalization/index.tsx
+#: src/settings/personalization/dictionary-settings.tsx
 #: src/settings/todo/github.tsx
+#: src/snippets/index.tsx
 msgid "Add"
 msgstr ""
 
@@ -143,13 +164,13 @@ msgstr ""
 msgid "Add {0} account"
 msgstr ""
 
+#: src/snippets/index.tsx
+msgid "Add {pairs} to your dictionary?"
+msgstr ""
+
 #: src/settings/general/spoken-languages.tsx
 msgid "Add language"
 msgstr "ენის დამატება"
-
-#: src/settings/personalization/index.tsx
-msgid "Add names, jargon, or product terms to prefer"
-msgstr ""
 
 #: src/contacts/details.tsx
 msgid "Add notes about this contact..."
@@ -171,12 +192,25 @@ msgstr ""
 msgid "Add spoken language"
 msgstr "სალაპარაკო ენის დამატება"
 
+#. placeholder {0}: added.length
+#: src/snippets/index.tsx
+msgid "Added {0} entries to your dictionary"
+msgstr ""
+
+#: src/snippets/index.tsx
+msgid "Added to your dictionary"
+msgstr ""
+
 #: src/settings/general/spoken-languages.tsx
 msgid "Additional spoken languages"
 msgstr "დამატებითი სალაპარაკო ენები"
 
 #: src/settings/ai/shared/index.tsx
 msgid "Advanced"
+msgstr ""
+
+#: src/settings/ai/llm/scoped-models.tsx
+msgid "Advanced: per-task models"
 msgstr ""
 
 #: src/settings/ai/stt/select.tsx
@@ -189,6 +223,10 @@ msgstr ""
 
 #: src/dictation/host.tsx
 msgid "AI cleanup failed - used basic cleanup instead."
+msgstr ""
+
+#: src/settings/dictation/translation.tsx
+msgid "AI cleanup isn't using a language model right now, so translation will fall back to normal cleanup. Switch cleanup to \"AI cleanup\" and configure a model in Settings → Intelligence to translate."
 msgstr ""
 
 #: src/contacts/details.tsx
@@ -213,6 +251,10 @@ msgstr ""
 
 #: src/onboarding/permissions.tsx
 msgid "Allow system audio access"
+msgstr ""
+
+#: src/settings/personalization/dictionary-settings.tsx
+msgid "Already used by another entry, or the text is empty."
 msgstr ""
 
 #: src/settings/general/app-settings.tsx
@@ -371,12 +413,18 @@ msgstr ""
 #: src/settings/general/account.tsx
 #: src/settings/general/storage/legacy-cleanup.tsx
 #: src/settings/general/storage/notes-location.tsx
+#: src/settings/personalization/dictionary-settings.tsx
 #: src/settings/todo/github.tsx
+#: src/snippets/entry-row.tsx
 msgid "Cancel"
 msgstr ""
 
 #: src/session/components/outer-header/metadata/date.tsx
 msgid "Cancel date edit"
+msgstr ""
+
+#: src/settings/personalization/dictionary-settings.tsx
+msgid "Case-sensitive"
 msgstr ""
 
 #: src/onboarding/folder-location.tsx
@@ -388,8 +436,16 @@ msgstr ""
 msgid "Change shortcut"
 msgstr ""
 
+#: src/settings/ai/llm/scoped-models.tsx
+msgid "Chat"
+msgstr ""
+
 #: src/chat/components/toolbar-controls.tsx
 msgid "Chat history"
+msgstr ""
+
+#: src/settings/ai/llm/scoped-models.tsx
+msgid "Chat model"
 msgstr ""
 
 #: src/settings/general/app-settings.tsx
@@ -452,6 +508,14 @@ msgstr ""
 msgid "Cleanup"
 msgstr ""
 
+#: src/settings/ai/llm/scoped-models.tsx
+msgid "Cleanup (dictation)"
+msgstr ""
+
+#: src/settings/ai/llm/scoped-models.tsx
+msgid "Cleanup (dictation) model"
+msgstr ""
+
 #: src/settings/webhook/index.tsx
 msgid "Clear"
 msgstr ""
@@ -485,6 +549,10 @@ msgstr ""
 
 #: src/task/resource-view.tsx
 msgid "Closed"
+msgstr ""
+
+#: src/settings/ai/llm/scoped-models.tsx
+msgid "Cloud providers won't appear here until you pick one as the default model above - an override can't reach the cloud on its own."
 msgstr ""
 
 #: src/dictation/orb.tsx
@@ -597,7 +665,12 @@ msgid "Continuing without trial"
 msgstr ""
 
 #: src/settings/dictation/index.tsx
+#: src/snippets/index.tsx
 msgid "Copied to clipboard"
+msgstr ""
+
+#: src/snippets/entry-row.tsx
+msgid "Copy"
 msgstr ""
 
 #: src/session/components/note-input/header.tsx
@@ -630,12 +703,40 @@ msgstr ""
 msgid "Could not start trial"
 msgstr ""
 
+#: src/snippets/index.tsx
+msgid "Couldn't delete snippet"
+msgstr ""
+
+#: src/snippets/index.tsx
+msgid "Couldn't insert text"
+msgstr ""
+
+#: src/snippets/index.tsx
+msgid "Couldn't load history"
+msgstr ""
+
+#: src/dictation/host.tsx
+msgid "Couldn't paste the last dictation. Try again."
+msgstr ""
+
+#: src/snippets/index.tsx
+msgid "Couldn't save snippet"
+msgstr ""
+
 #: src/dictation/host.tsx
 msgid "Couldn't start dictation — the transcription engine is busy. If a recording is still transcribing, try again once it finishes."
 msgstr ""
 
 #: src/dictation/host.tsx
 msgid "Couldn't start dictation. Check that a local model is selected, then try again."
+msgstr ""
+
+#: src/snippets/index.tsx
+msgid "Couldn't update pin"
+msgstr ""
+
+#: src/snippets/index.tsx
+msgid "Couldn't update the dictionary. Try again."
 msgstr ""
 
 #: src/calendar/components/google/content.tsx
@@ -667,6 +768,7 @@ msgid "Date and time are required"
 msgstr ""
 
 #: src/session/components/outer-header/overflow/delete.tsx
+#: src/snippets/entry-row.tsx
 #: src/templates/sections-editor.tsx
 #: src/templates/template-form.tsx
 msgid "Delete"
@@ -716,8 +818,13 @@ msgstr ""
 msgid "Detection delay"
 msgstr ""
 
+#: src/settings/dictation/translation.tsx
+msgid "Dictate in any language, insert the text in {targetLabel}. Requires AI cleanup's language model; falls back to normal cleanup when no model is available."
+msgstr ""
+
 #: src/settings/dictation/index.tsx
 #: src/sidebar/settings.tsx
+#: src/snippets/entry-row.tsx
 msgid "Dictation"
 msgstr ""
 
@@ -734,8 +841,12 @@ msgstr ""
 msgid "Dictation uses your current local transcription model: <0>{0}</0>. Change it in the Transcription settings."
 msgstr ""
 
-#: src/settings/personalization/index.tsx
+#: src/settings/personalization/dictionary-settings.tsx
 msgid "Dictionary"
+msgstr ""
+
+#: src/snippets/entry-row.tsx
+msgid "Discarded"
 msgstr ""
 
 #: src/settings/todo/provider-content.tsx
@@ -814,8 +925,28 @@ msgstr ""
 msgid "Duration"
 msgstr ""
 
+#: src/snippets/entry-row.tsx
+msgid "Edit"
+msgstr ""
+
+#: src/settings/personalization/dictionary-settings.tsx
+msgid "Edit {label}"
+msgstr ""
+
 #: src/session/components/outer-header/metadata/date.tsx
 msgid "Edit date"
+msgstr ""
+
+#: src/settings/personalization/dictionary-settings.tsx
+msgid "Edit replacement text"
+msgstr ""
+
+#: src/snippets/entry-row.tsx
+msgid "Edit snippet text"
+msgstr ""
+
+#: src/settings/personalization/dictionary-settings.tsx
+msgid "Edit wrong text"
 msgstr ""
 
 #: src/onboarding/account/after-login.tsx
@@ -917,7 +1048,12 @@ msgstr ""
 
 #: src/session/components/outer-header/overflow/export-modal.tsx
 #: src/session/components/outer-header/overflow/index.tsx
+#: src/settings/personalization/dictionary-settings.tsx
 msgid "Export"
+msgstr ""
+
+#: src/settings/personalization/dictionary-settings.tsx
+msgid "Export failed: {exportError}"
 msgstr ""
 
 #: src/session/components/outer-header/overflow/export-modal.tsx
@@ -987,6 +1123,14 @@ msgstr ""
 
 #: src/settings/general/account.tsx
 msgid "Finish sign-in"
+msgstr ""
+
+#: src/dictation/host.tsx
+msgid "Finish the current dictation before pasting the last one."
+msgstr ""
+
+#: src/snippets/index.tsx
+msgid "Finished dictations show up here so you can find, reuse and pin them later."
 msgstr ""
 
 #: src/settings/webhook/index.tsx
@@ -1060,6 +1204,10 @@ msgstr ""
 
 #: src/onboarding/account/before-login.tsx
 msgid "Get started for free"
+msgstr ""
+
+#: src/settings/dictation/index.tsx
+msgid "Global shortcut that re-pastes your most recent dictation at the cursor, without dictating again. Click the combo, then press the keys you want, or leave it unset to disable."
 msgstr ""
 
 #: src/settings/dictation/shortcut-recorder.tsx
@@ -1142,6 +1290,14 @@ msgstr ""
 msgid "History"
 msgstr ""
 
+#: src/settings/dictation/index.tsx
+msgid "Hold the dictation shortcut to talk; release to stop and deliver."
+msgstr ""
+
+#: src/settings/dictation/index.tsx
+msgid "Hold to talk"
+msgstr ""
+
 #: src/calendar/components/google/content.tsx
 msgid "How do I get this file?"
 msgstr ""
@@ -1174,6 +1330,18 @@ msgstr ""
 msgid "Import calendar file (.ics)…"
 msgstr ""
 
+#: src/settings/personalization/dictionary-settings.tsx
+msgid "Import failed: {importError}"
+msgstr ""
+
+#: src/settings/personalization/dictionary-settings.tsx
+msgid "Import finished: {addedCount} added, {updatedCount} updated."
+msgstr ""
+
+#: src/settings/personalization/dictionary-settings.tsx
+msgid "Import…"
+msgstr ""
+
 #: src/sidebar/timeline/upcoming-meeting.ts
 msgid "In {minutes}m {seconds}s"
 msgstr ""
@@ -1188,6 +1356,10 @@ msgstr ""
 
 #: src/templates/sections-editor.tsx
 msgid "Insert above"
+msgstr ""
+
+#: src/snippets/entry-row.tsx
+msgid "Insert at cursor"
 msgstr ""
 
 #: src/templates/sections-editor.tsx
@@ -1229,6 +1401,14 @@ msgstr ""
 
 #: src/settings/dictation/index.tsx
 msgid "Keep a small always-on-top orb on screen. Click it, or press the shortcut, to start typing what you say into the focused app."
+msgstr ""
+
+#: src/settings/dictation/retention.tsx
+msgid "Keep everything"
+msgstr ""
+
+#: src/settings/dictation/retention.tsx
+msgid "Keep history for"
 msgstr ""
 
 #: src/settings/general/app-settings.tsx
@@ -1289,6 +1469,10 @@ msgstr ""
 msgid "Live transcription model"
 msgstr ""
 
+#: src/snippets/index.tsx
+msgid "Load more"
+msgstr ""
+
 #: src/session/components/action-items/index.tsx
 msgid "Loading action items…"
 msgstr ""
@@ -1347,6 +1531,10 @@ msgstr ""
 msgid "Manual"
 msgstr ""
 
+#: src/settings/personalization/dictionary-settings.tsx
+msgid "Mappings fix recurring misrecognitions in your dictated text — \"far eye\" always becomes \"FarEye\". Flat terms just bias the recognizer toward names or jargon while you speak, without rewriting anything."
+msgstr ""
+
 #: src/settings/webhook/index.tsx
 msgid "Master switch for outbound delivery."
 msgstr ""
@@ -1368,6 +1556,7 @@ msgid "Medium confidence"
 msgstr ""
 
 #: src/sidebar/timeline/index.tsx
+#: src/snippets/entry-row.tsx
 msgid "Meeting"
 msgstr ""
 
@@ -1543,6 +1732,14 @@ msgstr ""
 msgid "No description provided."
 msgstr ""
 
+#: src/dictation/host.tsx
+msgid "No dictation to paste yet."
+msgstr ""
+
+#: src/settings/personalization/dictionary-settings.tsx
+msgid "No dictionary entries yet."
+msgstr ""
+
 #: src/templates/template-icon-picker.tsx
 msgid "No emoji found"
 msgstr ""
@@ -1561,10 +1758,6 @@ msgstr ""
 
 #: src/onboarding/transcription.tsx
 msgid "No local transcription models are available."
-msgstr ""
-
-#: src/settings/personalization/index.tsx
-msgid "No match"
 msgstr ""
 
 #: src/settings/general/main-language.tsx
@@ -1609,12 +1802,17 @@ msgid "No related notes found"
 msgstr ""
 
 #: src/search/page/index.tsx
+#: src/snippets/index.tsx
 msgid "No results"
 msgstr ""
 
 #: src/settings/ai/shared/model-combobox.tsx
 #: src/settings/general/searchable-select.tsx
 msgid "No results found."
+msgstr ""
+
+#: src/snippets/index.tsx
+msgid "No snippets yet"
 msgstr ""
 
 #: src/templates/details.tsx
@@ -1674,6 +1872,14 @@ msgstr ""
 msgid "Notes"
 msgstr ""
 
+#: src/settings/ai/llm/scoped-models.tsx
+msgid "Notes (summaries)"
+msgstr ""
+
+#: src/settings/ai/llm/scoped-models.tsx
+msgid "Notes (summaries) model"
+msgstr ""
+
 #: src/settings/general/storage/notes-location.tsx
 msgid "Notes copied"
 msgstr ""
@@ -1691,7 +1897,12 @@ msgid "Nothing is typed while you talk; stopping cleans up the transcript and co
 msgstr ""
 
 #: src/search/page/index.tsx
+#: src/snippets/index.tsx
 msgid "Nothing matched \"{trimmedQuery}\". Try different words."
+msgstr ""
+
+#: src/settings/personalization/dictionary-settings.tsx
+msgid "Nothing new to import — every entry already matched."
 msgstr ""
 
 #: src/session/components/note-input/header.tsx
@@ -1808,6 +2019,10 @@ msgstr ""
 msgid "Output"
 msgstr ""
 
+#: src/settings/ai/llm/scoped-models.tsx
+msgid "Override the model used for specific tasks. Anything left on \"Use default model\" falls back to the model selected above."
+msgstr ""
+
 #: src/settings/general/timezone.tsx
 msgid "Override the timezone used for the sidebar timeline"
 msgstr ""
@@ -1825,12 +2040,24 @@ msgstr ""
 msgid "Paste at cursor"
 msgstr ""
 
+#: src/settings/dictation/index.tsx
+msgid "Paste last dictation"
+msgstr ""
+
 #: src/instruction/index.tsx
 msgid "Paste the browser URL here if the browser button did not reopen Notare."
 msgstr ""
 
 #: src/settings/dictation/index.tsx
 msgid "Paste the transcript into the focused app when you stop. When off it is only copied to the clipboard, so you paste it yourself."
+msgstr ""
+
+#: src/settings/dictation/index.tsx
+msgid "Pause media while dictating"
+msgstr ""
+
+#: src/settings/dictation/index.tsx
+msgid "Pause music while dictating, resume after."
 msgstr ""
 
 #: src/contacts/organization-details.tsx
@@ -1860,6 +2087,18 @@ msgstr ""
 msgid "Phone"
 msgstr ""
 
+#: src/snippets/entry-row.tsx
+msgid "Pin"
+msgstr ""
+
+#: src/snippets/index.tsx
+msgid "Pinned"
+msgstr ""
+
+#: src/settings/dictation/retention.tsx
+msgid "Pinned snippets are always kept, no matter this setting."
+msgstr ""
+
 #: src/dictation/orb.tsx
 msgid "Pip"
 msgstr ""
@@ -1878,6 +2117,10 @@ msgstr ""
 
 #: src/settings/dictation/shortcut-recorder.tsx
 msgid "Press shortcut…"
+msgstr ""
+
+#: src/settings/dictation/index.tsx
+msgid "Press the shortcut once to start dictating, press it again to stop and deliver."
 msgstr ""
 
 #: src/settings/dictation/shortcut-recorder.tsx
@@ -1902,6 +2145,10 @@ msgstr ""
 
 #: src/dictation/orb.tsx
 msgid "Pulse"
+msgstr ""
+
+#: src/snippets/entry-row.tsx
+msgid "Raw transcript"
 msgstr ""
 
 #: src/session/components/note-input/header.tsx
@@ -1966,8 +2213,8 @@ msgstr ""
 msgid "Remove {0}"
 msgstr ""
 
-#: src/settings/personalization/index.tsx
-msgid "Remove {term}"
+#: src/settings/personalization/dictionary-settings.tsx
+msgid "Remove {label}"
 msgstr ""
 
 #: src/settings/todo/github.tsx
@@ -1996,6 +2243,10 @@ msgstr ""
 
 #: src/settings/todo/github.tsx
 msgid "Replace repository"
+msgstr ""
+
+#: src/settings/personalization/dictionary-settings.tsx
+msgid "Replace with (optional)"
 msgstr ""
 
 #: src/session/components/note-input/search/bar.tsx
@@ -2100,8 +2351,10 @@ msgstr ""
 msgid "Same as live model"
 msgstr ""
 
+#: src/settings/personalization/dictionary-settings.tsx
 #: src/settings/personalization/index.tsx
 #: src/settings/webhook/index.tsx
+#: src/snippets/entry-row.tsx
 msgid "Save"
 msgstr ""
 
@@ -2174,6 +2427,14 @@ msgstr ""
 msgid "Search timezone..."
 msgstr ""
 
+#: src/snippets/index.tsx
+msgid "Search your dictation history"
+msgstr ""
+
+#: src/snippets/index.tsx
+msgid "Search your dictation history..."
+msgstr ""
+
 #: src/search/page/index.tsx
 msgid "Search your meetings"
 msgstr ""
@@ -2199,6 +2460,7 @@ msgstr ""
 msgid "Select a cloud model to use"
 msgstr ""
 
+#: src/settings/ai/llm/scoped-models.tsx
 #: src/settings/ai/shared/model-combobox.tsx
 msgid "Select a model"
 msgstr ""
@@ -2417,6 +2679,10 @@ msgstr ""
 msgid "Smileys & People"
 msgstr ""
 
+#: src/sidebar/surface-nav.tsx
+msgid "Snippets"
+msgstr ""
+
 #: src/dictation/orb.tsx
 msgid "Soft drifting color that brightens with your voice."
 msgstr ""
@@ -2427,6 +2693,10 @@ msgstr ""
 
 #: src/contacts/details.tsx
 msgid "Software Engineer"
+msgstr ""
+
+#: src/snippets/index.tsx
+msgid "Something went wrong loading your dictation history. Try again in a moment."
 msgstr ""
 
 #: src/session/components/note-input/enhanced/enhance-error.tsx
@@ -2590,6 +2860,10 @@ msgstr ""
 msgid "Test connection"
 msgstr ""
 
+#: src/settings/personalization/dictionary-settings.tsx
+msgid "Text file"
+msgstr ""
+
 #: src/settings/dictation/shortcut-recorder.tsx
 msgid "That key cannot be part of a global shortcut."
 msgstr ""
@@ -2635,6 +2909,18 @@ msgstr ""
 msgid "This combination cannot be used as a global shortcut. Try another one."
 msgstr ""
 
+#: src/settings/dictation/shortcut-recorder.tsx
+msgid "This combination is already used by another shortcut."
+msgstr ""
+
+#: src/settings/dictation/index.tsx
+msgid "This combination is already used by the dictation toggle shortcut above."
+msgstr ""
+
+#: src/settings/dictation/index.tsx
+msgid "This combination is already used by the paste-last-dictation shortcut below."
+msgstr ""
+
 #: src/session/components/action-items/index.tsx
 msgid "This model can't produce structured output. Pick a different model."
 msgstr ""
@@ -2661,8 +2947,16 @@ msgstr ""
 msgid "Tip: The Notare team loves our users!"
 msgstr ""
 
+#: src/snippets/index.tsx
+msgid "Today"
+msgstr ""
+
 #: src/session/components/action-items/index.tsx
 msgid "Toggle action item"
+msgstr ""
+
+#: src/settings/dictation/index.tsx
+msgid "Toggle press"
 msgstr ""
 
 #: src/settings/dictation/shortcut-recorder.tsx
@@ -2700,6 +2994,18 @@ msgstr ""
 msgid "Transcription model configured"
 msgstr ""
 
+#: src/settings/dictation/translation.tsx
+msgid "Translate dictation"
+msgstr ""
+
+#: src/settings/dictation/translation.tsx
+msgid "Translate to"
+msgstr ""
+
+#: src/settings/dictation/translation.tsx
+msgid "Translation target language"
+msgstr ""
+
 #: src/templates/template-icon-picker.tsx
 msgid "Travel & Places"
 msgstr ""
@@ -2726,11 +3032,16 @@ msgid "Unknown"
 msgstr ""
 
 #: src/session/components/outer-header/metadata/date.tsx
+#: src/snippets/index.tsx
 msgid "Unknown date"
 msgstr ""
 
 #: src/contacts/organization-details.tsx
 msgid "Unnamed"
+msgstr ""
+
+#: src/snippets/entry-row.tsx
+msgid "Unpin"
 msgstr ""
 
 #: src/search/page/index.tsx
@@ -2814,6 +3125,10 @@ msgstr ""
 msgid "Use"
 msgstr ""
 
+#: src/settings/ai/llm/scoped-models.tsx
+msgid "Use default model"
+msgstr ""
+
 #: src/settings/ai/llm/routing.tsx
 msgid "Use the selected model for action items and other structured-output tasks even when its size can't be confirmed. Turn this on only if you trust your model's output quality; Notare still rejects malformed results downstream."
 msgstr ""
@@ -2839,6 +3154,10 @@ msgstr ""
 #. placeholder {0}: update.version ?? ""
 #: src/settings/general/app-settings.tsx
 msgid "Version {0} is ready to install."
+msgstr ""
+
+#: src/settings/dictation/index.tsx
+msgid "View all in Snippets"
 msgstr ""
 
 #: src/contacts/organization-details.tsx
@@ -2872,6 +3191,14 @@ msgstr ""
 
 #: src/task/tab-content.tsx
 msgid "Work on this task"
+msgstr ""
+
+#: src/settings/personalization/dictionary-settings.tsx
+msgid "Wrong text, or names/jargon to prefer"
+msgstr ""
+
+#: src/snippets/index.tsx
+msgid "Yesterday"
 msgstr ""
 
 #: src/settings/general/app-settings.tsx

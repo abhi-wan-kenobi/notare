@@ -3,6 +3,7 @@ import { Trans } from "@lingui/react/macro";
 import { ConfigureProviders } from "./configure";
 import { LlmSettingsProvider } from "./context";
 import { RoutingPreferences } from "./routing";
+import { ScopedModelSettings } from "./scoped-models";
 import { SelectProviderAndModel } from "./select";
 
 import { SettingsPageTitle } from "~/settings/page-title";
@@ -14,6 +15,7 @@ export function LLM() {
         <SettingsPageTitle title={<Trans>Intelligence</Trans>} />
         <SelectProviderAndModel />
         <RoutingPreferences />
+        <ScopedModelSettings />
         <ConfigureProviders />
       </div>
     </LlmSettingsProvider>

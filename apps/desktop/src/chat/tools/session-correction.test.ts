@@ -309,6 +309,125 @@ describe("session correction chat tool", () => {
     expect(persistedDictionary).toBe(JSON.stringify(["Notare", "Erebor"]));
   });
 
+  // Regression: the stored dictionary may hold wrong->right mapping objects
+  // next to flat terms. Adding a term from chat must append, never rewrite
+  // the list through a strings-only parse that wipes every mapping.
+  //
+  // Also exercises requirement #4 (Lane A1): a term-like oldText/newText
+  // pair ("sam" -> "Tim", a single-token replace) is stored as a MAPPING,
+  // not just via the explicitly-passed `dictionaryTerms` flat list.
+  it("preserves mapping entries when chat adds a dictionary term", async () => {
+    mocks.loadSessionContentSnapshot.mockResolvedValue(
+      snapshot({ notes: [summary("sam was here")] }),
+    );
+    const mapping = { wrong: "far eye", right: "FarEye", caseSensitive: false };
+    let persistedDictionary = "";
+    mocks.updateSettingValue.mockImplementation(async (_key, update) => {
+      persistedDictionary = update(JSON.stringify([mapping, "Notare"]));
+      return persistedDictionary;
+    });
+
+    const result = await (
+      buildTool({ enhancedNoteId: "note-1" }) as any
+    ).execute({
+      oldText: "sam",
+      newText: "Tim",
+      // "FarEye" matches the mapping's right side -> deduped, not re-added.
+      dictionaryTerms: ["Erebor", "FarEye"],
+    });
+
+    expect(JSON.parse(persistedDictionary)).toEqual([
+      mapping,
+      "Notare",
+      { wrong: "sam", right: "Tim", caseSensitive: false },
+      "Erebor",
+    ]);
+    expect(result.dictionaryChanges).toEqual({
+      addedTerms: ["Erebor"],
+      addedMappings: [{ wrong: "sam", right: "Tim", caseSensitive: false }],
+    });
+  });
+
+  // The correction's own oldText/newText pair is stored as a mapping even
+  // when the model passes no explicit dictionaryTerms at all - the
+  // correction message itself is the consent for a term-like edit.
+  it("stores a mapping derived from oldText/newText with no dictionaryTerms passed", async () => {
+    mocks.loadSessionContentSnapshot.mockResolvedValue(
+      snapshot({ notes: [summary("we met far eye yesterday")] }),
+    );
+    let persistedDictionary = "";
+    mocks.updateSettingValue.mockImplementation(async (_key, update) => {
+      persistedDictionary = update(JSON.stringify([]));
+      return persistedDictionary;
+    });
+
+    const result = await (
+      buildTool({ enhancedNoteId: "note-1" }) as any
+    ).execute({
+      oldText: "far eye",
+      newText: "FarEye",
+    });
+
+    expect(JSON.parse(persistedDictionary)).toEqual([
+      { wrong: "far eye", right: "FarEye", caseSensitive: false },
+    ]);
+    expect(result.dictionaryChanges.addedMappings).toEqual([
+      { wrong: "far eye", right: "FarEye", caseSensitive: false },
+    ]);
+  });
+
+  // A long, prose-style correction is not a term - the diff run exceeds the
+  // suggester's per-side token cap, so no mapping (or settings write at all)
+  // happens, and dictionaryTerms is empty too.
+  it("does not derive a mapping from a prose-style correction", async () => {
+    mocks.loadSessionContentSnapshot.mockResolvedValue(
+      snapshot({
+        notes: [summary("Discussed the quick brown fox jumps today.")],
+      }),
+    );
+
+    const result = await (
+      buildTool({ enhancedNoteId: "note-1" }) as any
+    ).execute({
+      oldText: "the quick brown fox jumps",
+      newText: "an entirely different sentence",
+    });
+
+    expect(mocks.updateSettingValue).not.toHaveBeenCalled();
+    expect(result.dictionaryChanges).toEqual({
+      addedTerms: [],
+      addedMappings: [],
+    });
+  });
+
+  // A mapping candidate whose wrong-key already exists (whitespace-collapsed,
+  // case-insensitive) is skipped, mirroring the flat-term dedupe path.
+  it("skips a derived mapping whose wrong-key already exists", async () => {
+    mocks.loadSessionContentSnapshot.mockResolvedValue(
+      snapshot({
+        notes: [
+          summary("We should follow up with Far Eye about the contract."),
+        ],
+      }),
+    );
+    const existing = { wrong: "far eye", right: "FarEye", caseSensitive: true };
+    let persistedDictionary = "";
+    mocks.updateSettingValue.mockImplementation(async (_key, update) => {
+      persistedDictionary = update(JSON.stringify([existing]));
+      return persistedDictionary;
+    });
+
+    const result = await (
+      buildTool({ enhancedNoteId: "note-1" }) as any
+    ).execute({
+      oldText: "Far Eye",
+      newText: "FarEye",
+    });
+
+    expect(JSON.parse(persistedDictionary)).toEqual([existing]);
+    expect(result.dictionaryChanges.addedMappings).toEqual([]);
+  });
+
   it("reports partial success when a requested target does not match", async () => {
     mocks.loadSessionContentSnapshot.mockResolvedValue(
       snapshot({ notes: [summary("Discussed X roadmap.")] }),

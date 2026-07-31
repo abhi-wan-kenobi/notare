@@ -50,9 +50,7 @@ pub fn convert_google_calendars(calendars: Vec<GoogleCalendar>) -> Vec<CalendarL
         .collect()
 }
 
-pub fn convert_ics_calendars(
-    files: Vec<hypr_ics_calendar::IcsFileInfo>,
-) -> Vec<CalendarListItem> {
+pub fn convert_ics_calendars(files: Vec<hypr_ics_calendar::IcsFileInfo>) -> Vec<CalendarListItem> {
     files
         .into_iter()
         .map(|file| {

@@ -12,6 +12,12 @@ import type { CharTask } from "@hypr/api-client";
 import type { AIProviderStorage } from "@hypr/store";
 
 import { createAuthFetch } from "../auth-fetch";
+import {
+  isCloudProvider,
+  type LlmScope,
+  resolveScopeSelection,
+  SCOPE_SETTING_KEYS,
+} from "../scope";
 import { createTracedFetch, tracedFetch } from "../traced-fetch";
 
 import { useAuth } from "~/auth";
@@ -53,8 +59,23 @@ type LLMConnectionResult = {
   status: LLMConnectionStatus;
 };
 
+/**
+ * Trace-label -> scope mapping. `useLanguageModel(task)` predates scopes and
+ * is called all over (chat panel, enhance, titles); routing the scope
+ * resolution through this map wires the per-task overrides for every caller
+ * centrally instead of migrating each call site to `useScopedLanguageModel`.
+ * Unmapped/absent tasks resolve the plain global selection.
+ */
+const TASK_SCOPE: Partial<Record<CharTask, LlmScope>> = {
+  chat: "chat",
+  title: "notes",
+  enhance: "notes",
+};
+
 export const useLanguageModel = (task?: CharTask): LanguageModelV3 | null => {
+  const scope = task ? TASK_SCOPE[task] : undefined;
   const { conn } = useLLMConnection();
+  const scoped = useScopedLanguageModelInner(scope ?? "cleanup", task);
   const { session } = useAuth();
 
   // Auth is resolved at fetch time (not model construction) so token
@@ -62,7 +83,7 @@ export const useLanguageModel = (task?: CharTask): LanguageModelV3 | null => {
   const accessTokenRef = useRef(session?.access_token);
   accessTokenRef.current = session?.access_token;
 
-  return useMemo(() => {
+  const globalModel = useMemo(() => {
     if (!conn) return null;
 
     const hostedFetch =
@@ -75,6 +96,139 @@ export const useLanguageModel = (task?: CharTask): LanguageModelV3 | null => {
 
     return createLanguageModel(conn, task, hostedFetch);
   }, [conn, task]);
+
+  return scope ? scoped : globalModel;
+};
+
+/**
+ * Scope-aware model resolution (0.5.1). Resolves the effective LLM for a
+ * given scope (`chat` / `notes` / `cleanup`): its per-scope override provider
+ * + model when set and honoured, otherwise the global selection. The AI-SDK
+ * model is constructed by the exact same path as `useLanguageModel` (secrets
+ * still flow through the provider store), so this adds no new provider code.
+ *
+ * The cloud-opt-in invariant is enforced in `resolveScopeSelection`: a scope
+ * override can never route to a cloud provider unless cloud is already opted
+ * into globally. An unknown/unavailable override, or a blocked cloud one,
+ * falls back to the global selection with an explicit console warning rather
+ * than silently doing nothing.
+ */
+export const useScopedLanguageModel = (
+  scope: LlmScope,
+): LanguageModelV3 | null => {
+  return useScopedLanguageModelInner(scope, undefined);
+};
+
+const useScopedLanguageModelInner = (
+  scope: LlmScope,
+  task: CharTask | undefined,
+): LanguageModelV3 | null => {
+  const auth = useAuth();
+  const billing = useBillingAccess();
+  const session = auth?.session;
+
+  const accessTokenRef = useRef(session?.access_token);
+  accessTokenRef.current = session?.access_token;
+
+  const keys = SCOPE_SETTING_KEYS[scope];
+  const cfg = useConfigValues([
+    "current_llm_provider",
+    "current_llm_model",
+    keys.provider,
+    keys.model,
+  ] as const);
+
+  const globalProviderId = cfg.current_llm_provider;
+  const globalModelId = cfg.current_llm_model;
+  const overrideProviderId = (
+    (cfg[keys.provider] as string | undefined) ?? ""
+  ).trim();
+  const overrideModelId = (
+    (cfg[keys.model] as string | undefined) ?? ""
+  ).trim();
+
+  const globalProviderConfig = useAiProvider("llm", globalProviderId) as
+    | AIProviderStorage
+    | undefined;
+  const overrideProviderConfig = useAiProvider(
+    "llm",
+    overrideProviderId || undefined,
+  ) as AIProviderStorage | undefined;
+
+  return useMemo(() => {
+    const globalRes = resolveLLMConnection({
+      providerId: globalProviderId,
+      modelId: globalModelId,
+      providerConfig: globalProviderConfig,
+      session,
+      isPaid: billing.isPaid,
+    });
+
+    const overrideRes = overrideProviderId
+      ? resolveLLMConnection({
+          providerId: overrideProviderId,
+          // An override may pin a provider but inherit the global model.
+          modelId: overrideModelId || globalModelId,
+          providerConfig: overrideProviderConfig,
+          session,
+          isPaid: billing.isPaid,
+        })
+      : { conn: null, status: undefined as never };
+
+    const globalIsCloud = globalRes.conn
+      ? isCloudProvider(globalRes.conn.providerId, globalRes.conn.baseUrl)
+      : false;
+    const overrideIsCloud = isCloudProvider(
+      overrideProviderId || undefined,
+      overrideRes.conn?.baseUrl ?? overrideProviderConfig?.base_url,
+    );
+
+    const selection = resolveScopeSelection({
+      hasOverride: overrideProviderId.length > 0,
+      overrideKnown: PROVIDERS.some((p) => p.id === overrideProviderId),
+      overrideAvailable: overrideRes.conn !== null,
+      overrideIsCloud,
+      globalIsCloud,
+    });
+
+    if (
+      selection.source === "inherit" &&
+      selection.fallbackReason &&
+      selection.fallbackReason !== "no_override"
+    ) {
+      console.warn(
+        `[ai] scope "${scope}" override (${overrideProviderId}) not used ` +
+          `(${selection.fallbackReason}); inheriting the global selection`,
+      );
+    }
+
+    const conn =
+      selection.source === "override" ? overrideRes.conn : globalRes.conn;
+    if (!conn) {
+      return null;
+    }
+
+    const hostedFetch =
+      conn.providerId === "hyprnote"
+        ? createAuthFetch(
+            task ? createTracedFetch(task) : tracedFetch,
+            () => accessTokenRef.current,
+          )
+        : undefined;
+
+    return createLanguageModel(conn, task, hostedFetch);
+  }, [
+    scope,
+    task,
+    globalProviderId,
+    globalModelId,
+    overrideProviderId,
+    overrideModelId,
+    globalProviderConfig,
+    overrideProviderConfig,
+    session,
+    billing.isPaid,
+  ]);
 };
 
 export const useLLMConnection = (): LLMConnectionResult => {

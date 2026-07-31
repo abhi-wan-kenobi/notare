@@ -256,7 +256,7 @@ export function SelectProviderAndModel() {
   );
 }
 
-type ProviderStatus = {
+export type ProviderStatus = {
   configured: boolean;
   listModels?: () => Promise<ListModelsResult>;
 };
@@ -347,7 +347,11 @@ export function getLlmProviderStatus({
   return { configured: true, listModels: listModelsFunc };
 }
 
-function useConfiguredMapping(): Record<string, ProviderStatus> {
+// Exported for reuse by `./scoped-models` (the per-task model overrides
+// section): both need the exact same "which providers are actually usable
+// right now" mapping, so this is the single source of truth for it rather
+// than a second copy of the eligibility logic.
+export function useConfiguredMapping(): Record<string, ProviderStatus> {
   const auth = useAuth();
   const billing = useBillingAccess();
   const configuredProviders = useAiProviders("llm");
