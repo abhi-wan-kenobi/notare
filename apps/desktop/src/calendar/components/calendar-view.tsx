@@ -356,11 +356,12 @@ export function CalendarView() {
   );
 }
 
-function useVisibleRangeSync(
+export function useVisibleRangeSync(
   range: CalendarSyncRange | null,
   enabledCalendarKey: string,
 ) {
   const { canSync, syncRange } = useSync();
+  const queryClient = useQueryClient();
   const from = range?.from.toISOString();
   const to = range?.to.toISOString();
 
@@ -376,7 +377,33 @@ function useVisibleRangeSync(
     staleTime: VISIBLE_RANGE_SYNC_STALE_MS,
     gcTime: 10 * VISIBLE_RANGE_SYNC_STALE_MS,
     retry: false,
+    // The event LIST is a live query, but this remote pull used to run only
+    // on mount / month change - sitting on the Calendar tab meant remote
+    // changes outside the background sync's narrow default window never
+    // arrived until the manual refresh button. Re-pull the visible range on
+    // an interval while the tab is open (the interval convention used by
+    // update-banner/notifications).
+    refetchInterval: VISIBLE_RANGE_SYNC_STALE_MS,
+    refetchIntervalInBackground: false,
   });
+
+  // Re-pull when the OS window regains focus (the user was away in another
+  // app; react-query's own focus manager isn't wired in this webview, so
+  // mirror the explicit listener pattern from sidebar/timeline/realtime).
+  useEffect(() => {
+    if (!canSync) {
+      return;
+    }
+    const onFocus = () => {
+      void queryClient.invalidateQueries({
+        queryKey: [VISIBLE_RANGE_SYNC_QUERY_KEY],
+      });
+    };
+    window.addEventListener("focus", onFocus);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [canSync, queryClient]);
 }
 
 function CalendarSyncHeaderControls() {

@@ -84,7 +84,7 @@ mod global {
     use tauri_specta::Event;
 
     use super::Error;
-    use crate::events::GlobalHotkeyTriggered;
+    use crate::events::{GlobalHotkeyTriggered, HotkeyState};
 
     pub fn parse(shortcut: &str) -> Result<(), Error> {
         shortcut
@@ -114,13 +114,21 @@ mod global {
         let emitted_shortcut = shortcut.to_string();
         app.global_shortcut()
             .on_shortcut(parsed, move |app, _sc, event| {
-                if event.state() == ShortcutState::Pressed {
-                    let _ = GlobalHotkeyTriggered {
-                        id: emitted_id.clone(),
-                        shortcut: emitted_shortcut.clone(),
-                    }
-                    .emit(app);
+                // Emit BOTH edges: push-to-talk holds to record and stops on
+                // release, while a toggle consumer ignores `Released`. Repeated
+                // `Pressed` events from OS key auto-repeat are passed through
+                // untouched - the frontend dedupes them (a held PTT key on
+                // Windows repeats Pressed).
+                let state = match event.state() {
+                    ShortcutState::Pressed => HotkeyState::Pressed,
+                    ShortcutState::Released => HotkeyState::Released,
+                };
+                let _ = GlobalHotkeyTriggered {
+                    id: emitted_id.clone(),
+                    shortcut: emitted_shortcut.clone(),
+                    state,
                 }
+                .emit(app);
             })
             .map_err(|e| Error::GlobalShortcut(e.to_string()))
     }
@@ -148,8 +156,17 @@ mod global {
             // accelerator would otherwise collide with itself) - but a failed
             // new registration restores it so the id is never left unbound.
             let previous = guard.remove(&id);
-            if let Some((prev, _)) = &previous {
-                let _ = app.global_shortcut().unregister(*prev);
+            if let Some((prev, prev_shortcut)) = &previous {
+                if let Err(e) = app.global_shortcut().unregister(*prev) {
+                    // The old accelerator is still live at the OS - binding
+                    // the new one may collide, and reporting THAT error would
+                    // point at the wrong cause. Keep the old entry and fail
+                    // with the real reason.
+                    guard.insert(id, (*prev, prev_shortcut.clone()));
+                    return Err(Error::GlobalShortcut(format!(
+                        "could not release the previous binding: {e}"
+                    )));
+                }
             }
 
             match bind(&app, &id, &shortcut, parsed) {

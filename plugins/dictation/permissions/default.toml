@@ -13,4 +13,6 @@ permissions = [
   "allow-type-text",
   "allow-deliver-text",
   "allow-clean-text",
+  "allow-pause-media",
+  "allow-resume-media",
 ]

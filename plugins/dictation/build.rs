@@ -11,6 +11,8 @@ const COMMANDS: &[&str] = &[
     "type_text",
     "deliver_text",
     "clean_text",
+    "pause_media",
+    "resume_media",
 ];
 
 fn main() {

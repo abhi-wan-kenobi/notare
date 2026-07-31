@@ -46,6 +46,18 @@ tauri-plugin-store2 = { workspace = true }
 tokio = { workspace = true, features = ["macros", "rt", "sync", "time"] }
 tokio-stream = { workspace = true }
 
+# Media auto-pause (`dictation_pause_media`): pause playing media on session
+# start, resume it on end. Linux = MPRIS over D-Bus (zbus, already in the lock
+# tree). Windows = GSMTC (`Windows.Media.Control`, the workspace `windows`
+# crate). macOS uses `osascript` (std only, no extra dep).
+[target.'cfg(target_os = "linux")'.dependencies]
+# Default features pull in `async-io` + `blocking-api`, which enable the
+# `zbus::blocking` module this module uses (sync calls inside spawn_blocking).
+zbus = "5"
+
+[target.'cfg(target_os = "windows")'.dependencies]
+windows = { workspace = true, features = ["Media_Control", "Foundation", "Foundation_Collections", "Win32_System_Com"] }
+
 [target.'cfg(target_os = "macos")'.dependencies]
 hypr-dictation-ui-macos = { workspace = true }
 # BUG 1 fix: the orb must be a real NSPanel (`.nonactivatingPanel` style mask)

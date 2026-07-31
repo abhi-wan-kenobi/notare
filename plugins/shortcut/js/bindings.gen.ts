@@ -84,15 +84,24 @@ shortcutEvent: "plugin:shortcut:shortcut-event"
 
 /**
  * Fired when a keyed global hotkey registered via `register_global_hotkey`
- * is pressed, backed by `tauri-plugin-global-shortcut` on every platform.
- * `id` is the caller-chosen registration key (e.g. the dictation toggle
- * vs. paste-last hotkeys), so a single listener can route each press to
- * the right action; `shortcut` is the accelerator string it was bound to.
+ * changes state, backed by `tauri-plugin-global-shortcut` on every
+ * platform. `id` is the caller-chosen registration key (e.g. the dictation
+ * toggle vs. paste-last hotkeys), so a single listener can route each event
+ * to the right action; `shortcut` is the accelerator string it was bound
+ * to; `state` is whether the key was pressed (down) or released (up) - both
+ * edges are emitted so a push-to-talk consumer can hold-to-record, while a
+ * toggle consumer simply ignores `released`.
  * Distinct from `ShortcutEvent`, which is the macOS-only native
  * push-to-talk event-tap path (unused today - see `handler::push_to_talk`).
  */
-export type GlobalHotkeyTriggered = { id: string; shortcut: string }
+export type GlobalHotkeyTriggered = { id: string; shortcut: string; state: HotkeyState }
 export type HotKey = { key: number | null; modifiers: Modifier[] }
+/**
+ * Whether a `GlobalHotkeyTriggered` event marks the key going down or coming
+ * back up. Push-to-talk needs both edges (hold to record, release to stop);
+ * toggle-style consumers act on `Pressed` only and ignore `Released`.
+ */
+export type HotkeyState = "pressed" | "released"
 export type Modifier = "command" | "option" | "shift" | "control" | "fn"
 export type Options = { useDoubleTapOnly?: boolean; doubleTapLockEnabled?: boolean; minimumKeyTimeMs?: number }
 export type ShortcutEvent = { type: "pressed" } | { type: "released" } | { type: "cancelled" } | { type: "discarded" }

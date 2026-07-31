@@ -5,6 +5,7 @@ mod events;
 mod ext;
 mod handler;
 mod inject;
+mod media;
 mod orb;
 mod session;
 
@@ -33,6 +34,8 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
             commands::type_text::<tauri::Wry>,
             commands::deliver_text::<tauri::Wry>,
             commands::clean_text::<tauri::Wry>,
+            commands::pause_media::<tauri::Wry>,
+            commands::resume_media::<tauri::Wry>,
         ])
         .events(tauri_specta::collect_events![
             DictationStateEvent,
@@ -54,6 +57,7 @@ pub fn init() -> tauri::plugin::TauriPlugin<tauri::Wry> {
             specta_builder.mount_events(app);
             app.manage(Handler::new());
             app.manage(session::SessionState::default());
+            app.manage(media::MediaPauseState::default());
             orb::set_app_handle(app.clone());
             setup_shortcut_bridge(app);
             Ok(())

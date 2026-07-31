@@ -32,6 +32,8 @@ const mocks = vi.hoisted(() => ({
   })),
   stopDictation: vi.fn(async () => ({ status: "ok" as const, data: null })),
   isDictating: vi.fn(async () => ({ status: "ok" as const, data: false })),
+  pauseMedia: vi.fn(async () => ({ status: "ok" as const, data: true })),
+  resumeMedia: vi.fn(async () => ({ status: "ok" as const, data: null })),
   registerGlobalHotkey: vi.fn(async () => ({
     status: "ok" as const,
     data: null,
@@ -56,7 +58,13 @@ const mocks = vi.hoisted(() => ({
   listen: vi.fn(async () => vi.fn()),
   orbClickListeners: [] as Array<() => void>,
   hotkeyListeners: [] as Array<
-    (event: { payload: { id: string; shortcut: string } }) => void
+    (event: {
+      payload: {
+        id: string;
+        shortcut: string;
+        state: "pressed" | "released";
+      };
+    }) => void
   >,
   stateListeners: [] as Array<(event: { payload: unknown }) => void>,
   hideRequestListeners: [] as Array<() => void>,
@@ -88,6 +96,8 @@ vi.mock("@hypr/plugin-dictation", () => ({
     isDictating: mocks.isDictating,
     cleanText: vi.fn(async () => ({ status: "ok", data: "" })),
     deliverText: mocks.deliverText,
+    pauseMedia: mocks.pauseMedia,
+    resumeMedia: mocks.resumeMedia,
   },
   events: {
     dictationStateEvent: {
@@ -136,7 +146,13 @@ vi.mock("@hypr/plugin-shortcut", () => ({
   events: {
     globalHotkeyTriggered: {
       listen: async (
-        cb: (event: { payload: { id: string; shortcut: string } }) => void,
+        cb: (event: {
+          payload: {
+            id: string;
+            shortcut: string;
+            state: "pressed" | "released";
+          };
+        }) => void,
       ) => {
         mocks.hotkeyListeners.push(cb);
         return vi.fn();
@@ -187,9 +203,13 @@ function pushPhase(phase: string) {
   }
 }
 
-function triggerHotkey(id: string, shortcut: string) {
+function triggerHotkey(
+  id: string,
+  shortcut: string,
+  state: "pressed" | "released" = "pressed",
+) {
   for (const cb of mocks.hotkeyListeners) {
-    cb({ payload: { id, shortcut } });
+    cb({ payload: { id, shortcut, state } });
   }
 }
 
@@ -203,7 +223,11 @@ describe("DictationOrbHost", () => {
       dictation_output_mode: "batch",
       dictation_paste_at_cursor: true,
       dictation_cleanup: "none",
+      dictation_activation_mode: "toggle",
+      dictation_pause_media: false,
     };
+    mocks.pauseMedia.mockResolvedValue({ status: "ok", data: true });
+    mocks.resumeMedia.mockResolvedValue({ status: "ok", data: null });
     mocks.historyEntries = [];
     mocks.deliverText.mockResolvedValue({ status: "ok", data: null });
     mocks.orbClickListeners = [];
@@ -595,6 +619,234 @@ describe("DictationOrbHost", () => {
 
       triggerHotkey("dictation_paste_last", "ctrl+alt+v");
       await waitFor(() => expect(mocks.deliverText).toHaveBeenCalledTimes(2));
+    });
+
+    it("acts on the pressed edge only, never on release", async () => {
+      mocks.settings.current.dictation_paste_last_shortcut = "ctrl+alt+v";
+      mocks.historyEntries = [{ id: "1", text: "hello", status: "delivered" }];
+
+      render(<DictationOrbHost />);
+      await waitFor(() => expect(mocks.hotkeyListeners.length).toBe(1));
+
+      // A release edge must not paste (would double-fire on every key-up).
+      triggerHotkey("dictation_paste_last", "ctrl+alt+v", "released");
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(mocks.deliverText).not.toHaveBeenCalled();
+
+      triggerHotkey("dictation_paste_last", "ctrl+alt+v", "pressed");
+      await waitFor(() => expect(mocks.deliverText).toHaveBeenCalledTimes(1));
+    });
+  });
+
+  // Lane: push-to-talk activation mode (hold to record, release to stop).
+  describe("push-to-talk mode", () => {
+    const readyConn = {
+      provider: "hyprnote",
+      model: "QuantizedTiny",
+      baseUrl: "http://127.0.0.1:5555",
+    };
+
+    it("starts on pressed and stops on released", async () => {
+      mocks.settings.current.dictation_activation_mode = "push_to_talk";
+      mocks.sttConnection = { conn: readyConn, isLocalModel: true };
+
+      render(<DictationOrbHost />);
+      await waitFor(() => expect(mocks.hotkeyListeners.length).toBe(1));
+
+      triggerHotkey("dictation_toggle", "ctrl+alt+space", "pressed");
+      await waitFor(() =>
+        expect(mocks.startDictation).toHaveBeenCalledTimes(1),
+      );
+
+      // Session is now live.
+      pushPhase("listening");
+
+      triggerHotkey("dictation_toggle", "ctrl+alt+space", "released");
+      await waitFor(() => expect(mocks.stopDictation).toHaveBeenCalledTimes(1));
+    });
+
+    it("ignores auto-repeat pressed events while already listening", async () => {
+      mocks.settings.current.dictation_activation_mode = "push_to_talk";
+      mocks.sttConnection = { conn: readyConn, isLocalModel: true };
+
+      render(<DictationOrbHost />);
+      await waitFor(() => expect(mocks.hotkeyListeners.length).toBe(1));
+
+      triggerHotkey("dictation_toggle", "ctrl+alt+space", "pressed");
+      await waitFor(() =>
+        expect(mocks.startDictation).toHaveBeenCalledTimes(1),
+      );
+      pushPhase("listening");
+
+      // Windows repeats Pressed while the key is held: must NOT start again
+      // and must NOT be treated as a stop.
+      triggerHotkey("dictation_toggle", "ctrl+alt+space", "pressed");
+      triggerHotkey("dictation_toggle", "ctrl+alt+space", "pressed");
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(mocks.startDictation).toHaveBeenCalledTimes(1);
+      expect(mocks.stopDictation).not.toHaveBeenCalled();
+    });
+
+    it("defers the stop of a very short press until the session actually starts", async () => {
+      mocks.settings.current.dictation_activation_mode = "push_to_talk";
+      mocks.sttConnection = { conn: readyConn, isLocalModel: true };
+
+      render(<DictationOrbHost />);
+      await waitFor(() => expect(mocks.hotkeyListeners.length).toBe(1));
+
+      triggerHotkey("dictation_toggle", "ctrl+alt+space", "pressed");
+      await waitFor(() =>
+        expect(mocks.startDictation).toHaveBeenCalledTimes(1),
+      );
+
+      // Release BEFORE the session reaches `listening` (phase still idle): a
+      // stop now would be a lost no-op, so it must be deferred.
+      triggerHotkey("dictation_toggle", "ctrl+alt+space", "released");
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(mocks.stopDictation).not.toHaveBeenCalled();
+
+      // Once the session actually starts, the deferred stop fires.
+      pushPhase("listening");
+      await waitFor(() => expect(mocks.stopDictation).toHaveBeenCalledTimes(1));
+    });
+
+    it("drops a released edge with no matching hold", async () => {
+      mocks.settings.current.dictation_activation_mode = "push_to_talk";
+      mocks.sttConnection = { conn: readyConn, isLocalModel: true };
+
+      render(<DictationOrbHost />);
+      await waitFor(() => expect(mocks.hotkeyListeners.length).toBe(1));
+
+      // A stray release (we never pressed) must not stop anything.
+      triggerHotkey("dictation_toggle", "ctrl+alt+space", "released");
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(mocks.stopDictation).not.toHaveBeenCalled();
+    });
+
+    it("in toggle mode, ignores the released edge (unchanged behavior)", async () => {
+      // Default mode is "toggle".
+      mocks.sttConnection = { conn: readyConn, isLocalModel: true };
+
+      render(<DictationOrbHost />);
+      await waitFor(() => expect(mocks.hotkeyListeners.length).toBe(1));
+
+      triggerHotkey("dictation_toggle", "ctrl+alt+space", "pressed");
+      await waitFor(() =>
+        expect(mocks.startDictation).toHaveBeenCalledTimes(1),
+      );
+
+      // A release in toggle mode is inert - it must not stop the session.
+      triggerHotkey("dictation_toggle", "ctrl+alt+space", "released");
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(mocks.stopDictation).not.toHaveBeenCalled();
+    });
+  });
+
+  // Lane: media auto-pause (`dictation_pause_media`).
+  describe("media auto-pause", () => {
+    const readyConn = {
+      provider: "hyprnote",
+      model: "QuantizedTiny",
+      baseUrl: "http://127.0.0.1:5555",
+    };
+
+    it("pauses playing media on a successful start when the setting is on", async () => {
+      mocks.settings.current.dictation_pause_media = true;
+      mocks.sttConnection = { conn: readyConn, isLocalModel: true };
+
+      render(<DictationOrbHost />);
+      await waitFor(() => expect(mocks.orbClickListeners.length).toBe(1));
+
+      mocks.orbClickListeners[0]!();
+      await waitFor(() => expect(mocks.pauseMedia).toHaveBeenCalledTimes(1));
+    });
+
+    it("does not pause media when the setting is off", async () => {
+      mocks.settings.current.dictation_pause_media = false;
+      mocks.sttConnection = { conn: readyConn, isLocalModel: true };
+
+      render(<DictationOrbHost />);
+      await waitFor(() => expect(mocks.orbClickListeners.length).toBe(1));
+
+      mocks.orbClickListeners[0]!();
+      await waitFor(() =>
+        expect(mocks.startDictation).toHaveBeenCalledTimes(1),
+      );
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(mocks.pauseMedia).not.toHaveBeenCalled();
+    });
+
+    it("resumes media when the session ends", async () => {
+      mocks.settings.current.dictation_pause_media = true;
+      mocks.sttConnection = { conn: readyConn, isLocalModel: true };
+
+      render(<DictationOrbHost />);
+      await waitFor(() => expect(mocks.orbClickListeners.length).toBe(1));
+
+      mocks.orbClickListeners[0]!();
+      await waitFor(() => expect(mocks.pauseMedia).toHaveBeenCalledTimes(1));
+
+      // Terminal phase = session ended -> resume what we paused.
+      pushPhase("idle");
+      await waitFor(() => expect(mocks.resumeMedia).toHaveBeenCalled());
+    });
+
+    it("resumes media as a safety net when the start fails", async () => {
+      mocks.settings.current.dictation_pause_media = true;
+      mocks.sttConnection = { conn: readyConn, isLocalModel: true };
+      mocks.startDictation.mockResolvedValueOnce({
+        status: "error",
+        error: "engine busy",
+      });
+
+      render(<DictationOrbHost />);
+      await waitFor(() => expect(mocks.orbClickListeners.length).toBe(1));
+
+      mocks.orbClickListeners[0]!();
+      await waitFor(() => expect(mocks.resumeMedia).toHaveBeenCalled());
+      // A failed start never paused, so pause was not requested.
+      expect(mocks.pauseMedia).not.toHaveBeenCalled();
+    });
+  });
+
+  // A PTT hold whose start FAILED must not leave the deferred stop armed -
+  // it would instantly kill the next successful session.
+  describe("push-to-talk failed-start disarm", () => {
+    it("does not carry a deferred stop from a failed hold into the next session", async () => {
+      mocks.settings.current.dictation_activation_mode = "push_to_talk";
+      mocks.sttConnection = {
+        conn: {
+          provider: "hyprnote",
+          model: "QuantizedTiny",
+          baseUrl: "http://127.0.0.1:5555",
+        },
+        isLocalModel: true,
+      };
+      // First start fails (engine busy); the retry succeeds.
+      mocks.startDictation.mockResolvedValueOnce({
+        status: "error",
+        error: "engine busy",
+      });
+
+      render(<DictationOrbHost />);
+      await waitFor(() => expect(mocks.hotkeyListeners.length).toBe(1));
+
+      // Hold + quick release while the failed start is still in flight: the
+      // release defers a stop (phase never left idle).
+      triggerHotkey("dictation_toggle", "ctrl+alt+space", "pressed");
+      triggerHotkey("dictation_toggle", "ctrl+alt+space", "released");
+      await waitFor(() => expect(mocks.sonnerError).toHaveBeenCalled());
+
+      // Next session starts successfully (orb click) and reaches listening -
+      // the stale deferred stop must NOT fire.
+      mocks.orbClickListeners[0]!();
+      await waitFor(() =>
+        expect(mocks.startDictation).toHaveBeenCalledTimes(2),
+      );
+      pushPhase("listening");
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(mocks.stopDictation).not.toHaveBeenCalled();
     });
   });
 });

@@ -38,6 +38,31 @@ export const SETTING_DEFINITIONS = {
     path: ["general", "dictation_shortcut"],
     default: "ctrl+alt+space" as string,
   },
+  // How the dictation toggle hotkey behaves: "toggle" (press once to start,
+  // again to stop - the default) or "push_to_talk" (hold to record, release to
+  // stop). PTT starts on key-down and stops on key-up; toggle acts on key-down
+  // only. Both read from the same `dictation_shortcut` binding.
+  dictation_activation_mode: {
+    type: "string",
+    path: ["general", "dictation_activation_mode"],
+    default: "toggle" as string,
+  },
+  // Auto-pause any playing media (music/video) while a dictation session runs,
+  // resuming only what WE paused when it ends. Best-effort per platform
+  // (MPRIS on Linux, GSMTC on Windows, Music/Spotify via osascript on macOS).
+  dictation_pause_media: {
+    type: "boolean",
+    path: ["general", "dictation_pause_media"],
+    default: false as boolean,
+  },
+  // How long delivered dictation history is kept before pruning: "off" (keep
+  // forever - the default), "7d", "30d" or "90d". The retention/prune logic is
+  // owned elsewhere; this only declares the setting.
+  dictation_history_retention: {
+    type: "string",
+    path: ["general", "dictation_history_retention"],
+    default: "off" as string,
+  },
   // Second global hotkey (works while the app is backgrounded, all platforms):
   // pastes the most recent delivered dictation at the cursor. Empty string =
   // disabled (no default binding, so it can't collide with the toggle above out

@@ -32,6 +32,37 @@ export const DICTATION_HISTORY_PAGE_SIZE = 50;
 
 const WRITE_QUEUE_KEY = "dictation-history";
 
+/**
+ * Age-based retention windows, keyed by the `dictation_history_retention`
+ * setting value ("off" | "7d" | "30d" | "90d", schema owned by the
+ * PTT/media-pause lane). "off" and any unrecognized value intentionally have
+ * no entry here, so callers treat them as a no-op.
+ */
+const RETENTION_WINDOW_DAYS: Record<string, number> = {
+  "7d": 7,
+  "30d": 30,
+  "90d": 90,
+};
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+/**
+ * ISO-8601 UTC cutoff for a retention value, or `null` when the retention is
+ * "off"/unrecognized (no age-based pruning should happen). Rows are ISO
+ * strings so a plain lexicographic `created_at < cutoff` comparison is
+ * correct without parsing dates in SQL.
+ */
+function retentionCutoffIso(retention: string | undefined): string | null {
+  if (!retention) {
+    return null;
+  }
+  const days = RETENTION_WINDOW_DAYS[retention];
+  if (!days) {
+    return null;
+  }
+  return new Date(Date.now() - days * MS_PER_DAY).toISOString();
+}
+
 export type DictationHistorySource = "dictation" | "meeting";
 export type DictationHistoryStatus = "delivered" | "discarded";
 
@@ -218,6 +249,19 @@ export async function listDictationHistory(opts?: {
  * Append a completed dictation and prune the oldest *unpinned* rows past the
  * rolling cap in the same transaction. New fields are optional so existing
  * callers passing only `{ text, mode, cleaned }` keep working.
+ *
+ * When `retention` is passed (the `dictation_history_retention` setting
+ * value), the age-based prune from {@link pruneDictationHistoryByAge} is ALSO
+ * applied in this same transaction - this is the enforcement hook for
+ * write-time retention. It's optional/backward compatible: omitting it (as
+ * every caller does today) only applies the existing count-based cap.
+ *
+ * Reconciliation TODO for the merger: no current caller passes `retention`
+ * yet - `dictation/finalize.ts` (the save path, owned by the PTT/media-pause
+ * lane) should read `dictation_history_retention` and thread it through here
+ * once that file is free to touch. Until then, day-to-day enforcement comes
+ * from {@link pruneDictationHistoryByAge} being fired from the Snippets page
+ * load path (`snippets/queries.ts`).
  */
 export async function addDictationHistoryEntry(entry: {
   text: string;
@@ -228,48 +272,102 @@ export async function addDictationHistoryEntry(entry: {
   model?: string | null;
   durationMs?: number | null;
   status?: DictationHistoryStatus;
+  /** `dictation_history_retention` setting value; omit/"off" = no age prune. */
+  retention?: string;
 }): Promise<void> {
   const id = crypto.randomUUID();
   const createdAt = new Date().toISOString();
 
+  const statements: { sql: string; params: unknown[] }[] = [
+    {
+      sql: `
+        INSERT INTO dictation_history
+          (id, text, raw_text, mode, cleaned, source, model, duration_ms,
+           status, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `,
+      params: [
+        id,
+        entry.text,
+        entry.rawText ?? null,
+        entry.mode,
+        entry.cleaned ? 1 : 0,
+        entry.source ?? "dictation",
+        entry.model ?? null,
+        entry.durationMs ?? null,
+        entry.status ?? "delivered",
+        createdAt,
+      ],
+    },
+    {
+      // Prune oldest-first among *unpinned* rows only; pinned rows are exempt
+      // and never counted, so an all-pinned table prunes nothing.
+      sql: `
+        DELETE FROM dictation_history
+        WHERE pinned = 0
+          AND id NOT IN (
+            SELECT id FROM dictation_history
+            WHERE pinned = 0
+            ORDER BY created_at DESC, id DESC
+            LIMIT ?
+          )
+      `,
+      params: [DICTATION_HISTORY_PRUNE_CAP],
+    },
+  ];
+
+  const ageCutoff = retentionCutoffIso(entry.retention);
+  if (ageCutoff) {
+    statements.push(ageBasedPruneStatement(ageCutoff));
+  }
+
   await enqueueDatabaseWrite(WRITE_QUEUE_KEY, async () => {
-    await executeTransaction([
-      {
-        sql: `
-          INSERT INTO dictation_history
-            (id, text, raw_text, mode, cleaned, source, model, duration_ms,
-             status, created_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `,
-        params: [
-          id,
-          entry.text,
-          entry.rawText ?? null,
-          entry.mode,
-          entry.cleaned ? 1 : 0,
-          entry.source ?? "dictation",
-          entry.model ?? null,
-          entry.durationMs ?? null,
-          entry.status ?? "delivered",
-          createdAt,
-        ],
-      },
-      {
-        // Prune oldest-first among *unpinned* rows only; pinned rows are exempt
-        // and never counted, so an all-pinned table prunes nothing.
-        sql: `
-          DELETE FROM dictation_history
-          WHERE pinned = 0
-            AND id NOT IN (
-              SELECT id FROM dictation_history
-              WHERE pinned = 0
-              ORDER BY created_at DESC, id DESC
-              LIMIT ?
-            )
-        `,
-        params: [DICTATION_HISTORY_PRUNE_CAP],
-      },
-    ]);
+    await executeTransaction(statements);
+  });
+}
+
+function ageBasedPruneStatement(cutoffIso: string): {
+  sql: string;
+  params: unknown[];
+} {
+  return {
+    // Unpinned rows only, regardless of status - pinned rows are exempt from
+    // age-based retention exactly like the count-based cap above. Audio
+    // files are NOT touched here: `audio_path` is reserved/unused for now
+    // (no audio is currently persisted alongside history rows), so cleaning
+    // up on-disk audio when it lands is future work.
+    sql: `
+      DELETE FROM dictation_history
+      WHERE pinned = 0
+        AND created_at < ?
+    `,
+    params: [cutoffIso],
+  };
+}
+
+/**
+ * Age-based retention prune, independent of the count-based rolling cap:
+ * deletes unpinned rows (any status - delivered or discarded) older than the
+ * `retention` window. No-op for "off" or an unrecognized retention value.
+ * Pinned rows are always exempt.
+ *
+ * This is the day-to-day enforcement path, fired fire-and-forget from the
+ * Snippets page load (`snippets/queries.ts`) rather than from the dictation
+ * save path - see {@link addDictationHistoryEntry}'s reconciliation TODO.
+ *
+ * Audio files are intentionally untouched: `audio_path` is a reserved/unused
+ * column today, so there is no on-disk audio to clean up yet.
+ */
+export async function pruneDictationHistoryByAge(
+  retention: string,
+): Promise<void> {
+  const cutoffIso = retentionCutoffIso(retention);
+  if (!cutoffIso) {
+    return;
+  }
+
+  await enqueueDatabaseWrite(WRITE_QUEUE_KEY, async () => {
+    await executeTransaction([ageBasedPruneStatement(cutoffIso)]);
   });
 }
 
