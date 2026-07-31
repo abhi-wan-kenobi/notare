@@ -133,6 +133,7 @@ vi.mock("~/ai/hooks", () => ({
 
 vi.mock("~/settings/queries", () => ({
   useSetSettingValues: () => mocks.setSettingValues,
+  useStoredSettingValue: () => ({ value: undefined, hasValue: false }),
 }));
 
 vi.mock("~/shared/config", () => ({

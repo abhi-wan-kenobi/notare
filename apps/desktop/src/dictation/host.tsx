@@ -1,7 +1,7 @@
 import { useLingui } from "@lingui/react/macro";
 import { platform } from "@tauri-apps/plugin-os";
 import { generateText } from "ai";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 
 import {
   commands as dictationCommands,
@@ -16,6 +16,7 @@ import {
 } from "@hypr/plugin-shortcut";
 import { sonnerToast } from "@hypr/ui/components/ui/toast";
 
+import { type DictionaryEntry, parseDictionaryEntries } from "./dictionary";
 import {
   finalizeDictation,
   LLM_CLEANUP_SYSTEM_PROMPT,
@@ -27,7 +28,7 @@ import { isLegacyOutputMode, normalizeOutputMode } from "./output-mode";
 
 import { useLanguageModel } from "~/ai/hooks";
 import { deterministicGenerationSettings } from "~/ai/model-settings";
-import { useSetSettingValues } from "~/settings/queries";
+import { useSetSettingValues, useStoredSettingValue } from "~/settings/queries";
 import { useConfigValues } from "~/shared/config";
 import { listenerStore } from "~/store/zustand/listener/instance";
 import { useSTTConnection } from "~/stt/useSTTConnection";
@@ -85,6 +86,23 @@ export function DictationOrbHost() {
     cleanup: normalizeCleanupMode(dictation_cleanup),
     pasteAtCursor: dictation_paste_at_cursor,
   };
+
+  // Custom-dictionary entries. Read the RAW stored setting string (not
+  // `useConfigValue`, which strips the mapping objects down to plain strings)
+  // so the deterministic wrong -> right replacements survive to the finalize
+  // pass. Kept in a ref so the finished-event handler sees the latest.
+  const { value: dictionaryRaw } = useStoredSettingValue(
+    "personalization_dictionary_terms",
+  );
+  const dictionaryEntries = useMemo<DictionaryEntry[]>(
+    () =>
+      parseDictionaryEntries(
+        typeof dictionaryRaw === "string" ? dictionaryRaw : "[]",
+      ),
+    [dictionaryRaw],
+  );
+  const dictionaryRef = useRef(dictionaryEntries);
+  dictionaryRef.current = dictionaryEntries;
 
   // LLM cleanup uses the app's configured provider; null = not configured.
   const model = useLanguageModel();
@@ -195,6 +213,7 @@ export function DictationOrbHost() {
             mode: event.mode,
             failed: event.failed,
             cleanup: settings.cleanup,
+            dictionary: dictionaryRef.current,
             pasteAtCursor: settings.pasteAtCursor,
             // The STT model name comes from the live connection, not the
             // finished event; `connRef` still holds the session's model.

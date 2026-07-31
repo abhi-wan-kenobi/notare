@@ -40,7 +40,7 @@ vi.mock("@lingui/react/macro", () => ({
   }),
 }));
 
-import { DictionarySettings, SummaryInstructionsSettings } from "./index";
+import { SummaryInstructionsSettings } from "./index";
 
 describe("SummaryInstructionsSettings", () => {
   afterEach(() => {
@@ -111,129 +111,6 @@ describe("SummaryInstructionsSettings", () => {
   });
 });
 
-describe("DictionarySettings", () => {
-  afterEach(() => {
-    cleanup();
-  });
-
-  it("only shows the input when the dictionary is empty", () => {
-    render(<DictionarySettings terms={[]} onSave={vi.fn()} />);
-
-    const input = screen.getByRole("textbox");
-
-    expect(input).toBeTruthy();
-    expect(input.closest("[data-slot='input-group']")?.className).toContain(
-      "border-border",
-    );
-    expect(screen.queryByText("Examples")).toBeNull();
-    expect(screen.queryByText("FastConformer")).toBeNull();
-  });
-
-  it("adds entered terms and keeps them normalized", async () => {
-    const onSave = vi.fn();
-    render(<DictionarySettings terms={["Notare"]} onSave={onSave} />);
-
-    fireEvent.change(screen.getByRole("textbox"), {
-      target: { value: " FastConformer, Parakeet TDT " },
-    });
-    const addButton = screen.getByRole("button", {
-      name: "Add",
-    }) as HTMLButtonElement;
-    await waitFor(() => expect(addButton.disabled).toBe(false));
-    fireEvent.click(addButton);
-
-    await waitFor(() =>
-      expect(onSave).toHaveBeenCalledWith(
-        JSON.stringify(["Notare", "FastConformer", "Parakeet TDT"]),
-      ),
-    );
-  });
-
-  it("removes saved terms", () => {
-    const onSave = vi.fn();
-    render(
-      <DictionarySettings
-        terms={["Notare", "Parakeet TDT"]}
-        onSave={onSave}
-      />,
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: "Remove Notare" }));
-
-    expect(onSave).toHaveBeenCalledWith(JSON.stringify(["Parakeet TDT"]));
-  });
-
-  it("does not enable adding duplicate terms", async () => {
-    const onSave = vi.fn();
-    render(<DictionarySettings terms={["Notare"]} onSave={onSave} />);
-
-    fireEvent.change(screen.getByRole("textbox"), {
-      target: { value: "notare" },
-    });
-
-    const addButton = screen.getByRole("button", {
-      name: "Add",
-    }) as HTMLButtonElement;
-    await waitFor(() => expect(addButton.disabled).toBe(true));
-    fireEvent.click(addButton);
-
-    expect(onSave).not.toHaveBeenCalled();
-  });
-
-  it("uses an inverted add button while typing", async () => {
-    render(<DictionarySettings terms={["Notare"]} onSave={vi.fn()} />);
-
-    const addButton = screen.getByRole("button", {
-      name: "Add",
-    }) as HTMLButtonElement;
-
-    expect(addButton.className).not.toContain("bg-[#2f6f68]");
-    expect(addButton.className).not.toContain("bg-black");
-
-    fireEvent.change(screen.getByRole("textbox"), {
-      target: { value: "FastConformer" },
-    });
-
-    await waitFor(() => expect(addButton.className).toContain("bg-black"));
-    expect(addButton.className).toContain("text-white");
-    expect(addButton.className).toContain("dark:bg-white");
-    expect(addButton.className).toContain("dark:text-black");
-    expect(addButton.className).not.toContain("bg-[#2f6f68]");
-  });
-
-  it("shows relevant saved terms while typing", async () => {
-    render(
-      <DictionarySettings
-        terms={["Notare", "FastConformer", "Parakeet TDT"]}
-        onSave={vi.fn()}
-      />,
-    );
-
-    fireEvent.change(screen.getByRole("textbox"), {
-      target: { value: "fast" },
-    });
-
-    await waitFor(() => expect(screen.getByText("FastConformer")).toBeTruthy());
-    expect(screen.queryByText("Notare")).toBeNull();
-    expect(screen.queryByText("Parakeet TDT")).toBeNull();
-  });
-
-  it("shows no match below the input when typed text has no saved match", async () => {
-    render(
-      <DictionarySettings
-        terms={["Notare", "FastConformer"]}
-        onSave={vi.fn()}
-      />,
-    );
-
-    expect(screen.queryByText("No match")).toBeNull();
-
-    fireEvent.change(screen.getByRole("textbox"), {
-      target: { value: "parakeet" },
-    });
-
-    await waitFor(() => expect(screen.getByText("No match")).toBeTruthy());
-    expect(screen.queryByText("Notare")).toBeNull();
-    expect(screen.queryByText("FastConformer")).toBeNull();
-  });
-});
+// DictionarySettings now lives in ./dictionary-settings.tsx (upgraded to
+// support wrong->right mappings alongside flat terms); its tests live in
+// ./dictionary-settings.test.tsx.

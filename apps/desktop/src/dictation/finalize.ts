@@ -1,5 +1,6 @@
 import type { DictationOutputMode } from "@hypr/plugin-dictation";
 
+import { applyDictionary, type DictionaryEntry } from "./dictionary";
 import type {
   DictationHistorySource,
   DictationHistoryStatus,
@@ -49,6 +50,14 @@ export interface FinalizeDictationInput {
   /** The session died (mic/server failure) instead of stopping cleanly. */
   failed: boolean;
   cleanup: DictationCleanupMode;
+  /**
+   * Custom-dictionary entries (`personalization_dictionary_terms`). The
+   * mapping entries are applied as deterministic wrong -> right replacements
+   * after the basic/LLM cleanup and before delivery + history. Flat-string
+   * entries are ignored here (they are STT bias hints, not replacements).
+   * Optional so callers that predate the dictionary keep compiling.
+   */
+  dictionary?: DictionaryEntry[];
   pasteAtCursor: boolean;
   /** STT model that produced the transcript, when the host knows it. */
   model?: string | null;
@@ -107,7 +116,20 @@ export async function finalizeDictation(
   signalPhase?.("processing");
 
   try {
-    const { text, cleaned } = await cleanTranscript(raw, input.cleanup, deps);
+    const { text: cleanedText, cleaned: didClean } = await cleanTranscript(
+      raw,
+      input.cleanup,
+      deps,
+    );
+
+    // Deterministic dictionary pass: applied after basic/LLM cleanup and
+    // before delivery + history, in every mode (type mode's live-typed text
+    // already went out via Rust, but its history entry still records the
+    // dictionary-applied text). The raw transcript is never touched. If the
+    // dictionary rewrote anything, the entry is no longer verbatim-raw, so it
+    // counts as "cleaned" even under the "none" cleanup mode.
+    const text = applyDictionary(cleanedText, input.dictionary ?? []);
+    const cleaned = didClean || text !== cleanedText;
 
     // Discarded-dictation recovery: a session that died, or whose cleanup
     // stripped everything down to non-speech artifacts, delivered nothing

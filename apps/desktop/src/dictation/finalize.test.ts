@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
+import type { DictionaryEntry } from "./dictionary";
 import {
   type FinalizeDictationDeps,
   type FinalizeDictationInput,
@@ -316,6 +317,91 @@ describe("finalizeDictation phase signaling", () => {
     );
 
     expect(signalPhase).not.toHaveBeenCalled();
+  });
+});
+
+describe("finalizeDictation custom dictionary", () => {
+  const mapping = (
+    wrong: string,
+    right: string,
+    caseSensitive = false,
+  ): DictionaryEntry => ({ wrong, right, caseSensitive });
+
+  it("applies the dictionary after basic cleanup, before delivery + history", async () => {
+    const deps = makeDeps();
+    await finalizeDictation(
+      makeInput({ dictionary: [mapping("world", "WORLD")] }),
+      deps,
+    );
+
+    // cleanBasic wraps to "basic(hello world)"; the dictionary then rewrites
+    // "world" -> "WORLD" on the already-cleaned text.
+    expect(deps.cleanBasic).toHaveBeenCalledWith("hello world");
+    expect(deps.deliver).toHaveBeenCalledWith("basic(hello WORLD)", true);
+    expect(deps.saveHistory).toHaveBeenCalledWith(
+      saved({ text: "basic(hello WORLD)" }),
+    );
+  });
+
+  it("leaves the raw transcript untouched by the dictionary", async () => {
+    const deps = makeDeps();
+    await finalizeDictation(
+      makeInput({
+        rawText: "far eye rocks",
+        cleanup: "none",
+        dictionary: [mapping("far eye", "FarEye")],
+      }),
+      deps,
+    );
+
+    expect(deps.saveHistory).toHaveBeenCalledWith(
+      saved({
+        // "none" cleanup keeps the transcript verbatim, then the dictionary
+        // rewrites it; because it changed, the entry is marked cleaned.
+        text: "FarEye rocks",
+        rawText: "far eye rocks",
+        cleaned: true,
+      }),
+    );
+  });
+
+  it("is a no-op with an empty dictionary", async () => {
+    const deps = makeDeps();
+    await finalizeDictation(makeInput({ dictionary: [] }), deps);
+
+    expect(deps.deliver).toHaveBeenCalledWith("basic(hello world)", true);
+    expect(deps.saveHistory).toHaveBeenCalledWith(saved({}));
+  });
+
+  it("is a no-op when the dictionary is omitted entirely", async () => {
+    const deps = makeDeps();
+    await finalizeDictation(makeInput(), deps);
+
+    expect(deps.deliver).toHaveBeenCalledWith("basic(hello world)", true);
+    expect(deps.saveHistory).toHaveBeenCalledWith(saved({}));
+  });
+
+  it("applies to the type-mode history entry (no delivery)", async () => {
+    const deps = makeDeps();
+    await finalizeDictation(
+      makeInput({
+        mode: "type",
+        cleanup: "none",
+        rawText: "far eye",
+        dictionary: [mapping("far eye", "FarEye")],
+      }),
+      deps,
+    );
+
+    expect(deps.deliver).not.toHaveBeenCalled();
+    expect(deps.saveHistory).toHaveBeenCalledWith(
+      saved({
+        mode: "type",
+        text: "FarEye",
+        rawText: "far eye",
+        cleaned: true,
+      }),
+    );
   });
 });
 

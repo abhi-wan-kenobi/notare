@@ -14,6 +14,10 @@ import {
   loadSessionContentSnapshot,
   type SessionContentSnapshot,
 } from "~/session/content-queries";
+import {
+  parseDictionaryEntries,
+  serializeDictionaryEntries,
+} from "~/dictation/dictionary";
 import { updateSettingValue } from "~/settings/queries";
 import { normalizeKeywordList } from "~/stt/keywords";
 
@@ -352,21 +356,6 @@ function planTranscriptCorrections({
   return { changes, updates };
 }
 
-function parseStoredDictionaryTerms(value: unknown): string[] {
-  if (typeof value !== "string") {
-    return [];
-  }
-
-  try {
-    const parsed = JSON.parse(value);
-    return Array.isArray(parsed)
-      ? normalizeKeywordList(parsed.filter((term) => typeof term === "string"))
-      : [];
-  } catch {
-    return [];
-  }
-}
-
 function dictionaryKey(value: string): string {
   return value.trim().replace(/\s+/g, " ").toLocaleLowerCase();
 }
@@ -382,14 +371,25 @@ async function saveDictionaryTerms(
   await updateSettingValue(
     "personalization_dictionary_terms",
     (storedValue) => {
-      const currentTerms = parseStoredDictionaryTerms(storedValue);
-      const currentKeys = new Set(currentTerms.map(dictionaryKey));
+      // Parse the FULL entry list (flat terms AND wrong->right mappings) and
+      // append to it - a strings-only parse-and-rewrite here would wipe every
+      // mapping the user has built the next time chat adds a term.
+      const entries = parseDictionaryEntries(
+        typeof storedValue === "string" ? storedValue : "[]",
+      );
+      const currentKeys = new Set<string>();
+      for (const entry of entries) {
+        if (typeof entry === "string") {
+          currentKeys.add(dictionaryKey(entry));
+        } else {
+          currentKeys.add(dictionaryKey(entry.wrong));
+          currentKeys.add(dictionaryKey(entry.right));
+        }
+      }
       addedTerms = normalizeKeywordList(terms).filter(
         (term) => !currentKeys.has(dictionaryKey(term)),
       );
-      return JSON.stringify(
-        normalizeKeywordList([...currentTerms, ...addedTerms]),
-      );
+      return serializeDictionaryEntries([...entries, ...addedTerms]);
     },
   );
 

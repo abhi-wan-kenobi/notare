@@ -1,25 +1,25 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useForm } from "@tanstack/react-form";
-import { CircleMinusIcon, PlusIcon } from "lucide-react";
 
 import { Button } from "@hypr/ui/components/ui/button";
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupButton,
-  InputGroupInput,
-} from "@hypr/ui/components/ui/input-group";
 import { Textarea } from "@hypr/ui/components/ui/textarea";
-import { cn } from "@hypr/utils";
+
+import { DictionarySettings } from "./dictionary-settings";
 
 import { SettingsPageTitle } from "~/settings/page-title";
-import { useSetSettingValue } from "~/settings/queries";
+import { useSetSettingValue, useStoredSettingValue } from "~/settings/queries";
 import { useConfigValue } from "~/shared/config";
-import { normalizeKeywordList, parseDictionaryTermsText } from "~/stt/keywords";
 
 export function SettingsPersonalization() {
-  const terms = useConfigValue("personalization_dictionary_terms");
-  const setTerms = useSetSettingValue("personalization_dictionary_terms");
+  // Read the raw stored string (not `useConfigValue`, which flattens this
+  // setting to `string[]` and drops mapping objects — see
+  // `dictionary-settings.tsx` for why).
+  const { value: dictionaryRaw } = useStoredSettingValue(
+    "personalization_dictionary_terms",
+  );
+  const setDictionaryRaw = useSetSettingValue(
+    "personalization_dictionary_terms",
+  );
   const summaryInstructions = useConfigValue("custom_summary_instructions");
   const setSummaryInstructions = useSetSettingValue(
     "custom_summary_instructions",
@@ -33,7 +33,10 @@ export function SettingsPersonalization() {
         instructions={summaryInstructions}
         onSave={setSummaryInstructions}
       />
-      <DictionarySettings terms={terms} onSave={setTerms} />
+      <DictionarySettings
+        raw={dictionaryRaw ?? "[]"}
+        onSave={setDictionaryRaw}
+      />
     </div>
   );
 }
@@ -126,150 +129,4 @@ export function SummaryInstructionsSettings({
       </div>
     </form>
   );
-}
-
-export function DictionarySettings({
-  terms,
-  onSave,
-}: {
-  terms: string[];
-  onSave: (value: string) => void;
-}) {
-  const { t } = useLingui();
-  const normalizedTerms = normalizeKeywordList(terms);
-
-  const form = useForm({
-    defaultValues: {
-      term: "",
-    },
-    onSubmit: ({ value }) => {
-      const nextTerms = appendDictionaryTerms(normalizedTerms, value.term);
-      if (nextTerms.length === normalizedTerms.length) {
-        return;
-      }
-
-      onSave(JSON.stringify(nextTerms));
-      form.setFieldValue("term", "");
-    },
-  });
-
-  const removeTerm = (term: string) => {
-    onSave(JSON.stringify(normalizedTerms.filter((value) => value !== term)));
-  };
-
-  return (
-    <form
-      className="flex flex-col gap-4"
-      onSubmit={(event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        void form.handleSubmit();
-      }}
-    >
-      <h2 className="font-sans text-lg font-semibold">
-        <Trans>Dictionary</Trans>
-      </h2>
-
-      <InputGroup className="border-border bg-card has-[[data-slot=input-group-control]:focus-visible]:border-border min-h-12 rounded-full shadow-none has-[[data-slot=input-group-control]:focus-visible]:ring-0">
-        <form.Field name="term">
-          {(field) => (
-            <InputGroupInput
-              className="h-12 py-3 pr-6 pl-4"
-              placeholder={t`Add names, jargon, or product terms to prefer`}
-              value={field.state.value}
-              onChange={(event) => field.handleChange(event.target.value)}
-              onBlur={field.handleBlur}
-            />
-          )}
-        </form.Field>
-        <InputGroupAddon align="inline-end" className="pr-2.5">
-          <form.Subscribe selector={(state) => state.values.term}>
-            {(value) => {
-              const hasInput = parseDictionaryTermsText(value).length > 0;
-              const canAdd =
-                appendDictionaryTerms(normalizedTerms, value).length !==
-                normalizedTerms.length;
-
-              return (
-                <InputGroupButton
-                  type="submit"
-                  variant="ghost"
-                  size="sm"
-                  className={cn([
-                    "h-10 rounded-full px-5",
-                    hasInput
-                      ? "bg-black text-white hover:bg-black/90 hover:text-white dark:bg-white dark:text-black dark:hover:bg-white/90 dark:hover:text-black"
-                      : null,
-                  ])}
-                  disabled={!canAdd}
-                >
-                  <PlusIcon className="size-3.5" />
-                  <Trans>Add</Trans>
-                </InputGroupButton>
-              );
-            }}
-          </form.Subscribe>
-        </InputGroupAddon>
-      </InputGroup>
-
-      <form.Subscribe selector={(state) => state.values.term}>
-        {(value) => {
-          const visibleTerms = getVisibleDictionaryTerms(
-            normalizedTerms,
-            value,
-          );
-          const hasSearch = parseDictionaryTermsText(value).length > 0;
-
-          if (visibleTerms.length === 0) {
-            return hasSearch ? (
-              <p className="text-muted-foreground px-4 text-sm">
-                <Trans>No match</Trans>
-              </p>
-            ) : null;
-          }
-
-          return (
-            <div className="border-border bg-card divide-border divide-y overflow-hidden rounded-2xl border">
-              {visibleTerms.map((term) => (
-                <div
-                  key={term}
-                  className="group flex min-h-12 items-center justify-between gap-3 py-3 pr-3 pl-4"
-                >
-                  <span className="text-sm">{term}</span>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="text-muted-foreground hover:text-foreground size-7 shrink-0 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
-                    onClick={() => removeTerm(term)}
-                    aria-label={t`Remove ${term}`}
-                  >
-                    <CircleMinusIcon className="size-4" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          );
-        }}
-      </form.Subscribe>
-    </form>
-  );
-}
-
-function appendDictionaryTerms(terms: string[], value: string): string[] {
-  return normalizeKeywordList([...terms, ...parseDictionaryTermsText(value)]);
-}
-
-function getVisibleDictionaryTerms(terms: string[], value: string): string[] {
-  const queries = parseDictionaryTermsText(value).map((term) =>
-    term.toLocaleLowerCase(),
-  );
-  if (queries.length === 0) {
-    return terms;
-  }
-
-  return terms.filter((term) => {
-    const key = term.toLocaleLowerCase();
-    return queries.some((query) => key.includes(query) || query.includes(key));
-  });
 }

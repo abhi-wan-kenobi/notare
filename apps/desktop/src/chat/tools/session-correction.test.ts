@@ -309,6 +309,34 @@ describe("session correction chat tool", () => {
     expect(persistedDictionary).toBe(JSON.stringify(["Notare", "Erebor"]));
   });
 
+  // Regression: the stored dictionary may hold wrong->right mapping objects
+  // next to flat terms. Adding a term from chat must append, never rewrite
+  // the list through a strings-only parse that wipes every mapping.
+  it("preserves mapping entries when chat adds a dictionary term", async () => {
+    mocks.loadSessionContentSnapshot.mockResolvedValue(
+      snapshot({ notes: [summary("sam was here")] }),
+    );
+    const mapping = { wrong: "far eye", right: "FarEye", caseSensitive: false };
+    let persistedDictionary = "";
+    mocks.updateSettingValue.mockImplementation(async (_key, update) => {
+      persistedDictionary = update(JSON.stringify([mapping, "Notare"]));
+      return persistedDictionary;
+    });
+
+    await (buildTool({ enhancedNoteId: "note-1" }) as any).execute({
+      oldText: "sam",
+      newText: "Tim",
+      // "FarEye" matches the mapping's right side -> deduped, not re-added.
+      dictionaryTerms: ["Erebor", "FarEye"],
+    });
+
+    expect(JSON.parse(persistedDictionary)).toEqual([
+      mapping,
+      "Notare",
+      "Erebor",
+    ]);
+  });
+
   it("reports partial success when a requested target does not match", async () => {
     mocks.loadSessionContentSnapshot.mockResolvedValue(
       snapshot({ notes: [summary("Discussed X roadmap.")] }),
