@@ -61,6 +61,25 @@ export const SETTING_DEFINITIONS = {
     path: ["general", "dictation_cleanup"],
     default: "basic" as string,
   },
+  // Translation mode for dictation cleanup. When enabled, the finalize LLM
+  // pass translates the dictated speech into `dictation_translation_target`
+  // instead of only cleaning it (still stripping fillers + fixing punctuation).
+  // Requires an LLM to be configured; when unreachable it falls back to the
+  // rule-cleaned SOURCE text so a paste is never blocked. target == source
+  // effectively no-ops into normal cleanup.
+  dictation_translation_enabled: {
+    type: "boolean",
+    path: ["general", "dictation_translation_enabled"],
+    default: false as boolean,
+  },
+  // Target language for `dictation_translation_enabled` - a language code or
+  // name understood by the LLM (e.g. "en", "English", "es"). Default "en";
+  // the primary use case is mixed Hinglish speech -> English.
+  dictation_translation_target: {
+    type: "string",
+    path: ["general", "dictation_translation_target"],
+    default: "en" as string,
+  },
   // Orb look: "cobalt-halo" (default; twin cobalt rings in a canvas bloom),
   // "cobalt" (the mini meeting orb), "particles" (voice-reactive particle
   // sphere), "waveform" ("Pulse", the dancing-sticks waveform), etc. Keep in
@@ -222,6 +241,42 @@ export const SETTING_DEFINITIONS = {
   current_llm_model: {
     type: "string",
     path: ["ai", "current_llm_model"],
+  },
+  // Per-scope LLM overrides. Each scope (cleanup / notes / chat) may pin its
+  // own provider + model; an empty string inherits the global selection
+  // (`current_llm_provider` / `current_llm_model`). Resolution + the
+  // cloud-opt-in invariant live in `~/ai/scope.ts` + `~/ai/hooks`; the picker
+  // UI is owned separately. A cloud override is honoured ONLY when cloud is
+  // already opted into globally - otherwise it silently inherits the global.
+  ai_scope_cleanup_provider: {
+    type: "string",
+    path: ["ai", "scope_cleanup_provider"],
+    default: "" as string,
+  },
+  ai_scope_cleanup_model: {
+    type: "string",
+    path: ["ai", "scope_cleanup_model"],
+    default: "" as string,
+  },
+  ai_scope_notes_provider: {
+    type: "string",
+    path: ["ai", "scope_notes_provider"],
+    default: "" as string,
+  },
+  ai_scope_notes_model: {
+    type: "string",
+    path: ["ai", "scope_notes_model"],
+    default: "" as string,
+  },
+  ai_scope_chat_provider: {
+    type: "string",
+    path: ["ai", "scope_chat_provider"],
+    default: "" as string,
+  },
+  ai_scope_chat_model: {
+    type: "string",
+    path: ["ai", "scope_chat_model"],
+    default: "" as string,
   },
   current_stt_provider: {
     type: "string",

@@ -129,6 +129,7 @@ vi.mock("@hypr/plugin-shortcut", () => ({
 
 vi.mock("~/ai/hooks", () => ({
   useLanguageModel: () => null,
+  useScopedLanguageModel: () => null,
 }));
 
 vi.mock("~/settings/queries", () => ({

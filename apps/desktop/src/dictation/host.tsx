@@ -17,16 +17,12 @@ import {
 import { sonnerToast } from "@hypr/ui/components/ui/toast";
 
 import { type DictionaryEntry, parseDictionaryEntries } from "./dictionary";
-import {
-  finalizeDictation,
-  LLM_CLEANUP_SYSTEM_PROMPT,
-  normalizeCleanupMode,
-} from "./finalize";
+import { finalizeDictation, normalizeCleanupMode } from "./finalize";
 import { isLikelyEngineBusyError } from "./errors";
 import { addDictationHistoryEntry } from "./history";
 import { isLegacyOutputMode, normalizeOutputMode } from "./output-mode";
 
-import { useLanguageModel } from "~/ai/hooks";
+import { useScopedLanguageModel } from "~/ai/hooks";
 import { deterministicGenerationSettings } from "~/ai/model-settings";
 import { useSetSettingValues, useStoredSettingValue } from "~/settings/queries";
 import { useConfigValues } from "~/shared/config";
@@ -62,12 +58,16 @@ export function DictationOrbHost() {
     dictation_output_mode,
     dictation_paste_at_cursor,
     dictation_cleanup,
+    dictation_translation_enabled,
+    dictation_translation_target,
   } = useConfigValues([
     "dictation_enabled",
     "dictation_shortcut",
     "dictation_output_mode",
     "dictation_paste_at_cursor",
     "dictation_cleanup",
+    "dictation_translation_enabled",
+    "dictation_translation_target",
   ] as const);
   const setSettingValues = useSetSettingValues();
   const enabled = dictation_enabled;
@@ -81,10 +81,18 @@ export function DictationOrbHost() {
   const finalizeSettingsRef = useRef({
     cleanup: normalizeCleanupMode(dictation_cleanup),
     pasteAtCursor: dictation_paste_at_cursor,
+    translation: {
+      enabled: dictation_translation_enabled,
+      target: dictation_translation_target,
+    },
   });
   finalizeSettingsRef.current = {
     cleanup: normalizeCleanupMode(dictation_cleanup),
     pasteAtCursor: dictation_paste_at_cursor,
+    translation: {
+      enabled: dictation_translation_enabled,
+      target: dictation_translation_target,
+    },
   };
 
   // Custom-dictionary entries. Read the RAW stored setting string (not
@@ -104,8 +112,9 @@ export function DictationOrbHost() {
   const dictionaryRef = useRef(dictionaryEntries);
   dictionaryRef.current = dictionaryEntries;
 
-  // LLM cleanup uses the app's configured provider; null = not configured.
-  const model = useLanguageModel();
+  // LLM cleanup/translation uses the "cleanup" scope's model (its per-scope
+  // override, or the global selection); null = not configured.
+  const model = useScopedLanguageModel("cleanup");
   const modelRef = useRef(model);
   modelRef.current = model;
 
@@ -214,6 +223,7 @@ export function DictationOrbHost() {
             failed: event.failed,
             cleanup: settings.cleanup,
             dictionary: dictionaryRef.current,
+            translation: settings.translation,
             pasteAtCursor: settings.pasteAtCursor,
             // The STT model name comes from the live connection, not the
             // finished event; `connRef` still holds the session's model.
@@ -224,11 +234,15 @@ export function DictationOrbHost() {
             cleanBasic: async (text) =>
               unwrap(await dictationCommands.cleanText(text)),
             cleanLlm: model
-              ? async (text) => {
+              ? async (text, systemPrompt, signal) => {
                   const result = await generateText({
                     model,
-                    system: LLM_CLEANUP_SYSTEM_PROMPT,
+                    system: systemPrompt,
                     prompt: text,
+                    // Forward the finalize pipeline's timeout abort so a
+                    // wedged provider call actually stops instead of running
+                    // on after the fallback paste.
+                    abortSignal: signal,
                     ...deterministicGenerationSettings(model),
                   });
                   return result.text;

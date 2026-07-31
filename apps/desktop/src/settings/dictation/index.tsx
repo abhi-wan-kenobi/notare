@@ -26,6 +26,7 @@ import {
 import { normalizeOutputMode } from "~/dictation/output-mode";
 import { normalizeCleanupMode } from "~/dictation/finalize";
 import { ShortcutRecorderRow } from "~/settings/dictation/shortcut-recorder";
+import { TranslationSettings } from "~/settings/dictation/translation";
 import { SettingsPageTitle } from "~/settings/page-title";
 import { useSetSettingValue } from "~/settings/queries";
 import { SETTING_DEFINITIONS } from "~/settings/schema";
@@ -33,6 +34,7 @@ import { useConfigValues } from "~/shared/config";
 import { usePermission } from "~/shared/hooks/usePermissions";
 import { useTabs } from "~/store/zustand/tabs";
 import { useSTTConnection } from "~/stt/useSTTConnection";
+import { useLLMConnectionStatus } from "~/ai/hooks";
 
 /**
  * Dictation settings: the persistent dictation orb that types recognized
@@ -49,6 +51,8 @@ export function SettingsDictation() {
     dictation_cleanup,
     dictation_orb_variant,
     dictation_caption,
+    dictation_translation_enabled,
+    dictation_translation_target,
   } = useConfigValues([
     "dictation_enabled",
     "dictation_shortcut",
@@ -57,6 +61,8 @@ export function SettingsDictation() {
     "dictation_cleanup",
     "dictation_orb_variant",
     "dictation_caption",
+    "dictation_translation_enabled",
+    "dictation_translation_target",
   ] as const);
   const setEnabled = useSetSettingValue("dictation_enabled");
   const setShortcut = useSetSettingValue("dictation_shortcut");
@@ -65,8 +71,24 @@ export function SettingsDictation() {
   const setCleanup = useSetSettingValue("dictation_cleanup");
   const setOrbVariant = useSetSettingValue("dictation_orb_variant");
   const setCaption = useSetSettingValue("dictation_caption");
+  const setTranslationEnabled = useSetSettingValue(
+    "dictation_translation_enabled",
+  );
+  const setTranslationTarget = useSetSettingValue(
+    "dictation_translation_target",
+  );
 
   const outputMode = normalizeOutputMode(dictation_output_mode);
+  const cleanupMode = normalizeCleanupMode(dictation_cleanup);
+  // Translation piggybacks on AI cleanup's language model (see
+  // `finalizeDictation` / the engine's translation step) - it only has a
+  // usable model when cleanup is actually set to "llm" and that model
+  // connects. `dictation_translation_enabled` still gets to be true either
+  // way; TranslationSettings just surfaces the fallback via `modelAvailable`
+  // rather than hard-disabling the toggle.
+  const llmStatus = useLLMConnectionStatus();
+  const translationModelAvailable =
+    cleanupMode === "llm" && llmStatus.status === "success";
 
   const { conn, isLocalModel } = useSTTConnection();
   const modelReady = isLocalModel && !!conn;
@@ -145,10 +167,16 @@ export function SettingsDictation() {
         <h2 className="mb-4 font-sans text-lg font-semibold">
           <Trans>Cleanup</Trans>
         </h2>
-        <CleanupGroup
-          value={normalizeCleanupMode(dictation_cleanup)}
-          onChange={setCleanup}
-        />
+        <div className="flex flex-col gap-4">
+          <CleanupGroup value={cleanupMode} onChange={setCleanup} />
+          <TranslationSettings
+            enabled={dictation_translation_enabled}
+            target={dictation_translation_target}
+            modelAvailable={translationModelAvailable}
+            onToggle={setTranslationEnabled}
+            onTargetChange={setTranslationTarget}
+          />
+        </div>
       </section>
 
       <section>
