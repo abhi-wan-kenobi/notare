@@ -43,9 +43,14 @@ import { useLLMConnectionStatus } from "~/ai/hooks";
  * unfinished native panel.
  */
 export function SettingsDictation() {
+  const { t } = useLingui();
   const {
     dictation_enabled,
     dictation_shortcut,
+    // Global shortcut that re-pastes the most recent dictation at the cursor
+    // without dictating again; "" = disabled. Schema key + Rust registration
+    // land alongside this row (owned by the paste-last hotkey lane).
+    dictation_paste_last_shortcut,
     dictation_output_mode,
     dictation_paste_at_cursor,
     dictation_cleanup,
@@ -56,6 +61,7 @@ export function SettingsDictation() {
   } = useConfigValues([
     "dictation_enabled",
     "dictation_shortcut",
+    "dictation_paste_last_shortcut",
     "dictation_output_mode",
     "dictation_paste_at_cursor",
     "dictation_cleanup",
@@ -66,6 +72,9 @@ export function SettingsDictation() {
   ] as const);
   const setEnabled = useSetSettingValue("dictation_enabled");
   const setShortcut = useSetSettingValue("dictation_shortcut");
+  const setPasteLastShortcut = useSetSettingValue(
+    "dictation_paste_last_shortcut",
+  );
   const setOutputMode = useSetSettingValue("dictation_output_mode");
   const setPasteAtCursor = useSetSettingValue("dictation_paste_at_cursor");
   const setCleanup = useSetSettingValue("dictation_cleanup");
@@ -125,6 +134,25 @@ export function SettingsDictation() {
             value={dictation_shortcut}
             defaultValue={SETTING_DEFINITIONS.dictation_shortcut.default}
             onCommit={setShortcut}
+            conflictValue={dictation_paste_last_shortcut || undefined}
+            conflictMessage={t`This combination is already used by the paste-last-dictation shortcut below.`}
+          />
+          <ShortcutRecorderRow
+            title={<Trans>Paste last dictation</Trans>}
+            description={
+              <Trans>
+                Global shortcut that re-pastes your most recent dictation at
+                the cursor, without dictating again. Click the combo, then
+                press the keys you want, or leave it unset to disable.
+              </Trans>
+            }
+            value={dictation_paste_last_shortcut}
+            defaultValue={
+              SETTING_DEFINITIONS.dictation_paste_last_shortcut.default
+            }
+            onCommit={setPasteLastShortcut}
+            conflictValue={dictation_shortcut || undefined}
+            conflictMessage={t`This combination is already used by the dictation toggle shortcut above.`}
           />
           <SettingRow
             title={<Trans>Show live caption over orb</Trans>}

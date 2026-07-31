@@ -38,6 +38,15 @@ export const SETTING_DEFINITIONS = {
     path: ["general", "dictation_shortcut"],
     default: "ctrl+alt+space" as string,
   },
+  // Second global hotkey (works while the app is backgrounded, all platforms):
+  // pastes the most recent delivered dictation at the cursor. Empty string =
+  // disabled (no default binding, so it can't collide with the toggle above out
+  // of the box).
+  dictation_paste_last_shortcut: {
+    type: "string",
+    path: ["general", "dictation_paste_last_shortcut"],
+    default: "" as string,
+  },
   // "type" (segments typed live into the focused app) or "batch" (accumulate;
   // delivered once on stop - terminal-friendly). The pre-rework value
   // "batch-paste" is tolerated and migrated to "batch" + paste-at-cursor on.

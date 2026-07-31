@@ -19,7 +19,7 @@ import { sonnerToast } from "@hypr/ui/components/ui/toast";
 import { type DictionaryEntry, parseDictionaryEntries } from "./dictionary";
 import { finalizeDictation, normalizeCleanupMode } from "./finalize";
 import { isLikelyEngineBusyError } from "./errors";
-import { addDictationHistoryEntry } from "./history";
+import { addDictationHistoryEntry, listDictationHistory } from "./history";
 import { isLegacyOutputMode, normalizeOutputMode } from "./output-mode";
 
 import { useScopedLanguageModel } from "~/ai/hooks";
@@ -28,6 +28,15 @@ import { useSetSettingValues, useStoredSettingValue } from "~/settings/queries";
 import { useConfigValues } from "~/shared/config";
 import { listenerStore } from "~/store/zustand/listener/instance";
 import { useSTTConnection } from "~/stt/useSTTConnection";
+
+/**
+ * Keyed-hotkey registration ids for the shortcut plugin. Two global hotkeys run
+ * concurrently off the same `globalHotkeyTriggered` event, distinguished by the
+ * `id` the plugin echoes back: the dictation toggle and the paste-last-dictation
+ * shortcut.
+ */
+const HOTKEY_ID_TOGGLE = "dictation_toggle";
+const HOTKEY_ID_PASTE_LAST = "dictation_paste_last";
 
 /**
  * Main-window controller for the persistent dictation orb, active on every
@@ -55,6 +64,7 @@ export function DictationOrbHost() {
   const {
     dictation_enabled,
     dictation_shortcut,
+    dictation_paste_last_shortcut,
     dictation_output_mode,
     dictation_paste_at_cursor,
     dictation_cleanup,
@@ -63,6 +73,7 @@ export function DictationOrbHost() {
   } = useConfigValues([
     "dictation_enabled",
     "dictation_shortcut",
+    "dictation_paste_last_shortcut",
     "dictation_output_mode",
     "dictation_paste_at_cursor",
     "dictation_cleanup",
@@ -166,6 +177,12 @@ export function DictationOrbHost() {
     }
 
     const startedAt = Date.now();
+    // A session that died without ever emitting a finished event would leave
+    // its timestamp queued forever and mispair every later finish - drop
+    // anything implausibly old before enqueueing (no dictation runs 6h).
+    sessionStartsRef.current = sessionStartsRef.current.filter(
+      (start) => startedAt - start < 6 * 60 * 60 * 1000,
+    );
     sessionStartsRef.current.push(startedAt);
     // A start that fails produces no finished event - drop its timestamp so
     // it can't get paired with a later session's finish.
@@ -206,6 +223,58 @@ export function DictationOrbHost() {
           t`Couldn't start dictation. Check that a local model is selected, then try again.`,
         );
       });
+  }, [t]);
+
+  // Guards the paste-last hotkey against re-entrancy: a fetch + deliver is
+  // async, and holding/mashing the hotkey must not fire a second paste while
+  // one is still in flight (which would double-paste, or race the clipboard
+  // save/restore in `deliverText`). One paste at a time.
+  const pasteLastInFlightRef = useRef(false);
+
+  // Paste-last-dictation hotkey handler: fetch the newest *delivered* history
+  // entry with non-empty text and paste it at the cursor (with clipboard
+  // restore). Empty history or a failed delivery surfaces a toast - never a
+  // silent no-op.
+  const pasteLast = useCallback(async () => {
+    if (pasteLastInFlightRef.current) {
+      return;
+    }
+    if (phaseRef.current === "listening" || phaseRef.current === "processing") {
+      // Pasting mid-session would interleave the previous transcript with the
+      // live one in whatever app has focus.
+      sonnerToast.info(
+        t`Finish the current dictation before pasting the last one.`,
+      );
+      return;
+    }
+    pasteLastInFlightRef.current = true;
+    try {
+      // Query a few rows, not just one: the newest row can be a `discarded`
+      // (recovery-only) entry, which must be skipped in favour of the newest
+      // actually-delivered one.
+      const { entries } = await listDictationHistory({ limit: 5 });
+      const entry = entries.find(
+        (candidate) =>
+          candidate.status === "delivered" && candidate.text.trim().length > 0,
+      );
+      if (!entry) {
+        sonnerToast.info(t`No dictation to paste yet.`);
+        return;
+      }
+      const result = await dictationCommands.deliverText(entry.text, true);
+      if (result.status === "error") {
+        console.error(
+          "[dictation] failed to paste the last dictation",
+          result.error,
+        );
+        sonnerToast.error(t`Couldn't paste the last dictation. Try again.`);
+      }
+    } catch (error) {
+      console.error("[dictation] failed to paste the last dictation", error);
+      sonnerToast.error(t`Couldn't paste the last dictation. Try again.`);
+    } finally {
+      pasteLastInFlightRef.current = false;
+    }
   }, [t]);
 
   const handleFinished = useCallback(
@@ -440,7 +509,7 @@ export function DictationOrbHost() {
     }
 
     void shortcutCommands
-      .registerGlobalHotkey(dictation_shortcut)
+      .registerGlobalHotkey(HOTKEY_ID_TOGGLE, dictation_shortcut)
       .then((result) => {
         if (result.status === "error") {
           console.error(
@@ -451,9 +520,47 @@ export function DictationOrbHost() {
       });
 
     return () => {
-      void shortcutCommands.unregisterGlobalHotkey();
+      void shortcutCommands.unregisterGlobalHotkey(HOTKEY_ID_TOGGLE);
     };
   }, [enabled, dictation_shortcut]);
+
+  // Global paste-last-dictation hotkey (independent second registration).
+  // Gated on `dictation_enabled` like the toggle, and skipped when it would
+  // collide with the toggle's own combo (the toggle wins - registering the same
+  // accelerator twice would fail on the second binding).
+  useEffect(() => {
+    if (!enabled || !dictation_paste_last_shortcut) {
+      return;
+    }
+    // Case-insensitive: accelerator strings are case-insensitive to the OS,
+    // and a hand-edited setting ("Ctrl+Alt+V" vs "ctrl+alt+v") must not slip
+    // past the collision check.
+    if (
+      dictation_paste_last_shortcut.toLowerCase() ===
+      dictation_shortcut?.toLowerCase()
+    ) {
+      console.warn(
+        "[dictation] paste-last hotkey matches the toggle hotkey; skipping " +
+          "its registration so the toggle keeps working",
+      );
+      return;
+    }
+
+    void shortcutCommands
+      .registerGlobalHotkey(HOTKEY_ID_PASTE_LAST, dictation_paste_last_shortcut)
+      .then((result) => {
+        if (result.status === "error") {
+          console.error(
+            `[dictation] failed to register paste-last hotkey "${dictation_paste_last_shortcut}"`,
+            result.error,
+          );
+        }
+      });
+
+    return () => {
+      void shortcutCommands.unregisterGlobalHotkey(HOTKEY_ID_PASTE_LAST);
+    };
+  }, [enabled, dictation_paste_last_shortcut, dictation_shortcut]);
 
   // Session-phase tracking + toggle triggers (hotkey, orb click) + finalize.
   useEffect(() => {
@@ -484,7 +591,15 @@ export function DictationOrbHost() {
         void handleFinished(event.payload);
       }),
     );
-    collect(shortcutEvents.globalHotkeyTriggered.listen(() => toggle()));
+    collect(
+      shortcutEvents.globalHotkeyTriggered.listen((event) => {
+        if (event.payload.id === HOTKEY_ID_PASTE_LAST) {
+          void pasteLast();
+        } else {
+          toggle();
+        }
+      }),
+    );
     collect(dictationEvents.dictationOrbClicked.listen(() => toggle()));
 
     return () => {
@@ -493,7 +608,7 @@ export function DictationOrbHost() {
         unlisten();
       }
     };
-  }, [enabled, toggle, handleFinished]);
+  }, [enabled, toggle, handleFinished, pasteLast]);
 
   return null;
 }

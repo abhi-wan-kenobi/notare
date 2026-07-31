@@ -25,6 +25,16 @@ const mocks = vi.hoisted(() => ({
   useSnippetsHistoryQuery: vi.fn(),
   setPinnedMutate: vi.fn(),
   deleteMutate: vi.fn(),
+  updateTextMutate: vi.fn(
+    (
+      _vars: { id: string; text: string },
+      opts?: { onSuccess?: () => void; onError?: () => void },
+    ) => opts?.onSuccess?.(),
+  ),
+  addSuggestedDictionaryMappings: vi.fn(
+    async () => ({ added: [] as { wrong: string; right: string; caseSensitive: boolean }[] }),
+  ),
+  showTransientToast: vi.fn(),
 }));
 
 vi.mock("@tauri-apps/plugin-clipboard-manager", () => ({
@@ -50,6 +60,15 @@ vi.mock("./queries", () => ({
     mocks.useSnippetsHistoryQuery(query),
   useSetSnippetPinned: () => ({ mutate: mocks.setPinnedMutate }),
   useDeleteSnippet: () => ({ mutate: mocks.deleteMutate }),
+  useUpdateSnippetText: () => ({ mutate: mocks.updateTextMutate }),
+  addSuggestedDictionaryMappings: (
+    ...args: Parameters<typeof mocks.addSuggestedDictionaryMappings>
+  ) => mocks.addSuggestedDictionaryMappings(...args),
+}));
+
+vi.mock("~/sidebar/toast/transient", () => ({
+  showTransientToast: (...args: unknown[]) =>
+    mocks.showTransientToast(...args),
 }));
 
 import { TabContentSnippets } from "./index";
@@ -345,6 +364,98 @@ describe("TabContentSnippets", () => {
     render(<TabContentSnippets />);
 
     expect(screen.queryByRole("button", { name: /Raw transcript/ })).toBeNull();
+  });
+
+  it("edits a snippet's text inline and saves it", async () => {
+    const entry = makeEntry({ id: "e1", text: "hello wrld", createdAt: localTimeOn(0) });
+    setQueryResult(defaultQueryResult([entry]));
+    render(<TabContentSnippets />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    const textarea = screen.getByTestId("snippet-entry-edit-textarea");
+    fireEvent.change(textarea, { target: { value: "hello world" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(mocks.updateTextMutate).toHaveBeenCalledWith(
+      { id: "e1", text: "hello world" },
+      expect.objectContaining({
+        onSuccess: expect.any(Function),
+        onError: expect.any(Function),
+      }),
+    );
+    // Back to display mode with the (mutation-optimistic) draft no longer shown.
+    expect(screen.queryByTestId("snippet-entry-edit-textarea")).toBeNull();
+  });
+
+  it("cancels an inline edit without saving", () => {
+    const entry = makeEntry({ id: "e1", text: "hello", createdAt: localTimeOn(0) });
+    setQueryResult(defaultQueryResult([entry]));
+    render(<TabContentSnippets />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    fireEvent.change(screen.getByTestId("snippet-entry-edit-textarea"), {
+      target: { value: "discarded draft" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(mocks.updateTextMutate).not.toHaveBeenCalled();
+    expect(screen.queryByTestId("snippet-entry-edit-textarea")).toBeNull();
+    expect(screen.getByText("hello")).toBeTruthy();
+  });
+
+  it("offers a dictionary suggestion toast after saving an edit with a term-like diff", async () => {
+    const entry = makeEntry({
+      id: "e1",
+      text: "talked to far eye about it",
+      createdAt: localTimeOn(0),
+    });
+    setQueryResult(defaultQueryResult([entry]));
+    render(<TabContentSnippets />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    fireEvent.change(screen.getByTestId("snippet-entry-edit-textarea"), {
+      target: { value: "talked to FarEye about it" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(mocks.showTransientToast).toHaveBeenCalledTimes(1);
+    const [toast] = mocks.showTransientToast.mock.calls[0];
+    expect(toast.description).toContain("far eye");
+    expect(toast.description).toContain("FarEye");
+    expect(toast.dismissible).toBe(true);
+
+    await toast.primaryAction.onClick();
+    expect(mocks.addSuggestedDictionaryMappings).toHaveBeenCalledWith([
+      { wrong: "far eye", right: "FarEye" },
+    ]);
+  });
+
+  it("does not offer a suggestion toast when the edit has no term-like diff", async () => {
+    const entry = makeEntry({
+      id: "e1",
+      text: "a short note",
+      createdAt: localTimeOn(0),
+    });
+    setQueryResult(defaultQueryResult([entry]));
+    render(<TabContentSnippets />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    fireEvent.change(screen.getByTestId("snippet-entry-edit-textarea"), {
+      target: { value: "a short note" },
+    });
+    // Unchanged text: Save is disabled, nothing should fire.
+    expect(
+      (screen.getByRole("button", { name: "Save" }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
   });
 
   it("shows a Load more button when another page is available and calls fetchNextPage", () => {

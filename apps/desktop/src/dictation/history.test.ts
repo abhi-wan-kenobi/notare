@@ -20,6 +20,7 @@ import {
   DICTATION_HISTORY_PRUNE_CAP,
   listDictationHistory,
   setDictationHistoryPinned,
+  updateDictationHistoryText,
 } from "./history";
 
 type Statement = { sql: string; params: unknown[] };
@@ -150,6 +151,18 @@ describe("dictation history writes", () => {
 
     const [statement] = statements();
     expect(statement.sql.trim()).toBe("DELETE FROM dictation_history");
+  });
+
+  // Snippets inline edit (v0.5.1 Lane A1): the FTS mirror updates via the
+  // existing `dictation_history_fts_au` AFTER UPDATE trigger, not a second
+  // write here.
+  it("updates an entry's text by id", async () => {
+    await updateDictationHistoryText("some-id", "corrected text");
+
+    const [statement] = statements();
+    expect(statement.sql).toContain("UPDATE dictation_history SET text = ?");
+    expect(statement.sql).toContain("WHERE id = ?");
+    expect(statement.params).toEqual(["corrected text", "some-id"]);
   });
 });
 

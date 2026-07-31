@@ -18,6 +18,7 @@ const mocks = vi.hoisted(() => ({
     current: {
       dictation_enabled: true,
       dictation_shortcut: "ctrl+alt+space",
+      dictation_paste_last_shortcut: "",
       dictation_output_mode: "batch",
       dictation_paste_at_cursor: true,
       dictation_cleanup: "none",
@@ -39,9 +40,24 @@ const mocks = vi.hoisted(() => ({
     status: "ok" as const,
     data: null,
   })),
+  deliverText: vi.fn<() => Promise<CmdResult>>(async () => ({
+    status: "ok",
+    data: null,
+  })),
+  listDictationHistory: vi.fn(async () => ({
+    entries: mocks.historyEntries,
+    nextCursor: null as string | null,
+  })),
+  historyEntries: [] as Array<{
+    id: string;
+    text: string;
+    status: "delivered" | "discarded";
+  }>,
   listen: vi.fn(async () => vi.fn()),
   orbClickListeners: [] as Array<() => void>,
-  hotkeyListeners: [] as Array<() => void>,
+  hotkeyListeners: [] as Array<
+    (event: { payload: { id: string; shortcut: string } }) => void
+  >,
   stateListeners: [] as Array<(event: { payload: unknown }) => void>,
   hideRequestListeners: [] as Array<() => void>,
   listenerState: { live: { status: "inactive" } } as {
@@ -71,7 +87,7 @@ vi.mock("@hypr/plugin-dictation", () => ({
     stopDictation: mocks.stopDictation,
     isDictating: mocks.isDictating,
     cleanText: vi.fn(async () => ({ status: "ok", data: "" })),
-    deliverText: vi.fn(async () => ({ status: "ok", data: null })),
+    deliverText: mocks.deliverText,
   },
   events: {
     dictationStateEvent: {
@@ -119,7 +135,9 @@ vi.mock("@hypr/plugin-shortcut", () => ({
   },
   events: {
     globalHotkeyTriggered: {
-      listen: async (cb: () => void) => {
+      listen: async (
+        cb: (event: { payload: { id: string; shortcut: string } }) => void,
+      ) => {
         mocks.hotkeyListeners.push(cb);
         return vi.fn();
       },
@@ -151,6 +169,7 @@ vi.mock("@hypr/ui/components/ui/toast", () => ({
 
 vi.mock("./history", () => ({
   addDictationHistoryEntry: vi.fn(async () => undefined),
+  listDictationHistory: mocks.listDictationHistory,
 }));
 
 import { DictationOrbHost } from "./host";
@@ -168,16 +187,25 @@ function pushPhase(phase: string) {
   }
 }
 
+function triggerHotkey(id: string, shortcut: string) {
+  for (const cb of mocks.hotkeyListeners) {
+    cb({ payload: { id, shortcut } });
+  }
+}
+
 describe("DictationOrbHost", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.settings.current = {
       dictation_enabled: true,
       dictation_shortcut: "ctrl+alt+space",
+      dictation_paste_last_shortcut: "",
       dictation_output_mode: "batch",
       dictation_paste_at_cursor: true,
       dictation_cleanup: "none",
     };
+    mocks.historyEntries = [];
+    mocks.deliverText.mockResolvedValue({ status: "ok", data: null });
     mocks.orbClickListeners = [];
     mocks.hotkeyListeners = [];
     mocks.stateListeners = [];
@@ -198,7 +226,10 @@ describe("DictationOrbHost", () => {
 
     await waitFor(() => expect(mocks.showOrb).toHaveBeenCalledTimes(1));
     await waitFor(() =>
-      expect(mocks.registerGlobalHotkey).toHaveBeenCalledWith("ctrl+alt+space"),
+      expect(mocks.registerGlobalHotkey).toHaveBeenCalledWith(
+        "dictation_toggle",
+        "ctrl+alt+space",
+      ),
     );
   });
 
@@ -395,5 +426,175 @@ describe("DictationOrbHost", () => {
     mocks.orbClickListeners[0]!();
 
     await waitFor(() => expect(mocks.sonnerError).toHaveBeenCalledTimes(1));
+  });
+
+  // Lane A1: the second global hotkey — paste the most recent delivered
+  // dictation at the cursor.
+  describe("paste-last-dictation hotkey", () => {
+    it("registers the paste-last hotkey (keyed) when one is set", async () => {
+      mocks.settings.current.dictation_paste_last_shortcut = "ctrl+alt+v";
+
+      render(<DictationOrbHost />);
+
+      await waitFor(() =>
+        expect(mocks.registerGlobalHotkey).toHaveBeenCalledWith(
+          "dictation_paste_last",
+          "ctrl+alt+v",
+        ),
+      );
+      // The toggle stays registered under its own key alongside it.
+      expect(mocks.registerGlobalHotkey).toHaveBeenCalledWith(
+        "dictation_toggle",
+        "ctrl+alt+space",
+      );
+    });
+
+    it("does not register the paste-last hotkey when unset", async () => {
+      mocks.settings.current.dictation_paste_last_shortcut = "";
+
+      render(<DictationOrbHost />);
+
+      await waitFor(() =>
+        expect(mocks.registerGlobalHotkey).toHaveBeenCalledWith(
+          "dictation_toggle",
+          "ctrl+alt+space",
+        ),
+      );
+      expect(mocks.registerGlobalHotkey).not.toHaveBeenCalledWith(
+        "dictation_paste_last",
+        expect.anything(),
+      );
+    });
+
+    it("skips registration when it collides with the toggle shortcut", async () => {
+      mocks.settings.current.dictation_paste_last_shortcut = "ctrl+alt+space";
+
+      render(<DictationOrbHost />);
+
+      await waitFor(() =>
+        expect(mocks.registerGlobalHotkey).toHaveBeenCalledWith(
+          "dictation_toggle",
+          "ctrl+alt+space",
+        ),
+      );
+      expect(mocks.registerGlobalHotkey).not.toHaveBeenCalledWith(
+        "dictation_paste_last",
+        expect.anything(),
+      );
+    });
+
+    it("pastes the newest delivered entry, skipping a discarded newer one", async () => {
+      mocks.settings.current.dictation_paste_last_shortcut = "ctrl+alt+v";
+      mocks.historyEntries = [
+        { id: "3", text: "  ", status: "delivered" }, // newest but empty -> skip
+        { id: "2", text: "recovered draft", status: "discarded" }, // skip
+        { id: "1", text: "hello world", status: "delivered" },
+      ];
+
+      render(<DictationOrbHost />);
+      await waitFor(() => expect(mocks.hotkeyListeners.length).toBe(1));
+
+      triggerHotkey("dictation_paste_last", "ctrl+alt+v");
+
+      await waitFor(() =>
+        expect(mocks.deliverText).toHaveBeenCalledWith("hello world", true),
+      );
+      expect(mocks.deliverText).toHaveBeenCalledTimes(1);
+      expect(mocks.sonnerInfo).not.toHaveBeenCalled();
+    });
+
+    // Pasting mid-session would interleave the previous transcript with the
+    // live one in whatever app has focus.
+    it("refuses to paste while a dictation session is active", async () => {
+      mocks.settings.current.dictation_paste_last_shortcut = "ctrl+alt+v";
+      mocks.historyEntries = [{ id: "1", text: "hi", status: "delivered" }];
+
+      render(<DictationOrbHost />);
+      await waitFor(() => expect(mocks.hotkeyListeners.length).toBe(1));
+
+      pushPhase("listening");
+      triggerHotkey("dictation_paste_last", "ctrl+alt+v");
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(mocks.deliverText).not.toHaveBeenCalled();
+      expect(mocks.sonnerInfo).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not paste for the toggle hotkey id (routes toggle -> dictation)", async () => {
+      mocks.settings.current.dictation_paste_last_shortcut = "ctrl+alt+v";
+      mocks.historyEntries = [{ id: "1", text: "hi", status: "delivered" }];
+
+      render(<DictationOrbHost />);
+      await waitFor(() => expect(mocks.hotkeyListeners.length).toBe(1));
+
+      triggerHotkey("dictation_toggle", "ctrl+alt+space");
+
+      // Give any (wrong) async paste a tick to fire before asserting it didn't.
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(mocks.deliverText).not.toHaveBeenCalled();
+    });
+
+    it("shows an info toast and does not deliver when history is empty", async () => {
+      mocks.settings.current.dictation_paste_last_shortcut = "ctrl+alt+v";
+      mocks.historyEntries = [];
+
+      render(<DictationOrbHost />);
+      await waitFor(() => expect(mocks.hotkeyListeners.length).toBe(1));
+
+      triggerHotkey("dictation_paste_last", "ctrl+alt+v");
+
+      await waitFor(() => expect(mocks.sonnerInfo).toHaveBeenCalledTimes(1));
+      expect(mocks.sonnerInfo.mock.calls[0]![0]).toMatch(/no dictation/i);
+      expect(mocks.deliverText).not.toHaveBeenCalled();
+    });
+
+    it("shows an error toast when the paste delivery fails", async () => {
+      mocks.settings.current.dictation_paste_last_shortcut = "ctrl+alt+v";
+      mocks.historyEntries = [{ id: "1", text: "hello", status: "delivered" }];
+      mocks.deliverText.mockResolvedValueOnce({
+        status: "error",
+        error: "paste_failed",
+      });
+
+      render(<DictationOrbHost />);
+      await waitFor(() => expect(mocks.hotkeyListeners.length).toBe(1));
+
+      triggerHotkey("dictation_paste_last", "ctrl+alt+v");
+
+      await waitFor(() => expect(mocks.sonnerError).toHaveBeenCalledTimes(1));
+      expect(mocks.sonnerError.mock.calls[0]![0]).toMatch(/paste the last/i);
+    });
+
+    it("ignores hotkey spam while a paste is already in flight", async () => {
+      mocks.settings.current.dictation_paste_last_shortcut = "ctrl+alt+v";
+      mocks.historyEntries = [{ id: "1", text: "hello", status: "delivered" }];
+
+      // Hold the first delivery open so the second trigger lands mid-flight.
+      let resolveDeliver: (value: CmdResult) => void = () => {};
+      mocks.deliverText.mockImplementationOnce(
+        () =>
+          new Promise<CmdResult>((resolve) => {
+            resolveDeliver = resolve;
+          }),
+      );
+
+      render(<DictationOrbHost />);
+      await waitFor(() => expect(mocks.hotkeyListeners.length).toBe(1));
+
+      triggerHotkey("dictation_paste_last", "ctrl+alt+v");
+      await waitFor(() => expect(mocks.deliverText).toHaveBeenCalledTimes(1));
+
+      // Second press while the first delivery is still pending: no double-paste.
+      triggerHotkey("dictation_paste_last", "ctrl+alt+v");
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(mocks.deliverText).toHaveBeenCalledTimes(1);
+
+      // Once the in-flight paste settles, a fresh press pastes again.
+      resolveDeliver({ status: "ok", data: null });
+      await waitFor(() => expect(mocks.deliverText).toHaveBeenCalledTimes(1));
+
+      triggerHotkey("dictation_paste_last", "ctrl+alt+v");
+      await waitFor(() => expect(mocks.deliverText).toHaveBeenCalledTimes(2));
+    });
   });
 });

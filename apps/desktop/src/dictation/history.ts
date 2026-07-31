@@ -285,6 +285,26 @@ export async function setDictationHistoryPinned(
   });
 }
 
+/**
+ * Overwrite an entry's cleaned text (Snippets inline edit). The FTS mirror
+ * follows automatically via the `dictation_history_fts_au` AFTER UPDATE
+ * trigger (migration `20260731000000_dictation_history_snippets`) - no
+ * separate FTS write needed here.
+ */
+export async function updateDictationHistoryText(
+  id: string,
+  text: string,
+): Promise<void> {
+  await enqueueDatabaseWrite(WRITE_QUEUE_KEY, async () => {
+    await executeTransaction([
+      {
+        sql: "UPDATE dictation_history SET text = ? WHERE id = ?",
+        params: [text, id],
+      },
+    ]);
+  });
+}
+
 export async function deleteDictationHistoryEntry(id: string): Promise<void> {
   await enqueueDatabaseWrite(WRITE_QUEUE_KEY, async () => {
     await executeTransaction([

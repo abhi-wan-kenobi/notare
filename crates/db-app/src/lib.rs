@@ -388,6 +388,27 @@ mod tests {
         .unwrap();
         assert_eq!(raw_hit, 1);
 
+        // Update trigger re-indexes in place (the Snippets inline-edit path
+        // updates `text` and relies on this instead of a second FTS write).
+        sqlx::query("UPDATE dictation_history SET text = 'polished result' WHERE id = 'new'")
+            .execute(db.pool())
+            .await
+            .unwrap();
+        let updated_hit: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM dictation_history_fts WHERE dictation_history_fts MATCH 'polished'",
+        )
+        .fetch_one(db.pool())
+        .await
+        .unwrap();
+        assert_eq!(updated_hit, 1);
+        let stale_hit: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM dictation_history_fts WHERE dictation_history_fts MATCH 'cleaned'",
+        )
+        .fetch_one(db.pool())
+        .await
+        .unwrap();
+        assert_eq!(stale_hit, 0); // the pre-update text is fully de-indexed
+
         sqlx::query("DELETE FROM dictation_history WHERE id = 'new'")
             .execute(db.pool())
             .await

@@ -66,13 +66,16 @@ common_event_derives! {
 }
 
 common_event_derives! {
-    /// Fired when a toggle-style global hotkey registered via
-    /// `register_global_hotkey` is pressed, backed by
-    /// `tauri-plugin-global-shortcut` on every platform. Distinct from
-    /// `ShortcutEvent`, which is the macOS-only native push-to-talk
-    /// event-tap path (unused today - see `handler::push_to_talk`).
+    /// Fired when a keyed global hotkey registered via `register_global_hotkey`
+    /// is pressed, backed by `tauri-plugin-global-shortcut` on every platform.
+    /// `id` is the caller-chosen registration key (e.g. the dictation toggle
+    /// vs. paste-last hotkeys), so a single listener can route each press to
+    /// the right action; `shortcut` is the accelerator string it was bound to.
+    /// Distinct from `ShortcutEvent`, which is the macOS-only native
+    /// push-to-talk event-tap path (unused today - see `handler::push_to_talk`).
     #[serde(rename_all = "camelCase")]
     pub struct GlobalHotkeyTriggered {
+        pub id: String,
         pub shortcut: String,
     }
 }

@@ -19,14 +19,14 @@ impl<'a, R: tauri::Runtime, M: tauri::Manager<R>> Shortcut<'a, R, M> {
         self.manager.state::<Handler>().unregister()
     }
 
-    pub fn register_global(&self, shortcut: String) -> Result<(), Error> {
+    pub fn register_global(&self, id: String, shortcut: String) -> Result<(), Error> {
         let handler = self.manager.state::<Handler>();
-        handler.register_global(self.manager.app_handle().clone(), shortcut)
+        handler.register_global(self.manager.app_handle().clone(), id, shortcut)
     }
 
-    pub fn unregister_global(&self) -> Result<(), Error> {
+    pub fn unregister_global(&self, id: String) -> Result<(), Error> {
         let handler = self.manager.state::<Handler>();
-        handler.unregister_global(self.manager.app_handle().clone())
+        handler.unregister_global(self.manager.app_handle().clone(), id)
     }
 }
 

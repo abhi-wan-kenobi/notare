@@ -23,21 +23,28 @@ async unregisterHotkey() : Promise<Result<null, string>> {
 }
 },
 /**
- * Register a toggle-style global hotkey (Windows/Linux). Emits
- * `GlobalHotkeyTriggered` on key-down. Not available on macOS, which keeps
- * its native push-to-talk path.
+ * Register a keyed global hotkey, backed by `tauri-plugin-global-shortcut` on
+ * every platform (macOS included, since #31). Several hotkeys can be live at
+ * once, each under its own `id` (e.g. the dictation toggle and paste-last
+ * hotkeys); re-registering an `id` replaces its previous binding without
+ * disturbing the others. Emits `GlobalHotkeyTriggered { id, shortcut }` on
+ * key-down.
  */
-async registerGlobalHotkey(shortcut: string) : Promise<Result<null, string>> {
+async registerGlobalHotkey(id: string, shortcut: string) : Promise<Result<null, string>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("plugin:shortcut|register_global_hotkey", { shortcut }) };
+    return { status: "ok", data: await TAURI_INVOKE("plugin:shortcut|register_global_hotkey", { id, shortcut }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
 },
-async unregisterGlobalHotkey() : Promise<Result<null, string>> {
+/**
+ * Unregister the keyed global hotkey previously registered under `id`. A no-op
+ * if that id has no live binding.
+ */
+async unregisterGlobalHotkey(id: string) : Promise<Result<null, string>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("plugin:shortcut|unregister_global_hotkey") };
+    return { status: "ok", data: await TAURI_INVOKE("plugin:shortcut|unregister_global_hotkey", { id }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -46,8 +53,7 @@ async unregisterGlobalHotkey() : Promise<Result<null, string>> {
 /**
  * Parse-validate a global-hotkey accelerator string (e.g. "ctrl+alt+space")
  * WITHOUT registering it, so the settings recorder can show inline feedback
- * before committing the `dictation_shortcut` setting. Always Ok on macOS,
- * which keeps its native push-to-talk path and never parses these strings.
+ * before committing the `dictation_shortcut` setting.
  */
 async parseGlobalHotkey(shortcut: string) : Promise<Result<null, string>> {
     try {
@@ -77,12 +83,15 @@ shortcutEvent: "plugin:shortcut:shortcut-event"
 /** user-defined types **/
 
 /**
- * Fired when a toggle-style global hotkey registered via
- * `register_global_hotkey` is pressed (Windows/Linux path, backed by
- * `tauri-plugin-global-shortcut`). Distinct from `ShortcutEvent`, which
- * is the macOS push-to-talk event-tap path.
+ * Fired when a keyed global hotkey registered via `register_global_hotkey`
+ * is pressed, backed by `tauri-plugin-global-shortcut` on every platform.
+ * `id` is the caller-chosen registration key (e.g. the dictation toggle
+ * vs. paste-last hotkeys), so a single listener can route each press to
+ * the right action; `shortcut` is the accelerator string it was bound to.
+ * Distinct from `ShortcutEvent`, which is the macOS-only native
+ * push-to-talk event-tap path (unused today - see `handler::push_to_talk`).
  */
-export type GlobalHotkeyTriggered = { shortcut: string }
+export type GlobalHotkeyTriggered = { id: string; shortcut: string }
 export type HotKey = { key: number | null; modifiers: Modifier[] }
 export type Modifier = "command" | "option" | "shift" | "control" | "fn"
 export type Options = { useDoubleTapOnly?: boolean; doubleTapLockEnabled?: boolean; minimumKeyTimeMs?: number }

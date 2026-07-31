@@ -9,16 +9,28 @@ import { Spinner } from "@hypr/ui/components/ui/spinner";
 import { sonnerToast } from "@hypr/ui/components/ui/toast";
 import { format } from "@hypr/utils";
 
+import { suggestCorrections } from "./correction-suggest";
 import { type DayBucket, groupEntriesByDay } from "./day-grouping";
 import { SnippetEntryRow } from "./entry-row";
 import {
+  addSuggestedDictionaryMappings,
   useDeleteSnippet,
   useSetSnippetPinned,
   useSnippetsHistoryQuery,
+  useUpdateSnippetText,
 } from "./queries";
 
 import type { DictationHistoryEntry } from "~/dictation/history";
+import { showTransientToast } from "~/sidebar/toast/transient";
 import { StandardContentWrapper } from "~/shared/main";
+
+/**
+ * Duration for the "add to dictionary?" suggestion toast - long enough to
+ * read a wrong -> right pair and decide, unlike the 2.4s default transient
+ * toast (a quick "Copied" confirmation).
+ */
+const SUGGESTION_TOAST_DURATION_MS = 8000;
+const SUGGESTION_TOAST_ID = "snippet-dictionary-suggest";
 
 const SEARCH_DEBOUNCE_MS = 250;
 
@@ -54,6 +66,7 @@ export function TabContentSnippets() {
 
   const setPinned = useSetSnippetPinned();
   const deleteSnippet = useDeleteSnippet();
+  const updateText = useUpdateSnippetText();
 
   const entries = useMemo(
     () => data?.pages.flatMap((page) => page.entries) ?? [],
@@ -98,6 +111,66 @@ export function TabContentSnippets() {
     deleteSnippet.mutate(entry.id, {
       onError: () => sonnerToast.error(t`Couldn't delete snippet`),
     });
+  };
+
+  /**
+   * Suggest, never auto-learn: after a successful text save, diff the
+   * before/after and - only if the user then explicitly taps "Add" on the
+   * resulting toast - append the candidate(s) as dictionary mappings.
+   * Dismissing (or letting the toast time out) teaches nothing.
+   */
+  const offerDictionarySuggestion = (before: string, after: string) => {
+    const candidates = suggestCorrections(before, after);
+    if (candidates.length === 0) {
+      return;
+    }
+
+    // Name EVERY mapping the Add button will create - the consent tap should
+    // cover exactly what's written on the toast, not a "+N more" mystery box.
+    const pairs = candidates
+      .map((candidate) => `"${candidate.wrong}" → "${candidate.right}"`)
+      .join(", ");
+    const description = t`Add ${pairs} to your dictionary?`;
+
+    showTransientToast(
+      {
+        id: SUGGESTION_TOAST_ID,
+        description,
+        dismissible: true,
+        primaryAction: {
+          label: t`Add`,
+          onClick: async () => {
+            try {
+              const { added } = await addSuggestedDictionaryMappings(candidates);
+              if (added.length > 0) {
+                sonnerToast.success(
+                  added.length === 1
+                    ? t`Added to your dictionary`
+                    : t`Added ${added.length} entries to your dictionary`,
+                );
+              }
+            } catch (error) {
+              // The Add tap was consumed - a silent failure would read as
+              // success.
+              console.error("[snippets] failed to add dictionary mappings", error);
+              sonnerToast.error(t`Couldn't update the dictionary. Try again.`);
+            }
+          },
+        },
+      },
+      { durationMs: SUGGESTION_TOAST_DURATION_MS },
+    );
+  };
+
+  const handleEditSave = (entry: DictationHistoryEntry, newText: string) => {
+    const before = entry.text;
+    updateText.mutate(
+      { id: entry.id, text: newText },
+      {
+        onSuccess: () => offerDictionarySuggestion(before, newText),
+        onError: () => sonnerToast.error(t`Couldn't save snippet`),
+      },
+    );
   };
 
   const isEmpty = !isLoading && !isError && entries.length === 0;
@@ -166,6 +239,7 @@ export function TabContentSnippets() {
                         onInsert={(e) => void handleInsert(e)}
                         onTogglePinned={handleTogglePinned}
                         onDelete={handleDelete}
+                        onEditSave={handleEditSave}
                       />
                     ))}
                   </ul>
@@ -180,6 +254,7 @@ export function TabContentSnippets() {
                   onInsert={(e) => void handleInsert(e)}
                   onTogglePinned={handleTogglePinned}
                   onDelete={handleDelete}
+                  onEditSave={handleEditSave}
                 />
               ))}
 
@@ -213,12 +288,14 @@ function DayBucketSection({
   onInsert,
   onTogglePinned,
   onDelete,
+  onEditSave,
 }: {
   bucket: DayBucket;
   onCopy: (entry: DictationHistoryEntry) => void;
   onInsert: (entry: DictationHistoryEntry) => void;
   onTogglePinned: (entry: DictationHistoryEntry) => void;
   onDelete: (entry: DictationHistoryEntry) => void;
+  onEditSave: (entry: DictationHistoryEntry, newText: string) => void;
 }) {
   return (
     <section className="flex flex-col gap-2">
@@ -232,6 +309,7 @@ function DayBucketSection({
             onInsert={onInsert}
             onTogglePinned={onTogglePinned}
             onDelete={onDelete}
+            onEditSave={onEditSave}
           />
         ))}
       </ul>

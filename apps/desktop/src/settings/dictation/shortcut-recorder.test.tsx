@@ -38,12 +38,27 @@ const DEFAULT = "ctrl+alt+space";
 function renderRow({
   value = DEFAULT,
   onCommit = vi.fn(),
-}: { value?: string; onCommit?: (next: string) => void } = {}) {
+  title,
+  description,
+  conflictValue,
+  conflictMessage,
+}: {
+  value?: string;
+  onCommit?: (next: string) => void;
+  title?: React.ReactNode;
+  description?: React.ReactNode;
+  conflictValue?: string;
+  conflictMessage?: string;
+} = {}) {
   render(
     <ShortcutRecorderRow
       value={value}
       defaultValue={DEFAULT}
       onCommit={onCommit}
+      title={title}
+      description={description}
+      conflictValue={conflictValue}
+      conflictMessage={conflictMessage}
     />,
   );
   return { onCommit };
@@ -271,5 +286,67 @@ describe("ShortcutRecorderRow", () => {
     });
 
     await waitFor(() => expect(onCommit).toHaveBeenCalledWith("super+k"));
+  });
+
+  // Generalized for reuse by the paste-last-dictation row (Lane A1): a
+  // custom title/description overrides the default "Toggle shortcut" copy,
+  // and the default copy is untouched when they're omitted (the dictation
+  // toggle row's existing call site).
+  it("uses the default toggle-shortcut copy when no title/description is given", () => {
+    renderRow();
+
+    expect(screen.getByText("Toggle shortcut")).toBeTruthy();
+    expect(
+      screen.getByText(/starts or stops dictation/),
+    ).toBeTruthy();
+  });
+
+  it("renders a custom title and description when provided", () => {
+    renderRow({
+      title: "Paste last dictation",
+      description: "Re-pastes your most recent dictation.",
+    });
+
+    expect(screen.getByText("Paste last dictation")).toBeTruthy();
+    expect(
+      screen.getByText("Re-pastes your most recent dictation."),
+    ).toBeTruthy();
+    expect(screen.queryByText("Toggle shortcut")).toBeNull();
+  });
+
+  it("rejects a candidate that conflicts with another recorder's binding", async () => {
+    const { onCommit } = renderRow({
+      conflictValue: "ctrl+shift+d",
+      conflictMessage: "Already used by the other shortcut.",
+    });
+
+    fireEvent.click(recorder());
+    fireEvent.keyDown(recorder(), { key: "d", code: "KeyD", ctrlKey: true, shiftKey: true });
+
+    expect(screen.getByTestId("shortcut-recorder-error").textContent).toBe(
+      "Already used by the other shortcut.",
+    );
+    expect(onCommit).not.toHaveBeenCalled();
+    expect(mocks.parseGlobalHotkey).not.toHaveBeenCalled();
+  });
+
+  it("does not conflict-check the recorder's own unchanged value", async () => {
+    // `value === conflictValue` happens naturally when both rows are unset
+    // ("" default) - re-recording back to the SAME combo the row already
+    // has must hit the existing value===candidate no-op, not the conflict
+    // path, so the user isn't blocked from "re-confirming" their own combo.
+    const { onCommit } = renderRow({ value: DEFAULT, conflictValue: DEFAULT });
+
+    fireEvent.click(recorder());
+    fireEvent.keyDown(recorder(), {
+      key: "space",
+      code: "Space",
+      ctrlKey: true,
+      altKey: true,
+    });
+
+    await waitFor(() => expect(recorder().dataset.recording).toBeUndefined());
+    expect(onCommit).not.toHaveBeenCalled();
+    expect(mocks.parseGlobalHotkey).not.toHaveBeenCalled();
   });
 });
