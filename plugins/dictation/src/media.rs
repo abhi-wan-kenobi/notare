@@ -206,6 +206,103 @@ mod imp {
         }
     }
 
+    fn try_pause_playing() -> zbus::Result<Vec<String>> {
+        let conn = Connection::session()?;
+        let dbus = DBusProxy::new(&conn)?;
+        let mut paused = Vec::new();
+        for name in dbus.list_names()? {
+            let name = name.as_str();
+            if !name.starts_with(MPRIS_PREFIX) {
+                continue;
+            }
+            let Ok(proxy) = player_proxy(&conn, name) else {
+                continue;
+            };
+            // Only pause players actually playing; a paused/stopped one must be
+            // left untouched so we never resume something the user had paused.
+            if proxy
+                .get_property::<String>("PlaybackStatus")
+                .ok()
+                .as_deref()
+                == Some("Playing")
+                && proxy.call_method("Pause", &()).is_ok()
+            {
+                paused.push(name.to_string());
+            }
+        }
+        Ok(paused)
+    }
+
+    fn try_resume(targets: &[String]) -> zbus::Result<()> {
+        let conn = Connection::session()?;
+        for name in targets {
+            if let Ok(proxy) = player_proxy(&conn, name) {
+                // The player may have quit meanwhile - ignore per-player errors.
+                let _ = proxy.call_method("Play", &());
+            }
+        }
+        Ok(())
+    }
+
+    fn player_proxy<'a>(conn: &Connection, name: &str) -> zbus::Result<Proxy<'a>> {
+        Proxy::new(conn, name.to_string(), MPRIS_PATH, PLAYER_IFACE)
+    }
+}
+
+#[cfg(target_os = "windows")]
+mod imp {
+    //! GSMTC (`Windows.Media.Control`). Sessions are keyed by their source app
+    //! user-model id so resume can re-find the exact players we paused.
+
+    use windows::Media::Control::{
+        GlobalSystemMediaTransportControlsSessionManager as SessionManager,
+        GlobalSystemMediaTransportControlsSessionPlaybackStatus as PlaybackStatus,
+    };
+
+    /// WinRT calls need an initialized COM apartment, and the blocking-pool
+    /// threads we run on have none. RAII: init MTA on entry, uninit on drop -
+    /// but only when WE initialized (RPC_E_CHANGED_MODE = the thread already
+    /// has an STA; WinRT still works and we must not CoUninitialize it).
+    struct ComApartment {
+        owns: bool,
+    }
+
+    impl ComApartment {
+        fn enter() -> Self {
+            use windows::Win32::System::Com::{COINIT_MULTITHREADED, CoInitializeEx};
+            // S_OK / S_FALSE = (re)initialized -> pair with CoUninitialize.
+            // Failure (e.g. RPC_E_CHANGED_MODE) -> not ours to uninit.
+            let hr = unsafe { CoInitializeEx(None, COINIT_MULTITHREADED) };
+            Self { owns: hr.is_ok() }
+        }
+    }
+
+    impl Drop for ComApartment {
+        fn drop(&mut self) {
+            if self.owns {
+                unsafe { windows::Win32::System::Com::CoUninitialize() };
+            }
+        }
+    }
+
+    pub fn pause_playing() -> Vec<String> {
+        let _com = ComApartment::enter();
+        match try_pause_playing() {
+            Ok(paused) => paused,
+            Err(error) => {
+                tracing::debug!(%error, "dictation media auto-pause (GSMTC) failed; skipping");
+                Vec::new()
+            }
+        }
+    }
+
+    pub fn resume(targets: Vec<String>) {
+        let _com = ComApartment::enter();
+        if let Err(error) = try_resume(&targets) {
+            tracing::debug!(%error, "dictation media resume (GSMTC) failed; skipping");
+        }
+    }
+
     /// Blocking wait for a WinRT async op, built from the generated methods
     /// (`Status`/`SetCompleted`/`GetResults`) that exist on the type in every
     /// `windows`/`windows-future` pairing - the convenience `.get()` method's
@@ -230,7 +327,9 @@ mod imp {
     }
 
     fn try_pause_playing() -> windows::core::Result<Vec<String>> {
-        let manager = wait_op(SessionManager::RequestAsync()?)?;
+        // `.join()` is the blocking wait in windows-future 0.3 (the 0.2 line
+        // called it `.get()`); inherent method, no trait import needed.
+        let manager = SessionManager::RequestAsync()?.join()?;
         let sessions = manager.GetSessions()?;
         let mut paused = Vec::new();
         for session in sessions {
@@ -244,7 +343,10 @@ mod imp {
             }
             // TryPauseAsync returns whether the control was accepted; only
             // remember the ones we actually asked to pause and that succeeded.
-            let paused_ok = session.TryPauseAsync().and_then(wait_op).unwrap_or(false);
+            let paused_ok = session
+                .TryPauseAsync()
+                .and_then(|op| op.join())
+                .unwrap_or(false);
             if paused_ok {
                 if let Ok(id) = session.SourceAppUserModelId() {
                     paused.push(id.to_string_lossy());
@@ -258,7 +360,7 @@ mod imp {
         if targets.is_empty() {
             return Ok(());
         }
-        let manager = wait_op(SessionManager::RequestAsync()?)?;
+        let manager = SessionManager::RequestAsync()?.join()?;
         let sessions = manager.GetSessions()?;
         for session in sessions {
             let Ok(id) = session.SourceAppUserModelId() else {
@@ -266,7 +368,7 @@ mod imp {
             };
             if targets.iter().any(|t| *t == id.to_string_lossy()) {
                 // The player may have gone away; ignore per-session failures.
-                let _ = session.TryPlayAsync().and_then(wait_op);
+                let _ = session.TryPlayAsync().and_then(|op| op.join());
             }
         }
         Ok(())
