@@ -33,6 +33,23 @@ function makeInput(
   };
 }
 
+/** Full saveHistory shape with the defaults finalize always threads. */
+function saved(
+  partial: Partial<Parameters<FinalizeDictationDeps["saveHistory"]>[0]>,
+) {
+  return {
+    text: "basic(hello world)",
+    rawText: "hello world",
+    mode: "batch" as const,
+    cleaned: true,
+    source: "dictation" as const,
+    model: null,
+    durationMs: null,
+    status: "delivered" as const,
+    ...partial,
+  };
+}
+
 describe("normalizeCleanupMode", () => {
   it("defaults everything unknown to basic", () => {
     expect(normalizeCleanupMode("none")).toBe("none");
@@ -51,11 +68,9 @@ describe("finalizeDictation cleanup dispatch", () => {
     expect(deps.cleanBasic).not.toHaveBeenCalled();
     expect(deps.cleanLlm).not.toHaveBeenCalled();
     expect(deps.deliver).toHaveBeenCalledWith("hello world", true);
-    expect(deps.saveHistory).toHaveBeenCalledWith({
-      text: "hello world",
-      mode: "batch",
-      cleaned: false,
-    });
+    expect(deps.saveHistory).toHaveBeenCalledWith(
+      saved({ text: "hello world", cleaned: false }),
+    );
   });
 
   it("basic runs the deterministic cleaner", async () => {
@@ -64,11 +79,7 @@ describe("finalizeDictation cleanup dispatch", () => {
 
     expect(deps.cleanBasic).toHaveBeenCalledWith("hello world");
     expect(deps.deliver).toHaveBeenCalledWith("basic(hello world)", true);
-    expect(deps.saveHistory).toHaveBeenCalledWith({
-      text: "basic(hello world)",
-      mode: "batch",
-      cleaned: true,
-    });
+    expect(deps.saveHistory).toHaveBeenCalledWith(saved({}));
   });
 
   it("llm uses the model cleaner when available", async () => {
@@ -79,11 +90,9 @@ describe("finalizeDictation cleanup dispatch", () => {
     expect(deps.cleanBasic).not.toHaveBeenCalled();
     expect(deps.onLlmFallback).not.toHaveBeenCalled();
     expect(deps.deliver).toHaveBeenCalledWith("llm(hello world)", true);
-    expect(deps.saveHistory).toHaveBeenCalledWith({
-      text: "llm(hello world)",
-      mode: "batch",
-      cleaned: true,
-    });
+    expect(deps.saveHistory).toHaveBeenCalledWith(
+      saved({ text: "llm(hello world)" }),
+    );
   });
 
   it("llm falls back to basic when no model is configured", async () => {
@@ -113,6 +122,44 @@ describe("finalizeDictation cleanup dispatch", () => {
   });
 });
 
+describe("finalizeDictation raw threading + provenance", () => {
+  it("stores the pre-cleanup raw transcript alongside the cleaned text", async () => {
+    const deps = makeDeps();
+    await finalizeDictation(
+      makeInput({ rawText: "  um hello   world  " }),
+      deps,
+    );
+
+    expect(deps.saveHistory).toHaveBeenCalledWith(
+      saved({
+        text: "basic(um hello   world)",
+        rawText: "um hello   world",
+      }),
+    );
+  });
+
+  it("threads the model name and duration when the host provides them", async () => {
+    const deps = makeDeps();
+    await finalizeDictation(
+      makeInput({ model: "QuantizedTiny", durationMs: 4200 }),
+      deps,
+    );
+
+    expect(deps.saveHistory).toHaveBeenCalledWith(
+      saved({ model: "QuantizedTiny", durationMs: 4200 }),
+    );
+  });
+
+  it("always tags dictation-path saves with source 'dictation'", async () => {
+    const deps = makeDeps();
+    await finalizeDictation(makeInput({ mode: "type" }), deps);
+
+    expect(deps.saveHistory).toHaveBeenCalledWith(
+      saved({ mode: "type", source: "dictation" }),
+    );
+  });
+});
+
 describe("finalizeDictation delivery matrix", () => {
   it("batch + paste-at-cursor pastes", async () => {
     const deps = makeDeps();
@@ -126,25 +173,12 @@ describe("finalizeDictation delivery matrix", () => {
     expect(deps.deliver).toHaveBeenCalledWith("basic(hello world)", false);
   });
 
-  it("a failed batch session degrades to copy-only", async () => {
-    const deps = makeDeps();
-    await finalizeDictation(
-      makeInput({ failed: true, pasteAtCursor: true }),
-      deps,
-    );
-    expect(deps.deliver).toHaveBeenCalledWith("basic(hello world)", false);
-  });
-
   it("type mode never delivers but still records history", async () => {
     const deps = makeDeps();
     await finalizeDictation(makeInput({ mode: "type" }), deps);
 
     expect(deps.deliver).not.toHaveBeenCalled();
-    expect(deps.saveHistory).toHaveBeenCalledWith({
-      text: "basic(hello world)",
-      mode: "type",
-      cleaned: true,
-    });
+    expect(deps.saveHistory).toHaveBeenCalledWith(saved({ mode: "type" }));
   });
 
   it("still saves history when delivery fails", async () => {
@@ -161,6 +195,40 @@ describe("finalizeDictation delivery matrix", () => {
     }
 
     expect(deps.saveHistory).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("finalizeDictation discarded-dictation recovery", () => {
+  it("saves the raw transcript as discarded when a session failed", async () => {
+    const deps = makeDeps();
+    await finalizeDictation(
+      makeInput({ failed: true, pasteAtCursor: true }),
+      deps,
+    );
+
+    // A failed session degrades to copy-only, and the entry is flagged
+    // discarded so it surfaces in recovery rather than the clipboard list.
+    expect(deps.deliver).toHaveBeenCalledWith("basic(hello world)", false);
+    expect(deps.saveHistory).toHaveBeenCalledWith(saved({ status: "discarded" }));
+  });
+
+  it("keeps the raw transcript when cleanup strips everything to nothing", async () => {
+    const deps = makeDeps({ cleanBasic: vi.fn(async () => "") });
+    await finalizeDictation(makeInput({ rawText: "[BLANK_AUDIO]" }), deps);
+
+    // Nothing to deliver, but the raw transcript is preserved for recovery.
+    expect(deps.deliver).not.toHaveBeenCalled();
+    expect(deps.saveHistory).toHaveBeenCalledWith(
+      saved({ text: "", rawText: "[BLANK_AUDIO]", status: "discarded" }),
+    );
+  });
+
+  it("never persists empty or whitespace-only raw text", async () => {
+    const deps = makeDeps();
+    await finalizeDictation(makeInput({ rawText: "   " }), deps);
+
+    expect(deps.deliver).not.toHaveBeenCalled();
+    expect(deps.saveHistory).not.toHaveBeenCalled();
   });
 });
 
@@ -255,14 +323,6 @@ describe("finalizeDictation empty transcripts", () => {
   it("does nothing for empty or whitespace-only raw text", async () => {
     const deps = makeDeps();
     await finalizeDictation(makeInput({ rawText: "   " }), deps);
-
-    expect(deps.deliver).not.toHaveBeenCalled();
-    expect(deps.saveHistory).not.toHaveBeenCalled();
-  });
-
-  it("skips delivery and history when cleanup strips everything", async () => {
-    const deps = makeDeps({ cleanBasic: vi.fn(async () => "") });
-    await finalizeDictation(makeInput({ rawText: "[BLANK_AUDIO]" }), deps);
 
     expect(deps.deliver).not.toHaveBeenCalled();
     expect(deps.saveHistory).not.toHaveBeenCalled();

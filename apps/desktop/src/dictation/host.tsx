@@ -112,6 +112,12 @@ export function DictationOrbHost() {
 
   const phaseRef = useRef<DictationPhase>("idle");
 
+  // Wall-clock starts of sessions whose finished event hasn't arrived yet,
+  // oldest first. A FIFO (not a single slot) so a rapid stop+restart pairs
+  // each late-arriving finished event with its own session's start instead
+  // of the newest one's.
+  const sessionStartsRef = useRef<number[]>([]);
+
   const toggle = useCallback(() => {
     if (phaseRef.current === "listening" || phaseRef.current === "processing") {
       void dictationCommands.stopDictation();
@@ -132,10 +138,21 @@ export function DictationOrbHost() {
       return;
     }
 
+    const startedAt = Date.now();
+    sessionStartsRef.current.push(startedAt);
+    // A start that fails produces no finished event - drop its timestamp so
+    // it can't get paired with a later session's finish.
+    const dropStart = () => {
+      const index = sessionStartsRef.current.indexOf(startedAt);
+      if (index >= 0) {
+        sessionStartsRef.current.splice(index, 1);
+      }
+    };
     void dictationCommands
       .startDictation(conn.baseUrl, conn.model, outputModeRef.current)
       .then((result) => {
         if (result.status === "error") {
+          dropStart();
           // Surface it instead of a silent no-op orb click/hotkey press. The
           // most common real cause is engine contention (a batch re-transcription
           // is already using the internal whisper server); otherwise it's e.g.
@@ -153,6 +170,7 @@ export function DictationOrbHost() {
         }
       })
       .catch((error) => {
+        dropStart();
         console.error(
           "[dictation] failed to start the dictation session",
           error,
@@ -167,6 +185,8 @@ export function DictationOrbHost() {
     async (event: DictationFinishedEvent) => {
       const settings = finalizeSettingsRef.current;
       const model = modelRef.current;
+      const startedAt = sessionStartsRef.current.shift();
+      const durationMs = startedAt != null ? Date.now() - startedAt : null;
 
       try {
         await finalizeDictation(
@@ -176,6 +196,10 @@ export function DictationOrbHost() {
             failed: event.failed,
             cleanup: settings.cleanup,
             pasteAtCursor: settings.pasteAtCursor,
+            // The STT model name comes from the live connection, not the
+            // finished event; `connRef` still holds the session's model.
+            model: connRef.current?.model ?? null,
+            durationMs,
           },
           {
             cleanBasic: async (text) =>

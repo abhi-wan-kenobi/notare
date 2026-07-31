@@ -1,5 +1,10 @@
 import type { DictationOutputMode } from "@hypr/plugin-dictation";
 
+import type {
+  DictationHistorySource,
+  DictationHistoryStatus,
+} from "./history";
+
 /**
  * The finish line of a dictation session. The Rust session accumulates the
  * raw transcript and emits `DictationFinishedEvent`; the main-window host
@@ -45,6 +50,10 @@ export interface FinalizeDictationInput {
   failed: boolean;
   cleanup: DictationCleanupMode;
   pasteAtCursor: boolean;
+  /** STT model that produced the transcript, when the host knows it. */
+  model?: string | null;
+  /** Wall-clock session length in ms, when the host tracked it. */
+  durationMs?: number | null;
 }
 
 export interface FinalizeDictationDeps {
@@ -59,8 +68,13 @@ export interface FinalizeDictationDeps {
   deliver: (text: string, pasteAtCursor: boolean) => Promise<void>;
   saveHistory: (entry: {
     text: string;
+    rawText: string | null;
     mode: DictationOutputMode;
     cleaned: boolean;
+    source: DictationHistorySource;
+    model: string | null;
+    durationMs: number | null;
+    status: DictationHistoryStatus;
   }) => Promise<void>;
   /** "llm" cleanup fell back to basic (no model / error). */
   onLlmFallback: (error: unknown) => void;
@@ -94,13 +108,16 @@ export async function finalizeDictation(
 
   try {
     const { text, cleaned } = await cleanTranscript(raw, input.cleanup, deps);
-    if (!text) {
-      // Cleanup stripped everything (pure non-speech artifacts): nothing
-      // worth delivering or remembering.
-      return;
-    }
 
-    if (input.mode === "batch") {
+    // Discarded-dictation recovery: a session that died, or whose cleanup
+    // stripped everything down to non-speech artifacts, delivered nothing
+    // usable - but the raw transcript is still worth keeping so it can be
+    // recovered from history. `raw` is guaranteed non-empty here, so we never
+    // persist a blank entry.
+    const status: DictationHistoryStatus =
+      input.failed || !text ? "discarded" : "delivered";
+
+    if (text && input.mode === "batch") {
       try {
         // A failed session degrades to copy-only: the text survives on the
         // clipboard without pasting into whatever happens to be focused.
@@ -111,7 +128,16 @@ export async function finalizeDictation(
       }
     }
 
-    await deps.saveHistory({ text, mode: input.mode, cleaned });
+    await deps.saveHistory({
+      text,
+      rawText: raw,
+      mode: input.mode,
+      cleaned,
+      source: "dictation",
+      model: input.model ?? null,
+      durationMs: input.durationMs ?? null,
+      status,
+    });
   } finally {
     signalPhase?.("idle");
   }

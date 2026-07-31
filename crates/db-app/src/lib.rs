@@ -90,6 +90,11 @@ pub const APP_MIGRATION_STEPS: &[hypr_db_migrate::MigrationStep] = &[
         scope: hypr_db_migrate::MigrationScope::Plain,
         sql: include_str!("../migrations/20260723130000_action_items_v2.sql"),
     },
+    hypr_db_migrate::MigrationStep {
+        id: "20260731000000_dictation_history_snippets",
+        scope: hypr_db_migrate::MigrationScope::Plain,
+        sql: include_str!("../migrations/20260731000000_dictation_history_snippets.sql"),
+    },
 ];
 
 pub fn schema() -> hypr_db_migrate::DbSchema {
@@ -271,6 +276,13 @@ mod tests {
                 "chat_messages",
                 "daily_notes",
                 "dictation_history",
+                // dictation_history_fts + its fts5 shadow tables.
+                "dictation_history_fts",
+                "dictation_history_fts_config",
+                "dictation_history_fts_content",
+                "dictation_history_fts_data",
+                "dictation_history_fts_docsize",
+                "dictation_history_fts_idx",
                 "embedding_chunks",
                 "embedding_vector_map",
                 // embedding_vectors + its vec0 shadow tables.
@@ -298,6 +310,109 @@ mod tests {
                 "voice_profiles",
             ]
         );
+    }
+
+    #[tokio::test]
+    async fn dictation_history_snippets_migration_backfills_and_indexes() {
+        // Migrate up to (excluding) the snippets step, seed a legacy 0.5.0 row,
+        // then apply the snippets migration and assert the row survives with the
+        // new defaults and becomes full-text searchable.
+        let snippets_index = APP_MIGRATION_STEPS
+            .iter()
+            .position(|step| step.id == "20260731000000_dictation_history_snippets")
+            .unwrap();
+
+        let db = Db::connect_memory_plain().await.unwrap();
+        hypr_db_migrate::migrate(
+            &db,
+            hypr_db_migrate::DbSchema {
+                steps: &APP_MIGRATION_STEPS[..snippets_index],
+                validate_cloudsync_table: cloudsync_alter_guard_required,
+            },
+        )
+        .await
+        .unwrap();
+
+        sqlx::query(
+            "INSERT INTO dictation_history (id, text, mode, cleaned, created_at)
+             VALUES ('legacy', 'quarterly revenue report', 'batch', 1,
+                     '2026-07-01T00:00:00.000Z')",
+        )
+        .execute(db.pool())
+        .await
+        .unwrap();
+
+        hypr_db_migrate::migrate(&db, schema()).await.unwrap();
+
+        // Legacy row survived with the new column defaults, nothing lost.
+        let row = sqlx::query(
+            "SELECT text, raw_text, source, pinned, status FROM dictation_history WHERE id = 'legacy'",
+        )
+        .fetch_one(db.pool())
+        .await
+        .unwrap();
+        assert_eq!(row.get::<String, _>("text"), "quarterly revenue report");
+        assert!(row.get::<Option<String>, _>("raw_text").is_none());
+        assert_eq!(row.get::<String, _>("source"), "dictation");
+        assert_eq!(row.get::<i64, _>("pinned"), 0);
+        assert_eq!(row.get::<String, _>("status"), "delivered");
+
+        // Backfilled into FTS; searchable over the cleaned text.
+        let hit: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM dictation_history h
+             JOIN dictation_history_fts f ON f.id = h.id
+             WHERE dictation_history_fts MATCH 'revenue'",
+        )
+        .fetch_one(db.pool())
+        .await
+        .unwrap();
+        assert_eq!(hit, 1);
+
+        // Insert trigger indexes raw_text too; delete trigger prunes the index.
+        sqlx::query(
+            "INSERT INTO dictation_history
+               (id, text, raw_text, mode, cleaned, source, status, created_at)
+             VALUES ('new', 'cleaned up', 'umm the raw mumble', 'type', 1,
+                     'dictation', 'delivered', '2026-07-31T00:00:00.000Z')",
+        )
+        .execute(db.pool())
+        .await
+        .unwrap();
+        let raw_hit: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM dictation_history h
+             JOIN dictation_history_fts f ON f.id = h.id
+             WHERE dictation_history_fts MATCH 'mumble'",
+        )
+        .fetch_one(db.pool())
+        .await
+        .unwrap();
+        assert_eq!(raw_hit, 1);
+
+        sqlx::query("DELETE FROM dictation_history WHERE id = 'new'")
+            .execute(db.pool())
+            .await
+            .unwrap();
+        let after_delete: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM dictation_history_fts WHERE dictation_history_fts MATCH 'mumble'",
+        )
+        .fetch_one(db.pool())
+        .await
+        .unwrap();
+        assert_eq!(after_delete, 0);
+
+        // The FTS join is keyed on the TEXT id, so it must survive VACUUM
+        // renumbering the base table's implicit rowids (id TEXT PRIMARY KEY
+        // means dictation_history has no stable rowid alias).
+        sqlx::query("VACUUM").execute(db.pool()).await.unwrap();
+        let after_vacuum: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM dictation_history h
+             JOIN dictation_history_fts f ON f.id = h.id
+             WHERE dictation_history_fts MATCH 'revenue'",
+        )
+        .fetch_one(db.pool())
+        .await
+        .unwrap();
+        assert_eq!(after_vacuum, 1);
     }
 
     #[tokio::test]

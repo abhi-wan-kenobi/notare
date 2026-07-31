@@ -1,7 +1,7 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { platform } from "@tauri-apps/plugin-os";
-import { AlertCircleIcon, Trash2Icon } from "lucide-react";
+import { AlertCircleIcon, ScrollTextIcon, Trash2Icon } from "lucide-react";
 import { type ReactNode, useEffect, useId, useState } from "react";
 
 import type { PermissionStatus } from "@hypr/plugin-permissions";
@@ -31,6 +31,7 @@ import { useSetSettingValue } from "~/settings/queries";
 import { SETTING_DEFINITIONS } from "~/settings/schema";
 import { useConfigValues } from "~/shared/config";
 import { usePermission } from "~/shared/hooks/usePermissions";
+import { useTabs } from "~/store/zustand/tabs";
 import { useSTTConnection } from "~/stt/useSTTConnection";
 
 /**
@@ -501,6 +502,7 @@ function useSyntheticAmplitude(active: boolean): number {
 function DictationHistorySection() {
   const { t } = useLingui();
   const entries = useDictationHistory();
+  const openNew = useTabs((state) => state.openNew);
 
   const handleCopy = async (entry: DictationHistoryEntry) => {
     try {
@@ -518,15 +520,25 @@ function DictationHistorySection() {
         <h2 className="font-sans text-lg font-semibold">
           <Trans>History</Trans>
         </h2>
-        {entries.length > 0 ? (
+        <div className="flex items-center gap-1">
+          {entries.length > 0 ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => void clearDictationHistory()}
+            >
+              <Trans>Clear all</Trans>
+            </Button>
+          ) : null}
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => void clearDictationHistory()}
+            onClick={() => openNew({ type: "snippets" })}
           >
-            <Trans>Clear all</Trans>
+            <ScrollTextIcon className="size-3.5" />
+            <Trans>View all in Snippets</Trans>
           </Button>
-        ) : null}
+        </div>
       </div>
       <DictationHistoryList
         entries={entries}
