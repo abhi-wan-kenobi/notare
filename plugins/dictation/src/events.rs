@@ -88,6 +88,14 @@ pub struct DictationAmplitudeEvent {
 #[serde(rename_all = "camelCase")]
 pub struct DictationOrbClicked {}
 
+/// Emitted by the orb webview when the user right-clicks the idle orb to
+/// dismiss it. The main window host hides the orb window until the next
+/// dictation session actually starts (phase -> listening), which re-arms
+/// visibility; the suppression is session-scoped and never persisted.
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(rename_all = "camelCase")]
+pub struct DictationOrbHideRequested {}
+
 /// A final transcript segment that was delivered: typed into the focused app
 /// (`type` mode) or accumulated for the deliver-on-stop buffer (`batch`).
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type, tauri_specta::Event)]

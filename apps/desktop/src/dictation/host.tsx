@@ -29,6 +29,7 @@ import { useLanguageModel } from "~/ai/hooks";
 import { deterministicGenerationSettings } from "~/ai/model-settings";
 import { useSetSettingValues } from "~/settings/queries";
 import { useConfigValues } from "~/shared/config";
+import { listenerStore } from "~/store/zustand/listener/instance";
 import { useSTTConnection } from "~/stt/useSTTConnection";
 
 /**
@@ -37,7 +38,9 @@ import { useSTTConnection } from "~/stt/useSTTConnection";
  * instead of its unfinished native panel.
  *
  * Responsibilities:
- * - show/hide the orb window when the `dictation_enabled` setting changes;
+ * - show/hide the orb window when the `dictation_enabled` setting changes,
+ *   keeping it hidden while a meeting recording is live or after the user
+ *   right-clicked it away (both until the next dictation session starts);
  * - register the configured global toggle hotkey (`dictation_shortcut`);
  * - toggle the Rust dictation session on hotkey press or orb click, passing
  *   the live local STT server URL + model from `useSTTConnection`;
@@ -224,24 +227,152 @@ export function DictationOrbHost() {
     [t],
   );
 
-  // Orb window lifecycle.
+  // Orb window lifecycle + visibility.
+  //
+  // The orb is visible while dictation is enabled, EXCEPT:
+  // - while a meeting recording is live (the floating meeting bar already
+  //   marks "recording", and a second always-on-top indicator reads as
+  //   "something else is listening too"), or
+  // - after the user right-clicked the orb to dismiss it.
+  // Both suppressions lift the moment a dictation session actually starts
+  // (phase -> listening): starting dictation is an explicit "I'm using this"
+  // signal, and a live mic must never run without its indicator - including
+  // mid-meeting. The right-click dismissal is deliberately closure-scoped:
+  // toggling `dictation_enabled` off and back on also forgets it.
   useEffect(() => {
     if (!enabled) {
       return;
     }
 
-    void dictationCommands.showOrb().then((result) => {
-      if (result.status === "error") {
-        console.error(
-          "[dictation] failed to show the orb window",
-          result.error,
-        );
+    let cancelled = false;
+    let meetingActive = listenerStore.getState().live.status === "active";
+    let userHidden = false;
+    let dictating = false;
+    // Last visibility handed to the queue; `null` forces the initial sync
+    // and marks "reality unknown" after a failed apply so the next
+    // transition retries instead of short-circuiting.
+    let shown: boolean | null = null;
+    // show/hide are async IPC, not synchronous side-effects: two rapid
+    // transitions would otherwise race their command round-trips and the
+    // window could end on the older intent. Serializing through this queue
+    // keeps applies in order; the supersede check below coalesces a burst
+    // of flips into the newest intent only.
+    let queue: Promise<unknown> = Promise.resolve();
+
+    const sync = () => {
+      if (cancelled) {
+        return;
       }
+      const visible = !userHidden && (dictating || !meetingActive);
+      if (shown === visible) {
+        return;
+      }
+      shown = visible;
+      queue = queue.then(() => {
+        if (cancelled || shown !== visible) {
+          // Torn down, or superseded by a newer intent already queued.
+          return;
+        }
+        const apply = visible
+          ? dictationCommands.showOrb
+          : dictationCommands.hideOrb;
+        return apply().then((result) => {
+          if (result.status === "error") {
+            if (shown === visible) {
+              shown = null;
+            }
+            console.error(
+              `[dictation] failed to ${visible ? "show" : "hide"} the orb window`,
+              result.error,
+            );
+          }
+        });
+      });
+    };
+
+    sync();
+
+    // The effect can mount with a session already live (e.g. the previous
+    // effect run's async stop failed) - dictating must not default to a
+    // value that hides the indicator of a running mic. State events are the
+    // source of truth from here on; this only seeds the initial value.
+    void dictationCommands
+      .isDictating()
+      .then((result) => {
+        if (cancelled || result.status !== "ok" || !result.data) {
+          return;
+        }
+        if (!dictating) {
+          dictating = true;
+          sync();
+        }
+      })
+      .catch((error) => {
+        console.error("[dictation] failed to query the session state", error);
+      });
+
+    const unsubscribeListener = listenerStore.subscribe((state) => {
+      const active = state.live.status === "active";
+      if (active === meetingActive) {
+        return;
+      }
+      meetingActive = active;
+      sync();
     });
 
+    const unlisteners: (() => void)[] = [];
+    const collect = (promise: Promise<() => void>) => {
+      promise
+        .then((unlisten) => {
+          if (cancelled) {
+            unlisten();
+            return;
+          }
+          unlisteners.push(unlisten);
+        })
+        .catch((error) => {
+          console.error(
+            "[dictation] failed to subscribe to a dictation event",
+            error,
+          );
+        });
+    };
+
+    collect(
+      dictationEvents.dictationStateEvent.listen((event) => {
+        const phase = event.payload.phase;
+        const active = phase === "listening" || phase === "processing";
+        if (active && !dictating) {
+          // A session actually started: any right-click dismissal is over.
+          userHidden = false;
+        }
+        dictating = active;
+        sync();
+      }),
+    );
+    collect(
+      dictationEvents.dictationOrbHideRequested.listen(() => {
+        if (dictating) {
+          // A stale right-click racing a session start (the orb window's own
+          // guard reads an async copy of the phase): a live mic must never
+          // lose its indicator, so the host re-checks with fresher state.
+          return;
+        }
+        userHidden = true;
+        sync();
+      }),
+    );
+
     return () => {
+      cancelled = true;
+      unsubscribeListener();
+      for (const unlisten of unlisteners) {
+        unlisten();
+      }
       void dictationCommands.stopDictation();
-      void dictationCommands.hideOrb();
+      // Ride the queue so the final hide lands after any still-in-flight
+      // apply - a show resolving late must not leave an orphaned orb.
+      void queue.then(() => dictationCommands.hideOrb());
     };
   }, [enabled]);
 

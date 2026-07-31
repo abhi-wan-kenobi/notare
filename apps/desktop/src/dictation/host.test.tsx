@@ -30,6 +30,7 @@ const mocks = vi.hoisted(() => ({
     data: null,
   })),
   stopDictation: vi.fn(async () => ({ status: "ok" as const, data: null })),
+  isDictating: vi.fn(async () => ({ status: "ok" as const, data: false })),
   registerGlobalHotkey: vi.fn(async () => ({
     status: "ok" as const,
     data: null,
@@ -41,6 +42,14 @@ const mocks = vi.hoisted(() => ({
   listen: vi.fn(async () => vi.fn()),
   orbClickListeners: [] as Array<() => void>,
   hotkeyListeners: [] as Array<() => void>,
+  stateListeners: [] as Array<(event: { payload: unknown }) => void>,
+  hideRequestListeners: [] as Array<() => void>,
+  listenerState: { live: { status: "inactive" } } as {
+    live: { status: string };
+  },
+  listenerSubscribers: [] as Array<
+    (state: { live: { status: string } }) => void
+  >,
   sttConnection: {
     conn: null as null | { provider: string; model: string; baseUrl: string },
     isLocalModel: false,
@@ -60,17 +69,45 @@ vi.mock("@hypr/plugin-dictation", () => ({
     hideOrb: mocks.hideOrb,
     startDictation: mocks.startDictation,
     stopDictation: mocks.stopDictation,
+    isDictating: mocks.isDictating,
     cleanText: vi.fn(async () => ({ status: "ok", data: "" })),
     deliverText: vi.fn(async () => ({ status: "ok", data: null })),
   },
   events: {
-    dictationStateEvent: { listen: mocks.listen, emit: vi.fn(async () => {}) },
+    dictationStateEvent: {
+      listen: async (cb: (event: { payload: unknown }) => void) => {
+        mocks.stateListeners.push(cb);
+        return vi.fn();
+      },
+      emit: vi.fn(async () => {}),
+    },
     dictationFinishedEvent: { listen: mocks.listen },
     dictationOrbClicked: {
       listen: async (cb: () => void) => {
         mocks.orbClickListeners.push(cb);
         return vi.fn();
       },
+    },
+    dictationOrbHideRequested: {
+      listen: async (cb: () => void) => {
+        mocks.hideRequestListeners.push(cb);
+        return vi.fn();
+      },
+    },
+  },
+}));
+
+vi.mock("~/store/zustand/listener/instance", () => ({
+  listenerStore: {
+    getState: () => mocks.listenerState,
+    subscribe: (cb: (state: { live: { status: string } }) => void) => {
+      mocks.listenerSubscribers.push(cb);
+      return () => {
+        const index = mocks.listenerSubscribers.indexOf(cb);
+        if (index >= 0) {
+          mocks.listenerSubscribers.splice(index, 1);
+        }
+      };
     },
   },
 }));
@@ -116,6 +153,19 @@ vi.mock("./history", () => ({
 
 import { DictationOrbHost } from "./host";
 
+function setMeetingActive(active: boolean) {
+  mocks.listenerState = { live: { status: active ? "active" : "inactive" } };
+  for (const cb of mocks.listenerSubscribers) {
+    cb(mocks.listenerState);
+  }
+}
+
+function pushPhase(phase: string) {
+  for (const cb of mocks.stateListeners) {
+    cb({ payload: { phase, amplitude: 0, mode: "type" } });
+  }
+}
+
 describe("DictationOrbHost", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -128,6 +178,10 @@ describe("DictationOrbHost", () => {
     };
     mocks.orbClickListeners = [];
     mocks.hotkeyListeners = [];
+    mocks.stateListeners = [];
+    mocks.hideRequestListeners = [];
+    mocks.listenerState = { live: { status: "inactive" } };
+    mocks.listenerSubscribers = [];
     mocks.sttConnection = { conn: null, isLocalModel: false };
   });
 
@@ -237,6 +291,88 @@ describe("DictationOrbHost", () => {
     expect(mocks.sonnerError.mock.calls[0]![0]).toMatch(
       /couldn't start dictation/i,
     );
+  });
+
+  it("hides the orb while a meeting recording is live and re-shows it after", async () => {
+    render(<DictationOrbHost />);
+    await waitFor(() => expect(mocks.showOrb).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(mocks.listenerSubscribers.length).toBe(1));
+
+    setMeetingActive(true);
+    await waitFor(() => expect(mocks.hideOrb).toHaveBeenCalledTimes(1));
+
+    setMeetingActive(false);
+    await waitFor(() => expect(mocks.showOrb).toHaveBeenCalledTimes(2));
+  });
+
+  it("never shows the orb when a meeting recording is already live on mount", async () => {
+    mocks.listenerState = { live: { status: "active" } };
+
+    render(<DictationOrbHost />);
+
+    await waitFor(() => expect(mocks.hideOrb).toHaveBeenCalledTimes(1));
+    expect(mocks.showOrb).not.toHaveBeenCalled();
+  });
+
+  it("hides the orb on a right-click dismissal until the next dictation start", async () => {
+    render(<DictationOrbHost />);
+    await waitFor(() => expect(mocks.showOrb).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(mocks.hideRequestListeners.length).toBe(1));
+
+    mocks.hideRequestListeners[0]!();
+    await waitFor(() => expect(mocks.hideOrb).toHaveBeenCalledTimes(1));
+
+    // The next session start (phase -> listening) re-arms visibility.
+    pushPhase("listening");
+    await waitFor(() => expect(mocks.showOrb).toHaveBeenCalledTimes(2));
+  });
+
+  // Mid-meeting dictation still needs its mic indicator: starting a session
+  // overrides the meeting suppression, and ending it re-applies it.
+  // The orb window's right-click guard reads an async copy of the phase, so
+  // a stale hide request can slip out just as a session starts - the host
+  // must drop it rather than hide the indicator of a live mic.
+  it("ignores a hide request that races a session start", async () => {
+    render(<DictationOrbHost />);
+    await waitFor(() => expect(mocks.showOrb).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(mocks.hideRequestListeners.length).toBe(1));
+
+    pushPhase("listening");
+    mocks.hideRequestListeners[0]!();
+
+    // Give the (wrongly) queued hide a tick to fire before asserting.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(mocks.hideOrb).not.toHaveBeenCalled();
+  });
+
+  // Mounting with a session already live (a failed async stop from the
+  // previous effect run) must seed `dictating` from the Rust side - a live
+  // mic must keep its indicator even if a meeting is recording.
+  it("seeds the dictating state from isDictating on mount", async () => {
+    mocks.listenerState = { live: { status: "active" } };
+    mocks.isDictating.mockResolvedValueOnce({
+      status: "ok" as const,
+      data: true,
+    });
+
+    render(<DictationOrbHost />);
+
+    await waitFor(() => expect(mocks.showOrb).toHaveBeenCalledTimes(1));
+  });
+
+  it("shows the orb for a dictation started mid-meeting and re-hides it after", async () => {
+    render(<DictationOrbHost />);
+    await waitFor(() => expect(mocks.showOrb).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(mocks.listenerSubscribers.length).toBe(1));
+
+    setMeetingActive(true);
+    await waitFor(() => expect(mocks.hideOrb).toHaveBeenCalledTimes(1));
+
+    pushPhase("listening");
+    await waitFor(() => expect(mocks.showOrb).toHaveBeenCalledTimes(2));
+
+    pushPhase("idle");
+    await waitFor(() => expect(mocks.hideOrb).toHaveBeenCalledTimes(2));
   });
 
   it("surfaces a toast when startDictation rejects", async () => {

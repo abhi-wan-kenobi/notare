@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   stateHandlers: [] as Array<(event: { payload: unknown }) => void>,
   stateUnlisten: vi.fn(),
   emitClicked: vi.fn(async () => undefined),
+  emitHideRequested: vi.fn(async () => undefined),
   startDragging: vi.fn(async () => undefined),
   scaleFactor: vi.fn(async () => 1),
   // Rust creates the orb window at the cobalt size (70 logical px).
@@ -55,6 +56,7 @@ vi.mock("@hypr/plugin-dictation", () => ({
       }),
     },
     dictationOrbClicked: { emit: mocks.emitClicked },
+    dictationOrbHideRequested: { emit: mocks.emitHideRequested },
   },
 }));
 
@@ -166,6 +168,38 @@ describe("DictationOrbWindow", () => {
       screen.getByRole("button", { name: "Start dictation" }),
     ).not.toBeNull();
   });
+
+  it("emits the hide-request event on right-click while idle", async () => {
+    render(<DictationOrbWindow />);
+    await act(async () => {});
+
+    const defaultAllowed = fireEvent.contextMenu(
+      screen.getByRole("button", { name: "Start dictation" }),
+    );
+
+    // preventDefault keeps the browser context menu off the orb.
+    expect(defaultAllowed).toBe(false);
+    expect(mocks.emitHideRequested).toHaveBeenCalledTimes(1);
+    expect(mocks.emitClicked).not.toHaveBeenCalled();
+  });
+
+  // While a session is live the orb doubles as the mic indicator - a
+  // right-click must never leave the mic running with no visual trace.
+  // Covers both live phases so this predicate can never drift from the
+  // host's own "dictating" set (`listening` | `processing`) unnoticed.
+  it.each(["listening", "processing"] as const)(
+    "ignores right-click while dictating (%s)",
+    async (phase) => {
+      render(<DictationOrbWindow />);
+      await pushState({ phase, amplitude: 0.4, mode: "type" });
+
+      fireEvent.contextMenu(
+        screen.getByRole("button", { name: "Stop dictation" }),
+      );
+
+      expect(mocks.emitHideRequested).not.toHaveBeenCalled();
+    },
+  );
 
   it("emits the orb-clicked event on click", async () => {
     render(<DictationOrbWindow />);
