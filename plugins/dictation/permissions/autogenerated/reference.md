@@ -16,6 +16,8 @@ Default permissions for the plugin
 - `allow-type-text`
 - `allow-deliver-text`
 - `allow-clean-text`
+- `allow-pause-media`
+- `allow-resume-media`
 
 ## Permission Table
 
@@ -152,6 +154,58 @@ Enables the is_dictating command without any pre-configured scope.
 <td>
 
 Denies the is_dictating command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`dictation:allow-pause-media`
+
+</td>
+<td>
+
+Enables the pause_media command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`dictation:deny-pause-media`
+
+</td>
+<td>
+
+Denies the pause_media command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`dictation:allow-resume-media`
+
+</td>
+<td>
+
+Enables the resume_media command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`dictation:deny-resume-media`
+
+</td>
+<td>
+
+Denies the resume_media command without any pre-configured scope.
 
 </td>
 </tr>

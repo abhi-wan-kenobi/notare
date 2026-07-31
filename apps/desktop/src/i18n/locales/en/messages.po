@@ -63,6 +63,18 @@ msgstr "1 week"
 msgid "3 days"
 msgstr "3 days"
 
+#: src/settings/dictation/retention.tsx
+msgid "30 days"
+msgstr "30 days"
+
+#: src/settings/dictation/retention.tsx
+msgid "7 days"
+msgstr "7 days"
+
+#: src/settings/dictation/retention.tsx
+msgid "90 days"
+msgstr "90 days"
+
 #: src/dictation/orb.tsx
 msgid "A dark glass sphere lit by a hot caustic band."
 msgstr "A dark glass sphere lit by a hot caustic band."
@@ -1278,6 +1290,14 @@ msgstr "Highest accuracy; needs the most compute."
 msgid "History"
 msgstr "History"
 
+#: src/settings/dictation/index.tsx
+msgid "Hold the dictation shortcut to talk; release to stop and deliver."
+msgstr "Hold the dictation shortcut to talk; release to stop and deliver."
+
+#: src/settings/dictation/index.tsx
+msgid "Hold to talk"
+msgstr "Hold to talk"
+
 #: src/calendar/components/google/content.tsx
 msgid "How do I get this file?"
 msgstr "How do I get this file?"
@@ -1382,6 +1402,14 @@ msgstr "Jump to source"
 #: src/settings/dictation/index.tsx
 msgid "Keep a small always-on-top orb on screen. Click it, or press the shortcut, to start typing what you say into the focused app."
 msgstr "Keep a small always-on-top orb on screen. Click it, or press the shortcut, to start typing what you say into the focused app."
+
+#: src/settings/dictation/retention.tsx
+msgid "Keep everything"
+msgstr "Keep everything"
+
+#: src/settings/dictation/retention.tsx
+msgid "Keep history for"
+msgstr "Keep history for"
 
 #: src/settings/general/app-settings.tsx
 msgid "Keep Notare available from the menu bar."
@@ -2024,6 +2052,14 @@ msgstr "Paste the browser URL here if the browser button did not reopen Notare."
 msgid "Paste the transcript into the focused app when you stop. When off it is only copied to the clipboard, so you paste it yourself."
 msgstr "Paste the transcript into the focused app when you stop. When off it is only copied to the clipboard, so you paste it yourself."
 
+#: src/settings/dictation/index.tsx
+msgid "Pause media while dictating"
+msgstr "Pause media while dictating"
+
+#: src/settings/dictation/index.tsx
+msgid "Pause music while dictating, resume after."
+msgstr "Pause music while dictating, resume after."
+
 #: src/contacts/organization-details.tsx
 #: src/session/components/note-input/transcript/renderer/speaker-assign.tsx
 msgid "People"
@@ -2059,6 +2095,10 @@ msgstr "Pin"
 msgid "Pinned"
 msgstr "Pinned"
 
+#: src/settings/dictation/retention.tsx
+msgid "Pinned snippets are always kept, no matter this setting."
+msgstr "Pinned snippets are always kept, no matter this setting."
+
 #: src/dictation/orb.tsx
 msgid "Pip"
 msgstr "Pip"
@@ -2078,6 +2118,10 @@ msgstr "Preparing transcript..."
 #: src/settings/dictation/shortcut-recorder.tsx
 msgid "Press shortcut…"
 msgstr "Press shortcut…"
+
+#: src/settings/dictation/index.tsx
+msgid "Press the shortcut once to start dictating, press it again to stop and deliver."
+msgstr "Press the shortcut once to start dictating, press it again to stop and deliver."
 
 #: src/settings/dictation/shortcut-recorder.tsx
 msgid "Press the shortcut, Esc cancels"
@@ -2910,6 +2954,10 @@ msgstr "Today"
 #: src/session/components/action-items/index.tsx
 msgid "Toggle action item"
 msgstr "Toggle action item"
+
+#: src/settings/dictation/index.tsx
+msgid "Toggle press"
+msgstr "Toggle press"
 
 #: src/settings/dictation/shortcut-recorder.tsx
 msgid "Toggle shortcut"

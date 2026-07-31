@@ -230,6 +230,14 @@ fn commit_and_run<E: std::fmt::Debug + Send + 'static>(
     {
         let state = app.state::<SessionState>();
         let mut guard = state.0.lock().unwrap_or_else(|e| e.into_inner());
+        // D3 instrumentation: two concurrent starts can both pass the early
+        // is-running check (it runs before the async mic/WS setup) - the
+        // second commit would drop the first session's stop_tx and kill it.
+        // Log it loudly before deciding whether that TOCTOU needs a real
+        // slot-reservation fix.
+        if guard.is_some() {
+            tracing::warn!("dictation double-start: overwriting a live session (TOCTOU)");
+        }
         *guard = Some(ActiveSession { stop_tx });
     }
 
@@ -302,12 +310,32 @@ async fn run_session<E: std::fmt::Debug>(
     let mut last_amplitude_at = std::time::Instant::now() - AMPLITUDE_INTERVAL;
     let mut last_amplitude_fast_at = std::time::Instant::now() - AMPLITUDE_FAST_INTERVAL;
 
+    // D3 field-bug instrumentation (Windows "stops after a few seconds",
+    // 2026-07-31): one structured end-of-session line names the exit path and
+    // carries enough counters to tell a dead mic from a dead socket from a
+    // user stop, in a single user-supplied log. Do not remove until #D3 is
+    // root-caused and fixed.
+    let session_started = std::time::Instant::now();
+    let mut audio_frames: u64 = 0;
+    let mut listen_msgs: u64 = 0;
+    let mut last_frame_at = std::time::Instant::now();
+    let mut mic_stall_logged = false;
+    let mut end_reason: &'static str = "unknown";
+    tracing::info!("dictation_session_start");
+
     let finalize_deadline = tokio::time::sleep(Duration::from_secs(86_400));
     tokio::pin!(finalize_deadline);
+
+    // Watchdog for the WASAPI failure mode where the stream stops delivering
+    // frames WITHOUT firing cpal's error callback (device invalidated /
+    // audiodg restart): log once, don't kill the session.
+    let mut mic_watchdog = tokio::time::interval(Duration::from_secs(1));
+    mic_watchdog.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
 
     loop {
         tokio::select! {
             _ = &mut stop_rx, if !finalizing => {
+                end_reason = "stop_requested";
                 finalizing = true;
                 emit_state(&app, DictationPhase::Processing, 0.0, mode);
                 ws_handle.finalize().await;
@@ -318,6 +346,8 @@ async fn run_session<E: std::fmt::Debug>(
             frame = mic.next(), if !finalizing => {
                 match frame {
                     Some(Ok(frame)) => {
+                        audio_frames += 1;
+                        last_frame_at = std::time::Instant::now();
                         let samples = frame.preferred_mic();
 
                         // Two independent amplitude channels share the same RMS
@@ -352,8 +382,11 @@ async fn run_session<E: std::fmt::Debug>(
                             // finalizing exactly like a user Stop — flush what the
                             // server already has and deliver via the chosen mode.
                             tracing::warn!(
+                                audio_frames,
+                                elapsed_ms = session_started.elapsed().as_millis() as u64,
                                 "dictation audio channel closed; finalizing gracefully"
                             );
+                            end_reason = "audio_channel_closed";
                             finalizing = true;
                             emit_state(&app, DictationPhase::Processing, 0.0, mode);
                             ws_handle.finalize().await;
@@ -364,11 +397,13 @@ async fn run_session<E: std::fmt::Debug>(
                     }
                     Some(Err(error)) => {
                         tracing::error!(%error, "dictation mic capture failed");
+                        end_reason = "mic_error";
                         failed = true;
                         break;
                     }
                     None => {
                         tracing::warn!("dictation mic stream ended");
+                        end_reason = "mic_ended";
                         failed = true;
                         break;
                     }
@@ -377,20 +412,24 @@ async fn run_session<E: std::fmt::Debug>(
             response = listen_stream.next() => {
                 match response {
                     Some(Ok(response)) => {
+                        listen_msgs += 1;
                         let from_finalize =
                             handle_response(&app, response, mode, &mut typed_any, &mut transcript)
                                 .await;
                         if from_finalize && finalizing {
+                            end_reason = "finalized";
                             break;
                         }
                     }
                     Some(Err(error)) => {
                         tracing::error!(?error, "dictation listen stream error");
+                        end_reason = "listen_error";
                         failed = !finalizing;
                         break;
                     }
                     None => {
                         tracing::warn!(finalizing, "dictation listen stream closed");
+                        end_reason = "listen_closed";
                         failed = !finalizing;
                         break;
                     }
@@ -398,10 +437,33 @@ async fn run_session<E: std::fmt::Debug>(
             }
             _ = &mut finalize_deadline, if finalizing => {
                 tracing::warn!("dictation finalize timed out waiting for the server flush");
+                end_reason = "finalize_timeout";
                 break;
+            }
+            _ = mic_watchdog.tick(), if !finalizing => {
+                if !mic_stall_logged && last_frame_at.elapsed() > Duration::from_secs(3) {
+                    mic_stall_logged = true;
+                    tracing::warn!(
+                        audio_frames,
+                        stalled_ms = last_frame_at.elapsed().as_millis() as u64,
+                        "dictation mic delivered no frames for >3s (silent WASAPI stall?)"
+                    );
+                }
             }
         }
     }
+
+    tracing::warn!(
+        reason = end_reason,
+        failed,
+        finalized = finalizing,
+        audio_frames,
+        listen_msgs,
+        transcript_bytes = transcript.len(),
+        mic_stalled = mic_stall_logged,
+        elapsed_ms = session_started.elapsed().as_millis() as u64,
+        "dictation_session_end"
+    );
 
     drop(audio_tx);
 

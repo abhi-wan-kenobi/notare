@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-pause-media"
+description = "Enables the pause_media command without any pre-configured scope."
+commands.allow = ["pause_media"]
+
+[[permission]]
+identifier = "deny-pause-media"
+description = "Denies the pause_media command without any pre-configured scope."
+commands.deny = ["pause_media"]

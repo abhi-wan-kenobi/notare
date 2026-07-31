@@ -18474,6 +18474,8 @@ dependencies = [
  "tokio-stream",
  "tracing",
  "transcribe-soniqo",
+ "windows 0.62.2",
+ "zbus",
 ]
 
 [[package]]

@@ -70,6 +70,9 @@ export function DictationOrbHost() {
     dictation_cleanup,
     dictation_translation_enabled,
     dictation_translation_target,
+    dictation_activation_mode,
+    dictation_pause_media,
+    dictation_history_retention,
   } = useConfigValues([
     "dictation_enabled",
     "dictation_shortcut",
@@ -79,6 +82,9 @@ export function DictationOrbHost() {
     "dictation_cleanup",
     "dictation_translation_enabled",
     "dictation_translation_target",
+    "dictation_activation_mode",
+    "dictation_pause_media",
+    "dictation_history_retention",
   ] as const);
   const setSettingValues = useSetSettingValues();
   const enabled = dictation_enabled;
@@ -150,18 +156,77 @@ export function DictationOrbHost() {
 
   const phaseRef = useRef<DictationPhase>("idle");
 
+  // Activation mode: "toggle" (press to start, press again to stop) or
+  // "push_to_talk" (hold to record, release to stop). Read through a ref so the
+  // long-lived hotkey listener always sees the latest value without re-binding.
+  const pushToTalk = dictation_activation_mode === "push_to_talk";
+  const pushToTalkRef = useRef(pushToTalk);
+  pushToTalkRef.current = pushToTalk;
+
+  // Whether to pause playing media for the duration of a dictation session.
+  const pauseMediaRef = useRef(dictation_pause_media);
+  pauseMediaRef.current = dictation_pause_media;
+
+  // History retention window, applied at save time so the age prune runs in
+  // the same transaction as every new entry (the Snippets page load is the
+  // other enforcement point).
+  const retentionRef = useRef(dictation_history_retention);
+  retentionRef.current = dictation_history_retention;
+
+  // Push-to-talk key-hold bookkeeping (only meaningful in PTT mode):
+  // - `pttHeld` dedupes OS key auto-repeat (Windows repeats `Pressed` while a
+  //   key is held) - only the first Pressed of a hold acts; the rest are
+  //   ignored, and a Released with no matching hold is dropped.
+  // - `pendingStop` handles the very short press: a Released that arrives while
+  //   the async start is still in flight (phase still `idle`, the Rust session
+  //   not yet registered so a `stopDictation` now would be a lost no-op). We
+  //   defer the stop until the session actually reaches `listening`.
+  const pttHeldRef = useRef(false);
+  const pendingStopRef = useRef(false);
+
+  // Any lifecycle flip (feature off/on, activation-mode change) invalidates
+  // in-flight hold bookkeeping - stale latches strand the next PTT press.
+  useEffect(() => {
+    pttHeldRef.current = false;
+    pendingStopRef.current = false;
+  }, [enabled, pushToTalk]);
+
   // Wall-clock starts of sessions whose finished event hasn't arrived yet,
   // oldest first. A FIFO (not a single slot) so a rapid stop+restart pairs
   // each late-arriving finished event with its own session's start instead
   // of the newest one's.
-  const sessionStartsRef = useRef<number[]>([]);
+  const sessionStartsRef = useRef<
+    Array<{ startedAt: number; model: string | null }>
+  >([]);
 
-  const toggle = useCallback(() => {
-    if (phaseRef.current === "listening" || phaseRef.current === "processing") {
-      void dictationCommands.stopDictation();
+  // Media auto-pause helpers. Fire-and-forget so media control never delays the
+  // mic; every failure degrades silently (the Rust side is already best-effort).
+  const pauseMediaIfEnabled = useCallback(() => {
+    if (!pauseMediaRef.current) {
       return;
     }
+    void dictationCommands.pauseMedia().catch((error) => {
+      console.debug("[dictation] media auto-pause failed", error);
+    });
+  }, []);
+  // Resume is idempotent (the Rust side only un-pauses what we paused, then
+  // forgets it), so it's always safe to call - even if the setting was turned
+  // off mid-session, we still resume whatever we had paused.
+  const resumeMedia = useCallback(() => {
+    void dictationCommands.resumeMedia().catch((error) => {
+      console.debug("[dictation] media resume failed", error);
+    });
+  }, []);
 
+  // Start a dictation session (no stop path). Shared by the orb click / toggle
+  // hotkey (via `toggle`) and the push-to-talk key-down. On a successful start
+  // it pauses playing media (if enabled); a failed start resumes it as a
+  // safety net (a no-op if nothing was paused yet).
+  const startSession = useCallback(() => {
+    // A stale deferred stop from an earlier aborted hold must never attach to
+    // this fresh session (the PTT press path already cleared it; this covers
+    // the orb-click/toggle paths).
+    pendingStopRef.current = false;
     const conn = connRef.current;
     if (!conn) {
       // No local live model is configured/downloaded — surface it instead of
@@ -173,6 +238,10 @@ export function DictationOrbHost() {
       sonnerToast.info(
         t`Dictation needs a downloaded local model — choose one in Settings.`,
       );
+      // A PTT hold that never produced a session must not leave a deferred
+      // stop armed - it would instantly kill the NEXT successful session.
+      pendingStopRef.current = false;
+      pttHeldRef.current = false;
       return;
     }
 
@@ -181,13 +250,17 @@ export function DictationOrbHost() {
     // its timestamp queued forever and mispair every later finish - drop
     // anything implausibly old before enqueueing (no dictation runs 6h).
     sessionStartsRef.current = sessionStartsRef.current.filter(
-      (start) => startedAt - start < 6 * 60 * 60 * 1000,
+      (entry) => startedAt - entry.startedAt < 6 * 60 * 60 * 1000,
     );
-    sessionStartsRef.current.push(startedAt);
+    // The model is captured NOW: by the time the finished event arrives the
+    // connection ref may already point at a different model.
+    sessionStartsRef.current.push({ startedAt, model: conn.model ?? null });
     // A start that fails produces no finished event - drop its timestamp so
     // it can't get paired with a later session's finish.
     const dropStart = () => {
-      const index = sessionStartsRef.current.indexOf(startedAt);
+      const index = sessionStartsRef.current.findIndex(
+        (entry) => entry.startedAt === startedAt,
+      );
       if (index >= 0) {
         sessionStartsRef.current.splice(index, 1);
       }
@@ -197,6 +270,11 @@ export function DictationOrbHost() {
       .then((result) => {
         if (result.status === "error") {
           dropStart();
+          pendingStopRef.current = false;
+          pttHeldRef.current = false;
+          // The start failed, so nothing keeps media paused - resume as a
+          // safety net (no-op unless a prior race left something paused).
+          resumeMedia();
           // Surface it instead of a silent no-op orb click/hotkey press. The
           // most common real cause is engine contention (a batch re-transcription
           // is already using the internal whisper server); otherwise it's e.g.
@@ -211,10 +289,16 @@ export function DictationOrbHost() {
               ? t`Couldn't start dictation — the transcription engine is busy. If a recording is still transcribing, try again once it finishes.`
               : t`Couldn't start dictation. Check that a local model is selected, then try again.`,
           );
+          return;
         }
+        // Session is starting: pause playing media for its duration.
+        pauseMediaIfEnabled();
       })
       .catch((error) => {
         dropStart();
+        pendingStopRef.current = false;
+        pttHeldRef.current = false;
+        resumeMedia();
         console.error(
           "[dictation] failed to start the dictation session",
           error,
@@ -223,7 +307,63 @@ export function DictationOrbHost() {
           t`Couldn't start dictation. Check that a local model is selected, then try again.`,
         );
       });
-  }, [t]);
+  }, [t, pauseMediaIfEnabled, resumeMedia]);
+
+  const toggle = useCallback(() => {
+    if (phaseRef.current === "listening" || phaseRef.current === "processing") {
+      void dictationCommands.stopDictation();
+      return;
+    }
+    startSession();
+  }, [startSession]);
+
+  // Push-to-talk key-down: start on the first Pressed of a hold, ignore the
+  // OS auto-repeat Pressed events while still held, and never stop (release
+  // does that). In "toggle" mode this instead behaves exactly as before -
+  // every Pressed toggles start/stop.
+  const onTogglePressed = useCallback(() => {
+    if (!pushToTalkRef.current) {
+      toggle();
+      return;
+    }
+    // PTT: dedupe auto-repeat - only the first Pressed of a hold acts.
+    if (pttHeldRef.current) {
+      return;
+    }
+    pttHeldRef.current = true;
+    pendingStopRef.current = false;
+    // A session already running (e.g. started by an orb click): the hold now
+    // owns it so release stops it - don't start a second one.
+    if (phaseRef.current === "listening" || phaseRef.current === "processing") {
+      return;
+    }
+    startSession();
+  }, [toggle, startSession]);
+
+  // Push-to-talk key-up: stop the session. In "toggle" mode releases are
+  // ignored entirely (no behavior change).
+  const onToggleReleased = useCallback(() => {
+    if (!pushToTalkRef.current) {
+      // Still clear the hold latch: a mode switch mid-hold must not strand
+      // pttHeld=true and silently eat the next PTT press.
+      pttHeldRef.current = false;
+      return;
+    }
+    // Release with no matching hold (e.g. a mode switch mid-hold): drop it.
+    if (!pttHeldRef.current) {
+      return;
+    }
+    pttHeldRef.current = false;
+    if (phaseRef.current === "listening" || phaseRef.current === "processing") {
+      void dictationCommands.stopDictation();
+      return;
+    }
+    // Very short press: the async start is still in flight (phase idle), and
+    // the Rust session isn't registered yet, so a stop now would be a lost
+    // no-op. Defer it until the session reaches `listening` (handled in the
+    // state-event listener below).
+    pendingStopRef.current = true;
+  }, []);
 
   // Guards the paste-last hotkey against re-entrancy: a fetch + deliver is
   // async, and holding/mashing the hotkey must not fire a second paste while
@@ -281,8 +421,9 @@ export function DictationOrbHost() {
     async (event: DictationFinishedEvent) => {
       const settings = finalizeSettingsRef.current;
       const model = modelRef.current;
-      const startedAt = sessionStartsRef.current.shift();
-      const durationMs = startedAt != null ? Date.now() - startedAt : null;
+      const sessionStart = sessionStartsRef.current.shift();
+      const durationMs =
+        sessionStart != null ? Date.now() - sessionStart.startedAt : null;
 
       try {
         await finalizeDictation(
@@ -294,9 +435,9 @@ export function DictationOrbHost() {
             dictionary: dictionaryRef.current,
             translation: settings.translation,
             pasteAtCursor: settings.pasteAtCursor,
-            // The STT model name comes from the live connection, not the
-            // finished event; `connRef` still holds the session's model.
-            model: connRef.current?.model ?? null,
+            // The model captured at THIS session's start - the live conn ref
+            // may already point at a different model by finish time.
+            model: sessionStart?.model ?? connRef.current?.model ?? null,
             durationMs,
           },
           {
@@ -320,7 +461,11 @@ export function DictationOrbHost() {
             deliver: async (text, pasteAtCursor) => {
               unwrap(await dictationCommands.deliverText(text, pasteAtCursor));
             },
-            saveHistory: addDictationHistoryEntry,
+            saveHistory: (entry) =>
+              addDictationHistoryEntry({
+                ...entry,
+                retention: retentionRef.current,
+              }),
             // Keep the orb (and phaseRef, via the state listener) in
             // "processing" while cleanup + paste run: the Rust session
             // already emitted idle before the finished event was handled.
@@ -348,9 +493,13 @@ export function DictationOrbHost() {
         );
       } catch (error) {
         console.error("[dictation] failed to finalize the dictation", error);
+      } finally {
+        // Session ended: resume whatever media we paused. Idempotent, so the
+        // state-event terminal resume doing the same is harmless.
+        resumeMedia();
       }
     },
-    [t],
+    [t, resumeMedia],
   );
 
   // Orb window lifecycle + visibility.
@@ -496,6 +645,10 @@ export function DictationOrbHost() {
         unlisten();
       }
       void dictationCommands.stopDictation();
+      // Disabling dictation mid-session means the state listener that would
+      // resume media is torn down before the session's terminal event lands -
+      // resume here too (idempotent: Rust only un-pauses what we paused).
+      void dictationCommands.resumeMedia().catch(() => {});
       // Ride the queue so the final hide lands after any still-in-flight
       // apply - a show resolving late must not leave an orphaned orb.
       void queue.then(() => dictationCommands.hideOrb());
@@ -583,7 +736,27 @@ export function DictationOrbHost() {
 
     collect(
       dictationEvents.dictationStateEvent.listen((event) => {
-        phaseRef.current = event.payload.phase;
+        const phase = event.payload.phase;
+        phaseRef.current = phase;
+
+        // Push-to-talk short press: a release that arrived while the start was
+        // still in flight deferred its stop to here. Now that the session is
+        // actually running, honor it.
+        if (pendingStopRef.current && phase === "listening") {
+          // "listening" only: by "processing" the session is already stopping
+          // (or finalize is re-emitting the phase) and a stop would just be a
+          // noisy no-op against a dead session.
+          pendingStopRef.current = false;
+          void dictationCommands.stopDictation();
+        }
+
+        // Media auto-pause: the session reached a terminal state, so resume
+        // whatever we paused. This (not the finished event, which is skipped
+        // for an empty transcript) is the reliable end-of-session signal;
+        // resume is idempotent, so the finished handler resuming too is fine.
+        if (phase === "idle" || phase === "error") {
+          resumeMedia();
+        }
       }),
     );
     collect(
@@ -593,10 +766,19 @@ export function DictationOrbHost() {
     );
     collect(
       shortcutEvents.globalHotkeyTriggered.listen((event) => {
-        if (event.payload.id === HOTKEY_ID_PASTE_LAST) {
-          void pasteLast();
+        const { id, state } = event.payload;
+        if (id === HOTKEY_ID_PASTE_LAST) {
+          // Paste-last acts on key-down only, in both modes.
+          if (state === "pressed") {
+            void pasteLast();
+          }
+          return;
+        }
+        // Toggle hotkey: route the edge to the press/release handlers.
+        if (state === "pressed") {
+          onTogglePressed();
         } else {
-          toggle();
+          onToggleReleased();
         }
       }),
     );
@@ -608,7 +790,15 @@ export function DictationOrbHost() {
         unlisten();
       }
     };
-  }, [enabled, toggle, handleFinished, pasteLast]);
+  }, [
+    enabled,
+    toggle,
+    handleFinished,
+    pasteLast,
+    onTogglePressed,
+    onToggleReleased,
+    resumeMedia,
+  ]);
 
   return null;
 }

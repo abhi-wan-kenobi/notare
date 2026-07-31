@@ -3,6 +3,7 @@ import {
   useMutation,
   useQueryClient,
 } from "@tanstack/react-query";
+import { useEffect, useRef } from "react";
 
 import type { CorrectionCandidate } from "./correction-suggest";
 
@@ -15,10 +16,12 @@ import {
   deleteDictationHistoryEntry,
   DICTATION_HISTORY_PAGE_SIZE,
   listDictationHistory,
+  pruneDictationHistoryByAge,
   setDictationHistoryPinned,
   updateDictationHistoryText,
 } from "~/dictation/history";
-import { updateSettingValue } from "~/settings/queries";
+import { getStoredSettingValues, updateSettingValue } from "~/settings/queries";
+import { resolveConfigValue } from "~/shared/config";
 
 /**
  * Shared prefix for every Snippets list query. Mutations invalidate the
@@ -29,11 +32,48 @@ import { updateSettingValue } from "~/settings/queries";
 const SNIPPETS_LIST_QUERY_KEY = ["snippets", "history"] as const;
 
 /**
+ * Age-based retention enforcement, fired once per Snippets page mount (see
+ * `dictation/history.ts`'s `pruneDictationHistoryByAge`). This is the
+ * day-to-day enforcement path for `dictation_history_retention`: write-time
+ * enforcement via `addDictationHistoryEntry`'s optional `retention` param
+ * exists but nothing calls it yet (`dictation/finalize.ts`, the save path,
+ * is owned by the concurrent PTT/media-pause lane) - that's a reconciliation
+ * TODO for the merger. Exported standalone (not just inlined in the hook) so
+ * it's testable without mounting React.
+ */
+export async function pruneSnippetsHistoryOnLoad(): Promise<void> {
+  const stored = await getStoredSettingValues();
+  const retention = resolveConfigValue("dictation_history_retention", stored);
+  await pruneDictationHistoryByAge(retention);
+}
+
+/**
+ * Runs {@link pruneSnippetsHistoryOnLoad} once per mount - not re-fired on
+ * every `query` keystroke/re-render, since `useSnippetsHistoryQuery` is
+ * re-invoked with a new `query` on every search change but retention pruning
+ * only needs to happen once per page visit.
+ */
+function useDictationHistoryRetentionPruneOnLoad(): void {
+  const firedRef = useRef(false);
+
+  useEffect(() => {
+    if (firedRef.current) {
+      return;
+    }
+    firedRef.current = true;
+    void pruneSnippetsHistoryOnLoad().catch((error) => {
+      console.error("[useSnippetsHistoryQuery] retention prune failed", error);
+    });
+  }, []);
+}
+
+/**
  * Day-grouped, searchable, cursor-paginated dictation history for the
  * Snippets page. `query` is expected to already be debounced by the caller.
  */
 export function useSnippetsHistoryQuery(query: string) {
   const trimmedQuery = query.trim();
+  useDictationHistoryRetentionPruneOnLoad();
 
   return useInfiniteQuery({
     queryKey: [...SNIPPETS_LIST_QUERY_KEY, trimmedQuery] as const,

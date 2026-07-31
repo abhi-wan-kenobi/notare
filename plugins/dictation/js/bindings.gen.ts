@@ -129,6 +129,32 @@ async cleanText(text: string) : Promise<Result<string, string>> {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
+},
+/**
+ * Pause whatever media is currently playing when a dictation session starts,
+ * remembering what was paused. Returns whether anything was paused. Best-effort
+ * (never errors on a media-control failure); the frontend fires this and
+ * forgets it so it can't delay the mic.
+ */
+async pauseMedia() : Promise<Result<boolean, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:dictation|pause_media") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Resume only the media THIS app paused (via `pause_media`), when a dictation
+ * session ends. A no-op if nothing was paused.
+ */
+async resumeMedia() : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:dictation|resume_media") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 }
 }
 

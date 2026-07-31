@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   executeTransaction: vi.fn(
@@ -19,6 +19,7 @@ import {
   deleteDictationHistoryEntry,
   DICTATION_HISTORY_PRUNE_CAP,
   listDictationHistory,
+  pruneDictationHistoryByAge,
   setDictationHistoryPinned,
   updateDictationHistoryText,
 } from "./history";
@@ -175,6 +176,98 @@ describe("dictation history writes", () => {
     expect(statement.sql).toContain("WHERE id = ?");
     expect(statement.params).toEqual(["corrected text", "some-id"]);
   });
+
+  // v0.5.1 history-retention lane: `retention` is the enforcement hook for
+  // write-time age-based pruning (additive to the existing count-based cap).
+  describe("age-based retention on insert", () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-07-31T00:00:00.000Z"));
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it("does not add a third statement when retention is omitted", async () => {
+      await addDictationHistoryEntry({
+        text: "no retention passed",
+        mode: "batch",
+        cleaned: true,
+      });
+
+      expect(statements()).toHaveLength(2);
+    });
+
+    it('does not add a third statement when retention is "off"', async () => {
+      await addDictationHistoryEntry({
+        text: "off",
+        mode: "batch",
+        cleaned: true,
+        retention: "off",
+      });
+
+      expect(statements()).toHaveLength(2);
+    });
+
+    it("adds a third unpinned-only age-prune statement for a real retention window", async () => {
+      await addDictationHistoryEntry({
+        text: "with retention",
+        mode: "batch",
+        cleaned: true,
+        retention: "30d",
+      });
+
+      const [, , agePrune] = statements();
+      expect(agePrune.sql).toContain("DELETE FROM dictation_history");
+      expect(agePrune.sql).toContain("pinned = 0");
+      expect(agePrune.sql).toContain("created_at < ?");
+      expect(agePrune.params).toEqual(["2026-07-01T00:00:00.000Z"]);
+    });
+  });
+});
+
+describe("pruneDictationHistoryByAge", () => {
+  beforeEach(() => {
+    mocks.executeTransaction.mockClear();
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-31T00:00:00.000Z"));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('is a no-op for "off"', async () => {
+    await pruneDictationHistoryByAge("off");
+    expect(mocks.executeTransaction).not.toHaveBeenCalled();
+  });
+
+  it("is a no-op for an unrecognized retention value", async () => {
+    await pruneDictationHistoryByAge("not-a-real-tier");
+    expect(mocks.executeTransaction).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["7d", "2026-07-24T00:00:00.000Z"],
+    ["30d", "2026-07-01T00:00:00.000Z"],
+    ["90d", "2026-05-02T00:00:00.000Z"],
+  ])(
+    "computes the %s cutoff and deletes unpinned rows past it",
+    async (retention, expectedCutoff) => {
+      await pruneDictationHistoryByAge(retention);
+
+      expect(mocks.executeTransaction).toHaveBeenCalledTimes(1);
+      const [statement] = statements();
+      // Pinned rows are exempt regardless of status (delivered or discarded) -
+      // there is no status filter here.
+      expect(statement.sql).toContain("DELETE FROM dictation_history");
+      expect(statement.sql).toContain("pinned = 0");
+      expect(statement.sql).toContain("created_at < ?");
+      expect(statement.sql).not.toContain("status");
+      expect(statement.params).toEqual([expectedCutoff]);
+    },
+  );
 });
 
 describe("listDictationHistory", () => {

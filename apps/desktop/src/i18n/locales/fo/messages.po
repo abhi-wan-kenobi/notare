@@ -63,6 +63,18 @@ msgstr ""
 msgid "3 days"
 msgstr ""
 
+#: src/settings/dictation/retention.tsx
+msgid "30 days"
+msgstr ""
+
+#: src/settings/dictation/retention.tsx
+msgid "7 days"
+msgstr ""
+
+#: src/settings/dictation/retention.tsx
+msgid "90 days"
+msgstr ""
+
 #: src/dictation/orb.tsx
 msgid "A dark glass sphere lit by a hot caustic band."
 msgstr ""
@@ -1278,6 +1290,14 @@ msgstr ""
 msgid "History"
 msgstr ""
 
+#: src/settings/dictation/index.tsx
+msgid "Hold the dictation shortcut to talk; release to stop and deliver."
+msgstr ""
+
+#: src/settings/dictation/index.tsx
+msgid "Hold to talk"
+msgstr ""
+
 #: src/calendar/components/google/content.tsx
 msgid "How do I get this file?"
 msgstr ""
@@ -1381,6 +1401,14 @@ msgstr ""
 
 #: src/settings/dictation/index.tsx
 msgid "Keep a small always-on-top orb on screen. Click it, or press the shortcut, to start typing what you say into the focused app."
+msgstr ""
+
+#: src/settings/dictation/retention.tsx
+msgid "Keep everything"
+msgstr ""
+
+#: src/settings/dictation/retention.tsx
+msgid "Keep history for"
 msgstr ""
 
 #: src/settings/general/app-settings.tsx
@@ -2024,6 +2052,14 @@ msgstr ""
 msgid "Paste the transcript into the focused app when you stop. When off it is only copied to the clipboard, so you paste it yourself."
 msgstr ""
 
+#: src/settings/dictation/index.tsx
+msgid "Pause media while dictating"
+msgstr ""
+
+#: src/settings/dictation/index.tsx
+msgid "Pause music while dictating, resume after."
+msgstr ""
+
 #: src/contacts/organization-details.tsx
 #: src/session/components/note-input/transcript/renderer/speaker-assign.tsx
 msgid "People"
@@ -2059,6 +2095,10 @@ msgstr ""
 msgid "Pinned"
 msgstr ""
 
+#: src/settings/dictation/retention.tsx
+msgid "Pinned snippets are always kept, no matter this setting."
+msgstr ""
+
 #: src/dictation/orb.tsx
 msgid "Pip"
 msgstr ""
@@ -2077,6 +2117,10 @@ msgstr ""
 
 #: src/settings/dictation/shortcut-recorder.tsx
 msgid "Press shortcut…"
+msgstr ""
+
+#: src/settings/dictation/index.tsx
+msgid "Press the shortcut once to start dictating, press it again to stop and deliver."
 msgstr ""
 
 #: src/settings/dictation/shortcut-recorder.tsx
@@ -2909,6 +2953,10 @@ msgstr ""
 
 #: src/session/components/action-items/index.tsx
 msgid "Toggle action item"
+msgstr ""
+
+#: src/settings/dictation/index.tsx
+msgid "Toggle press"
 msgstr ""
 
 #: src/settings/dictation/shortcut-recorder.tsx

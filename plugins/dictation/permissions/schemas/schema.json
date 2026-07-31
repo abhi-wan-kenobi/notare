@@ -355,6 +355,30 @@
           "markdownDescription": "Denies the is_dictating command without any pre-configured scope."
         },
         {
+          "description": "Enables the pause_media command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-pause-media",
+          "markdownDescription": "Enables the pause_media command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the pause_media command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-pause-media",
+          "markdownDescription": "Denies the pause_media command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the resume_media command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-resume-media",
+          "markdownDescription": "Enables the resume_media command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the resume_media command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-resume-media",
+          "markdownDescription": "Denies the resume_media command without any pre-configured scope."
+        },
+        {
           "description": "Enables the set_phase command without any pre-configured scope.",
           "type": "string",
           "const": "allow-set-phase",
@@ -439,10 +463,10 @@
           "markdownDescription": "Denies the update_amplitude command without any pre-configured scope."
         },
         {
-          "description": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-show`\n- `allow-hide`\n- `allow-set-phase`\n- `allow-update-amplitude`\n- `allow-show-orb`\n- `allow-hide-orb`\n- `allow-start-dictation`\n- `allow-stop-dictation`\n- `allow-is-dictating`\n- `allow-type-text`\n- `allow-deliver-text`\n- `allow-clean-text`",
+          "description": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-show`\n- `allow-hide`\n- `allow-set-phase`\n- `allow-update-amplitude`\n- `allow-show-orb`\n- `allow-hide-orb`\n- `allow-start-dictation`\n- `allow-stop-dictation`\n- `allow-is-dictating`\n- `allow-type-text`\n- `allow-deliver-text`\n- `allow-clean-text`\n- `allow-pause-media`\n- `allow-resume-media`",
           "type": "string",
           "const": "default",
-          "markdownDescription": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-show`\n- `allow-hide`\n- `allow-set-phase`\n- `allow-update-amplitude`\n- `allow-show-orb`\n- `allow-hide-orb`\n- `allow-start-dictation`\n- `allow-stop-dictation`\n- `allow-is-dictating`\n- `allow-type-text`\n- `allow-deliver-text`\n- `allow-clean-text`"
+          "markdownDescription": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-show`\n- `allow-hide`\n- `allow-set-phase`\n- `allow-update-amplitude`\n- `allow-show-orb`\n- `allow-hide-orb`\n- `allow-start-dictation`\n- `allow-stop-dictation`\n- `allow-is-dictating`\n- `allow-type-text`\n- `allow-deliver-text`\n- `allow-clean-text`\n- `allow-pause-media`\n- `allow-resume-media`"
         }
       ]
     }

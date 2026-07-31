@@ -26,6 +26,7 @@ import {
   ORB_VARIANT_REGISTRY,
 } from "~/dictation/orb";
 import { normalizeOutputMode } from "~/dictation/output-mode";
+import { HistoryRetentionRow } from "~/settings/dictation/retention";
 import { ShortcutRecorderRow } from "~/settings/dictation/shortcut-recorder";
 import { TranslationSettings } from "~/settings/dictation/translation";
 import { SettingsPageTitle } from "~/settings/page-title";
@@ -58,6 +59,12 @@ export function SettingsDictation() {
     dictation_caption,
     dictation_translation_enabled,
     dictation_translation_target,
+    // Owned by the concurrent PTT / media-auto-pause lane (schema keys land
+    // in `settings/schema.ts` there) - bound here by name for the polish-pack
+    // rows below (activation mode, pause-media, history retention).
+    dictation_activation_mode,
+    dictation_pause_media,
+    dictation_history_retention,
   } = useConfigValues([
     "dictation_enabled",
     "dictation_shortcut",
@@ -69,6 +76,9 @@ export function SettingsDictation() {
     "dictation_caption",
     "dictation_translation_enabled",
     "dictation_translation_target",
+    "dictation_activation_mode",
+    "dictation_pause_media",
+    "dictation_history_retention",
   ] as const);
   const setEnabled = useSetSettingValue("dictation_enabled");
   const setShortcut = useSetSettingValue("dictation_shortcut");
@@ -86,9 +96,13 @@ export function SettingsDictation() {
   const setTranslationTarget = useSetSettingValue(
     "dictation_translation_target",
   );
+  const setActivationMode = useSetSettingValue("dictation_activation_mode");
+  const setPauseMedia = useSetSettingValue("dictation_pause_media");
+  const setHistoryRetention = useSetSettingValue("dictation_history_retention");
 
   const outputMode = normalizeOutputMode(dictation_output_mode);
   const cleanupMode = normalizeCleanupMode(dictation_cleanup);
+  const activationMode = normalizeActivationMode(dictation_activation_mode);
   // Translation piggybacks on AI cleanup's language model (see
   // `finalizeDictation` / the engine's translation step) - it only has a
   // usable model when cleanup is actually set to "llm" and that model
@@ -137,6 +151,10 @@ export function SettingsDictation() {
             conflictValue={dictation_paste_last_shortcut || undefined}
             conflictMessage={t`This combination is already used by the paste-last-dictation shortcut below.`}
           />
+          <ActivationModeGroup
+            value={activationMode}
+            onChange={setActivationMode}
+          />
           <ShortcutRecorderRow
             title={<Trans>Paste last dictation</Trans>}
             description={
@@ -164,6 +182,14 @@ export function SettingsDictation() {
             }
             checked={dictation_caption}
             onChange={setCaption}
+          />
+          <SettingRow
+            title={<Trans>Pause media while dictating</Trans>}
+            description={
+              <Trans>Pause music while dictating, resume after.</Trans>
+            }
+            checked={dictation_pause_media}
+            onChange={setPauseMedia}
           />
         </div>
       </section>
@@ -217,7 +243,10 @@ export function SettingsDictation() {
         />
       </section>
 
-      <DictationHistorySection />
+      <DictationHistorySection
+        retention={dictation_history_retention}
+        onRetentionChange={setHistoryRetention}
+      />
 
       <section>
         <h2 className="mb-4 font-sans text-lg font-semibold">
@@ -293,6 +322,60 @@ function RadioCardGroup<T extends string>({
         </label>
       ))}
     </div>
+  );
+}
+
+/**
+ * `dictation_activation_mode` values (schema owned by the concurrent PTT
+ * lane): "toggle" = press the shortcut once to start, again to stop;
+ * "push_to_talk" = hold the shortcut down to talk, release to stop and
+ * deliver.
+ */
+const ACTIVATION_MODES = ["toggle", "push_to_talk"] as const;
+type DictationActivationMode = (typeof ACTIVATION_MODES)[number];
+
+export function normalizeActivationMode(
+  raw: string | undefined,
+): DictationActivationMode {
+  return (ACTIVATION_MODES as readonly string[]).includes(raw ?? "")
+    ? (raw as DictationActivationMode)
+    : "toggle";
+}
+
+/** Toggle-press vs. hold-to-talk, shown right under the dictation shortcut. */
+export function ActivationModeGroup({
+  value,
+  onChange,
+}: {
+  value: DictationActivationMode;
+  onChange: (next: string) => void;
+}) {
+  return (
+    <RadioCardGroup
+      value={value}
+      onChange={onChange}
+      options={[
+        {
+          value: "toggle",
+          title: <Trans>Toggle press</Trans>,
+          description: (
+            <Trans>
+              Press the shortcut once to start dictating, press it again to stop
+              and deliver.
+            </Trans>
+          ),
+        },
+        {
+          value: "push_to_talk",
+          title: <Trans>Hold to talk</Trans>,
+          description: (
+            <Trans>
+              Hold the dictation shortcut to talk; release to stop and deliver.
+            </Trans>
+          ),
+        },
+      ]}
+    />
   );
 }
 
@@ -553,9 +636,17 @@ function useSyntheticAmplitude(active: boolean): number {
 
 /**
  * Dictation history - the "in-app clipboard". Click an entry to copy it
- * again; entries are capped at 50 and pruned automatically.
+ * again; entries are capped at 50 and pruned automatically (both by the
+ * rolling count cap and, per `retention`, by age - see
+ * `dictation/history.ts`'s `pruneDictationHistoryByAge`).
  */
-function DictationHistorySection() {
+function DictationHistorySection({
+  retention,
+  onRetentionChange,
+}: {
+  retention: string;
+  onRetentionChange: (next: string) => void;
+}) {
   const { t } = useLingui();
   const entries = useDictationHistory();
   const openNew = useTabs((state) => state.openNew);
@@ -595,6 +686,9 @@ function DictationHistorySection() {
             <Trans>View all in Snippets</Trans>
           </Button>
         </div>
+      </div>
+      <div className="mb-4">
+        <HistoryRetentionRow value={retention} onChange={onRetentionChange} />
       </div>
       <DictationHistoryList
         entries={entries}
