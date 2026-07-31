@@ -206,8 +206,31 @@ mod imp {
         }
     }
 
+    /// Blocking wait for a WinRT async op, built from the generated methods
+    /// (`Status`/`SetCompleted`/`GetResults`) that exist on the type in every
+    /// `windows`/`windows-future` pairing - the convenience `.get()` method's
+    /// availability has shifted across crate versions (the v0.5.1-rc1 build
+    /// failed on exactly that), and this crate can't be compile-checked from
+    /// the Linux dev box.
+    fn wait_op<T>(op: windows::Foundation::IAsyncOperation<T>) -> windows::core::Result<T>
+    where
+        T: windows::core::RuntimeType,
+    {
+        use windows::Foundation::{AsyncOperationCompletedHandler, AsyncStatus};
+        if op.Status()? == AsyncStatus::Started {
+            let (tx, rx) = std::sync::mpsc::channel::<()>();
+            op.SetCompleted(&AsyncOperationCompletedHandler::new(move |_, _| {
+                let _ = tx.send(());
+                Ok(())
+            }))?;
+            // A lost signal (handler dropped) would hang forever - bound it.
+            let _ = rx.recv_timeout(std::time::Duration::from_secs(5));
+        }
+        op.GetResults()
+    }
+
     fn try_pause_playing() -> windows::core::Result<Vec<String>> {
-        let manager = SessionManager::RequestAsync()?.get()?;
+        let manager = wait_op(SessionManager::RequestAsync()?)?;
         let sessions = manager.GetSessions()?;
         let mut paused = Vec::new();
         for session in sessions {
@@ -221,10 +244,7 @@ mod imp {
             }
             // TryPauseAsync returns whether the control was accepted; only
             // remember the ones we actually asked to pause and that succeeded.
-            let paused_ok = session
-                .TryPauseAsync()
-                .and_then(|op| op.get())
-                .unwrap_or(false);
+            let paused_ok = session.TryPauseAsync().and_then(wait_op).unwrap_or(false);
             if paused_ok {
                 if let Ok(id) = session.SourceAppUserModelId() {
                     paused.push(id.to_string_lossy());
@@ -238,7 +258,7 @@ mod imp {
         if targets.is_empty() {
             return Ok(());
         }
-        let manager = SessionManager::RequestAsync()?.get()?;
+        let manager = wait_op(SessionManager::RequestAsync()?)?;
         let sessions = manager.GetSessions()?;
         for session in sessions {
             let Ok(id) = session.SourceAppUserModelId() else {
@@ -246,7 +266,7 @@ mod imp {
             };
             if targets.iter().any(|t| *t == id.to_string_lossy()) {
                 // The player may have gone away; ignore per-session failures.
-                let _ = session.TryPlayAsync().and_then(|op| op.get());
+                let _ = session.TryPlayAsync().and_then(wait_op);
             }
         }
         Ok(())
