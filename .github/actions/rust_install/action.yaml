@@ -78,4 +78,18 @@ runs:
     - uses: Swatinem/rust-cache@v2
       with:
         cache-targets: "true"
-        prefix-key: v0-rust${{ steps.cache-key.outputs.suffix }}
+        # v0 -> v1: v0 entries were latently poisoned - ort/sherpa build-script
+        # stamps lived in the cached target/ but the dylibs they point at live
+        # in the OS cache dirs below, which were never cached. Any PR touching
+        # an ort-dependent crate forced a relink and died with
+        # "ld: library 'onnxruntime' not found" (first hit: D3 fix PR #121).
+        prefix-key: v1-rust${{ steps.cache-key.outputs.suffix }}
+        # The runtime binaries ort/sherpa download at build time; paths that
+        # don't exist on a given OS are ignored.
+        cache-directories: |
+          ~/Library/Caches/ort.pyke.io
+          ~/Library/Caches/sherpa-rs
+          ~/.cache/ort.pyke.io
+          ~/.cache/sherpa-rs
+          ~/AppData/Local/ort.pyke.io
+          ~/AppData/Local/sherpa-rs
