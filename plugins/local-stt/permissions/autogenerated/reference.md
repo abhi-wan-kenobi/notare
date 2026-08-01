@@ -14,6 +14,7 @@ Default permissions for the plugin
 - `allow-stop-server`
 - `allow-get-server-for-model`
 - `allow-get-servers`
+- `allow-prewarm-stt`
 - `allow-list-supported-models`
 - `allow-list-supported-languages`
 
@@ -308,6 +309,32 @@ Enables the models_dir command without any pre-configured scope.
 <td>
 
 Denies the models_dir command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`local-stt:allow-prewarm-stt`
+
+</td>
+<td>
+
+Enables the prewarm_stt command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`local-stt:deny-prewarm-stt`
+
+</td>
+<td>
+
+Denies the prewarm_stt command without any pre-configured scope.
 
 </td>
 </tr>

@@ -12,6 +12,7 @@ async-stream = { workspace = true }
 backon = { workspace = true }
 futures-util = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "time", "sync", "macros"] }
+tokio-stream = { workspace = true }
 tokio-tungstenite = { workspace = true, features = ["native-tls"] }
 tracing = { workspace = true }
 

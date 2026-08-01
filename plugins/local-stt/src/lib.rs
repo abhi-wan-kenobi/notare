@@ -49,6 +49,7 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
             commands::get_servers::<Wry>,
             commands::start_server::<Wry>,
             commands::stop_server::<Wry>,
+            commands::prewarm_stt::<Wry>,
             commands::list_supported_models,
         ])
         .events(tauri_specta::collect_events![

@@ -94,6 +94,14 @@ async stopServer(serverType: ServerType | null) : Promise<Result<boolean, string
     else return { status: "error", error: e  as any };
 }
 },
+async prewarmStt() : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:local-stt|prewarm_stt") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async listSupportedModels() : Promise<Result<SttModelInfo[], string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("plugin:local-stt|list_supported_models") };

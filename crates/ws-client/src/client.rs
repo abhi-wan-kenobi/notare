@@ -1,3 +1,5 @@
+use std::pin::Pin;
+
 use serde::de::DeserializeOwned;
 
 use futures_util::{
@@ -6,7 +8,23 @@ use futures_util::{
 };
 pub use tokio_tungstenite::tungstenite::{ClientRequestBuilder, Utf8Bytes, protocol::Message};
 
-pub use crate::retry::{WebSocketConnectPolicy, WebSocketRetryCallback, WebSocketRetryEvent};
+pub use crate::retry::{
+    WebSocketConnectPolicy, WebSocketReconnectPolicy, WebSocketRetryCallback, WebSocketRetryEvent,
+};
+
+/// Output-stream type shared by the single-connection and reconnecting paths
+/// (the two branches produce different concrete streams, so they unify behind
+/// a boxed `dyn Stream`).
+type BoxedOutputStream<O> = Pin<Box<dyn Stream<Item = Result<O, crate::Error>> + Send>>;
+
+/// A mid-stream transport failure we can recover from by reconnecting: a
+/// dropped/reset socket or a stalled path surfaced as a transport-level error.
+/// Deliberately narrow — a remote *Close* frame (`RemoteClosed`), a payload
+/// `ParseError`, or an auth failure is a deliberate server decision, not a
+/// blip, so reconnecting would just loop.
+fn is_reconnectable_transport_error(error: &crate::Error) -> bool {
+    matches!(error, crate::Error::Connection(_))
+}
 
 const TRAILING_MESSAGE_GRACE: std::time::Duration = std::time::Duration::from_secs(5);
 
@@ -42,6 +60,13 @@ impl WebSocketHandle {
             .control_tx
             .send(ControlCommand::Finalize(Some(Message::Text(text))));
     }
+
+    /// Forward an already-built finalize command to the live connection. Used
+    /// by the reconnecting supervisor to relay the caller's finalize to the
+    /// *current* inner connection (which is swapped on each reconnect).
+    fn forward_finalize(&self, message: Option<Message>) {
+        let _ = self.control_tx.send(ControlCommand::Finalize(message));
+    }
 }
 
 pub trait WebSocketIO: Send + 'static {
@@ -54,11 +79,13 @@ pub trait WebSocketIO: Send + 'static {
     fn from_message(msg: Message) -> Result<Option<Self::Output>, crate::Error>;
 }
 
+#[derive(Clone)]
 pub struct WebSocketClient {
     request: ClientRequestBuilder,
     keep_alive: Option<KeepAliveConfig>,
     connect_policy: WebSocketConnectPolicy,
     on_retry: Option<WebSocketRetryCallback>,
+    reconnect: Option<WebSocketReconnectPolicy>,
 }
 
 impl WebSocketClient {
@@ -68,6 +95,7 @@ impl WebSocketClient {
             keep_alive: None,
             connect_policy: WebSocketConnectPolicy::default(),
             on_retry: None,
+            reconnect: None,
         }
     }
 
@@ -90,17 +118,44 @@ impl WebSocketClient {
         self
     }
 
+    /// Enable mid-stream reconnection: after an established session's transport
+    /// drops (and only then — never during finalize/user-stop, and never before
+    /// the first connect), transparently reconnect and resume streaming new
+    /// audio on a fresh server session, up to `policy.max_cycles` times.
+    pub fn with_reconnect(mut self, policy: WebSocketReconnectPolicy) -> Self {
+        self.reconnect = Some(policy);
+        self
+    }
+
     pub async fn from_audio<T: WebSocketIO, S: Stream<Item = T::Data> + Send + Unpin + 'static>(
         &self,
         initial_message: Option<Message>,
+        audio_stream: S,
+    ) -> Result<(BoxedOutputStream<T::Output>, WebSocketHandle), crate::Error>
+    where
+        T::Data: Send + 'static,
+        T::Output: Send + 'static,
+    {
+        if let Some(policy) = self.reconnect.clone() {
+            self.from_audio_reconnecting::<T, S>(initial_message, audio_stream, policy)
+                .await
+        } else {
+            self.from_audio_single::<T, S>(initial_message, audio_stream)
+                .await
+        }
+    }
+
+    async fn from_audio_single<
+        T: WebSocketIO,
+        S: Stream<Item = T::Data> + Send + Unpin + 'static,
+    >(
+        &self,
+        initial_message: Option<Message>,
         mut audio_stream: S,
-    ) -> Result<
-        (
-            impl Stream<Item = Result<T::Output, crate::Error>> + use<T, S>,
-            WebSocketHandle,
-        ),
-        crate::Error,
-    > {
+    ) -> Result<(BoxedOutputStream<T::Output>, WebSocketHandle), crate::Error>
+    where
+        T::Output: Send + 'static,
+    {
         let keep_alive_config = self.keep_alive.clone();
         let ws_stream = crate::retry::connect_with_retry(
             self.request.clone(),
@@ -296,6 +351,187 @@ impl WebSocketClient {
             }
         };
 
-        Ok((output_stream, handle))
+        Ok((Box::pin(output_stream), handle))
+    }
+
+    /// Reconnecting wrapper around `from_audio_single`. It owns the caller's
+    /// audio stream and forwards it into a fresh single-connection inner client
+    /// for each connection cycle. The inner connection's send/keepalive/finalize
+    /// semantics are unchanged (this layer never touches the socket directly);
+    /// this supervisor only watches the inner output for a mid-stream transport
+    /// error and, when the session is still live (audio open, not finalizing),
+    /// swaps in a new inner connection and resumes.
+    ///
+    /// Loss semantics: a reconnect abandons the dead connection's forwarding
+    /// channel, so any audio already handed to it — the in-flight tail of the
+    /// current utterance — is dropped. VAD chunks are independent server-side,
+    /// so only that one partial utterance is lost; streaming resumes cleanly on
+    /// the next chunk. Logged at `warn`.
+    async fn from_audio_reconnecting<
+        T: WebSocketIO,
+        S: Stream<Item = T::Data> + Send + Unpin + 'static,
+    >(
+        &self,
+        initial_message: Option<Message>,
+        mut audio_stream: S,
+        policy: WebSocketReconnectPolicy,
+    ) -> Result<(BoxedOutputStream<T::Output>, WebSocketHandle), crate::Error>
+    where
+        T::Data: Send + 'static,
+        T::Output: Send + 'static,
+    {
+        const AUDIO_FWD_BUFFER: usize = 32;
+
+        // Single-connection clients (reconnect disabled to avoid recursion):
+        // the first connect keeps the caller's policy; reconnects use the
+        // dedicated mid-stream policy.
+        let mut initial_client = self.clone();
+        initial_client.reconnect = None;
+        let mut reconnect_client = initial_client.clone();
+        reconnect_client.connect_policy = policy.connect.clone();
+
+        // Establish the first connection eagerly so a connect failure surfaces
+        // to the caller at call time, exactly like the non-reconnecting path.
+        let (first_tx, first_rx) = tokio::sync::mpsc::channel::<T::Data>(AUDIO_FWD_BUFFER);
+        let (mut inner_out, mut inner_handle) = initial_client
+            .from_audio_single::<T, _>(
+                initial_message.clone(),
+                tokio_stream::wrappers::ReceiverStream::new(first_rx),
+            )
+            .await?;
+
+        let (out_tx, mut out_rx) =
+            tokio::sync::mpsc::unbounded_channel::<Result<T::Output, crate::Error>>();
+        let (ctrl_tx, mut ctrl_rx) = tokio::sync::mpsc::unbounded_channel::<ControlCommand>();
+        let (cancel_tx, mut cancel_rx) = tokio::sync::oneshot::channel::<()>();
+        let handle = WebSocketHandle {
+            control_tx: ctrl_tx,
+        };
+
+        tokio::spawn(async move {
+            let mut audio_tx: Option<tokio::sync::mpsc::Sender<T::Data>> = Some(first_tx);
+            // `audio_open`: the caller's audio stream hasn't ended. Once it
+            // ends we drop the forwarding sender (inner sees EOF -> normal
+            // finalize-grace close) and never reconnect again.
+            let mut audio_open = true;
+            // `audio_paused`: the current inner send half is gone (its channel
+            // closed) but the inner output error that drives the reconnect
+            // hasn't been observed yet — stop pumping audio so we don't spin.
+            let mut audio_paused = false;
+            let mut finalizing = false;
+            // Once the caller's handle is dropped, `ctrl_rx.recv()` resolves to
+            // `None` on every poll; stop selecting on it so a dropped handle
+            // can't busy-loop and starve output draining.
+            let mut ctrl_open = true;
+            let mut cycles_used = 0usize;
+            let mut reconnect_count = 0u32;
+
+            loop {
+                tokio::select! {
+                    biased;
+
+                    _ = &mut cancel_rx => break,
+
+                    maybe_ctrl = ctrl_rx.recv(), if ctrl_open => {
+                        match maybe_ctrl {
+                            Some(ControlCommand::Finalize(message)) => {
+                                finalizing = true;
+                                inner_handle.forward_finalize(message);
+                            }
+                            None => ctrl_open = false,
+                        }
+                    }
+
+                    item = inner_out.next() => {
+                        match item {
+                            Some(Ok(output)) => {
+                                if out_tx.send(Ok(output)).is_err() {
+                                    break;
+                                }
+                            }
+                            Some(Err(error)) => {
+                                let should_reconnect = audio_open
+                                    && !finalizing
+                                    && cycles_used < policy.max_cycles
+                                    && is_reconnectable_transport_error(&error);
+
+                                if !should_reconnect {
+                                    let _ = out_tx.send(Err(error));
+                                    break;
+                                }
+
+                                cycles_used += 1;
+                                reconnect_count += 1;
+                                tracing::warn!(
+                                    attempt = cycles_used,
+                                    max_cycles = policy.max_cycles,
+                                    cause = ?error,
+                                    "ws_reconnect: mid-stream transport drop, reconnecting"
+                                );
+
+                                let (tx, rx) =
+                                    tokio::sync::mpsc::channel::<T::Data>(AUDIO_FWD_BUFFER);
+                                match reconnect_client
+                                    .from_audio_single::<T, _>(
+                                        initial_message.clone(),
+                                        tokio_stream::wrappers::ReceiverStream::new(rx),
+                                    )
+                                    .await
+                                {
+                                    Ok((new_out, new_handle)) => {
+                                        inner_out = new_out;
+                                        inner_handle = new_handle;
+                                        audio_tx = Some(tx);
+                                        audio_paused = false;
+                                        tracing::warn!(
+                                            reconnect_count,
+                                            "ws_reconnect_resumed: fresh server session; \
+                                             in-flight audio tail (a partial utterance) was lost"
+                                        );
+                                    }
+                                    Err(connect_error) => {
+                                        tracing::error!(
+                                            attempt = cycles_used,
+                                            error = ?connect_error,
+                                            "ws_reconnect_failed: surfacing terminal error"
+                                        );
+                                        let _ = out_tx.send(Err(connect_error));
+                                        break;
+                                    }
+                                }
+                            }
+                            None => break,
+                        }
+                    }
+
+                    maybe_audio = audio_stream.next(), if audio_open && !audio_paused => {
+                        match maybe_audio {
+                            Some(data) => {
+                                if let Some(tx) = audio_tx.as_ref()
+                                    && tx.send(data).await.is_err()
+                                {
+                                    // Inner send half gone; let the inner output
+                                    // error arm drive the reconnect.
+                                    audio_paused = true;
+                                }
+                            }
+                            None => {
+                                audio_open = false;
+                                audio_tx = None;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        let output = async_stream::stream! {
+            let _drop_guard = OutputDropGuard(Some(cancel_tx));
+            while let Some(item) = out_rx.recv().await {
+                yield item;
+            }
+        };
+
+        Ok((Box::pin(output), handle))
     }
 }

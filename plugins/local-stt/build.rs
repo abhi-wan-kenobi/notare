@@ -9,6 +9,7 @@ const COMMANDS: &[&str] = &[
     "stop_server",
     "get_server_for_model",
     "get_servers",
+    "prewarm_stt",
     "list_supported_models",
     "list_supported_languages",
 ];

@@ -582,6 +582,14 @@ fn websocket_client_with_keep_alive<A: RealtimeSttAdapter>(
         client = client.with_keep_alive_message(Duration::from_secs(5), keep_alive);
     }
 
+    // Recover a live session across a mid-stream transport drop (issue #39's
+    // client half). Applies to every realtime session built through this
+    // helper — dictation, meeting capture (per split channel), and cloud
+    // providers alike; the reconnect only ever fires on an established
+    // session's transport failure, never during finalize/user-stop, and the
+    // terminal error still surfaces once the bounded cycles are exhausted.
+    client = client.with_reconnect(hypr_ws_client::client::WebSocketReconnectPolicy::default());
+
     client
 }
 

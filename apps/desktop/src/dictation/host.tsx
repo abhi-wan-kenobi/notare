@@ -10,6 +10,7 @@ import {
   type DictationPhase,
   events as dictationEvents,
 } from "@hypr/plugin-dictation";
+import { commands as localSttCommands } from "@hypr/plugin-local-stt";
 import {
   commands as shortcutCommands,
   events as shortcutEvents,
@@ -190,6 +191,39 @@ export function DictationOrbHost() {
     pttHeldRef.current = false;
     pendingStopRef.current = false;
   }, [enabled, pushToTalk]);
+
+  // Lane B1a "warm model": while dictation is enabled with a local model, keep
+  // that model resident in the embedded STT server so a dictation started
+  // after an idle gap doesn't pay the cold model-load latency (the model
+  // manager evicts an idle model after 60s). Fire-and-forget every 30s; a
+  // prewarm never opens a `/v1/listen` connection (so it can't disturb a live
+  // meeting) and its failure is logged at debug only - never toasted.
+  useEffect(() => {
+    if (!enabled || !isLocalModel) {
+      return;
+    }
+    let cancelled = false;
+    const prewarm = () => {
+      localSttCommands.prewarmStt().then(
+        (result) => {
+          if (!cancelled && result.status !== "ok") {
+            console.debug("[dictation] prewarm_stt returned error", result.error);
+          }
+        },
+        (error) => {
+          if (!cancelled) {
+            console.debug("[dictation] prewarm_stt failed", error);
+          }
+        },
+      );
+    };
+    prewarm();
+    const intervalId = setInterval(prewarm, 30_000);
+    return () => {
+      cancelled = true;
+      clearInterval(intervalId);
+    };
+  }, [enabled, isLocalModel]);
 
   // Wall-clock starts of sessions whose finished event hasn't arrived yet,
   // oldest first. A FIFO (not a single slot) so a rapid stop+restart pairs

@@ -10,7 +10,14 @@ pub use manager::ModelManager;
 
 #[cfg(test)]
 mod tests {
-    use std::{path::Path, sync::Arc, time::Duration};
+    use std::{
+        path::Path,
+        sync::{
+            Arc,
+            atomic::{AtomicUsize, Ordering},
+        },
+        time::Duration,
+    };
 
     use super::*;
 
@@ -25,6 +32,22 @@ mod tests {
 
         fn load(_path: &Path) -> Result<Self, Self::Error> {
             Ok(MockModel)
+        }
+    }
+
+    /// Counts how many times the (expensive) load path runs. Only the single
+    /// `prewarm_*` test below uses it, so the process-global counter is not
+    /// shared with any concurrently-running test.
+    static LOAD_COUNT: AtomicUsize = AtomicUsize::new(0);
+
+    struct CountingModel;
+
+    impl ModelLoader for CountingModel {
+        type Error = MockError;
+
+        fn load(_path: &Path) -> Result<Self, Self::Error> {
+            LOAD_COUNT.fetch_add(1, Ordering::SeqCst);
+            Ok(CountingModel)
         }
     }
 
@@ -112,6 +135,49 @@ mod tests {
 
         let m3 = mgr.get(Some("a")).await.unwrap();
         assert!(Arc::ptr_eq(&m1, &m3));
+    }
+
+    /// Lane B1a "warm model" proof: periodic `get(None)` touches (what
+    /// `prewarm_fn` issues on the host's 30s cadence, scaled here to the 100ms
+    /// timeout) keep the model resident and never re-run the load path; once
+    /// the touches stop, the idle model is evicted and the next `get` pays a
+    /// fresh load — the exact cost prewarm exists to avoid.
+    #[tokio::test(start_paused = true)]
+    async fn prewarm_touches_keep_model_resident_and_avoid_reload() {
+        LOAD_COUNT.store(0, Ordering::SeqCst);
+        let path = temp_model_path();
+        let mgr = ModelManager::<CountingModel>::builder()
+            .inactivity_timeout(Duration::from_millis(100))
+            .check_interval(Duration::from_millis(10))
+            .register("a", path)
+            .default_model("a")
+            .build();
+
+        let warm = mgr.get(None).await.unwrap();
+        assert_eq!(LOAD_COUNT.load(Ordering::SeqCst), 1, "initial cold load");
+
+        for _ in 0..5 {
+            tokio::time::advance(Duration::from_millis(50)).await;
+            tokio::task::yield_now().await;
+            let touched = mgr.get(None).await.unwrap();
+            assert!(Arc::ptr_eq(&warm, &touched));
+        }
+        assert_eq!(
+            LOAD_COUNT.load(Ordering::SeqCst),
+            1,
+            "a resident model must never reload while being kept warm"
+        );
+
+        // Stop touching: the idle model is evicted, so the next get reloads.
+        tokio::time::advance(Duration::from_millis(200)).await;
+        tokio::task::yield_now().await;
+        let cold = mgr.get(None).await.unwrap();
+        assert!(!Arc::ptr_eq(&warm, &cold));
+        assert_eq!(
+            LOAD_COUNT.load(Ordering::SeqCst),
+            2,
+            "an evicted model reloads on the next access"
+        );
     }
 
     #[tokio::test(start_paused = true)]

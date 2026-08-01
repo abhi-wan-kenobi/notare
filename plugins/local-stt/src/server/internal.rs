@@ -19,7 +19,16 @@ use hypr_whisper_local_model::WhisperModel;
 pub enum InternalSTTMessage {
     GetHealth(RpcReplyPort<ServerInfo>),
     ServerError(String),
+    /// Keep the currently-selected model resident (load if evicted, refresh
+    /// the inactivity timer). Drives the model manager directly — never opens
+    /// a `/v1/listen` connection — so it can't disturb a live session.
+    Prewarm(RpcReplyPort<Result<(), String>>),
 }
+
+/// Type-erased, cloneable prewarm closure over a `TranscribeService`'s model
+/// manager (see `TranscribeService::prewarm_fn`). Erased so the whisper /
+/// parakeet / voxtral engine services can share one stored handle.
+type PrewarmHandle = std::sync::Arc<dyn Fn() -> hypr_transcribe_core::PrewarmFuture + Send + Sync>;
 
 /// The models the in-process `/v1/listen` server can run. One internal
 /// server exists at a time; each variant maps to a `TranscribeService<E>`
@@ -72,6 +81,10 @@ pub struct InternalSTTState {
     model: crate::LocalModel,
     shutdown: tokio::sync::watch::Sender<()>,
     server_task: tokio::task::JoinHandle<()>,
+    prewarm: PrewarmHandle,
+    /// Dedupes overlapping prewarm ticks: a 30s tick arriving while a slow
+    /// cold load is still in flight must not spawn a second concurrent load.
+    prewarm_inflight: std::sync::Arc<std::sync::atomic::AtomicBool>,
 }
 
 pub struct InternalSTTActor;
@@ -104,29 +117,32 @@ impl Actor for InternalSTTActor {
             (StatusCode::INTERNAL_SERVER_ERROR, err)
         };
 
-        // Each arm yields the same `Router` type, so the engines can differ.
-        let router = match &model_type {
+        // Each arm yields the same `(Router, PrewarmHandle)` pair, so the
+        // engines can differ. The prewarm handle is captured from the built
+        // service *before* it is consumed into the router, so the model
+        // manager can be kept warm out-of-band without a `/v1/listen` upgrade.
+        let (router, prewarm): (Router, PrewarmHandle) = match &model_type {
             #[cfg(feature = "whisper-cpp")]
             InternalModel::Whisper(_) => {
-                let service = HandleError::new(
-                    hypr_transcribe_whisper_local::TranscribeService::builder()
-                        .model_path(model_path)
-                        .build(),
-                    on_error,
-                );
-                Router::new().route_service("/v1/listen", service)
+                let service = hypr_transcribe_whisper_local::TranscribeService::builder()
+                    .model_path(model_path)
+                    .build();
+                let prewarm: PrewarmHandle = std::sync::Arc::new(service.prewarm_fn());
+                let router =
+                    Router::new().route_service("/v1/listen", HandleError::new(service, on_error));
+                (router, prewarm)
             }
             #[cfg(feature = "parakeet-onnx")]
             InternalModel::ParakeetOnnx(_) => {
-                let service = HandleError::new(
-                    hypr_transcribe_core::TranscribeService::<
-                        hypr_parakeet_onnx::LoadedParakeet,
-                    >::builder()
-                    .model_path(model_path)
-                    .build(),
-                    on_error,
-                );
-                Router::new().route_service("/v1/listen", service)
+                let service = hypr_transcribe_core::TranscribeService::<
+                    hypr_parakeet_onnx::LoadedParakeet,
+                >::builder()
+                .model_path(model_path)
+                .build();
+                let prewarm: PrewarmHandle = std::sync::Arc::new(service.prewarm_fn());
+                let router =
+                    Router::new().route_service("/v1/listen", HandleError::new(service, on_error));
+                (router, prewarm)
             }
             // Voxtral has no incremental/streaming decode state (it's an
             // LLM decode loop over `libmtmd`'s audio embeddings, not a
@@ -146,15 +162,15 @@ impl Actor for InternalSTTActor {
             // Parakeet's near-instant per-utterance turnaround.
             #[cfg(feature = "voxtral-llama")]
             InternalModel::VoxtralLlama(_) => {
-                let service = HandleError::new(
-                    hypr_transcribe_core::TranscribeService::<
-                        hypr_transcribe_voxtral_llama::LoadedVoxtral,
-                    >::builder()
-                    .model_path(model_path)
-                    .build(),
-                    on_error,
-                );
-                Router::new().route_service("/v1/listen", service)
+                let service = hypr_transcribe_core::TranscribeService::<
+                    hypr_transcribe_voxtral_llama::LoadedVoxtral,
+                >::builder()
+                .model_path(model_path)
+                .build();
+                let prewarm: PrewarmHandle = std::sync::Arc::new(service.prewarm_fn());
+                let router =
+                    Router::new().route_service("/v1/listen", HandleError::new(service, on_error));
+                (router, prewarm)
             }
         };
 
@@ -183,10 +199,12 @@ impl Actor for InternalSTTActor {
         });
 
         Ok(InternalSTTState {
+            prewarm_inflight: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
             base_url,
             model: model_type.local_model(),
             shutdown: shutdown_tx,
             server_task,
+            prewarm,
         })
     }
 
@@ -208,6 +226,30 @@ impl Actor for InternalSTTActor {
     ) -> Result<(), ActorProcessingErr> {
         match message {
             InternalSTTMessage::ServerError(e) => Err(e.into()),
+            InternalSTTMessage::Prewarm(reply_port) => {
+                // Run the load off the actor's message loop so a cold load can
+                // never block `GetHealth` (polled ~1Hz by the STT connection
+                // hook). Best-effort: the reply may be dropped if the caller
+                // already timed out. A tick landing while a load is already in
+                // flight is a no-op success - the in-flight load IS the warmup.
+                use std::sync::atomic::Ordering;
+                if state
+                    .prewarm_inflight
+                    .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+                    .is_err()
+                {
+                    let _ = reply_port.send(Ok(()));
+                    return Ok(());
+                }
+                let prewarm = state.prewarm.clone();
+                let inflight = state.prewarm_inflight.clone();
+                tokio::spawn(async move {
+                    let result = prewarm().await;
+                    inflight.store(false, Ordering::Release);
+                    let _ = reply_port.send(result);
+                });
+                Ok(())
+            }
             InternalSTTMessage::GetHealth(reply_port) => {
                 let info = ServerInfo {
                     url: Some(state.base_url.clone()),
