@@ -54,6 +54,17 @@ pub struct EngineSegment {
 /// service's polling streams.
 pub trait SttEngineSession: Send + Unpin + 'static {
     fn transcribe(&mut self, samples: &[f32]) -> Result<Vec<EngineSegment>, EngineError>;
+
+    /// Largest sample buffer this engine may be handed in one `transcribe`
+    /// call. The streaming/batch paths split any VAD chunk longer than this
+    /// (capped further by the universal `MAX_CHUNK_SAMPLES` ceiling) before it
+    /// reaches the engine. The default `usize::MAX` means "no engine-specific
+    /// limit — only the universal ceiling applies"; an engine whose native
+    /// backend is unstable on long inputs (e.g. Parakeet on Windows DirectML,
+    /// D3) overrides this with a smaller, proven-safe bound.
+    fn max_samples_per_call(&self) -> usize {
+        usize::MAX
+    }
 }
 
 /// A loaded STT model that can mint transcription sessions.

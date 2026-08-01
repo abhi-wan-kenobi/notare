@@ -5,22 +5,52 @@ use hypr_audio_interface::AsyncSource;
 
 use crate::{AudioChunk, Chunker};
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ChunkProfile {
+    /// Meeting / batch: chunks grow toward a ~20s target, no forced cut.
+    Speech,
+    /// Live single-speaker dictation: prompt redemption + a hard max-chunk cut.
+    Dictation,
+}
+
 #[derive(Debug, Clone)]
 pub struct SpeechChunkingConfig {
     redemption_time: Duration,
+    profile: ChunkProfile,
 }
 
 impl Default for SpeechChunkingConfig {
     fn default() -> Self {
         Self {
             redemption_time: Duration::from_millis(600),
+            profile: ChunkProfile::Speech,
         }
     }
 }
 
 impl SpeechChunkingConfig {
     pub fn speech(redemption_time: Duration) -> Self {
-        Self { redemption_time }
+        Self {
+            redemption_time,
+            profile: ChunkProfile::Speech,
+        }
+    }
+
+    /// Dictation profile — see [`crate::vad::VadChunkerConfig::dictation`].
+    pub fn dictation(redemption_time: Duration) -> Self {
+        Self {
+            redemption_time,
+            profile: ChunkProfile::Dictation,
+        }
+    }
+
+    fn vad_config(&self) -> crate::vad::VadChunkerConfig {
+        match self.profile {
+            ChunkProfile::Speech => crate::vad::VadChunkerConfig::speech(self.redemption_time),
+            ChunkProfile::Dictation => {
+                crate::vad::VadChunkerConfig::dictation(self.redemption_time)
+            }
+        }
     }
 }
 
@@ -31,9 +61,7 @@ pub struct SpeechChunker {
 impl SpeechChunker {
     pub fn new(config: SpeechChunkingConfig) -> Result<Self, crate::Error> {
         Ok(Self {
-            inner: crate::vad::VadChunker::new(crate::vad::VadChunkerConfig::speech(
-                config.redemption_time,
-            ))?,
+            inner: crate::vad::VadChunker::new(config.vad_config())?,
         })
     }
 }
@@ -54,10 +82,7 @@ pub trait SpeechChunkExt: AsyncSource + Sized {
     where
         Self: 'static,
     {
-        match crate::vad::speech_chunks(
-            self,
-            crate::vad::VadChunkerConfig::speech(config.redemption_time),
-        ) {
+        match crate::vad::speech_chunks(self, config.vad_config()) {
             Ok(stream) => stream.left_stream(),
             Err(error) => stream::once(future::ready(Err(error))).right_stream(),
         }

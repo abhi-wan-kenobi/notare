@@ -289,7 +289,14 @@ async fn handle_websocket<E: SttEngine>(
     let redemption_time = redemption_time(&params);
     let languages: Vec<hypr_language::Language> = params.languages.clone();
     let provider = E::arch();
-    match build_transcription_streams(total_channels, model.as_ref(), &languages, redemption_time) {
+    let dictation = super::is_dictation(&params);
+    match build_transcription_streams(
+        total_channels,
+        model.as_ref(),
+        &languages,
+        redemption_time,
+        dictation,
+    ) {
         Ok((audio_txs, mut stream)) => {
             let mut audio_txs = audio_txs;
             // Register this session for the live dashboard; the guard records it
@@ -361,6 +368,7 @@ async fn handle_websocket<E: SttEngine>(
                                     channel: channel.clone(),
                                     timestamp: segment.start,
                                 }).await {
+                                    tracing::warn!("stream_ended: speech_started send failed (peer gone)");
                                     break;
                                 }
 
@@ -368,6 +376,7 @@ async fn handle_websocket<E: SttEngine>(
                                     &mut ws_sender,
                                     &build_transcript_response(&segment, transcript_kind, &metadata, &channel_index),
                                 ).await {
+                                    tracing::warn!("stream_ended: transcript send failed (peer gone)");
                                     break;
                                 }
 
@@ -375,10 +384,17 @@ async fn handle_websocket<E: SttEngine>(
                                     channel,
                                     last_word_end: segment.start + segment.duration,
                                 }).await {
+                                    tracing::warn!("stream_ended: utterance_end send failed (peer gone)");
                                     break;
                                 }
                             }
                             Some(Err(error)) => {
+                                // D3: this is the path that must never die silently.
+                                // A transcription/engine failure (incl. an inference
+                                // panic surfaced through the spawn_blocking join) is
+                                // logged, reported to the client, then followed by a
+                                // graceful WS close (via `ws_sender.close()` below).
+                                tracing::error!(error = %error, provider, "transcription_stream_error_ending_session");
                                 send_ws_best_effort(
                                     &mut ws_sender,
                                     &StreamResponse::ErrorResponse {
@@ -571,6 +587,7 @@ fn build_transcription_streams<E: SttEngine>(
     engine: &E,
     languages: &[hypr_language::Language],
     redemption_time: std::time::Duration,
+    dictation: bool,
 ) -> Result<
     (
         Vec<mpsc::Sender<Vec<f32>>>,
@@ -581,17 +598,32 @@ fn build_transcription_streams<E: SttEngine>(
     let mut audio_txs = Vec::with_capacity(total_channels);
     let mut streams = futures_util::stream::SelectAll::new();
 
+    // Dictation force-cuts long pauseless utterances into small chunks; the
+    // meeting/`speech` profile is left untouched (chunks grow to a natural
+    // pause). See `hypr_audio_chunking::SpeechChunkingConfig::dictation`.
+    let chunking_config = if dictation {
+        SpeechChunkingConfig::dictation(redemption_time)
+    } else {
+        SpeechChunkingConfig::speech(redemption_time)
+    };
+
     for channel_idx in 0..total_channels {
         let (audio_tx, audio_rx) = mpsc::channel::<Vec<f32>>(8);
         audio_txs.push(audio_tx);
 
         let session = build_session_with_languages(engine, languages.to_vec())?;
-        let chunk_stream = ChannelAudioSource::new(audio_rx)
-            .speech_chunks(SpeechChunkingConfig::speech(redemption_time));
+        // Hard cap on what any single `transcribe` call receives: the engine's
+        // own limit (Parakeet lowers it to survive Windows DirectML — D3),
+        // never above the universal `MAX_CHUNK_SAMPLES` ceiling.
+        let max_samples = session
+            .max_samples_per_call()
+            .min(crate::audio::MAX_CHUNK_SAMPLES);
+        let chunk_stream = ChannelAudioSource::new(audio_rx).speech_chunks(chunking_config.clone());
         let stream: TranscriptionStream = Box::pin(TranscribeChannelStream::new(
             channel_idx,
             chunk_stream,
             session,
+            max_samples,
         ));
         streams.push(stream);
     }
@@ -638,20 +670,41 @@ impl AsyncSource for ChannelAudioSource {
     }
 }
 
+/// Result of one off-thread decode: the session is returned so it can be
+/// reused (`None` if the inference panicked and the session was dropped).
+type DecodeOutcome<Sess> = (Option<Sess>, Result<Vec<crate::service::Segment>, crate::Error>);
+
 struct TranscribeChannelStream<S, Sess> {
     channel_idx: usize,
     chunk_stream: S,
-    session: Sess,
+    /// Present while idle; `take`n for the duration of an off-thread decode.
+    session: Option<Sess>,
+    /// Engine inference runs on the blocking pool so a multi-second decode
+    /// never stalls the connection's `select!` loop (starving keepalives /
+    /// audio backpressure) and a native inference panic is caught at the join
+    /// boundary instead of aborting the process (D3).
+    inflight: Option<tokio::task::JoinHandle<DecodeOutcome<Sess>>>,
+    /// Windows still to decode from the current VAD chunk (cap-split, in order).
+    windows: VecDeque<(Vec<f32>, f64)>,
     pending: VecDeque<crate::service::Segment>,
+    /// Hard ceiling on samples per `transcribe` call (engine cap ∧ universal).
+    max_samples: usize,
+    /// Set once the upstream chunk stream has ended, so it is never polled again
+    /// after completion (which many streams treat as a contract violation).
+    input_done: bool,
 }
 
 impl<S, Sess> TranscribeChannelStream<S, Sess> {
-    fn new(channel_idx: usize, chunk_stream: S, session: Sess) -> Self {
+    fn new(channel_idx: usize, chunk_stream: S, session: Sess, max_samples: usize) -> Self {
         Self {
             channel_idx,
             chunk_stream,
-            session,
+            session: Some(session),
+            inflight: None,
+            windows: VecDeque::new(),
             pending: VecDeque::new(),
+            max_samples: max_samples.max(1),
+            input_done: false,
         }
     }
 }
@@ -663,42 +716,95 @@ where
 {
     type Item = Result<(usize, crate::service::Segment), crate::Error>;
 
-    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        if let Some(segment) = self.pending.pop_front() {
-            return Poll::Ready(Some(Ok((self.channel_idx, segment))));
-        }
+    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        let this = self.get_mut();
 
         loop {
-            match Pin::new(&mut self.chunk_stream).poll_next(cx) {
-                Poll::Ready(Some(Ok(chunk))) => {
-                    let this = &mut *self;
-                    // Cap each VAD chunk at MAX_CHUNK_SAMPLES (25s) before the
-                    // engine sees it: a pauseless >30s utterance would exceed
-                    // Voxtral/libmtmd's fixed 30s window and be silently
-                    // truncated. Mirrors the batch path's windowing in
-                    // `crate::audio`; whisper/parakeet are unaffected (they
-                    // tolerate oversize input, just now get it pre-split).
-                    for (index, window) in chunk
-                        .samples
-                        .chunks(crate::audio::MAX_CHUNK_SAMPLES)
-                        .enumerate()
-                    {
-                        let sample_start =
-                            chunk.sample_start + index * crate::audio::MAX_CHUNK_SAMPLES;
-                        let start_sec = sample_start as f64 / TARGET_SAMPLE_RATE as f64;
-                        match transcribe_chunk(&mut this.session, window, start_sec) {
-                            Ok(segments) => this.pending.extend(segments),
-                            Err(error) => return Poll::Ready(Some(Err(error))),
+            if let Some(segment) = this.pending.pop_front() {
+                return Poll::Ready(Some(Ok((this.channel_idx, segment))));
+            }
+
+            // 1. Drive an in-flight off-thread decode to completion.
+            if let Some(handle) = this.inflight.as_mut() {
+                match Pin::new(handle).poll(cx) {
+                    Poll::Pending => return Poll::Pending,
+                    Poll::Ready(join_result) => {
+                        this.inflight = None;
+                        match join_result {
+                            Ok((session, decode_result)) => {
+                                this.session = session;
+                                match decode_result {
+                                    Ok(segments) => this.pending.extend(segments),
+                                    Err(error) => return Poll::Ready(Some(Err(error))),
+                                }
+                            }
+                            Err(join_error) => {
+                                // The blocking task panicked or was cancelled;
+                                // the connection loop logs + closes gracefully.
+                                return Poll::Ready(Some(Err(crate::Error::Engine(
+                                    crate::EngineError::new(format!(
+                                        "inference task failed: {join_error}"
+                                    )),
+                                ))));
+                            }
                         }
-                    }
-                    if let Some(segment) = this.pending.pop_front() {
-                        return Poll::Ready(Some(Ok((this.channel_idx, segment))));
+                        continue;
                     }
                 }
-                Poll::Ready(Some(Err(error))) => {
-                    return Poll::Ready(Some(Err(error.into())));
+            }
+
+            // 2. Start the next queued window on the blocking pool.
+            if let Some((window, start_sec)) = this.windows.pop_front() {
+                let Some(mut session) = this.session.take() else {
+                    return Poll::Ready(Some(Err(crate::Error::Engine(crate::EngineError::new(
+                        "engine session unavailable after a prior inference failure",
+                    )))));
+                };
+                let handle = tokio::task::spawn_blocking(move || {
+                    // catch_unwind converts a Rust-level inference panic into an
+                    // error (with panic=unwind, the workspace default) instead
+                    // of unwinding across the FFI boundary. A true native abort
+                    // (std::abort/segfault) still can't be caught in-process —
+                    // that is what the pre-engine sample cap (Fix B) guards.
+                    let outcome = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                        transcribe_chunk(&mut session, &window, start_sec)
+                    }));
+                    match outcome {
+                        Ok(result) => (Some(session), result),
+                        Err(_) => (
+                            None,
+                            Err(crate::Error::Engine(crate::EngineError::new(
+                                "engine panicked during inference",
+                            ))),
+                        ),
+                    }
+                });
+                this.inflight = Some(handle);
+                continue;
+            }
+
+            // 3. Reaching here, pending/windows/inflight are all empty. If the
+            // input has ended too, the stream is done.
+            if this.input_done {
+                return Poll::Ready(None);
+            }
+
+            // Pull the next VAD chunk and cap-split it into decode windows.
+            match Pin::new(&mut this.chunk_stream).poll_next(cx) {
+                Poll::Ready(Some(Ok(chunk))) => {
+                    // Cap each VAD chunk before the engine sees it. Voxtral/
+                    // libmtmd's fixed 30s window silently truncates a longer
+                    // buffer; Parakeet lowers the cap further to survive Windows
+                    // DirectML (D3). Mirrors the batch path's windowing in
+                    // `crate::audio`.
+                    for (index, window) in chunk.samples.chunks(this.max_samples).enumerate() {
+                        let sample_start = chunk.sample_start + index * this.max_samples;
+                        let start_sec = sample_start as f64 / TARGET_SAMPLE_RATE as f64;
+                        this.windows.push_back((window.to_vec(), start_sec));
+                    }
                 }
-                Poll::Ready(None) => return Poll::Ready(None),
+                Poll::Ready(Some(Err(error))) => return Poll::Ready(Some(Err(error.into()))),
+                Poll::Ready(None) => this.input_done = true,
                 Poll::Pending => return Poll::Pending,
             }
         }
@@ -708,12 +814,92 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::engine::{EngineError, EngineSegment, SttEngineSession};
     use crate::service::mock::MockEngine;
+    use std::sync::{Arc, Mutex};
 
     #[test]
     fn health_and_listen_paths_are_stable() {
         assert_eq!(HEALTH_PATH, "/health");
         assert_eq!(LISTEN_PATH, "/v1/listen");
+    }
+
+    /// Records the sample count of every `transcribe` call so a test can assert
+    /// the cap-split handed the engine correctly-bounded windows.
+    struct CountingSession {
+        calls: Arc<Mutex<Vec<usize>>>,
+    }
+
+    impl SttEngineSession for CountingSession {
+        fn transcribe(&mut self, samples: &[f32]) -> Result<Vec<EngineSegment>, EngineError> {
+            self.calls.lock().unwrap().push(samples.len());
+            Ok(vec![EngineSegment {
+                text: "x".to_string(),
+                start: 0.0,
+                end: samples.len() as f64 / TARGET_SAMPLE_RATE as f64,
+                confidence: 1.0,
+                language: None,
+            }])
+        }
+    }
+
+    /// Panics inside inference — stands in for a native engine that dies on a
+    /// pathological buffer (D3). `spawn_blocking` + `catch_unwind` must turn
+    /// this into a stream error, not a process abort.
+    struct PanicSession;
+
+    impl SttEngineSession for PanicSession {
+        fn transcribe(&mut self, _samples: &[f32]) -> Result<Vec<EngineSegment>, EngineError> {
+            panic!("simulated native inference crash");
+        }
+    }
+
+    fn chunk_of(len: usize) -> hypr_audio_chunking::AudioChunk {
+        hypr_audio_chunking::AudioChunk {
+            samples: vec![0.1; len],
+            sample_start: 0,
+            sample_end: len,
+        }
+    }
+
+    /// Fix B: a VAD chunk larger than the engine cap is split so no single
+    /// `transcribe` call ever exceeds it — for any engine, not just Voxtral.
+    #[tokio::test]
+    async fn oversized_chunk_is_split_at_the_engine_cap_before_transcribe() {
+        let cap = 1000usize;
+        let calls = Arc::new(Mutex::new(Vec::new()));
+        let session = CountingSession {
+            calls: calls.clone(),
+        };
+        // 2500 samples with a 1000 cap => windows of 1000, 1000, 500.
+        let chunks = futures_util::stream::iter(vec![Ok(chunk_of(2500))]);
+        let stream = TranscribeChannelStream::new(0, chunks, session, cap);
+
+        let out: Vec<_> = stream.collect().await;
+        assert!(out.iter().all(|item| item.is_ok()));
+        assert_eq!(&*calls.lock().unwrap(), &[1000, 1000, 500]);
+    }
+
+    /// Fix C: an inference panic surfaces as a stream error (caught at the
+    /// blocking-join boundary) instead of unwinding across FFI / aborting the
+    /// process — the connection loop then logs it and closes gracefully.
+    #[tokio::test]
+    async fn inference_panic_becomes_a_stream_error_not_a_process_abort() {
+        // Silence the default panic hook's backtrace noise for the caught panic.
+        let prev = std::panic::take_hook();
+        std::panic::set_hook(Box::new(|_| {}));
+
+        let chunks = futures_util::stream::iter(vec![Ok(chunk_of(1600))]);
+        let stream = TranscribeChannelStream::new(0, chunks, PanicSession, 16_000);
+        let out: Vec<_> = stream.collect().await;
+
+        std::panic::set_hook(prev);
+
+        assert_eq!(out.len(), 1, "expected exactly one (error) item");
+        assert!(
+            matches!(out[0], Err(crate::Error::Engine(_))),
+            "panic must surface as an engine error"
+        );
     }
 
     /// `MockEngine::load` ignores the path entirely, so this never touches
