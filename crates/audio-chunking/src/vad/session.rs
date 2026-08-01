@@ -15,6 +15,13 @@ pub struct VadChunkerConfig {
     pub min_chunk_duration: Duration,
     pub target_chunk_duration: Duration,
     pub max_negative_threshold: f32,
+    /// Hard ceiling on a single speech chunk's wall-clock span. When set, an
+    /// unbroken utterance is force-cut once it reaches this length even if no
+    /// pause ever redeems it — the meeting/`speech` profile leaves this `None`
+    /// (chunks grow to a natural pause), the `dictation` profile sets it so a
+    /// continuous dictation never accumulates a giant buffer (D3: an
+    /// ~20s pauseless buffer was what reached the engine and killed the WS).
+    pub max_chunk_duration: Option<Duration>,
 }
 
 impl Default for VadChunkerConfig {
@@ -28,6 +35,7 @@ impl Default for VadChunkerConfig {
             min_chunk_duration: Duration::from_secs(3),
             target_chunk_duration: Duration::from_secs(20),
             max_negative_threshold: 0.80,
+            max_chunk_duration: None,
         }
     }
 }
@@ -38,6 +46,26 @@ impl VadChunkerConfig {
             redemption_time,
             pre_speech_pad: redemption_time,
             min_speech_time: Duration::from_millis(150),
+            ..Default::default()
+        }
+    }
+
+    /// Live single-speaker dictation. Unlike `speech` (tuned to grow chunks
+    /// toward a ~20s meeting target), dictation redeems promptly and force-cuts
+    /// a pauseless utterance at `target_chunk_duration`, so transcript arrives
+    /// incrementally and no oversized buffer ever reaches the engine. The
+    /// lower `max_negative_threshold` ramp cap keeps ordinary between-phrase
+    /// pauses redeeming instead of resisting the cut the way the meeting ramp
+    /// deliberately does.
+    pub fn dictation(redemption_time: Duration) -> Self {
+        let target = Duration::from_secs(6);
+        Self {
+            redemption_time,
+            pre_speech_pad: redemption_time,
+            min_speech_time: Duration::from_millis(150),
+            target_chunk_duration: target,
+            max_negative_threshold: 0.55,
+            max_chunk_duration: Some(target),
             ..Default::default()
         }
     }
@@ -81,6 +109,14 @@ impl VadChunkerConfig {
             return Err(crate::Error::InvalidConfig(
                 "target_chunk_duration must be greater than min_chunk_duration".into(),
             ));
+        }
+
+        if let Some(max_chunk) = self.max_chunk_duration {
+            if max_chunk < self.min_chunk_duration {
+                return Err(crate::Error::InvalidConfig(
+                    "max_chunk_duration must be >= min_chunk_duration".into(),
+                ));
+            }
         }
 
         Ok(())
@@ -326,6 +362,37 @@ impl VadSession {
                     return Some(transition);
                 }
 
+                // Force-cut a pauseless utterance at max_chunk_duration
+                // (dictation profile only). Unlike redemption this cuts at the
+                // live cursor with no trailing silence, then continues the same
+                // utterance in a fresh confirmed chunk starting at the cut point
+                // so no audio is dropped and no spurious SpeechStart is emitted.
+                if confirmed {
+                    if let Some(max_chunk_samples) = self
+                        .config
+                        .max_chunk_duration
+                        .map(Self::duration_to_samples)
+                    {
+                        let span = self.cursor_sample.saturating_sub(start_sample);
+                        if span >= max_chunk_samples {
+                            let cut_sample = self.cursor_sample;
+                            let transition = self.speech_end_transition(
+                                start_sample,
+                                cut_sample,
+                                speech_samples,
+                            );
+                            self.state = VadState::Speech {
+                                start_sample: cut_sample,
+                                confirmed: true,
+                                speech_samples: 0,
+                            };
+                            self.silent_samples = 0;
+                            self.trim_buffer();
+                            return Some(transition);
+                        }
+                    }
+                }
+
                 if !confirmed && self.silent_samples >= redemption_samples {
                     self.reset_to_silence();
                     self.trim_buffer();
@@ -455,5 +522,131 @@ mod tests {
         let max_expected =
             VadSession::duration_to_samples(session.config.pre_speech_pad) + CHUNK_SIZE_16KHZ;
         assert!(session.retained_audio.len() <= max_expected);
+    }
+
+    /// Drive `advance` with a synthetic per-frame speech probability, mirroring
+    /// `process`'s cursor bookkeeping (advance one 16kHz VAD frame at a time)
+    /// without invoking the real Silero model. Returns every transition seen.
+    fn drive_synthetic(session: &mut VadSession, prob: f32, frames: usize) -> Vec<VadTransition> {
+        let mut transitions = Vec::new();
+        for _ in 0..frames {
+            session.cursor_sample += CHUNK_SIZE_16KHZ;
+            if let Some(t) = session.advance(prob) {
+                transitions.push(t);
+            }
+        }
+        transitions
+    }
+
+    fn speech_end_spans(transitions: &[VadTransition]) -> Vec<(usize, usize)> {
+        transitions
+            .iter()
+            .filter_map(|t| match t {
+                VadTransition::SpeechEnd {
+                    sample_start,
+                    sample_end,
+                    ..
+                } => Some((*sample_start, *sample_end)),
+                _ => None,
+            })
+            .collect()
+    }
+
+    /// D3: the dictation profile must force-cut a pauseless utterance at its
+    /// `target_chunk_duration` (6s) so no oversized buffer is ever emitted,
+    /// and must keep cutting a continuously-speaking user every ~6s.
+    #[test]
+    fn dictation_profile_force_cuts_pauseless_speech_near_target() {
+        let mut session =
+            VadSession::new(VadChunkerConfig::dictation(Duration::from_millis(400))).unwrap();
+        // 30s of non-silent buffer so the emitted chunk slices are in range.
+        session.retained_audio = vec![1.0; SAMPLE_RATE * 30];
+
+        // ~13s of continuous confident speech, never dropping below any
+        // negative threshold, so ONLY the force-cut can end a chunk.
+        let frames = (13 * SAMPLE_RATE) / CHUNK_SIZE_16KHZ;
+        let spans = speech_end_spans(&drive_synthetic(&mut session, 0.95, frames));
+
+        assert!(
+            spans.len() >= 2,
+            "expected at least two force-cuts in 13s of continuous speech, got {}",
+            spans.len()
+        );
+        let max_samples = VadSession::duration_to_samples(Duration::from_secs(6));
+        for (start, end) in &spans {
+            let span = end - start;
+            // Cut within one VAD frame of the 6s target (never far above it).
+            assert!(
+                span >= max_samples && span <= max_samples + CHUNK_SIZE_16KHZ,
+                "force-cut span {span} not at the 6s target ({max_samples})"
+            );
+        }
+        // Chunks are back-to-back (no dropped audio between them).
+        assert_eq!(
+            spans[1].0, spans[0].1,
+            "second chunk must resume at the cut"
+        );
+    }
+
+    /// Silence arriving right after a force-cut: the resumed (confirmed)
+    /// chunk has zero speech frames yet - it must end via ordinary redemption
+    /// without panicking, and the tiny trailing chunk must start exactly at
+    /// the cut (no lost or duplicated samples).
+    #[test]
+    fn force_cut_followed_by_immediate_silence_redeems_cleanly() {
+        let mut session =
+            VadSession::new(VadChunkerConfig::dictation(Duration::from_millis(400))).unwrap();
+        session.retained_audio = vec![1.0; SAMPLE_RATE * 30];
+
+        // Enough continuous speech to trigger exactly one force-cut...
+        let speech_frames = (7 * SAMPLE_RATE) / CHUNK_SIZE_16KHZ;
+        let mut transitions = drive_synthetic(&mut session, 0.95, speech_frames);
+        // ...then hard silence for several seconds.
+        let silence_frames = (3 * SAMPLE_RATE) / CHUNK_SIZE_16KHZ;
+        transitions.extend(drive_synthetic(&mut session, 0.01, silence_frames));
+
+        let spans = speech_end_spans(&transitions);
+        assert!(
+            spans.len() >= 2,
+            "expected the force-cut chunk plus a redeemed trailing chunk, got {}",
+            spans.len()
+        );
+        // The trailing chunk resumes exactly at the cut point.
+        assert_eq!(
+            spans[1].0, spans[0].1,
+            "trailing chunk must start at the cut"
+        );
+        // And it redeemed via silence (its end precedes the silence tail),
+        // i.e. the session did not get stuck in Speech with zero frames.
+        assert!(spans[1].1 > spans[1].0, "trailing chunk must be non-empty");
+    }
+
+    /// Meeting-path guard: the `speech` profile has no max-chunk cut, so the
+    /// same continuous speech accumulates into one growing chunk and is NOT
+    /// force-cut. Changing dictation must never regress this.
+    #[test]
+    fn speech_profile_does_not_force_cut_pauseless_speech() {
+        let mut session =
+            VadSession::new(VadChunkerConfig::speech(Duration::from_millis(400))).unwrap();
+        session.retained_audio = vec![1.0; SAMPLE_RATE * 30];
+
+        let frames = (13 * SAMPLE_RATE) / CHUNK_SIZE_16KHZ;
+        let spans = speech_end_spans(&drive_synthetic(&mut session, 0.95, frames));
+
+        assert!(
+            spans.is_empty(),
+            "meeting `speech` profile must not force-cut continuous speech, got {} cuts",
+            spans.len()
+        );
+    }
+
+    #[test]
+    fn dictation_config_is_valid_and_bounded() {
+        let config = VadChunkerConfig::dictation(Duration::from_millis(400));
+        assert!(config.validate().is_ok());
+        assert_eq!(config.max_chunk_duration, Some(Duration::from_secs(6)));
+        // Lower ramp cap than the meeting profile so ordinary dictation pauses
+        // redeem instead of being resisted toward a long target.
+        assert!(config.max_negative_threshold < 0.80);
     }
 }

@@ -42,7 +42,18 @@ pub struct ParakeetSession {
     inner: Arc<Mutex<ParakeetModel>>,
 }
 
+/// Ceiling on samples handed to `transcribe` in one call (15s at 16kHz).
+/// The pure-ORT/CPU path tolerates far longer buffers (verified to 170s), but
+/// the Windows DirectML execution provider aborted the process on an ~20s
+/// buffer in the field (D3); 15s sits safely below that and is proven correct
+/// on CPU. The streaming/batch paths split any longer VAD chunk here.
+const MAX_SAMPLES_PER_CALL: usize = hypr_transcribe_core::TARGET_SAMPLE_RATE as usize * 15;
+
 impl SttEngineSession for ParakeetSession {
+    fn max_samples_per_call(&self) -> usize {
+        MAX_SAMPLES_PER_CALL
+    }
+
     fn transcribe(&mut self, samples: &[f32]) -> Result<Vec<EngineSegment>, EngineError> {
         let result = {
             let mut model = self
@@ -222,6 +233,18 @@ mod tests {
     fn empty_text_produces_no_segments() {
         let words = group_tokens_into_words(&[], &[], "  ", 3.0);
         assert!(words.is_empty());
+    }
+
+    #[test]
+    fn max_samples_per_call_sits_below_the_field_crash_point() {
+        // 15s at 16kHz: proven correct on CPU up to 170s (see the
+        // `probe_long_buffer` integration test), deliberately below the ~20s
+        // buffer that aborted the process on Windows DirectML (D3).
+        assert_eq!(
+            MAX_SAMPLES_PER_CALL,
+            hypr_transcribe_core::TARGET_SAMPLE_RATE as usize * 15
+        );
+        assert!(MAX_SAMPLES_PER_CALL < hypr_transcribe_core::TARGET_SAMPLE_RATE as usize * 20);
     }
 
     #[test]

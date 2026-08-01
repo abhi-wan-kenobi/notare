@@ -50,6 +50,21 @@ pub(crate) fn build_metadata<E: SttEngine>(model_path: &Path) -> Metadata {
     }
 }
 
+/// Query key a client sets to request the dictation chunking profile (prompt
+/// redemption + a hard max-chunk cut) instead of the meeting/`speech` profile.
+/// Absent (every meeting client) leaves the meeting behavior byte-identical.
+pub(crate) const CHUNK_PROFILE_QUERY_KEY: &str = "chunk_profile";
+pub(crate) const CHUNK_PROFILE_DICTATION: &str = "dictation";
+
+pub(crate) fn is_dictation(params: &ListenParams) -> bool {
+    params
+        .custom_query
+        .as_ref()
+        .and_then(|q| q.get(CHUNK_PROFILE_QUERY_KEY))
+        .map(|v| v == CHUNK_PROFILE_DICTATION)
+        .unwrap_or(false)
+}
+
 pub(crate) fn redemption_time(params: &ListenParams) -> Duration {
     params
         .custom_query
@@ -229,6 +244,24 @@ mod tests {
         let params = parse_listen_params("language=en").unwrap();
         assert_eq!(params.languages.len(), 1);
         assert_eq!(params.languages[0].iso639().code(), "en");
+    }
+
+    #[test]
+    fn is_dictation_reads_the_chunk_profile_flag() {
+        let mut params = ListenParams::default();
+        assert!(!is_dictation(&params), "absent => meeting/speech profile");
+
+        params.custom_query = Some(std::collections::HashMap::from([(
+            CHUNK_PROFILE_QUERY_KEY.to_string(),
+            CHUNK_PROFILE_DICTATION.to_string(),
+        )]));
+        assert!(is_dictation(&params));
+
+        params.custom_query = Some(std::collections::HashMap::from([(
+            CHUNK_PROFILE_QUERY_KEY.to_string(),
+            "speech".to_string(),
+        )]));
+        assert!(!is_dictation(&params), "any other value => meeting profile");
     }
 
     #[test]
