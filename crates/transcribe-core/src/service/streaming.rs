@@ -672,7 +672,10 @@ impl AsyncSource for ChannelAudioSource {
 
 /// Result of one off-thread decode: the session is returned so it can be
 /// reused (`None` if the inference panicked and the session was dropped).
-type DecodeOutcome<Sess> = (Option<Sess>, Result<Vec<crate::service::Segment>, crate::Error>);
+type DecodeOutcome<Sess> = (
+    Option<Sess>,
+    Result<Vec<crate::service::Segment>, crate::Error>,
+);
 
 struct TranscribeChannelStream<S, Sess> {
     channel_idx: usize,
