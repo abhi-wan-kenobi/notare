@@ -93,3 +93,11 @@ runs:
           ~/.cache/sherpa-rs
           ~/AppData/Local/ort.pyke.io
           ~/AppData/Local/sherpa-rs
+    # The cache round-trip preserves these sys crates' build fingerprints but
+    # not the dylibs their build scripts copied into out/ - restored targets
+    # then die at test runtime with "libonnxruntime not found" (first hit:
+    # B1 PR #122). Deleting the build dirs forces the scripts to re-run; with
+    # the download caches above warm, that costs seconds and re-materializes
+    # the dylibs deterministically.
+    - run: rm -rf target/*/build/sherpa-rs-sys-* target/*/build/ort-sys-* || true
+      shell: bash

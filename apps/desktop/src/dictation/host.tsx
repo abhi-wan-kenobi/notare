@@ -207,7 +207,10 @@ export function DictationOrbHost() {
       localSttCommands.prewarmStt().then(
         (result) => {
           if (!cancelled && result.status !== "ok") {
-            console.debug("[dictation] prewarm_stt returned error", result.error);
+            console.debug(
+              "[dictation] prewarm_stt returned error",
+              result.error,
+            );
           }
         },
         (error) => {

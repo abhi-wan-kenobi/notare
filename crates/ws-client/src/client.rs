@@ -145,10 +145,7 @@ impl WebSocketClient {
         }
     }
 
-    async fn from_audio_single<
-        T: WebSocketIO,
-        S: Stream<Item = T::Data> + Send + Unpin + 'static,
-    >(
+    async fn from_audio_single<T: WebSocketIO, S: Stream<Item = T::Data> + Send + Unpin + 'static>(
         &self,
         initial_message: Option<Message>,
         mut audio_stream: S,

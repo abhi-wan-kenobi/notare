@@ -222,7 +222,10 @@ async fn dropped_handle_does_not_starve_output() {
 
     drop(handle);
 
-    audio_tx.send(test_message("still-flowing", 7)).await.unwrap();
+    audio_tx
+        .send(test_message("still-flowing", 7))
+        .await
+        .unwrap();
     let echo = tokio::time::timeout(Duration::from_secs(2), output.next())
         .await
         .expect("echo should still arrive after the handle is dropped")
