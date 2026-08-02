@@ -1416,8 +1416,16 @@ msgid "Keep Notare available from the menu bar."
 msgstr "Keep Notare available from the menu bar."
 
 #: src/settings/dictation/index.tsx
+msgid "Keep the mic warm for instant start"
+msgstr "Keep the mic warm for instant start"
+
+#: src/settings/dictation/index.tsx
 msgid "Keep the transcript exactly as recognized."
 msgstr "Keep the transcript exactly as recognized."
+
+#: src/settings/dictation/index.tsx
+msgid "Keeps the microphone open while idle so dictation starts instantly. Your system may show the mic-in-use indicator the whole time."
+msgstr "Keeps the microphone open while idle so dictation starts instantly. Your system may show the mic-in-use indicator the whole time."
 
 #: src/settings/general/index.tsx
 msgid "Language & Region"
