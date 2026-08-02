@@ -149,3 +149,20 @@ pub(crate) async fn resume_media<R: tauri::Runtime>(
     app.dictation().resume_media().await;
     Ok(())
 }
+
+/// Enable or disable the warm-mic (Lane B2): when enabled, keep a microphone
+/// capture stream open while dictation is idle so a hotkey press skips the OS
+/// mic-open latency. OFF by default and privacy-sensitive (the OS mic-in-use
+/// indicator stays lit); the frontend only enables it while
+/// `dictation_enabled && dictation_warm_mic`.
+#[tauri::command]
+#[specta::specta]
+pub(crate) async fn set_warm_mic<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    enabled: bool,
+    seq: u32,
+) -> Result<(), String> {
+    app.dictation()
+        .set_warm_mic(enabled, seq)
+        .map_err(|e| e.to_string())
+}

@@ -9,6 +9,7 @@ import {
   normalizeActivationMode,
   OrbVariantGroup,
   OutputModeGroup,
+  WarmMicRow,
 } from "./index";
 
 import type { DictationHistoryEntry } from "~/dictation/history";
@@ -259,6 +260,32 @@ describe("DictationHistoryList", () => {
     );
 
     expect(screen.getAllByText(/ago$/)).toHaveLength(2);
+  });
+});
+
+// Lane B2: the warm-mic toggle. OFF by default and privacy-sensitive - the
+// copy must spell out that the mic stays open and the OS indicator may show.
+describe("WarmMicRow", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("reflects the current value and emits the toggled one", () => {
+    const onChange = vi.fn();
+    render(<WarmMicRow checked={false} onChange={onChange} />);
+
+    const toggle = screen.getByRole("switch");
+    expect(toggle.getAttribute("aria-checked")).toBe("false");
+
+    fireEvent.click(toggle);
+    expect(onChange).toHaveBeenCalledWith(true);
+  });
+
+  it("states the privacy trade-off plainly", () => {
+    render(<WarmMicRow checked={false} onChange={vi.fn()} />);
+
+    expect(screen.getByText(/microphone open while idle/i)).toBeTruthy();
+    expect(screen.getByText(/mic-in-use indicator/i)).toBeTruthy();
   });
 });
 

@@ -15,4 +15,5 @@ permissions = [
   "allow-clean-text",
   "allow-pause-media",
   "allow-resume-media",
+  "allow-set-warm-mic",
 ]

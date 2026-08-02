@@ -52,6 +52,32 @@ impl<'a, R: tauri::Runtime, M: tauri::Manager<R>> Dictation<'a, R, M> {
         Ok(crate::session::is_running(crate::orb::app_handle()?))
     }
 
+    /// Enable/disable the warm-mic holder (Lane B2). Enabling spawns (or leaves
+    /// running) a background task that keeps a mic capture stream open and
+    /// draining while idle; disabling drops it, releasing the device. The
+    /// opener is built from the managed audio provider so the holder can
+    /// re-open after a device switch.
+    pub fn set_warm_mic(&self, enabled: bool, seq: u32) -> Result<(), Error> {
+        let warm = self.manager.state::<crate::warm::WarmMicState>();
+        // Last-writer-wins by sequence, enforced INSIDE the state's lock so
+        // the check and the apply are atomic - a stale enable landing after a
+        // newer disable can never silently re-open the mic (privacy-relevant:
+        // the whole point of OFF-by-default).
+        if enabled {
+            let audio = self
+                .manager
+                .state::<std::sync::Arc<dyn hypr_audio::AudioProvider>>()
+                .inner()
+                .clone();
+            let chunk_size = hypr_audio_utils::chunk_size_for_stt(crate::session::SAMPLE_RATE);
+            let opener = crate::warm::make_opener(audio, crate::session::SAMPLE_RATE, chunk_size);
+            warm.enable(opener, seq);
+        } else {
+            warm.disable(seq);
+        }
+        Ok(())
+    }
+
     pub async fn type_text(&self, text: String) -> Result<(), Error> {
         tauri::async_runtime::spawn_blocking(move || crate::inject::type_text(&text))
             .await

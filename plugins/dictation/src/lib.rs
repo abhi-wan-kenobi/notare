@@ -8,6 +8,7 @@ mod inject;
 mod media;
 mod orb;
 mod session;
+mod warm;
 
 pub use error::*;
 pub use events::*;
@@ -36,6 +37,7 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
             commands::clean_text::<tauri::Wry>,
             commands::pause_media::<tauri::Wry>,
             commands::resume_media::<tauri::Wry>,
+            commands::set_warm_mic::<tauri::Wry>,
         ])
         .events(tauri_specta::collect_events![
             DictationStateEvent,
@@ -58,9 +60,17 @@ pub fn init() -> tauri::plugin::TauriPlugin<tauri::Wry> {
             app.manage(Handler::new());
             app.manage(session::SessionState::default());
             app.manage(media::MediaPauseState::default());
+            app.manage(warm::WarmMicState::default());
             orb::set_app_handle(app.clone());
             setup_shortcut_bridge(app);
             Ok(())
+        })
+        // App-exit teardown for the warm-mic holder (Lane B2): release the
+        // held-open capture device on quit so no zombie "mic in use" survives.
+        .on_event(|app, event| {
+            if matches!(event, tauri::RunEvent::Exit) {
+                app.state::<warm::WarmMicState>().shutdown();
+            }
         })
         .build()
 }

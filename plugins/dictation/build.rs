@@ -13,6 +13,7 @@ const COMMANDS: &[&str] = &[
     "clean_text",
     "pause_media",
     "resume_media",
+    "set_warm_mic",
 ];
 
 fn main() {

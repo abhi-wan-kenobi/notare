@@ -155,6 +155,21 @@ async resumeMedia() : Promise<Result<null, string>> {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
+},
+/**
+ * Enable or disable the warm-mic (Lane B2): when enabled, keep a microphone
+ * capture stream open while dictation is idle so a hotkey press skips the OS
+ * mic-open latency. OFF by default and privacy-sensitive (the OS mic-in-use
+ * indicator stays lit); the frontend only enables it while
+ * `dictation_enabled && dictation_warm_mic`.
+ */
+async setWarmMic(enabled: boolean, seq: number) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:dictation|set_warm_mic", { enabled, seq }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 }
 }
 

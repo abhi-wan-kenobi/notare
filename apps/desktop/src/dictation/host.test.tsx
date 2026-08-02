@@ -34,6 +34,7 @@ const mocks = vi.hoisted(() => ({
   isDictating: vi.fn(async () => ({ status: "ok" as const, data: false })),
   pauseMedia: vi.fn(async () => ({ status: "ok" as const, data: true })),
   resumeMedia: vi.fn(async () => ({ status: "ok" as const, data: null })),
+  setWarmMic: vi.fn(async () => ({ status: "ok" as const, data: null })),
   registerGlobalHotkey: vi.fn(async () => ({
     status: "ok" as const,
     data: null,
@@ -98,6 +99,7 @@ vi.mock("@hypr/plugin-dictation", () => ({
     deliverText: mocks.deliverText,
     pauseMedia: mocks.pauseMedia,
     resumeMedia: mocks.resumeMedia,
+    setWarmMic: mocks.setWarmMic,
   },
   events: {
     dictationStateEvent: {
@@ -225,6 +227,7 @@ describe("DictationOrbHost", () => {
       dictation_cleanup: "none",
       dictation_activation_mode: "toggle",
       dictation_pause_media: false,
+      dictation_warm_mic: false,
     };
     mocks.pauseMedia.mockResolvedValue({ status: "ok", data: true });
     mocks.resumeMedia.mockResolvedValue({ status: "ok", data: null });
@@ -806,6 +809,60 @@ describe("DictationOrbHost", () => {
       await waitFor(() => expect(mocks.resumeMedia).toHaveBeenCalled());
       // A failed start never paused, so pause was not requested.
       expect(mocks.pauseMedia).not.toHaveBeenCalled();
+    });
+  });
+
+  // Lane B2: warm-mic. Only ever armed while dictation is enabled AND the
+  // (off-by-default) warm-mic setting is on; disabling either releases it.
+  describe("warm-mic", () => {
+    it("never arms warm-mic while the setting is off", async () => {
+      mocks.settings.current.dictation_enabled = true;
+      mocks.settings.current.dictation_warm_mic = false;
+
+      render(<DictationOrbHost />);
+
+      // Give the warm-mic effect a tick to run.
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(mocks.setWarmMic).not.toHaveBeenCalledWith(true);
+    });
+
+    it("arms warm-mic when enabled and the setting is on", async () => {
+      mocks.settings.current.dictation_enabled = true;
+      mocks.settings.current.dictation_warm_mic = true;
+
+      render(<DictationOrbHost />);
+
+      await waitFor(() =>
+        expect(mocks.setWarmMic).toHaveBeenCalledWith(true, expect.any(Number)),
+      );
+    });
+
+    it("does not arm warm-mic when dictation is disabled, even if the setting is on", async () => {
+      mocks.settings.current.dictation_enabled = false;
+      mocks.settings.current.dictation_warm_mic = true;
+
+      render(<DictationOrbHost />);
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(mocks.setWarmMic).not.toHaveBeenCalledWith(true);
+    });
+
+    it("releases warm-mic on unmount", async () => {
+      mocks.settings.current.dictation_enabled = true;
+      mocks.settings.current.dictation_warm_mic = true;
+
+      const { unmount } = render(<DictationOrbHost />);
+      await waitFor(() =>
+        expect(mocks.setWarmMic).toHaveBeenCalledWith(true, expect.any(Number)),
+      );
+
+      unmount();
+      await waitFor(() =>
+        expect(mocks.setWarmMic).toHaveBeenCalledWith(
+          false,
+          expect.any(Number),
+        ),
+      );
     });
   });
 

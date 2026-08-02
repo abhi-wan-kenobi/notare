@@ -65,6 +65,7 @@ export function SettingsDictation() {
     dictation_activation_mode,
     dictation_pause_media,
     dictation_history_retention,
+    dictation_warm_mic,
   } = useConfigValues([
     "dictation_enabled",
     "dictation_shortcut",
@@ -79,6 +80,7 @@ export function SettingsDictation() {
     "dictation_activation_mode",
     "dictation_pause_media",
     "dictation_history_retention",
+    "dictation_warm_mic",
   ] as const);
   const setEnabled = useSetSettingValue("dictation_enabled");
   const setShortcut = useSetSettingValue("dictation_shortcut");
@@ -99,6 +101,7 @@ export function SettingsDictation() {
   const setActivationMode = useSetSettingValue("dictation_activation_mode");
   const setPauseMedia = useSetSettingValue("dictation_pause_media");
   const setHistoryRetention = useSetSettingValue("dictation_history_retention");
+  const setWarmMic = useSetSettingValue("dictation_warm_mic");
 
   const outputMode = normalizeOutputMode(dictation_output_mode);
   const cleanupMode = normalizeCleanupMode(dictation_cleanup);
@@ -191,6 +194,7 @@ export function SettingsDictation() {
             checked={dictation_pause_media}
             onChange={setPauseMedia}
           />
+          <WarmMicRow checked={dictation_warm_mic} onChange={setWarmMic} />
         </div>
       </section>
 
@@ -814,6 +818,34 @@ export function MacosAccessibilityHint({
         )}
       </Button>
     </div>
+  );
+}
+
+/**
+ * Lane B2 "warm-mic" toggle. OFF by default and privacy-sensitive: the copy
+ * says plainly that the mic device stays open while idle and the OS mic-in-use
+ * indicator may show the whole time, so the trade-off (instant start vs. an
+ * always-lit indicator) is explicit before the user opts in.
+ */
+export function WarmMicRow({
+  checked,
+  onChange,
+}: {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <SettingRow
+      title={<Trans>Keep the mic warm for instant start</Trans>}
+      description={
+        <Trans>
+          Keeps the microphone open while idle so dictation starts instantly.
+          Your system may show the mic-in-use indicator the whole time.
+        </Trans>
+      }
+      checked={checked}
+      onChange={onChange}
+    />
   );
 }
 

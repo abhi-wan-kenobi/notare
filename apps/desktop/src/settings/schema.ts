@@ -55,6 +55,15 @@ export const SETTING_DEFINITIONS = {
     path: ["general", "dictation_pause_media"],
     default: false as boolean,
   },
+  // Lane B2 "warm-mic": keep a microphone capture stream open while dictation
+  // is idle so a hotkey press skips the OS mic-open latency. OFF by default and
+  // privacy-sensitive - a held-open mic keeps the OS "mic in use" indicator lit
+  // the whole time. Only ever active while `dictation_enabled` is also true.
+  dictation_warm_mic: {
+    type: "boolean",
+    path: ["general", "dictation_warm_mic"],
+    default: false as boolean,
+  },
   // How long delivered dictation history is kept before pruning: "off" (keep
   // forever - the default), "7d", "30d" or "90d". The retention/prune logic is
   // owned elsewhere; this only declares the setting.

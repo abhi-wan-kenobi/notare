@@ -18,6 +18,7 @@ Default permissions for the plugin
 - `allow-clean-text`
 - `allow-pause-media`
 - `allow-resume-media`
+- `allow-set-warm-mic`
 
 ## Permission Table
 
@@ -232,6 +233,32 @@ Enables the set_phase command without any pre-configured scope.
 <td>
 
 Denies the set_phase command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`dictation:allow-set-warm-mic`
+
+</td>
+<td>
+
+Enables the set_warm_mic command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`dictation:deny-set-warm-mic`
+
+</td>
+<td>
+
+Denies the set_warm_mic command without any pre-configured scope.
 
 </td>
 </tr>
