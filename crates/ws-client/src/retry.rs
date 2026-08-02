@@ -32,6 +32,35 @@ pub struct WebSocketRetryEvent {
     pub error: String,
 }
 
+/// Policy for *mid-stream* reconnection after an already-established session's
+/// transport drops (issue #39's client half). Distinct from the pre-connect
+/// `WebSocketConnectPolicy` above, which only governs the very first handshake.
+#[derive(Debug, Clone)]
+pub struct WebSocketReconnectPolicy {
+    /// Maximum number of reconnect cycles per session. Each cycle is one
+    /// `connect_with_retry` (which itself retries per `connect`). Once used up,
+    /// the terminal transport error is surfaced exactly as it is without
+    /// reconnection — bounding reconnect storms when the server is down.
+    pub max_cycles: usize,
+    /// Connect policy used for reconnect attempts — deliberately a touch more
+    /// patient than a typical initial-connect policy, since a mid-stream drop
+    /// is often a transient network/proxy blip that clears within a few seconds.
+    pub connect: WebSocketConnectPolicy,
+}
+
+impl Default for WebSocketReconnectPolicy {
+    fn default() -> Self {
+        Self {
+            max_cycles: 2,
+            connect: WebSocketConnectPolicy {
+                connect_timeout: std::time::Duration::from_secs(4),
+                max_attempts: 3,
+                retry_delay: std::time::Duration::from_secs(2),
+            },
+        }
+    }
+}
+
 pub(crate) async fn connect_with_retry(
     request: tokio_tungstenite::tungstenite::ClientRequestBuilder,
     policy: &WebSocketConnectPolicy,

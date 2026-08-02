@@ -149,3 +149,9 @@ pub async fn get_servers<R: tauri::Runtime>(
         .await
         .map_err(|e| e.to_string())
 }
+
+#[tauri::command]
+#[specta::specta]
+pub async fn prewarm_stt<R: tauri::Runtime>(app: tauri::AppHandle<R>) -> Result<(), String> {
+    app.local_stt().prewarm().await.map_err(|e| e.to_string())
+}

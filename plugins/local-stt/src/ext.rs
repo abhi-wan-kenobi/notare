@@ -353,6 +353,40 @@ impl<'a, R: Runtime, M: Manager<R>> LocalStt<'a, R, M> {
         .collect())
     }
 
+    /// Keep the running internal STT model resident (Lane B1a "warm model").
+    /// Drives the model manager's load/touch path directly — never a
+    /// `/v1/listen` upgrade — so it can't cancel a live dictation/meeting.
+    /// A no-op success when no internal server is running (nothing to warm).
+    #[cfg(any(
+        feature = "whisper-cpp",
+        feature = "parakeet-onnx",
+        feature = "voxtral-llama"
+    ))]
+    #[tracing::instrument(skip_all)]
+    pub async fn prewarm(&self) -> Result<(), crate::Error> {
+        match registry::where_is(internal::InternalSTTActor::name()) {
+            Some(cell) => {
+                let actor: ActorRef<internal::InternalSTTMessage> = cell.into();
+                match call_t!(actor, internal::InternalSTTMessage::Prewarm, 30 * 1000) {
+                    Ok(Ok(())) => Ok(()),
+                    Ok(Err(e)) => Err(crate::Error::ServerStartFailed(e)),
+                    Err(e) => Err(crate::Error::ServerStartFailed(e.to_string())),
+                }
+            }
+            None => Ok(()),
+        }
+    }
+
+    #[cfg(not(any(
+        feature = "whisper-cpp",
+        feature = "parakeet-onnx",
+        feature = "voxtral-llama"
+    )))]
+    #[tracing::instrument(skip_all)]
+    pub async fn prewarm(&self) -> Result<(), crate::Error> {
+        Ok(())
+    }
+
     #[tracing::instrument(skip_all)]
     pub async fn download_model(&self, model: LocalModel) -> Result<(), crate::Error> {
         Self::ensure_stt_model(&model)?;

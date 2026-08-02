@@ -59,9 +59,35 @@ impl<E: SttEngine> Clone for TranscribeService<E> {
     }
 }
 
+/// Boxed future returned by a [`TranscribeService::prewarm_fn`] closure.
+pub type PrewarmFuture = Pin<Box<dyn Future<Output = Result<(), String>> + Send>>;
+
 impl<E: SttEngine> TranscribeService<E> {
     pub fn builder() -> TranscribeServiceBuilder<E> {
         TranscribeServiceBuilder::default()
+    }
+
+    /// Build a cheap, cloneable prewarm closure over this service's model
+    /// manager. Calling it drives the exact same `manager.get(None)` path the
+    /// `/v1/listen` upgrade uses (see `Service::call` above): it loads the
+    /// default model if it was evicted and refreshes `last_activity` so the
+    /// model-manager's 60s inactivity eviction won't fire while dictation is
+    /// keeping it warm. It is a no-op-cheap `Arc::clone` when the model is
+    /// already resident, and — unlike the upgrade path — never touches the
+    /// `ConnectionManager`, so keeping a model warm can't cancel a live
+    /// dictation/meeting session.
+    pub fn prewarm_fn(&self) -> impl Fn() -> PrewarmFuture + Clone + Send + Sync + 'static {
+        let manager = self.manager.clone();
+        move || {
+            let manager = manager.clone();
+            Box::pin(async move {
+                manager
+                    .get(None)
+                    .await
+                    .map(|_| ())
+                    .map_err(|error| error.to_string())
+            })
+        }
     }
 
     pub fn into_router<F, Fut>(self, on_error: F) -> axum::Router

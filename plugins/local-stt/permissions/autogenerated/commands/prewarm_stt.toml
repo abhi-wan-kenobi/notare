@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-prewarm-stt"
+description = "Enables the prewarm_stt command without any pre-configured scope."
+commands.allow = ["prewarm_stt"]
+
+[[permission]]
+identifier = "deny-prewarm-stt"
+description = "Denies the prewarm_stt command without any pre-configured scope."
+commands.deny = ["prewarm_stt"]

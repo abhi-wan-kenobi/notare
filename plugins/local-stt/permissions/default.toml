@@ -11,6 +11,7 @@ permissions = [
     "allow-stop-server",
     "allow-get-server-for-model",
     "allow-get-servers",
+    "allow-prewarm-stt",
     "allow-list-supported-models",
     "allow-list-supported-languages",
 ]
