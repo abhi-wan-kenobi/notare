@@ -430,6 +430,21 @@ mod tests {
         tokio::time::sleep(Duration::from_millis(25)).await;
     }
 
+    /// Join a holder task without ever blocking the test forever. A holder that
+    /// fails to terminate is the liveness leak that orphans a CPU-spinning test
+    /// process (see the 21h runaway that motivated this): bound the wait so it
+    /// surfaces as a red test in seconds instead of hanging the binary. On
+    /// timeout the handle is dropped (detached); the per-test runtime aborts the
+    /// task when the test returns, so nothing escapes the process.
+    async fn join_holder(holder: tokio::task::JoinHandle<()>) {
+        if tokio::time::timeout(Duration::from_secs(5), holder)
+            .await
+            .is_err()
+        {
+            panic!("warm holder did not terminate within 5s - liveness leak");
+        }
+    }
+
     #[tokio::test]
     async fn drains_idle_audio_and_handoff_yields_only_post_handoff_frames() {
         let (frame_tx, stream) = test_stream();
@@ -459,7 +474,7 @@ mod tests {
 
         drop(frame_tx);
         drop(cmd_tx);
-        let _ = holder.await;
+        join_holder(holder).await;
     }
 
     /// A second handoff while a session is live must NOT clobber the live
@@ -489,7 +504,7 @@ mod tests {
 
         drop(frame_tx);
         drop(cmd_tx);
-        let _ = holder.await;
+        join_holder(holder).await;
     }
 
     /// The IPC sequence gate: a stale enable arriving after a newer disable
@@ -521,7 +536,7 @@ mod tests {
 
         // Disable = drop the command channel.
         drop(cmd_tx);
-        let _ = holder.await; // task exits => underlying CaptureStream dropped
+        join_holder(holder).await; // task exits => underlying CaptureStream dropped
 
         // The stream (ReceiverStream over `rx`) is gone, so its sender is closed.
         assert!(
@@ -560,7 +575,7 @@ mod tests {
 
         drop(frame_tx);
         drop(cmd_tx);
-        let _ = holder.await;
+        join_holder(holder).await;
     }
 
     #[tokio::test]
@@ -585,7 +600,7 @@ mod tests {
                 "a dead warm stream must reply None so the session cold-opens"
             ),
         }
-        let _ = holder.await;
+        join_holder(holder).await;
     }
 
     #[tokio::test]
@@ -615,7 +630,7 @@ mod tests {
 
         drop(frame_tx2);
         drop(cmd_tx);
-        let _ = holder.await;
+        join_holder(holder).await;
     }
 
     #[tokio::test]
@@ -623,7 +638,7 @@ mod tests {
         // Empty queue: the very first open fails.
         let (cmd_tx, cmd_rx) = mpsc::channel(4);
         let holder = tokio::spawn(run_warm_holder(queue_opener(vec![]), cmd_rx));
-        let _ = holder.await; // exits immediately
+        join_holder(holder).await; // exits immediately
 
         // The command channel is closed, so a handoff attempt errors out.
         let (reply_tx, _reply_rx) = oneshot::channel();
@@ -650,7 +665,7 @@ mod tests {
 
         // End the session: now the holder closes fully.
         drop(session);
-        let _ = holder.await;
+        join_holder(holder).await;
         assert!(
             frame_tx.is_closed(),
             "warm device must be released once the session ends after a mid-session disable"
