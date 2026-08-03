@@ -391,6 +391,18 @@
           "markdownDescription": "Denies the set_phase command without any pre-configured scope."
         },
         {
+          "description": "Enables the set_warm_mic command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-set-warm-mic",
+          "markdownDescription": "Enables the set_warm_mic command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the set_warm_mic command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-set-warm-mic",
+          "markdownDescription": "Denies the set_warm_mic command without any pre-configured scope."
+        },
+        {
           "description": "Enables the show command without any pre-configured scope.",
           "type": "string",
           "const": "allow-show",
@@ -463,10 +475,10 @@
           "markdownDescription": "Denies the update_amplitude command without any pre-configured scope."
         },
         {
-          "description": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-show`\n- `allow-hide`\n- `allow-set-phase`\n- `allow-update-amplitude`\n- `allow-show-orb`\n- `allow-hide-orb`\n- `allow-start-dictation`\n- `allow-stop-dictation`\n- `allow-is-dictating`\n- `allow-type-text`\n- `allow-deliver-text`\n- `allow-clean-text`\n- `allow-pause-media`\n- `allow-resume-media`",
+          "description": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-show`\n- `allow-hide`\n- `allow-set-phase`\n- `allow-update-amplitude`\n- `allow-show-orb`\n- `allow-hide-orb`\n- `allow-start-dictation`\n- `allow-stop-dictation`\n- `allow-is-dictating`\n- `allow-type-text`\n- `allow-deliver-text`\n- `allow-clean-text`\n- `allow-pause-media`\n- `allow-resume-media`\n- `allow-set-warm-mic`",
           "type": "string",
           "const": "default",
-          "markdownDescription": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-show`\n- `allow-hide`\n- `allow-set-phase`\n- `allow-update-amplitude`\n- `allow-show-orb`\n- `allow-hide-orb`\n- `allow-start-dictation`\n- `allow-stop-dictation`\n- `allow-is-dictating`\n- `allow-type-text`\n- `allow-deliver-text`\n- `allow-clean-text`\n- `allow-pause-media`\n- `allow-resume-media`"
+          "markdownDescription": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-show`\n- `allow-hide`\n- `allow-set-phase`\n- `allow-update-amplitude`\n- `allow-show-orb`\n- `allow-hide-orb`\n- `allow-start-dictation`\n- `allow-stop-dictation`\n- `allow-is-dictating`\n- `allow-type-text`\n- `allow-deliver-text`\n- `allow-clean-text`\n- `allow-pause-media`\n- `allow-resume-media`\n- `allow-set-warm-mic`"
         }
       ]
     }

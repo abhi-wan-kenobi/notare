@@ -36,8 +36,9 @@ use crate::events::{
 use crate::orb;
 
 /// Matches the whisper server's expected input (`TARGET_SAMPLE_RATE`,
-/// `crates/transcribe-core/src/audio.rs`).
-const SAMPLE_RATE: u32 = 16_000;
+/// `crates/transcribe-core/src/audio.rs`). `pub(crate)` so the warm-mic holder
+/// opens the device at the same rate/chunking the session expects.
+pub(crate) const SAMPLE_RATE: u32 = 16_000;
 /// Throttle for the 10 Hz orb state broadcast (same cadence as the meeting
 /// pipeline's `AmplitudeEmitter`). Drives `DictationStateEvent`, which carries
 /// lifecycle/phase and mode - a slow re-render channel.
@@ -95,24 +96,40 @@ pub async fn start(
         .clone();
     let chunk_size = hypr_audio_utils::chunk_size_for_stt(SAMPLE_RATE);
 
-    // Open the mic device CONCURRENTLY with the STT connect below. The cpal
+    // Acquire the mic. Lane B2 warm-mic: if a warm capture stream is being held
+    // (only when `dictation_enabled && dictation_warm_mic`), hand it off - it is
+    // already open and drained past the handoff instant, so the whole cpal
+    // cold-open cost is skipped. `try_handoff` returns `None` synchronously when
+    // warm-mic is off (no holder) OR when the warm stream is dead, and in both
+    // cases we fall through to the exact cold-open path below - byte-identical
+    // to the pre-B2 behavior when the feature is disabled.
+    //
+    // Cold path: open the mic device CONCURRENTLY with the STT connect. The cpal
     // cold-open (host + device enumeration, `build_input_stream`, audio-thread
     // spawn, `play()`) is a heavy blocking step - the dominant press->capture
-    // latency on Windows/macOS. It used to run strictly BEFORE the STT websocket
-    // handshake (session start paid mic-open + ws-connect serially); running it
-    // on the blocking pool while the handshake proceeds overlaps the two largest
-    // start costs, so the segment is ~max(mic, ws) instead of their sum.
-    // `CaptureStream` is `Send`, so it can cross the spawn_blocking boundary.
-    let audio_for_mic = audio.clone();
-    let mic_open = tokio::task::spawn_blocking(move || {
-        let started = std::time::Instant::now();
-        let result = audio_for_mic.open_mic_capture(None, SAMPLE_RATE, chunk_size);
-        tracing::debug!(
-            elapsed_ms = started.elapsed().as_millis() as u64,
-            "dictation mic cold-open"
-        );
-        result
-    });
+    // latency on Windows/macOS. Running it on the blocking pool while the
+    // handshake proceeds overlaps the two largest start costs, so the segment is
+    // ~max(mic, ws) instead of their sum. `CaptureStream` is `Send`, so it can
+    // cross the spawn_blocking boundary. The warm path skips this entirely: the
+    // stream is already open, which is the point of the feature.
+    let mic_source = match app.state::<crate::warm::WarmMicState>().try_handoff().await {
+        Some(stream) => {
+            tracing::debug!("dictation mic warm handoff (cold-open skipped)");
+            MicSource::Warm(stream)
+        }
+        None => {
+            let audio_for_mic = audio.clone();
+            MicSource::Cold(tokio::task::spawn_blocking(move || {
+                let started = std::time::Instant::now();
+                let result = audio_for_mic.open_mic_capture(None, SAMPLE_RATE, chunk_size);
+                tracing::debug!(
+                    elapsed_ms = started.elapsed().as_millis() as u64,
+                    "dictation mic cold-open"
+                );
+                result
+            }))
+        }
+    };
 
     let (audio_tx, audio_rx) =
         tokio::sync::mpsc::channel::<MixedMessage<bytes::Bytes, ControlMessage>>(32);
@@ -138,7 +155,7 @@ pub async fn start(
                 "dictation stt connect (soniqo, in-process)"
             );
 
-            let mic = await_mic_open(mic_open).await?;
+            let mic = mic_source.resolve().await?;
             commit_and_run(
                 app,
                 mic,
@@ -188,7 +205,7 @@ pub async fn start(
                 "dictation stt connect (websocket handshake)"
             );
 
-            let mic = await_mic_open(mic_open).await?;
+            let mic = mic_source.resolve().await?;
             commit_and_run(
                 app,
                 mic,
@@ -209,6 +226,24 @@ pub async fn start(
 /// obtained (from either serving path): register the session so `stop()`/
 /// `is_running()` see it, flip the orb to listening and hand the stream off
 /// to `run_session`.
+/// Where the session's mic capture stream comes from: a Lane B2 warm handoff
+/// (already open, cold-open skipped) or a cold `spawn_blocking` open running
+/// concurrently with the STT connect. `resolve()` yields the `CaptureStream`
+/// after the connect, keeping the cold-open/connect overlap for the cold path.
+enum MicSource {
+    Warm(hypr_audio::CaptureStream),
+    Cold(tokio::task::JoinHandle<Result<hypr_audio::CaptureStream, hypr_audio::Error>>),
+}
+
+impl MicSource {
+    async fn resolve(self) -> Result<hypr_audio::CaptureStream, Error> {
+        match self {
+            MicSource::Warm(stream) => Ok(stream),
+            MicSource::Cold(handle) => await_mic_open(handle).await,
+        }
+    }
+}
+
 /// Join the concurrent mic cold-open started at session start. Runs after the
 /// STT connect so the two costs overlap; maps a task panic or a device-open
 /// failure into the session error.

@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-set-warm-mic"
+description = "Enables the set_warm_mic command without any pre-configured scope."
+commands.allow = ["set_warm_mic"]
+
+[[permission]]
+identifier = "deny-set-warm-mic"
+description = "Denies the set_warm_mic command without any pre-configured scope."
+commands.deny = ["set_warm_mic"]

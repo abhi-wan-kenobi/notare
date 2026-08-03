@@ -40,6 +40,16 @@ const HOTKEY_ID_TOGGLE = "dictation_toggle";
 const HOTKEY_ID_PASTE_LAST = "dictation_paste_last";
 
 /**
+ * Monotonic sequence for `set_warm_mic` IPCs. Fire-and-forget commands can be
+ * scheduled out of order on the backend runtime; the Rust side applies
+ * last-writer-wins by this number so a stale enable can never override a
+ * newer disable (mic privacy). Module-level: survives re-renders and remounts
+ * within the webview's lifetime.
+ */
+let warmMicSeq = 0;
+const nextWarmMicSeq = () => ++warmMicSeq;
+
+/**
  * Main-window controller for the persistent dictation orb, active on every
  * platform since #31 - macOS reaches parity through this same webview orb
  * instead of its unfinished native panel.
@@ -74,6 +84,7 @@ export function DictationOrbHost() {
     dictation_activation_mode,
     dictation_pause_media,
     dictation_history_retention,
+    dictation_warm_mic,
   } = useConfigValues([
     "dictation_enabled",
     "dictation_shortcut",
@@ -86,6 +97,7 @@ export function DictationOrbHost() {
     "dictation_activation_mode",
     "dictation_pause_media",
     "dictation_history_retention",
+    "dictation_warm_mic",
   ] as const);
   const setSettingValues = useSetSettingValues();
   const enabled = dictation_enabled;
@@ -227,6 +239,54 @@ export function DictationOrbHost() {
       clearInterval(intervalId);
     };
   }, [enabled, isLocalModel]);
+
+  // Lane B2 "warm-mic": while dictation is enabled AND the (off-by-default)
+  // warm-mic setting is on, keep a mic capture stream open in the Rust plugin so
+  // a hotkey press skips the OS mic-open latency. Fire `set_warm_mic(true)` on
+  // enable and re-fire on an interval so a holder that died after a device
+  // switch is recreated (the "enable-tick" recovery). On disable / teardown,
+  // fire `set_warm_mic(false)` so the held device is released and the OS
+  // mic-in-use indicator goes out. When the setting is off, this effect's guard
+  // returns immediately and no warm-mic code runs on the session path.
+  const warmMic = enabled && dictation_warm_mic;
+  useEffect(() => {
+    if (!warmMic) {
+      // Covers both "never enabled" and "just turned off": releasing an
+      // already-released holder is a no-op, so this is safe to always call.
+      void dictationCommands
+        .setWarmMic(false, nextWarmMicSeq())
+        .catch((error) => {
+          console.debug("[dictation] set_warm_mic(false) failed", error);
+        });
+      return;
+    }
+    let cancelled = false;
+    const arm = () => {
+      dictationCommands.setWarmMic(true, nextWarmMicSeq()).then(
+        (result) => {
+          if (!cancelled && result.status !== "ok") {
+            console.debug("[dictation] set_warm_mic(true) error", result.error);
+          }
+        },
+        (error) => {
+          if (!cancelled) {
+            console.debug("[dictation] set_warm_mic(true) failed", error);
+          }
+        },
+      );
+    };
+    arm();
+    const intervalId = setInterval(arm, 30_000);
+    return () => {
+      cancelled = true;
+      clearInterval(intervalId);
+      void dictationCommands
+        .setWarmMic(false, nextWarmMicSeq())
+        .catch((error) => {
+          console.debug("[dictation] set_warm_mic(false) failed", error);
+        });
+    };
+  }, [warmMic]);
 
   // Wall-clock starts of sessions whose finished event hasn't arrived yet,
   // oldest first. A FIFO (not a single slot) so a rapid stop+restart pairs
