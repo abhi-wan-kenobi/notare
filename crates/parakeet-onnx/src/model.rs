@@ -17,7 +17,7 @@ use hypr_onnx::ort::value::TensorRef;
 use regex::Regex;
 
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 pub type DecoderState = (Array3<f32>, Array3<f32>);
 
@@ -25,6 +25,73 @@ pub(crate) const SUBSAMPLING_FACTOR: usize = 8;
 pub(crate) const WINDOW_SIZE: f32 = 0.01;
 const MAX_TOKENS_PER_STEP: usize = 3;
 const TDT_DURATIONS: [usize; 5] = [0, 1, 2, 3, 4];
+
+/// Consecutive GPU inference errors tolerated before the encoder/decoder/
+/// preprocessor sessions are rebuilt on the CPU execution provider (D3). The
+/// Windows DirectML backend can surface a *recoverable* ONNX Runtime error as
+/// an `Err` from `transcribe()` mid-session (the field symptom that silently
+/// killed dictation at ~30s). Two in a row is enough signal that the GPU EP is
+/// unhealthy while staying tolerant of a single transient blip.
+pub(crate) const GPU_ERROR_FALLBACK_THRESHOLD: usize = 2;
+
+/// What the resilience state machine wants the caller to do after one inference
+/// error. Pure and provider-agnostic so it unit-tests on any platform.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum FallbackDecision {
+    /// Keep the current sessions; surface the error to the caller unchanged.
+    Propagate,
+    /// The consecutive-error threshold was reached while a GPU EP was active —
+    /// rebuild the sessions on CPU, then swallow-and-retry so the session lives.
+    FallBackToCpu,
+}
+
+/// Tracks consecutive inference failures while a GPU execution provider is
+/// active so a run of recoverable GPU/DirectML errors can trigger a one-way
+/// downgrade to CPU instead of killing the transcription session. A CPU-active
+/// session never falls back and errors propagate exactly as before.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct GpuFallbackState {
+    /// True while a GPU EP backs the sessions. Set false permanently once we
+    /// downgrade to CPU (CPU never falls back).
+    gpu_active: bool,
+    consecutive_errors: usize,
+}
+
+impl GpuFallbackState {
+    fn new(gpu_active: bool) -> Self {
+        Self {
+            gpu_active,
+            consecutive_errors: 0,
+        }
+    }
+
+    /// A successful inference clears the streak.
+    fn record_success(&mut self) {
+        self.consecutive_errors = 0;
+    }
+
+    /// Record one inference error and decide what the caller should do. On CPU
+    /// this is always [`FallbackDecision::Propagate`] (and the counter is left
+    /// at zero — CPU errors are real errors, not GPU-health signal).
+    fn record_error(&mut self) -> FallbackDecision {
+        if !self.gpu_active {
+            return FallbackDecision::Propagate;
+        }
+        self.consecutive_errors += 1;
+        if self.consecutive_errors >= GPU_ERROR_FALLBACK_THRESHOLD {
+            FallbackDecision::FallBackToCpu
+        } else {
+            FallbackDecision::Propagate
+        }
+    }
+
+    /// Latch the session to CPU after a successful rebuild: no more fallbacks,
+    /// streak cleared.
+    fn mark_cpu(&mut self) {
+        self.gpu_active = false;
+        self.consecutive_errors = 0;
+    }
+}
 
 pub const ENCODER_FILE: &str = "encoder-model.int8.onnx";
 pub const DECODER_JOINT_FILE: &str = "decoder_joint-model.int8.onnx";
@@ -68,6 +135,15 @@ pub struct ParakeetModel {
     vocab: Vec<String>,
     blank_idx: i32,
     vocab_size: usize,
+    /// Model directory + thread count retained so the sessions can be rebuilt
+    /// on CPU if a GPU execution provider starts failing mid-session (D3).
+    model_dir: PathBuf,
+    threads: usize,
+    /// Name of the GPU EP currently in force (`None` = CPU), for logging the
+    /// downgrade.
+    active_provider_name: Option<&'static str>,
+    /// Consecutive-GPU-error tracker driving the CPU fallback.
+    gpu_fallback: GpuFallbackState,
 }
 
 impl ParakeetModel {
@@ -106,6 +182,9 @@ impl ParakeetModel {
 
         tracing::info!(vocab_size, blank_idx, "parakeet_vocabulary_loaded");
 
+        let active_provider_name = provider.as_ref().map(|(name, _)| *name);
+        let gpu_fallback = GpuFallbackState::new(active_provider_name.is_some());
+
         Ok(Self {
             encoder,
             decoder_joint,
@@ -113,6 +192,10 @@ impl ParakeetModel {
             vocab,
             blank_idx,
             vocab_size,
+            model_dir: model_dir.to_path_buf(),
+            threads,
+            active_provider_name,
+            gpu_fallback,
         })
     }
 
@@ -536,7 +619,80 @@ impl ParakeetModel {
         }
     }
 
+    /// Transcribe one buffer, with GPU→CPU graceful degradation (D3).
+    ///
+    /// A true native abort inside ONNX Runtime is uncatchable, but the field
+    /// symptom on Windows DirectML is often a *recoverable* ORT error surfaced
+    /// as an `Err` here, which — before this — killed the whole dictation
+    /// session at ~30s. Instead: after
+    /// [`GPU_ERROR_FALLBACK_THRESHOLD`] consecutive errors while a GPU EP is
+    /// active, rebuild the sessions on the CPU execution provider, then retry
+    /// the just-failed buffer on CPU so neither the chunk nor the session is
+    /// lost. A successful inference resets the streak. On a CPU-active session
+    /// this is a pure pass-through — errors propagate exactly as before.
     pub fn transcribe_samples(
+        &mut self,
+        samples: Vec<f32>,
+    ) -> Result<TimestampedResult, ParakeetError> {
+        // Keep a copy for a possible CPU retry only while a GPU EP is live; a
+        // CPU-active session can never fall back, so it pays no clone cost.
+        let retry_samples = self.gpu_fallback.gpu_active.then(|| samples.clone());
+
+        match self.transcribe_samples_once(samples) {
+            Ok(result) => {
+                self.gpu_fallback.record_success();
+                Ok(result)
+            }
+            Err(error) => match self.gpu_fallback.record_error() {
+                FallbackDecision::Propagate => Err(error),
+                FallbackDecision::FallBackToCpu => {
+                    tracing::warn!(
+                        prior_provider = ?self.active_provider_name,
+                        %error,
+                        "parakeet_falling_back_to_cpu_after_repeated_gpu_errors"
+                    );
+                    // If the CPU rebuild itself fails the session is genuinely
+                    // broken — surface that, leaving the streak latched so a
+                    // later attempt can retry the downgrade.
+                    self.rebuild_sessions_on_cpu()?;
+                    self.gpu_fallback.mark_cpu();
+                    self.active_provider_name = None;
+                    // `record_error` only returns `FallBackToCpu` when a GPU EP
+                    // was active, which is exactly when `retry_samples` is
+                    // `Some`; retry the failed buffer on CPU.
+                    match retry_samples {
+                        Some(samples) => self.transcribe_samples_once(samples),
+                        None => Err(error),
+                    }
+                }
+            },
+        }
+    }
+
+    /// Rebuild all three ONNX sessions on the CPU execution provider, replacing
+    /// the GPU-backed ones in place. Used by the D3 fallback path.
+    fn rebuild_sessions_on_cpu(&mut self) -> Result<(), ParakeetError> {
+        let cpu_providers = || vec![CPUExecutionProvider::default().build()];
+        self.encoder = Self::build_session(
+            &self.model_dir.join(ENCODER_FILE),
+            self.threads,
+            cpu_providers(),
+        )?;
+        self.decoder_joint = Self::build_session(
+            &self.model_dir.join(DECODER_JOINT_FILE),
+            self.threads,
+            cpu_providers(),
+        )?;
+        self.preprocessor = Self::build_session(
+            &self.model_dir.join(PREPROCESSOR_FILE),
+            self.threads,
+            cpu_providers(),
+        )?;
+        tracing::info!(provider = "cpu", "parakeet_execution_provider_active");
+        Ok(())
+    }
+
+    fn transcribe_samples_once(
         &mut self,
         samples: Vec<f32>,
     ) -> Result<TimestampedResult, ParakeetError> {
@@ -787,6 +943,59 @@ mod tests {
             assert!(
                 providers.iter().all(|(name, _)| *name != "directml"),
                 "directml must never be constructed off Windows"
+            );
+        }
+    }
+
+    #[test]
+    fn gpu_fallback_triggers_after_threshold_consecutive_errors() {
+        // Two consecutive GPU errors (the D3 threshold) must request a CPU
+        // rebuild; the first error alone must not.
+        let mut state = GpuFallbackState::new(true);
+        assert_eq!(GPU_ERROR_FALLBACK_THRESHOLD, 2);
+        assert_eq!(state.record_error(), FallbackDecision::Propagate);
+        assert_eq!(state.record_error(), FallbackDecision::FallBackToCpu);
+    }
+
+    #[test]
+    fn gpu_fallback_success_resets_the_streak() {
+        // A success between two errors clears the counter, so the errors are
+        // not "consecutive" and no fallback is requested.
+        let mut state = GpuFallbackState::new(true);
+        assert_eq!(state.record_error(), FallbackDecision::Propagate);
+        state.record_success();
+        assert_eq!(
+            state.record_error(),
+            FallbackDecision::Propagate,
+            "a success must reset the consecutive-error streak"
+        );
+        // ...and the streak has to build up again from scratch.
+        assert_eq!(state.record_error(), FallbackDecision::FallBackToCpu);
+    }
+
+    #[test]
+    fn cpu_active_state_never_falls_back() {
+        // A CPU-active session (no GPU EP) must propagate every error unchanged
+        // no matter how many pile up — errors are real, not GPU-health signal.
+        let mut state = GpuFallbackState::new(false);
+        for _ in 0..(GPU_ERROR_FALLBACK_THRESHOLD * 3) {
+            assert_eq!(state.record_error(), FallbackDecision::Propagate);
+        }
+    }
+
+    #[test]
+    fn mark_cpu_latches_off_gpu_and_disables_future_fallback() {
+        // After a downgrade the state is CPU-active: it must never fall back
+        // again (the rebuilt sessions are already on CPU) and the streak resets.
+        let mut state = GpuFallbackState::new(true);
+        state.record_error();
+        assert_eq!(state.record_error(), FallbackDecision::FallBackToCpu);
+        state.mark_cpu();
+        for _ in 0..(GPU_ERROR_FALLBACK_THRESHOLD * 2) {
+            assert_eq!(
+                state.record_error(),
+                FallbackDecision::Propagate,
+                "a CPU-latched state must never fall back again"
             );
         }
     }
