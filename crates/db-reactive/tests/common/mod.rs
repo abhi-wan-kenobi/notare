@@ -194,16 +194,35 @@ pub async fn assert_no_event(events: &EventLog, index: usize, timeout: Duration)
     );
 }
 
-pub async fn wait_for_stable_event_count(events: &EventLog, stable_for: Duration) -> usize {
-    let mut last_len = events.lock().unwrap().len();
-    loop {
-        tokio::time::sleep(stable_for).await;
-        let len = events.lock().unwrap().len();
-        if len == last_len {
-            return len;
+/// Wait until the most recently delivered event is a `Result` whose rows satisfy
+/// `predicate`, then return those rows.
+///
+/// This is a deterministic synchronization point: it waits for an actual delivery
+/// with the expected content, rather than assuming the pipeline has settled after a
+/// fixed quiet period. The subscription's result set is monotonic for these tests
+/// (every refresh reads the current DB state, and rows only accumulate), so once a
+/// matching result is delivered it stays the latest — there is no reordering to
+/// race against.
+pub async fn wait_for_latest_result<F>(
+    events: &EventLog,
+    timeout: Duration,
+    mut predicate: F,
+) -> Vec<Value>
+where
+    F: FnMut(&[Value]) -> bool,
+{
+    tokio::time::timeout(timeout, async {
+        loop {
+            if let Some(TestEvent::Result(rows)) = events.lock().unwrap().last() {
+                if predicate(rows) {
+                    return rows.clone();
+                }
+            }
+            tokio::time::sleep(Duration::from_millis(5)).await;
         }
-        last_len = len;
-    }
+    })
+    .await
+    .expect("expected a matching result delivery before timeout")
 }
 
 pub async fn setup_runtime() -> (tempfile::TempDir, sqlx::SqlitePool, TestRuntime) {
