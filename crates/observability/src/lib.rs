@@ -15,7 +15,13 @@ pub fn install_trace_context_propagator() {
 pub fn set_remote_parent(span: &tracing::Span, headers: &HeaderMap) {
     let parent_context = extract_remote_context(headers);
     if parent_context.span().span_context().is_valid() {
-        span.set_parent(parent_context);
+        // tracing-opentelemetry 0.33 made `set_parent` fallible: it errors when
+        // the span has no subscriber or the subscriber has no OpenTelemetry
+        // layer. Losing a parent link degrades trace stitching, it never breaks
+        // the caller — so log and carry on rather than propagate.
+        if let Err(e) = span.set_parent(parent_context) {
+            tracing::debug!("failed to set remote trace parent: {e}");
+        }
     }
 }
 
