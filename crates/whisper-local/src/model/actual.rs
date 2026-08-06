@@ -16,6 +16,68 @@ lazy_static! {
     static ref TRAILING_DOTS: Regex = Regex::new(r"\.{2,}$").unwrap();
 }
 
+/// Default beam width for decoding. Matches `whisper.cpp`'s own default and the
+/// beam-searched large-v3 setup OpenWhispr uses; this is the WS-2 quality lever
+/// (greedy `best_of: 1` was the gap). Override at runtime with the env vars read
+/// by [`sampling_strategy`].
+const DEFAULT_BEAM_SIZE: i32 = 5;
+/// Default `best_of` when the operator forces greedy (`beam_size <= 1`).
+const DEFAULT_BEST_OF: i32 = 5;
+/// `whisper.cpp` default; patience is not implemented there as of v1.7.6.
+const DEFAULT_BEAM_PATIENCE: f32 = -1.0;
+
+/// Pure resolution of the decode sampling strategy from already-parsed knobs so
+/// it can be unit-tested without touching process env. `beam_size <= 1` selects
+/// greedy (with `best_of`), anything larger selects beam search.
+fn resolve_sampling(
+    beam_size: Option<i32>,
+    best_of: Option<i32>,
+    patience: Option<f32>,
+) -> SamplingStrategy {
+    let beam_size = beam_size.unwrap_or(DEFAULT_BEAM_SIZE);
+    if beam_size <= 1 {
+        let best_of = best_of.unwrap_or(DEFAULT_BEST_OF).max(1);
+        SamplingStrategy::Greedy { best_of }
+    } else {
+        SamplingStrategy::BeamSearch {
+            beam_size,
+            patience: patience.unwrap_or(DEFAULT_BEAM_PATIENCE),
+        }
+    }
+}
+
+/// Runtime-configurable sampling strategy for whisper decoding.
+///
+/// Defaults to beam search (width `DEFAULT_BEAM_SIZE`) — the accuracy win vs the
+/// old greedy `best_of: 1`. NOTE: the meeting/batch path (`transcribe-whisper-local`)
+/// shares this exact `transcribe`, so this default lifts BOTH dictation and
+/// meeting decode quality; the only cost is more CPU per chunk. To pin the whole
+/// STT-server process back to greedy set `HYPR_WHISPER_BEAM_SIZE=1`.
+///
+/// Env knobs (all optional):
+/// - `HYPR_WHISPER_BEAM_SIZE`  — beam width; `<= 1` forces greedy.
+/// - `HYPR_WHISPER_BEST_OF`    — greedy `best_of` (only when greedy).
+/// - `HYPR_WHISPER_BEAM_PATIENCE` — beam patience (float).
+fn sampling_strategy() -> SamplingStrategy {
+    fn env_parse<T: std::str::FromStr>(key: &str) -> Option<T> {
+        std::env::var(key).ok()?.trim().parse::<T>().ok()
+    }
+
+    resolve_sampling(
+        env_parse::<i32>("HYPR_WHISPER_BEAM_SIZE"),
+        env_parse::<i32>("HYPR_WHISPER_BEST_OF"),
+        env_parse::<f32>("HYPR_WHISPER_BEAM_PATIENCE"),
+    )
+}
+
+/// Build the rolling `initial_prompt` from the accumulated dynamic prompt.
+/// Extracted so the "rolling prompt is preserved" guarantee is unit-testable
+/// without a model.
+fn initial_prompt_from(dynamic_prompt: &str) -> String {
+    let parts = [dynamic_prompt.trim()];
+    parts.join("\n").trim().to_string()
+}
+
 #[derive(Default)]
 pub struct LoadedWhisperBuilder {
     model_path: Option<String>,
@@ -140,11 +202,9 @@ impl Whisper {
         let language = self.get_language(audio)?;
 
         let params = {
-            let mut p = FullParams::new(SamplingStrategy::Greedy { best_of: 1 });
+            let mut p = FullParams::new(sampling_strategy());
 
-            let parts = [self.dynamic_prompt.trim()];
-            let joined = parts.join("\n");
-            let initial_prompt = joined.trim();
+            let initial_prompt = initial_prompt_from(&self.dynamic_prompt);
 
             tracing::info!(input_audio_length_sec = ?input_audio_length_sec, "transcribe_started");
 
@@ -152,7 +212,7 @@ impl Whisper {
             p.set_detect_language(false);
             p.set_language(language.as_deref());
 
-            p.set_initial_prompt(initial_prompt);
+            p.set_initial_prompt(&initial_prompt);
 
             unsafe {
                 Self::suppress_beg(&mut p, &token_beg);
@@ -332,6 +392,64 @@ impl Whisper {
 mod tests {
     use super::*;
 
+    #[test]
+    fn resolve_sampling_defaults_to_beam_search() {
+        match resolve_sampling(None, None, None) {
+            SamplingStrategy::BeamSearch { beam_size, patience } => {
+                assert_eq!(beam_size, DEFAULT_BEAM_SIZE);
+                assert_eq!(patience, DEFAULT_BEAM_PATIENCE);
+            }
+            other => panic!("expected beam search default, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn resolve_sampling_honors_explicit_beam_knobs() {
+        match resolve_sampling(Some(8), None, Some(0.5)) {
+            SamplingStrategy::BeamSearch { beam_size, patience } => {
+                assert_eq!(beam_size, 8);
+                assert_eq!(patience, 0.5);
+            }
+            other => panic!("expected beam search, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn resolve_sampling_beam_size_one_forces_greedy() {
+        match resolve_sampling(Some(1), Some(3), None) {
+            SamplingStrategy::Greedy { best_of } => assert_eq!(best_of, 3),
+            other => panic!("expected greedy, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn resolve_sampling_greedy_defaults_and_clamps_best_of() {
+        // beam_size 0 -> greedy, best_of missing -> default
+        match resolve_sampling(Some(0), None, None) {
+            SamplingStrategy::Greedy { best_of } => assert_eq!(best_of, DEFAULT_BEST_OF),
+            other => panic!("expected greedy, got {other:?}"),
+        }
+        // best_of <= 0 clamps to at least 1
+        match resolve_sampling(Some(-4), Some(0), None) {
+            SamplingStrategy::Greedy { best_of } => assert_eq!(best_of, 1),
+            other => panic!("expected greedy, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn initial_prompt_preserves_rolling_context() {
+        // The rolling prompt (previous transcript) is carried through verbatim,
+        // only outer whitespace trimmed.
+        assert_eq!(initial_prompt_from(""), "");
+        assert_eq!(initial_prompt_from("   "), "");
+        assert_eq!(
+            initial_prompt_from("  ship the beam-search release  "),
+            "ship the beam-search release"
+        );
+    }
+
+    // Requires a real `model.bin` next to the crate; ignored on CI/CPU-only runs.
+    #[ignore = "real-model test: needs whisper model.bin"]
     #[test]
     fn test_whisper() {
         let mut whisper = Whisper::builder()
