@@ -91,6 +91,14 @@ impl GpuFallbackState {
         self.gpu_active = false;
         self.consecutive_errors = 0;
     }
+
+    /// The CPU rebuild itself failed, so the downgrade couldn't happen and we
+    /// stay on the GPU EP. Clear the streak so the (expensive, three-session)
+    /// rebuild is retried at most once per [`GPU_ERROR_FALLBACK_THRESHOLD`]
+    /// errors rather than on every subsequent chunk.
+    fn note_rebuild_failed(&mut self) {
+        self.consecutive_errors = 0;
+    }
 }
 
 pub const ENCODER_FILE: &str = "encoder-model.int8.onnx";
@@ -643,6 +651,11 @@ impl ParakeetModel {
                 self.gpu_fallback.record_success();
                 Ok(result)
             }
+            // Only ONNX-Runtime errors are GPU-health signal. A logic error
+            // (bad shape, missing tensor, I/O) is a real failure that must
+            // propagate untouched — counting it toward the GPU streak would
+            // trigger a pointless CPU rebuild and mask the true cause.
+            Err(error) if !matches!(error, ParakeetError::Ort(_)) => Err(error),
             Err(error) => match self.gpu_fallback.record_error() {
                 FallbackDecision::Propagate => Err(error),
                 FallbackDecision::FallBackToCpu => {
@@ -651,18 +664,31 @@ impl ParakeetModel {
                         %error,
                         "parakeet_falling_back_to_cpu_after_repeated_gpu_errors"
                     );
-                    // If the CPU rebuild itself fails the session is genuinely
-                    // broken — surface that, leaving the streak latched so a
-                    // later attempt can retry the downgrade.
-                    self.rebuild_sessions_on_cpu()?;
-                    self.gpu_fallback.mark_cpu();
-                    self.active_provider_name = None;
-                    // `record_error` only returns `FallBackToCpu` when a GPU EP
-                    // was active, which is exactly when `retry_samples` is
-                    // `Some`; retry the failed buffer on CPU.
-                    match retry_samples {
-                        Some(samples) => self.transcribe_samples_once(samples),
-                        None => Err(error),
+                    match self.rebuild_sessions_on_cpu() {
+                        Ok(()) => {
+                            self.gpu_fallback.mark_cpu();
+                            self.active_provider_name = None;
+                            // `record_error` only returns `FallBackToCpu` when a
+                            // GPU EP was active, which is exactly when
+                            // `retry_samples` is `Some`; retry on CPU.
+                            match retry_samples {
+                                Some(samples) => self.transcribe_samples_once(samples),
+                                None => Err(error),
+                            }
+                        }
+                        Err(rebuild_error) => {
+                            // The CPU rebuild itself failed — the model is
+                            // genuinely broken and we stay on the GPU EP. Clear
+                            // the streak so we don't attempt a full rebuild on
+                            // every subsequent chunk, and surface the original
+                            // inference error (not the rebuild error).
+                            tracing::error!(
+                                %rebuild_error,
+                                "parakeet_cpu_rebuild_failed_staying_on_gpu"
+                            );
+                            self.gpu_fallback.note_rebuild_failed();
+                            Err(error)
+                        }
                     }
                 }
             },
@@ -673,21 +699,28 @@ impl ParakeetModel {
     /// the GPU-backed ones in place. Used by the D3 fallback path.
     fn rebuild_sessions_on_cpu(&mut self) -> Result<(), ParakeetError> {
         let cpu_providers = || vec![CPUExecutionProvider::default().build()];
-        self.encoder = Self::build_session(
+        // Build all three into temporaries FIRST, then swap them in only once
+        // every build has succeeded. If a later build fails, `?` returns before
+        // any field is reassigned, so the model can never be left with a mix of
+        // CPU and GPU sessions.
+        let encoder = Self::build_session(
             &self.model_dir.join(ENCODER_FILE),
             self.threads,
             cpu_providers(),
         )?;
-        self.decoder_joint = Self::build_session(
+        let decoder_joint = Self::build_session(
             &self.model_dir.join(DECODER_JOINT_FILE),
             self.threads,
             cpu_providers(),
         )?;
-        self.preprocessor = Self::build_session(
+        let preprocessor = Self::build_session(
             &self.model_dir.join(PREPROCESSOR_FILE),
             self.threads,
             cpu_providers(),
         )?;
+        self.encoder = encoder;
+        self.decoder_joint = decoder_joint;
+        self.preprocessor = preprocessor;
         tracing::info!(provider = "cpu", "parakeet_execution_provider_active");
         Ok(())
     }
@@ -970,6 +1003,24 @@ mod tests {
             "a success must reset the consecutive-error streak"
         );
         // ...and the streak has to build up again from scratch.
+        assert_eq!(state.record_error(), FallbackDecision::FallBackToCpu);
+    }
+
+    #[test]
+    fn failed_rebuild_clears_streak_for_bounded_retry() {
+        // If the CPU rebuild fails, we stay on GPU. The streak must be cleared
+        // so the next rebuild attempt is another THRESHOLD errors away — not on
+        // every subsequent chunk (which would hammer the three-session rebuild).
+        let mut state = GpuFallbackState::new(true);
+        assert_eq!(state.record_error(), FallbackDecision::Propagate);
+        assert_eq!(state.record_error(), FallbackDecision::FallBackToCpu);
+        state.note_rebuild_failed();
+        // Immediately after a failed rebuild, one more error must NOT re-trigger.
+        assert_eq!(
+            state.record_error(),
+            FallbackDecision::Propagate,
+            "a failed rebuild must not leave the streak latched at the threshold"
+        );
         assert_eq!(state.record_error(), FallbackDecision::FallBackToCpu);
     }
 
