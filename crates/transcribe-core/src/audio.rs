@@ -5,30 +5,53 @@ use hypr_audio_chunking::{AudioChunk, Chunker, SpeechChunker, SpeechChunkingConf
 pub const TARGET_SAMPLE_RATE: u32 = 16_000;
 
 const DEFAULT_SPEECH_REDEMPTION_TIME: Duration = Duration::from_millis(150);
-/// Hard cap on samples handed to an engine in one call (25s). The batch path
-/// windows to this in `chunk_channel_audio_with`; the streaming path applies
-/// the same cap per VAD chunk (see `service::streaming`). Both matter because
-/// Voxtral/libmtmd has a fixed 30s audio window — a longer chunk is silently
-/// truncated (dropped transcript). whisper/parakeet tolerate oversize input,
-/// but capping uniformly keeps every engine correct.
+/// Universal ceiling on samples handed to an engine in one call (25s). No batch
+/// chunk is ever larger, whatever the engine, because Voxtral/libmtmd has a
+/// fixed 30s audio window — a longer chunk is silently truncated (dropped
+/// transcript). whisper/parakeet tolerate oversize input, so 25s keeps them
+/// correct too.
+///
+/// An engine may need a SMALLER cap: Parakeet-on-Windows-DirectML aborts the
+/// process on buffers past ~20s (D3), so it lowers its cap to 15s via
+/// [`SttEngineSession::max_samples_per_call`]. The streaming path already honors
+/// that per VAD chunk (see `service::streaming::build_transcription_streams`);
+/// the batch path honors it too by taking `min(engine cap, MAX_CHUNK_SAMPLES)`
+/// — otherwise a re-transcription of a recorded file would hand Parakeet a 25s
+/// buffer and crash exactly like dictation did before the fix.
 pub(crate) const MAX_CHUNK_SAMPLES: usize = TARGET_SAMPLE_RATE as usize * 25;
 
-pub fn chunk_channel_audio<E>(samples: &[f32]) -> Result<Vec<AudioChunk>, E>
+/// Chunk one channel's audio for batch transcription, windowed to the engine's
+/// own per-call limit (never above [`MAX_CHUNK_SAMPLES`]). Pass the session's
+/// [`SttEngineSession::max_samples_per_call`]; `usize::MAX` selects the ceiling.
+pub fn chunk_channel_audio<E>(
+    samples: &[f32],
+    engine_max_samples: usize,
+) -> Result<Vec<AudioChunk>, E>
 where
     E: From<hypr_audio_chunking::Error>,
 {
     let mut chunker =
         SpeechChunker::new(SpeechChunkingConfig::speech(DEFAULT_SPEECH_REDEMPTION_TIME))?;
-    Ok(chunk_channel_audio_with(samples, &mut chunker)?)
+    Ok(chunk_channel_audio_with(
+        samples,
+        &mut chunker,
+        engine_max_samples,
+    )?)
 }
 
 fn chunk_channel_audio_with<C>(
     samples: &[f32],
     chunker: &mut C,
+    engine_max_samples: usize,
 ) -> Result<Vec<AudioChunk>, C::Error>
 where
     C: Chunker,
 {
+    // Never exceed the engine's own limit nor the universal ceiling. The
+    // `.max(1)` mirrors the streaming path (`TranscribeChannelStream`): a cap of
+    // 0 would reach `slice::chunks(0)` in the split pass below and panic. No
+    // engine returns 0 today, but the two cap sites must defend identically.
+    let max_chunk_samples = engine_max_samples.min(MAX_CHUNK_SAMPLES).max(1);
     let chunks = chunker.chunk(samples, TARGET_SAMPLE_RATE)?;
     let total = samples.len();
 
@@ -47,7 +70,7 @@ where
     let mut group_end: usize = 0;
     for chunk in &chunks {
         match group_start {
-            Some(gs) if chunk.sample_end.saturating_sub(gs) <= MAX_CHUNK_SAMPLES => {
+            Some(gs) if chunk.sample_end.saturating_sub(gs) <= max_chunk_samples => {
                 group_end = chunk.sample_end;
             }
             Some(gs) => {
@@ -82,13 +105,13 @@ where
     // --- Split any packed group still over the cap (a single >25s utterance) --
     let mut normalized = Vec::new();
     for chunk in packed {
-        if chunk.samples.len() <= MAX_CHUNK_SAMPLES {
+        if chunk.samples.len() <= max_chunk_samples {
             normalized.push(chunk);
             continue;
         }
 
-        for (index, window) in chunk.samples.chunks(MAX_CHUNK_SAMPLES).enumerate() {
-            let sample_start = chunk.sample_start + index * MAX_CHUNK_SAMPLES;
+        for (index, window) in chunk.samples.chunks(max_chunk_samples).enumerate() {
+            let sample_start = chunk.sample_start + index * max_chunk_samples;
             let sample_end = sample_start + window.len();
             normalized.push(AudioChunk {
                 samples: window.to_vec(),
@@ -147,7 +170,7 @@ mod tests {
 
     #[test]
     fn empty_audio_marks_channel_complete() {
-        let chunks = chunk_channel_audio::<hypr_audio_chunking::Error>(&[]).unwrap();
+        let chunks = chunk_channel_audio::<hypr_audio_chunking::Error>(&[], usize::MAX).unwrap();
 
         assert!(chunks.is_empty());
         assert_eq!(initial_resolved_until(&chunks, 40.0), 40.0);
@@ -156,7 +179,7 @@ mod tests {
     #[test]
     fn empty_chunk_lists_mark_channel_complete() {
         let mut chunker = FakeChunker { chunks: Vec::new() };
-        let chunks = chunk_channel_audio_with(&[], &mut chunker).unwrap();
+        let chunks = chunk_channel_audio_with(&[], &mut chunker, usize::MAX).unwrap();
 
         assert!(chunks.is_empty());
         assert_eq!(initial_resolved_until(&chunks, 40.0), 40.0);
@@ -172,7 +195,7 @@ mod tests {
             }],
         };
         let chunks =
-            chunk_channel_audio_with(&vec![0.0; TARGET_SAMPLE_RATE as usize * 15], &mut chunker)
+            chunk_channel_audio_with(&vec![0.0; TARGET_SAMPLE_RATE as usize * 15], &mut chunker, usize::MAX)
                 .unwrap();
 
         assert_eq!(initial_resolved_until(&chunks, 40.0), 12.0);
@@ -192,6 +215,7 @@ mod tests {
         let chunks = chunk_channel_audio_with(
             &vec![0.0; TARGET_SAMPLE_RATE as usize * 2 + oversized],
             &mut chunker,
+            usize::MAX,
         )
         .unwrap();
 
@@ -203,6 +227,53 @@ mod tests {
         );
         assert_eq!(chunks[1].sample_start, chunks[0].sample_end);
         assert_eq!(chunks[1].samples.len(), TARGET_SAMPLE_RATE as usize);
+    }
+
+    #[test]
+    fn batch_path_honors_a_smaller_engine_cap() {
+        // Regression for the D3-class batch gap (WS-1, 2026-08-06): the batch
+        // path used to split uniformly at the 25s ceiling, so a Windows Parakeet
+        // re-transcription got a 25s buffer past its ~20s DirectML crash point.
+        // With Parakeet's 15s cap, a single 20s utterance must split into 15s +
+        // 5s — never a >15s chunk.
+        let parakeet_cap = TARGET_SAMPLE_RATE as usize * 15;
+        let utterance = TARGET_SAMPLE_RATE as usize * 20;
+        let mut chunker = FakeChunker {
+            chunks: vec![AudioChunk {
+                samples: vec![1.0; utterance],
+                sample_start: 0,
+                sample_end: utterance,
+            }],
+        };
+
+        let chunks =
+            chunk_channel_audio_with(&vec![0.0; utterance], &mut chunker, parakeet_cap).unwrap();
+
+        assert!(
+            chunks.iter().all(|c| c.samples.len() <= parakeet_cap),
+            "no batch chunk may exceed the engine's per-call cap"
+        );
+        assert_eq!(chunks.len(), 2, "20s at a 15s cap => two chunks");
+        assert_eq!(chunks[0].samples.len(), parakeet_cap);
+        assert_eq!(chunks[1].samples.len(), TARGET_SAMPLE_RATE as usize * 5);
+    }
+
+    #[test]
+    fn zero_engine_cap_is_clamped_and_does_not_panic() {
+        // Regression for the audit finding (kimi + minimax, 2026-08-06): a cap of
+        // 0 must be clamped to 1, or the split pass calls `slice::chunks(0)` and
+        // panics — the same defense the streaming path already has. Tiny input so
+        // the clamped 1-sample windows stay cheap.
+        let mut chunker = FakeChunker {
+            chunks: vec![AudioChunk {
+                samples: vec![1.0; 3],
+                sample_start: 0,
+                sample_end: 3,
+            }],
+        };
+        let chunks = chunk_channel_audio_with(&vec![0.0; 3], &mut chunker, 0).unwrap();
+        assert!(chunks.iter().all(|c| !c.samples.is_empty()));
+        assert_eq!(chunks.iter().map(|c| c.samples.len()).sum::<usize>(), 3);
     }
 
     #[test]
@@ -224,7 +295,7 @@ mod tests {
         };
 
         let chunks =
-            chunk_channel_audio_with(&vec![0.0; TARGET_SAMPLE_RATE as usize * 45], &mut chunker)
+            chunk_channel_audio_with(&vec![0.0; TARGET_SAMPLE_RATE as usize * 45], &mut chunker, usize::MAX)
                 .unwrap();
 
         assert_eq!(chunks.len(), 2);
@@ -248,7 +319,7 @@ mod tests {
         let mut chunker = FakeChunker { chunks };
 
         let out =
-            chunk_channel_audio_with(&vec![0.0; TARGET_SAMPLE_RATE as usize * 20], &mut chunker)
+            chunk_channel_audio_with(&vec![0.0; TARGET_SAMPLE_RATE as usize * 20], &mut chunker, usize::MAX)
                 .unwrap();
 
         assert_eq!(

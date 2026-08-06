@@ -171,15 +171,14 @@ pub async fn start(
             let params = ListenParams {
                 model: Some(model),
                 sample_rate: SAMPLE_RATE,
-                custom_query: Some(std::collections::HashMap::from([
-                    ("redemption_time_ms".to_string(), "400".to_string()),
-                    // Select the server's dictation chunking profile: prompt
-                    // redemption + a hard max-chunk cut, so a continuous
-                    // dictation never accumulates the oversized buffer that
-                    // crashed Parakeet on Windows (D3). Meeting capture omits
-                    // this and keeps the grow-to-pause `speech` profile.
-                    ("chunk_profile".to_string(), "dictation".to_string()),
-                ])),
+                // Select the server's dictation chunking profile: prompt
+                // redemption + a hard max-chunk cut, so a continuous dictation
+                // never accumulates the oversized buffer that crashed Parakeet
+                // on Windows (D3). Meeting capture omits this and keeps the
+                // grow-to-pause `speech` profile. Built through the shared
+                // `owhisper_interface` helper so the wire key can't drift from
+                // the server's reader (WS-0 contract test).
+                custom_query: Some(ListenParams::dictation_custom_query(400)),
                 ..Default::default()
             };
 

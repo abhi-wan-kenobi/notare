@@ -641,9 +641,28 @@ fn build_transcription_streams<E: SttEngine>(
         // Hard cap on what any single `transcribe` call receives: the engine's
         // own limit (Parakeet lowers it to survive Windows DirectML — D3),
         // never above the universal `MAX_CHUNK_SAMPLES` ceiling.
-        let max_samples = session
-            .max_samples_per_call()
-            .min(crate::audio::MAX_CHUNK_SAMPLES);
+        let engine_max_samples = session.max_samples_per_call();
+        let max_samples = engine_max_samples.min(crate::audio::MAX_CHUNK_SAMPLES);
+
+        // D3 field-bug instrumentation (WS-0, 2026-08-06): the Windows dictation
+        // stall keeps recurring, and the two silent regressions are "the
+        // dictation VAD profile was not applied" and "the engine cap did not
+        // reach this stream". Emit both, once per session (channel 0), so a
+        // single user-supplied log proves which profile + cap were actually in
+        // force — no guessing. Pairs with `parakeet_execution_provider_active`
+        // (which EP is live) and the client's `dictation_session_end`.
+        if channel_idx == 0 {
+            tracing::info!(
+                profile = if dictation { "dictation" } else { "meeting" },
+                engine = E::arch(),
+                redemption_ms = redemption_time.as_millis() as u64,
+                engine_max_samples,
+                applied_max_samples = max_samples,
+                ceiling_samples = crate::audio::MAX_CHUNK_SAMPLES,
+                "transcription_streams_built"
+            );
+        }
+
         let chunk_stream = ChannelAudioSource::new(audio_rx).speech_chunks(chunking_config.clone());
         let stream: TranscriptionStream = Box::pin(TranscribeChannelStream::new(
             channel_idx,

@@ -50,26 +50,23 @@ pub(crate) fn build_metadata<E: SttEngine>(model_path: &Path) -> Metadata {
     }
 }
 
-/// Query key a client sets to request the dictation chunking profile (prompt
-/// redemption + a hard max-chunk cut) instead of the meeting/`speech` profile.
-/// Absent (every meeting client) leaves the meeting behavior byte-identical.
-pub(crate) const CHUNK_PROFILE_QUERY_KEY: &str = "chunk_profile";
-pub(crate) const CHUNK_PROFILE_DICTATION: &str = "dictation";
+/// Query key/value a client sets to request the dictation chunking profile
+/// (prompt redemption + a hard max-chunk cut) instead of the meeting/`speech`
+/// profile. Re-exported from `owhisper_interface` — the single crate shared
+/// with the dictation plugin that *sends* this — so the read side here can
+/// never drift from the write side and silently regress the Windows D3 stall.
+pub(crate) const CHUNK_PROFILE_QUERY_KEY: &str = ListenParams::CHUNK_PROFILE_QUERY_KEY;
+pub(crate) const CHUNK_PROFILE_DICTATION: &str = ListenParams::CHUNK_PROFILE_DICTATION;
 
 pub(crate) fn is_dictation(params: &ListenParams) -> bool {
-    params
-        .custom_query
-        .as_ref()
-        .and_then(|q| q.get(CHUNK_PROFILE_QUERY_KEY))
-        .map(|v| v == CHUNK_PROFILE_DICTATION)
-        .unwrap_or(false)
+    params.is_dictation()
 }
 
 pub(crate) fn redemption_time(params: &ListenParams) -> Duration {
     params
         .custom_query
         .as_ref()
-        .and_then(|q| q.get("redemption_time_ms"))
+        .and_then(|q| q.get(ListenParams::REDEMPTION_TIME_QUERY_KEY))
         .and_then(|v| v.parse::<u64>().ok())
         .map(Duration::from_millis)
         .unwrap_or(DEFAULT_REDEMPTION_TIME)

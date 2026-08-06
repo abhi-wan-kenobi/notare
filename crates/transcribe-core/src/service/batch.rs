@@ -207,13 +207,17 @@ where
     let _activity =
         crate::activity::begin_guarded(metadata.request_id.clone(), E::arch().to_string());
     let mut session = build_session(engine, params)?;
+    // Window batch chunks to the engine's own per-call limit, not just the
+    // universal 25s ceiling: Parakeet-on-DirectML crashes on >~20s buffers, so a
+    // re-transcription must respect its 15s cap exactly like streaming does.
+    let engine_max_samples = session.max_samples_per_call();
     let channel_durations = channel_samples
         .iter()
         .map(|samples| channel_duration_sec(samples))
         .collect::<Vec<_>>();
     let channel_chunks = channel_samples
         .iter()
-        .map(|samples| chunk_channel_audio::<crate::Error>(samples))
+        .map(|samples| chunk_channel_audio::<crate::Error>(samples, engine_max_samples))
         .collect::<Result<Vec<_>, _>>()?;
     let resolved_until = channel_chunks
         .iter()
