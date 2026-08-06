@@ -50,14 +50,12 @@ pub(crate) fn build_metadata<E: SttEngine>(model_path: &Path) -> Metadata {
     }
 }
 
-/// Query key/value a client sets to request the dictation chunking profile
-/// (prompt redemption + a hard max-chunk cut) instead of the meeting/`speech`
-/// profile. Re-exported from `owhisper_interface` — the single crate shared
-/// with the dictation plugin that *sends* this — so the read side here can
-/// never drift from the write side and silently regress the Windows D3 stall.
-pub(crate) const CHUNK_PROFILE_QUERY_KEY: &str = ListenParams::CHUNK_PROFILE_QUERY_KEY;
-pub(crate) const CHUNK_PROFILE_DICTATION: &str = ListenParams::CHUNK_PROFILE_DICTATION;
-
+/// True when the client requested the dictation chunking profile (prompt
+/// redemption + a hard max-chunk cut) instead of the meeting/`speech` profile.
+/// The key/value constants live on `ListenParams` in `owhisper_interface` — the
+/// single crate shared with the dictation plugin that *sends* this — so the read
+/// side here can never drift from the write side and silently regress the
+/// Windows D3 stall.
 pub(crate) fn is_dictation(params: &ListenParams) -> bool {
     params.is_dictation()
 }
@@ -249,13 +247,13 @@ mod tests {
         assert!(!is_dictation(&params), "absent => meeting/speech profile");
 
         params.custom_query = Some(std::collections::HashMap::from([(
-            CHUNK_PROFILE_QUERY_KEY.to_string(),
-            CHUNK_PROFILE_DICTATION.to_string(),
+            ListenParams::CHUNK_PROFILE_QUERY_KEY.to_string(),
+            ListenParams::CHUNK_PROFILE_DICTATION.to_string(),
         )]));
         assert!(is_dictation(&params));
 
         params.custom_query = Some(std::collections::HashMap::from([(
-            CHUNK_PROFILE_QUERY_KEY.to_string(),
+            ListenParams::CHUNK_PROFILE_QUERY_KEY.to_string(),
             "speech".to_string(),
         )]));
         assert!(!is_dictation(&params), "any other value => meeting profile");
