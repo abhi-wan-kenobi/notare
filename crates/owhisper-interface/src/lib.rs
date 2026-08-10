@@ -182,4 +182,87 @@ impl ListenParams {
     fn default_sample_rate() -> u32 {
         16000
     }
+
+    /// The `custom_query` key a dictation client sets to request the server's
+    /// dictation chunking profile (prompt redemption + a hard max-chunk cut)
+    /// instead of the meeting/`speech` profile. Absent leaves meeting behavior
+    /// byte-identical.
+    ///
+    /// Defined here — the single crate both the dictation plugin (which *sends*
+    /// this) and `transcribe-core` (which *reads* it) depend on — so a rename
+    /// can never silently desync the two sides and regress the Windows D3
+    /// stall (dictation falling back to the 20s meeting profile that crashes
+    /// Parakeet on DirectML). Guarded by the WS-0 contract test.
+    pub const CHUNK_PROFILE_QUERY_KEY: &'static str = "chunk_profile";
+    pub const CHUNK_PROFILE_DICTATION: &'static str = "dictation";
+    pub const REDEMPTION_TIME_QUERY_KEY: &'static str = "redemption_time_ms";
+
+    /// Build the `custom_query` a dictation session must send: the dictation
+    /// chunking profile + its redemption window. Both the plugin and any test
+    /// build the wire query through here, so the contract has one source of
+    /// truth.
+    pub fn dictation_custom_query(
+        redemption_time_ms: u64,
+    ) -> std::collections::HashMap<String, String> {
+        std::collections::HashMap::from([
+            (
+                Self::REDEMPTION_TIME_QUERY_KEY.to_string(),
+                redemption_time_ms.to_string(),
+            ),
+            (
+                Self::CHUNK_PROFILE_QUERY_KEY.to_string(),
+                Self::CHUNK_PROFILE_DICTATION.to_string(),
+            ),
+        ])
+    }
+
+    /// True when these params request the dictation chunking profile.
+    pub fn is_dictation(&self) -> bool {
+        self.custom_query
+            .as_ref()
+            .and_then(|q| q.get(Self::CHUNK_PROFILE_QUERY_KEY))
+            .map(|v| v == Self::CHUNK_PROFILE_DICTATION)
+            .unwrap_or(false)
+    }
+}
+
+#[cfg(test)]
+mod dictation_contract_tests {
+    use super::*;
+
+    // WS-0 (2026-08-06): the Windows D3 stall silently regresses if the
+    // dictation query the plugin sends ever stops matching what the server
+    // reads. This locks the round-trip: the client-built query MUST make
+    // `is_dictation()` true. If a refactor renames the key on one side, this
+    // fails instead of shipping a 20s-profile crash to the field again.
+    #[test]
+    fn client_dictation_query_is_recognized_as_dictation() {
+        let params = ListenParams {
+            custom_query: Some(ListenParams::dictation_custom_query(400)),
+            ..Default::default()
+        };
+        assert!(
+            params.is_dictation(),
+            "the query the dictation client sends must select the dictation profile"
+        );
+        let q = params.custom_query.unwrap();
+        assert_eq!(
+            q.get(ListenParams::REDEMPTION_TIME_QUERY_KEY).map(String::as_str),
+            Some("400")
+        );
+    }
+
+    #[test]
+    fn absent_or_other_profile_is_not_dictation() {
+        assert!(!ListenParams::default().is_dictation(), "absent => meeting");
+
+        let other = ListenParams {
+            custom_query: Some(std::collections::HashMap::from([(
+                ListenParams::CHUNK_PROFILE_QUERY_KEY.to_string(),
+                "speech".to_string(),
+            )])),
+            ..Default::default()
+        };
+        assert!(!other.is_dictation(), "any other value => meeting");
+    }
 }

@@ -207,10 +207,7 @@ pub async fn send_batch_via_hyprnote_client(
     model: &str,
     languages: Vec<hypr_language::Language>,
 ) -> owhisper_interface::batch::Response {
-    batch_client::<HyprnoteAdapter>(addr, model, languages)
-        .transcribe_file(hypr_data::english_1::AUDIO_PATH)
-        .await
-        .expect("hyprnote batch request should succeed")
+    send_batch_with_retry::<HyprnoteAdapter>(addr, model, languages, "hyprnote batch request").await
 }
 
 pub async fn send_batch_via_deepgram_client(
@@ -218,10 +215,47 @@ pub async fn send_batch_via_deepgram_client(
     model: &str,
     languages: Vec<hypr_language::Language>,
 ) -> owhisper_interface::batch::Response {
-    batch_client::<DeepgramAdapter>(addr, model, languages)
-        .transcribe_file(hypr_data::english_1::AUDIO_PATH)
-        .await
-        .expect("deepgram passthrough batch request should succeed")
+    send_batch_with_retry::<DeepgramAdapter>(
+        addr,
+        model,
+        languages,
+        "deepgram passthrough batch request",
+    )
+    .await
+}
+
+/// Send a batch request, retrying on transient proxy->upstream connect failures.
+///
+/// These contract tests co-locate the proxy and the mock upstream with the test
+/// client; under in-process test concurrency the proxy's *local* forward connect
+/// to the upstream can transiently fail ("error sending request for url ...",
+/// surfaced as HTTP 502). That is a test-environment scheduling artifact, not a
+/// contract violation — a real upstream (deepgram.com) never has a starved accept
+/// loop. The proxy's dedicated-thread mock servers make this rare, and this bounded
+/// retry makes the request deterministic even under heavy load, so the assertion
+/// (the forwarded query shape) is what actually gets exercised. Retrying is safe:
+/// a failed attempt never reaches the mock's handler, so no stale query is
+/// captured, and every attempt forwards the same query.
+async fn send_batch_with_retry<A: BatchSttAdapter>(
+    addr: SocketAddr,
+    model: &str,
+    languages: Vec<hypr_language::Language>,
+    context: &str,
+) -> owhisper_interface::batch::Response {
+    let mut last_err = None;
+    for attempt in 0..6 {
+        match batch_client::<A>(addr, model, languages.clone())
+            .transcribe_file(hypr_data::english_1::AUDIO_PATH)
+            .await
+        {
+            Ok(response) => return response,
+            Err(err) => {
+                last_err = Some(err);
+                tokio::time::sleep(Duration::from_millis(25 * (attempt + 1))).await;
+            }
+        }
+    }
+    panic!("{context} should succeed after retries: {last_err:?}");
 }
 
 pub fn batch_upstream_url(addr: SocketAddr) -> String {

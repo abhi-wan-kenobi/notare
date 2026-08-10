@@ -163,4 +163,68 @@ mod tests {
         assert_eq!(StreamingVad::new(640).frame_size(), 320);
         assert_eq!(StreamingVad::new(960).frame_size(), 480);
     }
+
+    #[test]
+    fn default_config_values() {
+        let cfg = VadConfig::default();
+        assert_eq!(cfg.hangover_frames, 6);
+        assert_eq!(cfg.amplitude_floor, 0.0005);
+        assert!(cfg.start_in_speech);
+    }
+
+    #[test]
+    fn empty_buffer_never_invokes_callback() {
+        // process_in_place on an empty slice must be a no-op: the callback is
+        // never called and nothing panics.
+        let mut vad = StreamingVad::new(320);
+        let mut empty: Vec<f32> = Vec::new();
+        let mut called = false;
+        vad.process_in_place(&mut empty, |_frame, _is_speech| called = true);
+        assert!(!called);
+    }
+
+    #[test]
+    fn sub_floor_frames_are_classified_as_non_speech() {
+        // Deterministic path: with start_in_speech:false and hangover:0, every
+        // frame whose RMS is below the amplitude floor is reported as non-speech
+        // WITHOUT touching the earshot model (so no model/GPU is needed and the
+        // result is independent of learned weights). 320 samples/frame * 3 = 3
+        // frames.
+        let mut vad = StreamingVad::with_config(
+            320,
+            VadConfig {
+                hangover_frames: 0,
+                amplitude_floor: 0.01,
+                start_in_speech: false,
+            },
+        );
+        let mut buf = vec![0.001_f32; 320 * 3];
+        let mut decisions = Vec::new();
+        vad.process_in_place(&mut buf, |_frame, is_speech| decisions.push(is_speech));
+        assert_eq!(decisions.len(), 3);
+        assert!(
+            decisions.iter().all(|&d| !d),
+            "sub-floor audio must be non-speech on every frame",
+        );
+    }
+
+    #[test]
+    fn frames_are_delivered_at_frame_size_granularity() {
+        // The callback should be invoked once per frame_size chunk; a partial
+        // trailing frame still yields one final callback.
+        let mut vad = StreamingVad::with_config(
+            160,
+            VadConfig {
+                hangover_frames: 0,
+                amplitude_floor: 0.01,
+                start_in_speech: false,
+            },
+        );
+        assert_eq!(vad.frame_size(), 160);
+        // 160 * 2 + 40 = 360 samples -> 2 full frames + 1 partial frame = 3 calls.
+        let mut buf = vec![0.001_f32; 360];
+        let mut lengths = Vec::new();
+        vad.process_in_place(&mut buf, |frame, _is_speech| lengths.push(frame.len()));
+        assert_eq!(lengths, vec![160, 160, 40]);
+    }
 }

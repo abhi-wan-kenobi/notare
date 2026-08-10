@@ -258,8 +258,122 @@ jobs:
             -p tauri-plugin-updater2 \
             -p tauri-plugin-webhook
 
+  # WS-3: Windows coverage for the STT / dictation path.
+  #
+  # Until now this path was validated ONLY by manual field testing on real
+  # hardware — which is how the D3 "Windows dies at 30s" class of bug shipped:
+  # CI never compiled or ran these crates on Windows at all. This job closes
+  # that gap by exercising the pure-logic STT/dictation crates (no GPU, no
+  # model download at runtime) plus a compile-only check of the DirectML
+  # engine path — the exact class of break that failed release rc1..rc5.
+  #
+  # The setup is modeled on the PROVEN windows-latest build in release.yaml
+  # (`build-windows`): install-vulkan-sdk so whisper-rs-sys's cmake can link
+  # the native STT crates, libclang for bindgen, rust_install(platform:
+  # windows), and Ninja inside an MSVC dev environment.
+  #
+  # PROVISIONAL / NON-BLOCKING — this job is deliberately NOT in the `ci`
+  # gate's `needs:` list below. It cannot be proven green from a Linux dev
+  # box, so it must be OBSERVED green on real windows-latest runners across a
+  # few PRs BEFORE being promoted to a required check. A provisional signal
+  # is better than a required gate that is broken (or flaky) on day one.
+  # Promotion checklist when it has been green for a while:
+  #   1. add `windows_stt` to the `ci` job's `needs:` array;
+  #   2. if `audio-chunking` / `transcribe-core` tests prove flaky on the
+  #      runner (they pull ONNX Runtime / model-manager), demote them from
+  #      the `cargo test` step to the `cargo check` step and keep testing the
+  #      genuinely pure crates (owhisper-interface, vad-masking).
+  windows_stt:
+    if: ${{ !startsWith(github.head_ref || '', 'blog/') }}
+    runs-on: windows-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    env:
+      LIBCLANG_PATH: 'C:\Program Files\LLVM\bin'
+      CMAKE_GENERATOR: Ninja
+      CC: cl
+      CXX: cl
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+          persist-credentials: false
+      # Sets VULKAN_SDK / PATH so whisper-rs-sys's cmake can find and link the
+      # native STT crates (same pin as release.yaml build-windows).
+      - uses: humbletim/install-vulkan-sdk@30ba978f977e81b72d091fc8888feb1fb26f9aff # v1.2
+        with:
+          version: 1.4.309.0
+          cache: true
+      # libclang (bindgen) is preinstalled on windows-latest runners; install
+      # it only if the image ever drops it (mirrors release.yaml build-windows).
+      - shell: pwsh
+        run: |
+          if (!(Test-Path "C:\Program Files\LLVM\bin\libclang.dll")) {
+            choco install llvm -y --no-progress
+          }
+      - uses: ./.github/actions/rust_install
+        with:
+          platform: windows
+      # whisper.cpp's vulkan-shaders-gen nested CMake fails under the default
+      # Visual Studio generator; Ninja inside an MSVC dev environment is the
+      # proven fix (see release.yaml + docs/BUILDING.md).
+      - uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
+      # Compile the STT/dictation pure-logic crates on Windows. `vad` is
+      # check-only here: its dev-dependencies pull ONNX Runtime (hypr-onnx),
+      # so `cargo test -p vad` would drag the ort runtime download into the
+      # test step; `cargo check` compiles the crate itself (default = no
+      # features -> pure logic) without that cost.
+      - name: cargo check — STT/dictation crates
+        run: |
+          cargo check --locked \
+            -p owhisper-interface \
+            -p transcribe-core \
+            -p audio-chunking \
+            -p vad \
+            -p vad-masking
+      # Run the STT/dictation crate tests. owhisper-interface and vad-masking
+      # are genuinely pure (no GPU, no model). audio-chunking (default = ["vad"])
+      # and transcribe-core pull ONNX Runtime / model-manager at build time and
+      # their tests construct a Silero VAD, so they are NOT model-free — they
+      # are included per WS-3's "at minimum" list and are the first candidates
+      # to demote to the check step if they prove flaky on the runner (see the
+      # promotion checklist above).
+      - name: cargo test — STT/dictation crates
+        run: |
+          cargo test --locked \
+            -p owhisper-interface \
+            -p transcribe-core \
+            -p audio-chunking \
+            -p vad-masking
+      # Compile-only proof of the Windows-only DirectML engine path
+      # (Parakeet / ONNX Runtime) — the class of break (a Windows-only feature
+      # that stops compiling) that failed release rc1..rc5. No model download,
+      # CPU fallback at runtime.
+      - name: cargo check --features directml — parakeet-onnx crate
+        run: |
+          cargo check --locked --features directml -p parakeet-onnx
+      # The plugin's Parakeet/DirectML integration only compiles when the
+      # `parakeet-onnx` feature is ALSO enabled: `directml` forwards to
+      # `hypr-parakeet-onnx?/directml` (note the `?`), which is a no-op unless
+      # `parakeet-onnx` has already activated that optional dependency. Enabling
+      # `directml` alone would silently skip the exact Parakeet code path this
+      # step exists to protect. This pulls whisper.cpp too (directml -> whisper-cpp),
+      # so it needs the D:\nb target dir to dodge Windows MAX_PATH on the nested
+      # vulkan-shaders-gen dirs (same fix as release.yaml build-windows).
+      - name: cargo check --features parakeet-onnx,directml — tauri-plugin-local-stt
+        env:
+          CARGO_TARGET_DIR: 'D:\nb'
+        run: |
+          cargo check --locked --features parakeet-onnx,directml -p tauri-plugin-local-stt
+
   ci:
     if: always()
+    # NOTE: `windows_stt` is intentionally NOT listed here yet — it is a
+    # provisional, non-blocking signal (see the comment on that job). Add it
+    # once it has been observed green on windows-latest across a few PRs.
     needs: [desktop_ci, desktop_i18n, desktop_swift, linux_crate_check]
     runs-on: ubuntu-latest
     steps:

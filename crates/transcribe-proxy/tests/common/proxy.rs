@@ -139,15 +139,28 @@ async fn start_proxy_with(
 }
 
 async fn serve(app: Router) -> SocketAddr {
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
-    let addr = listener.local_addr().unwrap();
+    // Run every test server (the proxy-under-test and the mock upstreams) on its
+    // own dedicated OS thread with its own single-threaded runtime, instead of
+    // `tokio::spawn`-ing it onto the current test's runtime.
+    //
+    // Root cause of the flaky deepgram-passthrough / batch contract tests (#128):
+    // each `#[tokio::test]` gets one current-thread runtime, and the test client,
+    // the proxy, and the mock upstream were all co-located on it. When the test
+    // body does CPU-bound audio work (reading/encoding the WAV for the batch
+    // request), the co-located servers' axum accept loops are starved cooperatively,
+    // so a local TCP connect (proxy -> upstream, or client -> proxy) intermittently
+    // fails with "error sending request for url ..." -> HTTP 502. The passthrough
+    // forward path has no retry, so it surfaces the transient directly (~high flake
+    // rate); the hyprnote path only mostly hides it behind backon retries.
+    //
+    // A dedicated thread keeps each server's accept loop scheduled by the OS
+    // independently of how the test runtime is contended, making the connects
+    // deterministic. `serve_on_dedicated_thread` binds before returning `addr`, and
+    // the readiness probe below confirms the accept loop is live.
+    let addr = serve_on_dedicated_thread(app);
     let client = reqwest::Client::new();
 
-    tokio::spawn(async move {
-        axum::serve(listener, app).await.unwrap();
-    });
-
-    let deadline = tokio::time::Instant::now() + Duration::from_secs(2);
+    let deadline = tokio::time::Instant::now() + Duration::from_secs(5);
     loop {
         match client.get(format!("http://{addr}/")).send().await {
             Ok(_) => {
@@ -164,4 +177,30 @@ async fn serve(app: Router) -> SocketAddr {
     }
 
     addr
+}
+
+/// Serve `app` on a dedicated OS thread with its own single-threaded runtime, so
+/// its axum accept loop is scheduled independently of the (potentially contended)
+/// per-test runtime. Returns once the listener is bound; the socket is already
+/// `listen(2)`-ing, so connections queue in the backlog until the accept loop —
+/// running on this dedicated thread — drains them.
+fn serve_on_dedicated_thread(app: Router) -> SocketAddr {
+    let (tx, rx) = std::sync::mpsc::channel();
+
+    std::thread::spawn(move || {
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .expect("failed to build dedicated test-server runtime");
+
+        rt.block_on(async move {
+            let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+            let addr = listener.local_addr().unwrap();
+            tx.send(addr)
+                .expect("dedicated test-server receiver dropped");
+            axum::serve(listener, app).await.unwrap();
+        });
+    });
+
+    rx.recv().expect("dedicated test server failed to start")
 }

@@ -3,9 +3,9 @@ mod common;
 use std::time::Duration;
 
 use common::{
-    TestEvent, TestSink, expect_empty_result, expect_no_event, expect_result, insert_daily_note,
-    insert_daily_summary, next_result_rows, subscribe_all_daily_notes,
-    subscribe_all_daily_summaries, subscribe_daily_note_by_id, wait_for_stable_event_count,
+    EVENT_TIMEOUT, TestSink, expect_empty_result, expect_no_event, expect_result,
+    insert_daily_note, insert_daily_summary, next_result_rows, subscribe_all_daily_notes,
+    subscribe_all_daily_summaries, subscribe_daily_note_by_id, wait_for_latest_result,
 };
 use serde_json::json;
 
@@ -115,17 +115,24 @@ async fn batched_writes_converge_on_latest_result() {
         .await;
     }
 
-    let stable_count = wait_for_stable_event_count(&events, Duration::from_millis(100)).await;
-    assert!(stable_count >= 2, "expected at least one refresh event");
+    let expected = vec![
+        json!({ "id": "note-batch-1", "date": "2026-04-11" }),
+        json!({ "id": "note-batch-2", "date": "2026-04-12" }),
+        json!({ "id": "note-batch-3", "date": "2026-04-13" }),
+    ];
 
-    let final_event = events.lock().unwrap()[stable_count - 1].clone();
-    assert_eq!(
-        final_event,
-        TestEvent::Result(vec![
-            json!({ "id": "note-batch-1", "date": "2026-04-11" }),
-            json!({ "id": "note-batch-2", "date": "2026-04-12" }),
-            json!({ "id": "note-batch-3", "date": "2026-04-13" }),
-        ])
+    // Deterministically wait for the subscription to converge on the latest
+    // (three-row) result instead of assuming the pipeline has gone quiet after a
+    // fixed sleep. The dispatcher may coalesce the three writes into one refresh or
+    // deliver several intermediate ones; either way convergence is what matters.
+    let latest =
+        wait_for_latest_result(&events, EVENT_TIMEOUT, |rows| rows.len() == expected.len()).await;
+    assert_eq!(latest, expected);
+
+    // At least one refresh beyond the initial empty result must have been delivered.
+    assert!(
+        events.lock().unwrap().len() >= 2,
+        "expected at least one refresh event"
     );
 }
 
@@ -315,11 +322,17 @@ async fn lagged_broadcast_receiver_resyncs_and_keeps_dispatcher_alive() {
         .await;
     }
 
-    let _stable_count = wait_for_stable_event_count(&events, Duration::from_millis(100)).await;
-    let before = events.lock().unwrap().len();
+    // The 320-write burst overflows the 256-slot change broadcast buffer, forcing
+    // the dispatcher's lagged-resync path. Deterministically wait for it to converge
+    // on all 320 rows: that proves the dispatcher resynced (via rerun-all) rather
+    // than dying on the broadcast lag. Waiting on the delivered row count avoids the
+    // old fixed-sleep "quiet period" assumption and the fragile absolute-index probe.
+    wait_for_latest_result(&events, EVENT_TIMEOUT, |rows| rows.len() >= 320).await;
 
+    // A subsequent write must still be delivered, reflecting all 321 rows — the
+    // dispatcher is alive and keeps serving the subscription after the lag storm.
     insert_daily_note(&pool, "note-after-lag", "2026-04-19", "user-after-lag").await;
 
-    let rows = next_result_rows(&events, before).await;
+    let rows = wait_for_latest_result(&events, EVENT_TIMEOUT, |rows| rows.len() >= 321).await;
     assert!(rows.len() >= 321);
 }
