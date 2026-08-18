@@ -1,0 +1,9 @@
+{
+  "worktree": {
+    "setup": "pnpm install --frozen-lockfile"
+  },
+  "scripts": {
+    "test": { "command": "pnpm vitest run" },
+    "check-rust": { "command": "cargo check" }
+  }
+}
