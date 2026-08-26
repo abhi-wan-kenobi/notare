@@ -65,5 +65,10 @@ mod tests {
         let version = version(&pool).await.unwrap();
 
         assert!(!version.is_empty());
+
+        // From-source build must load the freshly-built extension and report
+        // the exact vendored version.
+        #[cfg(feature = "from-source")]
+        assert_eq!(version, CLOUDSYNC_VERSION);
     }
 }

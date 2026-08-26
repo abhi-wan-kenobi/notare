@@ -3483,6 +3483,7 @@ dependencies = [
 name = "cloudsync"
 version = "0.1.0"
 dependencies = [
+ "cc",
  "dirs 6.0.0",
  "sqlx",
  "thiserror 2.0.18",
