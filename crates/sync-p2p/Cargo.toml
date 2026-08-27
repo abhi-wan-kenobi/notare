@@ -2,7 +2,7 @@
 name = "sync-p2p"
 version = "0.1.0"
 edition = "2024"
-description = "S1 transport spike — proves sqlite-sync CRDT convergence over a custom P2P transport with no SQLite Cloud / Postgres / Supabase server."
+description = "P2P sync transport — iroh/QUIC + device identity + peer allowlist for notare's v0.6 CRDT sync."
 
 [features]
 # Default: build the cloudsync extension from source with the custom P2P network
@@ -11,6 +11,9 @@ from-source = []
 
 [dependencies]
 base64 = { workspace = true }
+data-encoding = "2.10"
+dirs = { workspace = true }
+iroh = "1.1"
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
