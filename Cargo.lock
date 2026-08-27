@@ -17690,6 +17690,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "sync-p2p"
+version = "0.1.0"
+dependencies = [
+ "base64 0.22.1",
+ "cc",
+ "cloudsync",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+]
+
+[[package]]
 name = "sync_wrapper"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"

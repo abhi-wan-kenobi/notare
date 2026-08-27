@@ -374,3 +374,200 @@ $ nm -D .../cloudsync.so | grep network_receive_buffer
 $ nm -D .../cloudsync.so | grep -ic curl
 0
 ```
+
+---
+
+# 11. S1 transport spike — call graph + endpoint scheme + GO proof
+
+Appended by S1 (transport-spike engineer). Source-verified against the
+vendored v1.0.12 source (`src/network/network.c`, `src/cloudsync.c`,
+`src/sqlite/cloudsync_sqlite.c`). This section is the authoritative
+description of the network call sequence the custom transport must satisfy,
+the endpoint scheme S1 defined, and the convergence proof.
+
+## 11.1 The core's exact network call sequence
+
+`cloudsync_network_sync()` (`network.c:1027`) is the top-level sync entry
+(registered as the `cloudsync_network_sync` SQL function). It runs two phases:
+
+**Phase A — send (`cloudsync_network_send_changes_internal`, `network.c:856`):**
+
+1. `cloudsync_payload_get` (`cloudsync.c:3239`) builds a blob of all rows with
+   `db_version > settings.send_dbversion` (per-site-local watermark). Returns
+   `blob`, `blob_size`, `db_version` (old watermark), `new_db_version` (max).
+2. If the blob is empty **and** `db_version == 0` → skip network entirely
+   (Case 1, `network.c:877`).
+3. If there IS a blob:
+   - **`receive(upload_endpoint, GET, auth, zero_term=true, is_post=false, body=NULL)`** (`network.c:889`)
+     - Expects `CLOUDSYNC_NETWORK_BUFFER` with JSON `{"url": "..."}`.
+     - `json_extract_string(buf, "url")` → `s3_url` (NULL → error "missing 'url'").
+   - **`send_buffer(s3_url, auth=NULL, blob, blob_size)`** (`network.c:904`)
+     - The default impl HTTP-PUTs the blob to `s3_url`. Returns `bool`.
+   - Build `json_payload = {"url":"<s3_url>", "dbVersionMin":<db_version+1>, "dbVersionMax":<new_db_version>}` (`network.c:917`).
+   - **`receive(apply_endpoint, POST, auth, zero_term=true, is_post=true, body=json_payload)`** (`network.c:924`)
+     - Expects `BUFFER` with `{"lastOptimisticVersion":N, "lastConfirmedVersion":N, "gaps":[...]}`.
+4. If there is NO blob (nothing to send):
+   - **`receive(status_endpoint, GET, auth, zero_term=true, is_post=false, body=NULL)`** (`network.c:928`)
+5. Parse the apply/status response: `lastOptimisticVersion`, `lastConfirmedVersion`, `gaps` size. Update `settings.send_dbversion` from `lastOptimisticVersion` (or `new_db_version` if absent) (`network.c:946-956`).
+
+**Phase B — check/receive (`cloudsync_network_check_internal`, `network.c:983`):**
+
+1. Read `settings.check_dbversion` and `settings.check_seq`.
+2. Build `json_payload = {"dbVersion":<check_dbversion>, "seq":<check_seq>}` (`network.c:998`).
+3. **`receive(check_endpoint, POST, auth, zero_term=true, is_post=true, body=json_payload)`** (`network.c:1000`)
+   - If `code == CLOUDSYNC_NETWORK_BUFFER`:
+     - `json_extract_string(buf, "url")` → `download_url` (NULL → **error "missing 'url' in check response"**, `network.c:1005`).
+     - `network_download_changes(context, download_url, &nrows)` (`network.c:1009`):
+       - **`receive(download_url, GET, auth=NULL, zero_term=false, is_post=false, body=NULL)`** (`network.c:428`)
+       - Expects `BUFFER` with the raw changes blob bytes.
+       - `cloudsync_payload_apply` (`cloudsync.c:3021`) decodes + CRDT-merges each row, advancing `check_dbversion`/`check_seq` from the last decoded row (`cloudsync.c:3204-3214`).
+   - Else (`code != BUFFER`, incl. `CLOUDSYNC_NETWORK_OK`): `network_set_sqlite_result` → success, no download (`network.c:1011`). **This is the "no changes" path** — the server signals "nothing new" by returning OK with no body, NOT by returning a null url.
+4. `cloudsync_network_sync` loops phase B up to `max_retries` (default 1), breaking when `nrows > 0` (`network.c:1034-1040`).
+
+**Status-only calls** (not part of sync): `cloudsync_network_status` (`network.c:1180`) and `cloudsync_network_has_unsent_changes` (`network.c:840`) both call `receive(status_endpoint, GET, auth, ...)` and parse `lastOptimisticVersion`.
+
+### Key shapes the transport MUST produce
+
+| call | response the core expects |
+|---|---|
+| `receive(upload)` | `BUFFER` `{"url":"<string>"}` (must be a JSON string) |
+| `send_buffer(url)` | `bool` true |
+| `receive(apply)` | `BUFFER` `{"lastOptimisticVersion":N,"lastConfirmedVersion":N,"gaps":[]}` |
+| `receive(check)` (changes available) | `BUFFER` `{"url":"<string>"}` |
+| `receive(check)` (nothing new) | `OK` (code 1, **no body**) — NOT `{"url":null}` |
+| `receive(download_url)` | `BUFFER` raw blob bytes |
+| `receive(status)` | `BUFFER` `{"lastOptimisticVersion":N,"lastConfirmedVersion":N,"gaps":[]}` |
+
+> Sharp edge discovered by S1: the core's `check_internal` does NOT gracefully
+> handle a `null` url — `json_extract_string` returns NULL for a `JSMN_PRIMITIVE`
+> `null`, hitting the "missing 'url'" error (`network.c:1005`). The correct
+> "nothing new" signal is `CLOUDSYNC_NETWORK_OK` (no buffer at all), which the
+> core routes to `network_set_sqlite_result` → success.
+
+## 11.2 The endpoint scheme S1 defined
+
+`cloudsync_network_init_custom(address, managedDatabaseId)` builds endpoints as:
+```
+{address}/v2/cloudsync/databases/{managedDatabaseId}/{siteId}/{action}
+```
+S1 sets `address = "p2p://127.0.0.1:<broker_port>"` (a non-HTTP scheme — the
+core treats `address`/`endpoint` as opaque, per §5). The four actions
+(`check`/`upload`/`apply`/`status`) map onto the broker directly. The S3
+pre-signed-URL indirection is collapsed: the broker serves `{"url":"mem://..."}`
+itself and holds the blob in an in-memory object store keyed by `mem://` URLs.
+
+**`mem://` URLs carry the broker address:** `mem://127.0.0.1:<port>/<id>`. This
+is necessary because `network_send_buffer` is called with the `mem://` URL
+*and no other context* — the C layer must recover host:port from the URL alone
+(the `network_data` struct's endpoint fields are not exposed to the custom
+layer; only `network_data_get_siteid`/`get_orgid`/`set_endpoints` are). So the
+broker embeds its own `host:port` in every minted `mem://` URL.
+
+## 11.3 How the S3 3-step flow maps to direct peer serving
+
+The S3 flow (`receive(upload)` → `send_buffer(s3_url)` → `receive(apply)`) is
+**cleanly collapsible** — confirmed GO. The broker IS the S3 server + the
+CloudSync control plane in one process:
+
+1. `receive(upload)` → broker mints a `mem://` URL, returns `{"url":"mem://..."}`.
+2. `send_buffer(mem://...)` → C layer base64-PUTs the blob to the broker, broker stores it under that URL.
+3. `receive(apply)` → broker moves the blob into the per-database change log (keyed by a broker-assigned sequence), bumps `lastOptimisticVersion`, returns the status JSON.
+4. `receive(check)` → broker serves the next un-pulled blob from the log (per-site high-water mark), returns `{"url":"mem://..."}` pointing at a fresh copy.
+5. `receive(download_url)` → broker returns the raw blob bytes; the core's `cloudsync_payload_apply` CRDT-merges them.
+
+The blob is opaque to the broker — it is the encoded CRDT changeset. The
+CRDT merge happens entirely inside the sqlite-sync core on each peer.
+
+> NO-GO was not hit. The 3-step collapse is clean: the only transport-visible
+> contract is `{"url":"..."}` JSON + raw blob bytes, both of which a peer can
+> serve directly with no S3.
+
+## 11.4 The convergence proof (GO)
+
+`cargo run -p sync-p2p --example sync_two_nodes` — two independent file-backed
+SQLite DBs, two independent cloudsync site IDs, `cls` (CausalLengthSet) CRDT on
+a `notes(id INTEGER PRIMARY KEY, body TEXT)` table, syncing through one broker:
+
+```
+[broker] listening at p2p://127.0.0.1:<port>
+[nodes] A and B initialized; cloudsync enabled on 'notes'
+[A] wrote 2 rows
+[A] sync -> broker: {"send":{"status":"synced","localVersion":2,"serverVersion":2},"receive":{"rows":2,"tables":["notes"]}}
+[B] check <- broker: {"receive":{"rows":2,"tables":["notes"]}}
+[conv] A -> B OK
+[B] wrote 1 row
+[conv] B -> A OK
+[both] updated row 1 concurrently
+[conv] concurrent update converged (row 1 = "B wins" on both)
+
+=== S1 GO: two-node convergence over custom P2P transport ===
+```
+
+- **A → B**: 2 rows written on A, `cloudsync_network_sync()`, then
+  `cloudsync_network_check_changes()` on B → B has both rows, bodies match.
+- **B → A**: 1 row written on B, sync → A has the third row, body matches.
+- **Concurrent update**: both update row 1 to different values, 3 sync rounds
+  → both converge to the same value (CRDT last-write-wins by causal-length /
+  site-id tiebreak). **Conflict-free.**
+
+## 11.5 Memory / threading sharp edges S1 hit
+
+1. **`NETWORK_RESULT` buffers must use `cloudsync_memory_zeroalloc`** + leave
+   `xfree`/`xdata` NULL (the core frees via `cloudsync_memory_free` =
+   `sqlite3_free`). S1's C layer allocates response bodies with
+   `cloudsync_memory_zeroalloc` and NUL-terminates (alloc `len+1`, write 0 at
+   `len`). Verified: no heap corruption across the full two-node run.
+2. **`cargo:rustc-env=CLOUDSYNC_FROM_SOURCE_SO=...` from cloudsync's build.rs
+   does NOT propagate to `std::env::var` in a *different* crate's binary.**
+   cloudsync's own unit test works (the var is baked into its crate), but the
+   `sync_two_nodes` example (a separate binary) cannot read it at runtime. S1
+   worked around this by giving `crates/sync-p2p` its own `build.rs` that
+   rebuilds the `.so` and emits the env var for the example. (Production fix:
+   `bundle.rs` should use `env!` not `std::env::var`, or the path should be
+   resolved via a `DEP_CLOUDSYNC_*` metadata link.)
+3. **CloudSync context is per-connection.** `cloudsync_init`/`cloudsync_enable`
+   register the table in a context attached to the SQLite connection. A sqlx
+   pool with `max_connections > 1` routes the `INSERT` (which fires the
+   cloudsync trigger) to a different connection that has no cloudsync context →
+   "Unable to retrieve table name". Fix: `max_connections(1)`.
+4. **The broker must retain ALL uploaded blobs, not just the latest.** The
+   core's `db_version` is **per-site-local** — two peers can both be at
+   db_version 3 for different changes, so `db_version_max <= db_version`
+   cannot order cross-site changes. The real server uses a global
+   server-assigned db_version; the spike approximates it with a per-database
+   upload log + per-site delivery high-water marks (broker-assigned sequence).
+   A "latest blob only" broker loses intermediate peer changes and fails
+   concurrent-update convergence.
+5. **"No changes" = `OK` (no body), not `{"url":null}`.** See §11.1 sharp edge.
+6. **Synchronous blocking only.** The C functions block on a fresh TCP
+   connection per call (connect → write frame → read frame → close). No async
+   runtime lives in the C layer; the broker's tokio runtime is a separate
+   process concern. The core calls these from a SQLite function context on the
+   DB thread; blocking is correct.
+
+## 11.6 What production hardening (v0.6) needs to know
+
+- **iroh/QUIC replaces TCP.** The framed protocol (`crates/sync-p2p/src/protocol.rs`)
+  is transport-agnostic — swap the `TcpStream` for an iroh node. The broker's
+  endpoint scheme (`p2p://`) already anticipates a non-HTTP, peer-addressable
+  scheme. NAT traversal / relay is iroh's job; the spike deliberately uses
+  localhost to prove convergence, not NAT punching.
+- **Encryption + auth.** The spike is plaintext + no auth (broker trusts
+  localhost). `authentication` (the apikey/token string) is passed through
+  untouched and can carry a peer credential / shared secret; the broker should
+  verify it. `endpoint` is attacker-influenced — the C layer parses defensively
+  and rejects bad schemes.
+- **The broker is a relay, not a merge authority.** It only shuttles opaque
+  blobs; CRDT merge is per-peer in the sqlite-sync core. Production with
+  >2 peers needs the broker's per-database log + per-site delivery to scale
+  (or a real global db_version from a coordination service). The spike's
+  per-site high-water mark is O(peers × blobs) and unbounded — production
+  needs GC of delivered blobs.
+- **Relay vs direct peer.** The spike uses a star topology (both peers → one
+  broker). True P2P (peer serves peer directly) means each device runs the
+  broker logic; the `mem://` object store + control endpoints are the same.
+  iroh's direct-connect / relay-fallback maps onto this naturally.
+- **Pairing / discovery.** Out of scope; `cloudsync_network_init_custom` takes
+  the address as a SQL arg, so discovery just needs to produce that string.
+- **`bundle.rs` env-var fix** (§11.5 #2) before the from-source build is used
+  by any non-cloudsync binary in the real app.

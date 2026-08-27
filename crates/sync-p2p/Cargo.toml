@@ -1,0 +1,30 @@
+[package]
+name = "sync-p2p"
+version = "0.1.0"
+edition = "2024"
+description = "S1 transport spike — proves sqlite-sync CRDT convergence over a custom P2P transport with no SQLite Cloud / Postgres / Supabase server."
+
+[features]
+# Default: build the cloudsync extension from source with the custom P2P network
+# layer wired in (linux/x86_64). Mirrors `cloudsync/from-source`.
+from-source = []
+
+[dependencies]
+base64 = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["rt", "rt-multi-thread", "net", "io-util", "sync", "macros", "time"] }
+
+[build-dependencies]
+cc = "1.2"
+
+[dev-dependencies]
+cloudsync = { path = "../cloudsync", features = ["from-source"] }
+sqlx = { workspace = true, features = ["runtime-tokio", "sqlite", "sqlite-unbundled"] }
+tempfile = { workspace = true }
+tokio = { workspace = true, features = ["rt", "rt-multi-thread", "macros", "time"] }
+
+[[example]]
+name = "sync_two_nodes"
+path = "examples/sync_two_nodes.rs"
