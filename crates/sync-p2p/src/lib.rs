@@ -22,7 +22,11 @@
 //! call sequence this transport must satisfy.
 
 pub mod broker;
+pub mod identity;
+pub mod peers;
 pub mod protocol;
 
 pub use broker::Broker;
+pub use identity::{Fingerprint, FingerprintError, Identity, IdentityError};
+pub use peers::{Peer, PeerStore, PeersError};
 pub use protocol::{Request, Response};
