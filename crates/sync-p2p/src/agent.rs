@@ -482,15 +482,29 @@ async fn dial_peer(node_id: &PublicKey, ctx: &Ctx) -> Result<iroh::endpoint::Con
     // addresses. For the convergence proof the addresses are injected via the
     // shared DIRECT_ADDR registry (see `register_direct_addr`); production
     // would resolve them through the relay/DNS address lookup (SYNC-8).
+    //
+    // Retry briefly: a peer's iroh endpoint may not be accepting the instant
+    // we dial (it binds asynchronously, and under concurrent test load the
+    // readiness gap can exceed a fixed sleep). A few quick attempts with
+    // backoff handle the race deterministically and mirror real-world dialing.
     let addrs = lookup_direct_addrs(node_id);
     let mut ea = EndpointAddr::new(*node_id);
     for a in addrs {
         ea = ea.with_ip_addr(a);
     }
-    ctx.endpoint
-        .connect(ea, SYNC_ALPN)
-        .await
-        .map_err(|e| format!("{e}"))
+
+    let mut last_err = String::from("dial failed");
+    for attempt in 0..8u32 {
+        match ctx.endpoint.connect(ea.clone(), SYNC_ALPN).await {
+            Ok(conn) => return Ok(conn),
+            Err(e) => last_err = format!("{e}"),
+        }
+        // Backoff: 1ms, 2ms, 4ms, … up to ~128ms across all attempts (~250ms
+        // total worst case) — enough to ride out an endpoint that is still
+        // binding, without blocking a real sync call on a dead peer.
+        tokio::time::sleep(std::time::Duration::from_millis(1 << attempt)).await;
+    }
+    Err(last_err)
 }
 
 // ---------------------------------------------------------------------------
