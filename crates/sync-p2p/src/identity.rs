@@ -79,7 +79,10 @@ impl Identity {
                 let arr: [u8; 32] = bytes.as_slice().try_into().map_err(|_| {
                     // Wrong length — refuse to silently overwrite a corrupt key;
                     // surface it so the operator decides.
-                    std::io::Error::new(std::io::ErrorKind::InvalidData, "device key is not 32 bytes")
+                    std::io::Error::new(
+                        std::io::ErrorKind::InvalidData,
+                        "device key is not 32 bytes",
+                    )
                 })?;
                 SecretKey::from_bytes(&arr)
             }
@@ -187,7 +190,10 @@ impl Fingerprint {
 
     /// Parse a fingerprint (grouped or compact) back into a [`PublicKey`].
     pub fn parse(s: &str) -> Result<PublicKey, FingerprintError> {
-        let compact: String = s.chars().filter(|c| !c.is_whitespace() && *c != '-').collect();
+        let compact: String = s
+            .chars()
+            .filter(|c| !c.is_whitespace() && *c != '-')
+            .collect();
         PublicKey::from_z32(&compact).map_err(FingerprintError::from)
     }
 }

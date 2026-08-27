@@ -1,25 +1,30 @@
-//! S1 transport spike — proves a real sqlite-sync (CloudSync) changeset can
-//! converge device-to-device over a custom transport with **no** SQLite Cloud,
-//! Postgres, or Supabase server.
+//! P2P sync transport for notare's v0.6 CRDT sync — iroh/QUIC + device
+//! identity + a peer allowlist, building on the S1 convergence spike.
 //!
-//! This crate owns the **broker** (a localhost TCP server standing in for the
-//! SQLite Cloud + S3 control plane) and the **convergence proof**. The actual
-//! CloudSync network layer — the two C functions the sqlite-sync core calls —
-//! lives in `crates/cloudsync/build/network_p2p.c` and is compiled into the
-//! loadable `cloudsync.so` by `crates/cloudsync/build.rs` under the
-//! `from-source` feature. The C layer speaks the framed TCP protocol defined
-//! in [`protocol`] to the [`broker::Broker`].
+//! This crate owns:
+//! - the **broker** ([`broker`]) — the CloudSync control plane + in-memory
+//!   object store that collapses the HTTP-S3 3-step upload/apply flow (a peer
+//!   serves the CloudSync protocol directly, no S3);
+//! - the **P2P agent** ([`agent`]) — the bridge between the synchronous C
+//!   network layer and the asynchronous iroh/QUIC transport, which enforces
+//!   the peer allowlist at dial + accept;
+//! - **device identity** ([`identity`]) — a persistent Ed25519 keypair whose
+//!   public key is the device id / iroh `EndpointId`;
+//! - the **peer allowlist** ([`peers`]) — the local, non-CRDT-synced set of
+//!   paired devices that this device will sync with (closes the §12 SSRF
+//!   finding).
 //!
-//! ## The collapsed S3 flow
+//! The actual CloudSync network layer — the two C functions the sqlite-sync
+//! core calls — lives in `crates/cloudsync/build/network_p2p.c`, compiled
+//! into the loadable `cloudsync.so` under the `from-source` feature. The C
+//! layer is deliberately dumb and **local**: it speaks the framed TCP
+//! protocol ([`protocol`]) to the in-process [`agent::P2pAgent`] on
+//! `127.0.0.1`, and the agent relays each request to the addressed peer over
+//! an iroh bi-stream. iroh/QUIC lives entirely in Rust — C never speaks QUIC.
 //!
-//! The default CloudSync protocol is HTTP-S3-shaped (3-step):
-//! `receive(upload)` → parse `{"url":...}` → `send_buffer(url, blob)` (HTTP PUT
-//! to S3) → `receive(apply, POST)`. The broker collapses this by serving the
-//! `{"url":"mem://..."}` JSON itself and holding the blob in an in-memory
-//! object store — a peer serves the CloudSync protocol directly, no S3.
-//!
-//! See `docs/internal/sync-p2p.md` (and the S1 appendix) for the verbatim core
-//! call sequence this transport must satisfy.
+//! See `docs/internal/sync-p2p.md` (§1–§6 for the C contract, §11 for the S1
+//! call graph, §12 for the audit, §13 for the SYNC-3 architecture) for the
+//! verbatim core call sequence this transport must satisfy.
 
 pub mod agent;
 pub mod broker;

@@ -640,3 +640,174 @@ Re-verified after the fixes: two-node convergence proof still GO, `cargo test
   against responses the spike's own broker never produces, so the existing
   tests cannot regress them. v0.6 needs a fake-broker harness (non-2xx status,
   malformed base64, truncated frame) driving the extension end-to-end.
+
+---
+
+## 13. SYNC-3 — iroh P2P transport + device identity + peer allowlist
+
+Appended by SYNC-3 (the first v0.6 production increment over the S1 spike).
+Replaces the spike's localhost TCP transport with a real iroh/QUIC P2P
+transport, adds persistent device identity, and closes the §12 SSRF finding
+with a peer allowlist enforced at both dial and accept. The wire format and
+the broker control plane are unchanged from S1 — only the transport underneath
+swapped, plus the identity/allowlist layer.
+
+### 13.1 Dependency gate (GO)
+
+iroh `1.1.0` added to `crates/sync-p2p`. The documented rustls-cascade risk did
+**not** recur — iroh reuses the major versions the workspace already ships:
+
+| crate | versions in lock after iroh | note |
+|---|---|---|
+| rustls | 0.22.4, 0.23.38 | unchanged — the same two majors that already coexisted (0.22 via libsql/hyper-rustls, 0.23 via AWS SDK **and now iroh**) |
+| quinn | 0.11.9 | unchanged — iroh uses the same quinn major already present (a transitive reqwest dep) |
+| ring | 0.17.14 | unchanged — ring was already in the lock pre-iroh |
+| aws-lc-sys | 0.40.0 | unchanged |
+
+iroh's default features use `tls-ring`; the app ships `aws-lc-rs`, but ring was
+already present so no new crypto crate is introduced and no feature override
+was needed. `cargo check -p sync-p2p --locked` and `cargo check -p desktop
+--locked` both stay green.
+
+### 13.2 The C↔iroh boundary: a local agent
+
+The C `network_p2p.c` functions are synchronous and blocking (contract §6) and
+cannot speak QUIC. The chosen design (brief-recommended): **the C layer stays
+dumb and local; iroh lives entirely in Rust.**
+
+- `network_p2p.c` opens a plain POSIX TCP socket to `127.0.0.1:<port>` — the
+  in-process Rust **`P2pAgent`** (`crates/sync-p2p/src/agent.rs`) — and sends
+  the **same** framed length-prefixed JSON the TCP spike used. The full
+  endpoint URL (`p2p://<node-id>/...` or `mem://<node-id>/...`) travels inside
+  the frame as the `endpoint` field; the C layer does not parse the node id.
+- The agent's local TCP address is supplied by the host process via the
+  `NOTARE_SYNC_AGENT_ADDR` env var (`127.0.0.1:<port>`), set when the agent
+  starts. The C layer reads it per call (`getenv`).
+- The `P2pAgent` owns the iroh `Endpoint` (secret key == device identity key),
+  a `PeerStore`, and the local `BrokerState`. It routes each C request to the
+  local broker (if the endpoint authority is this device's node id) or relays
+  it to the addressed peer over an iroh bi-directional stream. `mem://` object
+  URLs carry the *serving* peer's node-id fingerprint so `send_buffer` PUTs and
+  download GETs route to the peer that minted them.
+
+This quarantines the entire rustls/quinn/iroh dependency tree inside the Rust
+process — exactly where the gate proved it coexists cleanly — and keeps the C
+transport dead simple (one local socket, no crypto, no async runtime in the
+extension). **C never speaks QUIC.**
+
+### 13.3 Endpoint scheme
+
+`cloudsync_network_init_custom(address, dbId)` builds endpoints as
+`{address}/v2/cloudsync/databases/{dbId}/{siteId}/{action}`. The authority is
+now a **node-id fingerprint** (`p2p://<compact-z-base-32-fingerprint>/...`)
+rather than `host:port`, because iroh addresses a peer by its `EndpointId`
+(Ed25519 public key), not by IP. The agent parses the fingerprint out of the
+authority (`Fingerprint::parse`, which accepts both grouped-dashed and compact
+forms) and dials that node id over iroh.
+
+### 13.4 Device identity (`crates/sync-p2p/src/identity.rs`)
+
+Persistent **Ed25519** keypair stored at `<data_dir>/notare/sync/device.key`
+(0600 on unix, atomic write). The public key *is* the Device ID and *is* iroh's
+`EndpointId` — iroh's `SecretKey` is itself Ed25519, so the same key is reused
+directly (one identity, no second layer). Human-readable fingerprint: z-base-32
+(iroh's native `PublicKey` encoding) grouped into dashed 4-char blocks
+(Synthcing-style); round-trips through `Fingerprint::parse`.
+
+### 13.5 Peer allowlist (`crates/sync-p2p/src/peers.rs`) — closes §12 SSRF
+
+A `PeerStore` persisted as `<data_dir>/notare/sync/peers.json` — a **local
+file, deliberately not a SQLite table and never registered with
+`cloudsync_init`**. This is load-bearing: a CRDT-synced allowlist would let a
+revoked device re-add itself by replicating its own still-present local row to
+the revoking peer, undoing the revocation via the very sync it gates. A local
+file outside the CRDT's reach makes revocation *structurally* irreversible from
+a peer's perspective — only the local operator edits `peers.json`.
+
+API: `add_peer` / `remove_peer` (revoke) / `list_peers` / `is_allowed(node_id)`
+/ `touch_last_seen`. Node ids are stored as dashed fingerprints in the JSON
+(human-auditable).
+
+**Enforced at dial AND accept** (`agent.rs`):
+- *Outbound* (`relay_request_to_peer` / `relay_put_to_peer`): before dialing a
+  peer, `is_allowed(node_id)` is checked; a non-allowlisted node id → 403, no
+  stream opened.
+- *Inbound* (`accept_iroh`): the peer's `EndpointId` is authenticated by iroh
+  during the TLS handshake (`conn.remote_id()` is verified, not self-asserted);
+  a non-allowlisted peer → `conn.close(...)` immediately, no streams served.
+  (The check is post-handshake because `Incoming` exposes only `remote_addr`
+  pre-handshake, not the node id — but the node id is authenticated by the
+  handshake, so the check is on verified identity.)
+
+This is the production fix for the audit's §12 SSRF finding: rather than the
+extension dialing any node id supplied via SQL, it dials only a paired,
+allowlisted peer, and refuses unpaired inbound connections.
+
+### 13.6 Broker refactor
+
+`BrokerState::handle_request` / `handle_put` are now `pub(crate)` and reusable
+over any transport (TCP or iroh bi-stream). The S1 `Broker` (localhost TCP
+server) is a thin wrapper over them, so `tests/broker_protocol.rs` (which
+drives the broker over raw TCP) stays green unchanged. The `mem://` URL label
+(`addr` → `addr_label`) is now a routable string: `host:port` for the TCP
+spike, node-id fingerprint for iroh.
+
+### 13.7 Convergence proof (GO)
+
+`cargo run -p sync-p2p --example sync_two_nodes` — two independent file-backed
+SQLite DBs, two independent cloudsync site IDs, `cls` CRDT on
+`notes(id INTEGER PRIMARY KEY, body TEXT)`, syncing over iroh (loopback,
+`RelayMode::Disabled`). Node A hosts the shared broker; node B reaches it over
+iroh. (CloudSync's protocol assumes a shared server both sites push to and
+pull from; with iroh as the transport, B's connection to that shared broker is
+a QUIC stream rather than a TCP socket. Full mesh — every device a broker — is
+a later increment; same-machine convergence is the proof scope for this PR.)
+
+A green run: A→B (2 rows over iroh), B→A (1 row), and a concurrent update on
+row 1 converging conflict-free to the same value on both.
+
+> The `sqlx-sqlite-worker` close panics at example exit are a pre-existing
+> artifact (the cloudsync extension holds prepared statements sqlx's pool close
+> cannot finalize) — the original S1 spike had the identical teardown. The
+> convergence assertions all pass before close.
+
+### 13.8 What's plugged in where (for SYNC-4/5/6/7/8/9)
+
+- **SYNC-4 (N-way / full mesh):** the proof uses a shared broker at A. Full
+  P2P (each device runs a broker; peers dial each other directly) needs the
+  broker's per-database log + per-site delivery to handle >2 peers, or a real
+  global db_version. The `mem://` object store + control endpoints are already
+  per-device; iroh's direct-connect/relay maps onto mesh naturally.
+- **SYNC-5 (wire into the app):** start a `P2pAgent` per device in the desktop
+  app, set `NOTARE_SYNC_AGENT_ADDR` for the cloudsync extension, and surface
+  `Identity`/`PeerStore` through the Tauri command layer. Do NOT touch
+  `crates/db-core`, `plugins/db`, or UI in this PR (constraint).
+- **SYNC-6 (pairing UI):** `PeerStore::add_peer` is the API; the UI produces a
+  node-id fingerprint (display via `Identity::fingerprint`, parse via
+  `Fingerprint::parse`). Discovery is SYNC-8.
+- **SYNC-7 (E2E payload encryption):** iroh already encrypts the transport
+  (TLS over QUIC, peer-authenticated by `EndpointId`). Payload-level encryption
+  (end-to-end across a relay, or at-rest) is layered on top.
+- **SYNC-8 (rendezvous/relay):** the proof uses `RelayMode::Disabled` +
+  `register_direct_addr` (a process-local node-id → socket-addr map). Production
+  replaces that with iroh's relay/DNS/pkarr address lookup (`RelayMode::Default`,
+  `EndpointAddr` discovered via the address-lookup service). NAT traversal is
+  iroh's job — not hand-rolled.
+- **SYNC-9 (cross-platform builds):** the C transport (`network_p2p.c`) uses
+  POSIX sockets (linux). Windows/macOS need the equivalent local-socket setup
+  + the `NOTARE_SYNC_AGENT_ADDR` handoff. iroh itself is cross-platform.
+
+### 13.9 Audit carry-forward
+
+The §12 production requirements not closed by identity/allowlist remain:
+- **IPv6 endpoints** — the C layer's `resolve_agent_addr` splits at the last
+  `:`; for IPv6 the agent address should be bracketed. The proof uses IPv4
+  loopback; production should bracket/validate. (No memory-safety issue —
+  bounds-checked.)
+- **`strstr`-based JSON field lookup in `network_p2p.c`** — the response
+  parsing still uses tolerant manual `strstr` for `status`/`body`. A hostile
+  *agent* is not a threat (it's in-process, trusted), but SYNC-4's full mesh
+  should move response parsing to a typed codec.
+- **No hostile-peer test fixture over iroh** — the `iroh_transport.rs` tests
+  cover allowlist refusal on dial + accept; a fixture driving malformed frames
+  over a real iroh stream is SYNC-4.

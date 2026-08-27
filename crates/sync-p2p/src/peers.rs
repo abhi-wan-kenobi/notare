@@ -146,7 +146,11 @@ impl PeerStore {
 
     /// Add (or, if already present, update the label of) a peer. Returns the
     /// peer as stored.
-    pub fn add_peer(&self, node_id: PublicKey, label: impl Into<String>) -> Result<Peer, PeersError> {
+    pub fn add_peer(
+        &self,
+        node_id: PublicKey,
+        label: impl Into<String>,
+    ) -> Result<Peer, PeersError> {
         let mut g = self.inner.write().expect("peer store lock poisoned");
         let label = label.into();
         let added_at = now_secs();
@@ -166,7 +170,9 @@ impl PeerStore {
             g.allowed.insert(*node_id.as_bytes());
             peer
         };
-        let snapshot = PeersFile { peers: g.peers.clone() };
+        let snapshot = PeersFile {
+            peers: g.peers.clone(),
+        };
         g.persist(&snapshot)?;
         Ok(stored)
     }
@@ -181,7 +187,9 @@ impl PeerStore {
         g.allowed.remove(node_id.as_bytes());
         let removed = g.peers.len() < before;
         if removed {
-            let snapshot = PeersFile { peers: g.peers.clone() };
+            let snapshot = PeersFile {
+                peers: g.peers.clone(),
+            };
             g.persist(&snapshot)?;
         }
         Ok(removed)
@@ -194,7 +202,9 @@ impl PeerStore {
             return;
         };
         peer.last_seen = now_secs();
-        let snapshot = PeersFile { peers: g.peers.clone() };
+        let snapshot = PeersFile {
+            peers: g.peers.clone(),
+        };
         // Best-effort persist; a failed last_seen write must not tear down a
         // working connection.
         let _ = g.persist(&snapshot);
@@ -205,10 +215,7 @@ impl PeerStoreInner {
     fn persist(&self, file: &PeersFile) -> Result<(), PeersError> {
         let bytes = serde_json::to_vec_pretty(file)?;
         // Temp file + rename so a crash mid-write can't corrupt the allowlist.
-        let dir = self
-            .path
-            .parent()
-            .unwrap_or_else(|| Path::new("."));
+        let dir = self.path.parent().unwrap_or_else(|| Path::new("."));
         let tmp = dir.join(format!(
             ".{PEERS_FILE}.{}.{}.tmp",
             std::process::id(),
@@ -307,7 +314,11 @@ mod tests {
         store.add_peer(a, "old").unwrap();
         store.add_peer(a, "new label").unwrap();
         let peers = store.list_peers();
-        assert_eq!(peers.len(), 1, "re-adding the same node id does not duplicate");
+        assert_eq!(
+            peers.len(),
+            1,
+            "re-adding the same node id does not duplicate"
+        );
         assert_eq!(peers[0].label, "new label");
     }
 

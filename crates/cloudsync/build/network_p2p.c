@@ -1,4 +1,4 @@
-// S1 P2P network layer for the vendored sqlite-sync (CloudSync) extension.
+// P2P network layer for the vendored sqlite-sync (CloudSync) extension.
 //
 // Replaces the S0b network_stub.c behind the `from-source` feature. Implements
 // the two functions the CloudSync core calls (see docs/internal/sync-p2p.md):
@@ -10,14 +10,25 @@
 //                                     bool is_post_request, char *json_payload,
 //                                     const char *custom_header);
 //
-// Transport: a framed length-prefixed TCP protocol on localhost to a Rust
-// broker (crates/sync-p2p) that serves the CloudSync control protocol directly,
-// collapsing the HTTP-S3 3-step upload/apply flow onto an in-memory object
-// store. Pure POSIX sockets — no libcurl, no external deps. The broker is the
-// "SQLite Cloud server" for the spike.
+// Transport: the C layer is deliberately dumb and LOCAL. It does NOT speak
+// QUIC/iroh and does NOT dial peers by node id. It opens a plain POSIX TCP
+// socket to the in-process Rust P2pAgent (crates/sync-p2p/src/agent.rs) on
+// 127.0.0.1:<port> and sends the SAME framed length-prefixed JSON the TCP
+// spike used — the full endpoint URL (p2p://<node-id-fingerprint>/... or
+// mem://<node-id-fingerprint>/...) travels inside the frame. The agent owns
+// the iroh endpoint, enforces the peer allowlist at dial AND accept, and
+// relays each request to the addressed peer over an iroh bi-stream. This
+// keeps the C transport dead simple (one local socket, no crypto, no async
+// runtime) and quarantines the entire rustls/quinn dependency tree inside
+// the Rust process.
 //
-// SPIKE scope: localhost, unencrypted, no auth, blocking. Production transport
-// (iroh/QUIC, NAT traversal, relay, encryption, pairing) is out of scope.
+// The agent's local TCP address is supplied by the host process via the
+// NOTARE_SYNC_AGENT_ADDR env var ("127.0.0.1:<port>"), set when the agent
+// starts. No libcurl, no external deps. Blocking only (contract §6).
+//
+// Audit status: the §12 SSRF finding is closed by the allowlist enforcement
+// in the Rust agent (refused at dial + accept), not in this C layer — the C
+// layer only ever talks to the local agent, never to an arbitrary host.
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -42,40 +53,39 @@
 #include "../utils.h"
 
 // ------------------------------------------------------------------
-// endpoint parsing
+// local agent address resolution
 // ------------------------------------------------------------------
 
-// Parse `p2p://host:port/...` (or `http://...`) out of an endpoint URL into a
-// host string and port. Returns false on any parse failure (defensive — the
-// endpoint is attacker-influenced user input).
-static bool parse_host_port(const char *endpoint, char *host_out, size_t host_cap, int *port_out) {
-    if (!endpoint) return false;
-    const char *s = endpoint;
-    if (strncmp(s, "p2p://", 6) == 0) s += 6;
-    else if (strncmp(s, "http://", 7) == 0) s += 7;
-    else if (strncmp(s, "mem://", 6) == 0) s += 6;
-    else return false;
+// The C network layer is deliberately dumb and LOCAL: it does NOT speak
+// QUIC/iroh and does NOT dial peers by node id. It opens a plain TCP socket
+// to the in-process Rust P2pAgent (crates/sync-p2p/src/agent.rs) on
+// 127.0.0.1:<port> and sends the SAME framed length-prefixed JSON the TCP
+// spike used — the full endpoint URL (p2p://<node-id-fingerprint>/... or
+// mem://<node-id-fingerprint>/...) travels inside the frame, and the agent
+// does the iroh routing + allowlist enforcement. This quarantines the entire
+// rustls/quinn dep tree inside the Rust process.
+//
+// The agent's local TCP address is supplied by the host process via the
+// NOTARE_SYNC_AGENT_ADDR env var (set to 127.0.0.1:<port> when the agent
+// starts). Reading it once per call is cheap and avoids a global init
+// ordering dependency on the extension load path.
 
-    // Find the end of the host:port authority (next '/').
-    const char *slash = strchr(s, '/');
-    size_t auth_len = slash ? (size_t)(slash - s) : strlen(s);
-    if (auth_len == 0 || auth_len >= host_cap) return false;
-
-    // Split host:port at the last ':' (handles bracketed IPv6 too, but we only
-    // need localhost/127.0.0.1 for the spike).
+static bool resolve_agent_addr(char *host_out, size_t host_cap, int *port_out) {
+    const char *addr = getenv("NOTARE_SYNC_AGENT_ADDR");
+    if (!addr || !*addr) return false;
+    // Parse "host:port". Split at the last ':' (the host is 127.0.0.1 / ::1).
     const char *colon = NULL;
-    for (size_t i = 0; i < auth_len; i++) {
-        if (s[i] == ':') colon = &s[i];
+    for (const char *p = addr; *p; p++) {
+        if (*p == ':') colon = p;
     }
-    if (!colon) return false; // no port
-
-    size_t host_len = (size_t)(colon - s);
+    if (!colon) return false;
+    size_t host_len = (size_t)(colon - addr);
     if (host_len == 0 || host_len >= host_cap) return false;
-    memcpy(host_out, s, host_len);
+    memcpy(host_out, addr, host_len);
     host_out[host_len] = '\0';
 
     char port_buf[16];
-    size_t port_len = auth_len - host_len - 1;
+    size_t port_len = strlen(colon + 1);
     if (port_len == 0 || port_len >= sizeof(port_buf)) return false;
     memcpy(port_buf, colon + 1, port_len);
     port_buf[port_len] = '\0';
@@ -293,8 +303,12 @@ NETWORK_RESULT network_receive_buffer(network_data *data, const char *endpoint,
 
     char host[256];
     int port;
-    if (!parse_host_port(endpoint, host, sizeof(host), &port)) {
-        char *msg = cloudsync_string_dup("network_receive_buffer: bad endpoint");
+    // The endpoint URL (p2p://<node-id>/... or mem://<node-id>/...) is opaque
+    // to the C layer — it travels inside the frame for the Rust agent to
+    // route. The C layer only needs the LOCAL agent's TCP address.
+    if (!resolve_agent_addr(host, sizeof(host), &port)) {
+        char *msg = cloudsync_string_dup(
+            "network_receive_buffer: NOTARE_SYNC_AGENT_ADDR not set");
         return (NETWORK_RESULT){CLOUDSYNC_NETWORK_ERROR, msg, 1, NULL, NULL};
     }
 
@@ -459,9 +473,11 @@ bool network_send_buffer(network_data *data, const char *endpoint,
 
     char host[256];
     int port;
-    // The endpoint is the `mem://127.0.0.1:PORT/<id>` URL the broker returned
-    // from the upload step. parse_host_port handles the mem:// scheme.
-    if (!parse_host_port(endpoint, host, sizeof(host), &port)) {
+    // The endpoint is the `mem://<node-id-fingerprint>/<id>` URL the broker
+    // returned from the upload step. The C layer does NOT parse the node id —
+    // it routes through the local agent, which reads the mem:// authority and
+    // dials the right peer over iroh.
+    if (!resolve_agent_addr(host, sizeof(host), &port)) {
         return false;
     }
 

@@ -58,9 +58,7 @@ use tokio::net::TcpListener;
 use crate::broker::BrokerState;
 use crate::identity::{Fingerprint, Identity};
 use crate::peers::PeerStore;
-use crate::protocol::{
-    PutRequest, PutResponse, Request, Response, read_frame, write_frame,
-};
+use crate::protocol::{PutRequest, PutResponse, Request, Response, read_frame, write_frame};
 
 /// The ALPN the sync transport speaks over iroh. Both peers must match.
 const SYNC_ALPN: &[u8] = b"/notare/sync/1";
@@ -154,7 +152,14 @@ impl P2pAgent {
         let tcp_endpoint = endpoint.clone();
         let tcp_self_label = self_label.clone();
         let tcp_handle = tokio::spawn(async move {
-            accept_c_tcp(tcp_listener, tcp_state, tcp_peers, tcp_endpoint, tcp_self_label).await;
+            accept_c_tcp(
+                tcp_listener,
+                tcp_state,
+                tcp_peers,
+                tcp_endpoint,
+                tcp_self_label,
+            )
+            .await;
         });
 
         // iroh inbound accept loop: remote peers dial us to pull our changes.
@@ -247,10 +252,7 @@ struct Ctx {
     self_label: String,
 }
 
-async fn handle_c_connection(
-    stream: &mut tokio::net::TcpStream,
-    ctx: &Ctx,
-) -> std::io::Result<()> {
+async fn handle_c_connection(stream: &mut tokio::net::TcpStream, ctx: &Ctx) -> std::io::Result<()> {
     // Peek the frame to distinguish Request vs PutRequest. Read the raw frame
     // bytes first (length-prefixed), then try both deserializations.
     let mut buf = Vec::new();
@@ -475,10 +477,7 @@ async fn relay_put_to_peer(put: &PutRequest, node_id: &PublicKey, ctx: &Ctx) -> 
 /// Resolve a peer's iroh direct address and dial it. The agent's
 /// [`P2pAgent::direct_addresses`] supplies the peer's socket addresses for the
 /// same-machine proof; production discovery (relay/DNS/pkarr) is SYNC-8.
-async fn dial_peer(
-    node_id: &PublicKey,
-    ctx: &Ctx,
-) -> Result<iroh::endpoint::Connection, String> {
+async fn dial_peer(node_id: &PublicKey, ctx: &Ctx) -> Result<iroh::endpoint::Connection, String> {
     // Build an EndpointAddr from the node id + the peer's known direct
     // addresses. For the convergence proof the addresses are injected via the
     // shared DIRECT_ADDR registry (see `register_direct_addr`); production
@@ -578,7 +577,10 @@ async fn serve_peer_stream(
 // ---------------------------------------------------------------------------
 
 /// Read one 4-byte length-prefixed frame into `buf` (raw bytes, no deserialize).
-async fn read_raw_frame<R: AsyncReadExt + Unpin>(r: &mut R, buf: &mut Vec<u8>) -> std::io::Result<()> {
+async fn read_raw_frame<R: AsyncReadExt + Unpin>(
+    r: &mut R,
+    buf: &mut Vec<u8>,
+) -> std::io::Result<()> {
     let mut len_buf = [0u8; 4];
     r.read_exact(&mut len_buf).await?;
     let len = u32::from_be_bytes(len_buf) as usize;
@@ -616,10 +618,14 @@ fn endpoint_authority(url: &str) -> Option<String> {
 // agents live in the same process). Production replaces this with relay/DNS
 // address lookup — that is SYNC-8 (rendezvous/relay), out of scope here.
 
-static DIRECT_ADDRS: tokio::sync::Mutex<Option<std::collections::HashMap<[u8; 32], Vec<std::net::SocketAddr>>>> =
-    tokio::sync::Mutex::const_new(None);
+static DIRECT_ADDRS: tokio::sync::Mutex<
+    Option<std::collections::HashMap<[u8; 32], Vec<std::net::SocketAddr>>>,
+> = tokio::sync::Mutex::const_new(None);
 
-async fn direct_addrs_map() -> tokio::sync::MutexGuard<'static, Option<std::collections::HashMap<[u8; 32], Vec<std::net::SocketAddr>>>> {
+async fn direct_addrs_map() -> tokio::sync::MutexGuard<
+    'static,
+    Option<std::collections::HashMap<[u8; 32], Vec<std::net::SocketAddr>>>,
+> {
     let mut g = DIRECT_ADDRS.lock().await;
     if g.is_none() {
         *g = Some(std::collections::HashMap::new());

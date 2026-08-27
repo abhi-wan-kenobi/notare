@@ -13,8 +13,8 @@
 
 use std::time::Duration;
 
-use sync_p2p::{Identity, PeerStore, P2pAgent, register_direct_addr};
 use sync_p2p::protocol::{PutRequest, Request, Response};
+use sync_p2p::{Identity, P2pAgent, PeerStore, register_direct_addr};
 
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
@@ -221,27 +221,45 @@ async fn full_collapsed_s3_flow_over_iroh() {
     let site = "site-a";
 
     // 1. A → B: upload (GET) → {"url":"mem://<B>/id"}
-    let upload_ep = format!("{}/v2/cloudsync/databases/{db}/{site}/upload", agent_b.address());
+    let upload_ep = format!(
+        "{}/v2/cloudsync/databases/{db}/{site}/upload",
+        agent_b.address()
+    );
     let resp = agent_roundtrip(
         &agent_a.local_addr,
-        &Request { endpoint: upload_ep, is_post: false, body: None },
+        &Request {
+            endpoint: upload_ep,
+            is_post: false,
+            body: None,
+        },
     )
     .await
     .unwrap();
     assert_eq!(resp.status, 200);
-    let url: String = serde_json::from_str::<serde_json::Value>(&String::from_utf8(resp.body.unwrap()).unwrap())
-        .unwrap()
-        .get("url").unwrap().as_str().unwrap().to_string();
+    let url: String =
+        serde_json::from_str::<serde_json::Value>(&String::from_utf8(resp.body.unwrap()).unwrap())
+            .unwrap()
+            .get("url")
+            .unwrap()
+            .as_str()
+            .unwrap()
+            .to_string();
     assert!(url.starts_with("mem://"));
 
     // 2. A → B: send_buffer (PUT the blob to the mem:// url). Routed to B
     //    because the mem:// url carries B's fingerprint.
     let blob = b"convergence-payload".to_vec();
-    let put = PutRequest { url: url.clone(), blob };
+    let put = PutRequest {
+        url: url.clone(),
+        blob,
+    };
     // PUT is a different frame shape; send it directly over the agent's TCP.
     let mut stream = TcpStream::connect(&agent_a.local_addr).await.unwrap();
     let json = serde_json::to_vec(&put).unwrap();
-    stream.write_all(&(json.len() as u32).to_be_bytes()).await.unwrap();
+    stream
+        .write_all(&(json.len() as u32).to_be_bytes())
+        .await
+        .unwrap();
     stream.write_all(&json).await.unwrap();
     stream.flush().await.unwrap();
     let mut len_buf = [0u8; 4];
@@ -254,11 +272,19 @@ async fn full_collapsed_s3_flow_over_iroh() {
 
     // 3. A → B: apply (POST) → {"lastOptimisticVersion":N,...}
     let apply_body = serde_json::json!({ "url": url, "dbVersionMin": 1, "dbVersionMax": 5 })
-        .to_string().into_bytes();
-    let apply_ep = format!("{}/v2/cloudsync/databases/{db}/{site}/apply", agent_b.address());
+        .to_string()
+        .into_bytes();
+    let apply_ep = format!(
+        "{}/v2/cloudsync/databases/{db}/{site}/apply",
+        agent_b.address()
+    );
     let resp = agent_roundtrip(
         &agent_a.local_addr,
-        &Request { endpoint: apply_ep, is_post: true, body: Some(apply_body) },
+        &Request {
+            endpoint: apply_ep,
+            is_post: true,
+            body: Some(apply_body),
+        },
     )
     .await
     .unwrap();
@@ -267,11 +293,20 @@ async fn full_collapsed_s3_flow_over_iroh() {
     assert_eq!(v["lastOptimisticVersion"], 5);
 
     // 4. A → B: check (POST) → {"url":"mem://..."} (a fresh copy to download)
-    let check_body = serde_json::json!({ "dbVersion": 0, "seq": 0 }).to_string().into_bytes();
-    let check_ep = format!("{}/v2/cloudsync/databases/{db}/{site}/check", agent_b.address());
+    let check_body = serde_json::json!({ "dbVersion": 0, "seq": 0 })
+        .to_string()
+        .into_bytes();
+    let check_ep = format!(
+        "{}/v2/cloudsync/databases/{db}/{site}/check",
+        agent_b.address()
+    );
     let resp = agent_roundtrip(
         &agent_a.local_addr,
-        &Request { endpoint: check_ep, is_post: true, body: Some(check_body) },
+        &Request {
+            endpoint: check_ep,
+            is_post: true,
+            body: Some(check_body),
+        },
     )
     .await
     .unwrap();
@@ -282,7 +317,11 @@ async fn full_collapsed_s3_flow_over_iroh() {
     // 5. A → B: download (GET the mem:// url) → the raw blob bytes.
     let resp = agent_roundtrip(
         &agent_a.local_addr,
-        &Request { endpoint: dl_url, is_post: false, body: None },
+        &Request {
+            endpoint: dl_url,
+            is_post: false,
+            body: None,
+        },
     )
     .await
     .unwrap();
