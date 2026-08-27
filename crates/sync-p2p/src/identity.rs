@@ -139,6 +139,16 @@ fn restrict_perms(path: &Path) {
 #[cfg(not(unix))]
 fn restrict_perms(_path: &Path) {}
 
+impl Identity {
+    /// Construct a fresh ephemeral identity for tests (not persisted).
+    #[cfg(test)]
+    pub(crate) fn for_test() -> Self {
+        Self {
+            secret: SecretKey::generate(),
+        }
+    }
+}
+
 /// A human-readable fingerprint of a device id: z-base-32 (iroh's native
 /// `PublicKey` encoding) grouped into dashed blocks for readability.
 ///

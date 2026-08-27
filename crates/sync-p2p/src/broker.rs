@@ -73,15 +73,19 @@ struct DbState {
 
 /// The broker's shared state.
 #[derive(Debug)]
-struct BrokerState {
+pub(crate) struct BrokerState {
     /// `managedDatabaseId -> state`.
     dbs: Mutex<HashMap<String, DbState>>,
     /// `mem://addr/<id> -> blob bytes` object store (the S3 bucket), keyed by
     /// the full mem:// URL the broker minted.
     objects: Mutex<HashMap<String, Vec<u8>>>,
-    /// The broker's own `host:port`, embedded in minted mem:// URLs so the C
-    /// `network_send_buffer` can connect back to the right broker.
-    addr: String,
+    /// The label embedded in minted `mem://` URLs so the caller can route the
+    /// later `send_buffer` PUT / download GET back to the right broker. In the
+    /// TCP spike this is the broker's `host:port`; in the iroh transport it is
+    /// the serving peer's node-id fingerprint (iroh addresses by node id, not
+    /// host:port). Either way the object store is keyed by the full `mem://`
+    /// URL, so this only needs to be a stable, routable string for the caller.
+    addr_label: String,
 }
 
 impl Default for BrokerState {
@@ -89,7 +93,28 @@ impl Default for BrokerState {
         Self {
             dbs: Mutex::new(HashMap::new()),
             objects: Mutex::new(HashMap::new()),
-            addr: String::new(),
+            addr_label: String::new(),
+        }
+    }
+}
+
+impl BrokerState {
+    /// Construct with a specific `mem://` URL label.
+    pub(crate) fn with_addr_label(addr_label: impl Into<String>) -> Self {
+        Self {
+            addr_label: addr_label.into(),
+            ..Default::default()
+        }
+    }
+
+    /// Handle a `send_buffer` PUT: store `blob` under `url` in the object store.
+    pub(crate) async fn handle_put(&self, put: PutRequest) -> PutResponse {
+        let mut objects = self.objects.lock().await;
+        objects.insert(put.url.clone(), put.blob);
+        drop(objects);
+        PutResponse {
+            ok: true,
+            error: None,
         }
     }
 }
@@ -104,15 +129,15 @@ pub struct Broker {
     handle: tokio::task::JoinHandle<()>,
 }
 
-/// Parsed endpoint: `p2p://host:port/<dbId>/<siteId>/<action>`.
+/// Parsed endpoint: `p2p://<authority>/<dbId>/<siteId>/<action>`.
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct Endpoint {
-    action: String,
-    db_id: String,
-    _site_id: String,
+pub(crate) struct Endpoint {
+    pub action: String,
+    pub db_id: String,
+    pub _site_id: String,
 }
 
-fn parse_endpoint(url: &str) -> Option<Endpoint> {
+pub(crate) fn parse_endpoint(url: &str) -> Option<Endpoint> {
     // The core builds `{address}/v2/cloudsync/databases/{dbId}/{siteId}/{action}`
     // where `address` is the `p2p://host:port` we set via cloudsync_network_init_custom.
     // We only care about the trailing three path segments.
@@ -187,7 +212,7 @@ fn mint_object_url(broker_addr: &str) -> String {
 }
 
 impl BrokerState {
-    async fn handle_request(&self, req: Request) -> Response {
+    pub(crate) async fn handle_request(&self, req: Request) -> Response {
         // Download URL: a `mem://<id>` the core GETs via network_download_changes.
         // Route it before parse_endpoint (which only matches the 3-segment
         // /dbId/siteId/action control endpoints).
@@ -211,7 +236,7 @@ impl BrokerState {
         match ep.action.as_str() {
             "upload" => {
                 // GET: hand back a URL the core will PUT the blob to.
-                let url = mint_object_url(&self.addr);
+                let url = mint_object_url(&self.addr_label);
                 json_ok(&serde_json::json!({ "url": url }))
             }
             "apply" => {
@@ -294,7 +319,7 @@ impl BrokerState {
                 let bytes = blob.bytes.clone();
                 drop(dbs);
                 // Re-store the blob under a fresh mem:// key for the downloader.
-                let url = mint_object_url(&self.addr);
+                let url = mint_object_url(&self.addr_label);
                 {
                     let mut objects = self.objects.lock().await;
                     objects.insert(url.clone(), bytes);
@@ -325,10 +350,10 @@ impl Broker {
     pub async fn start() -> std::io::Result<Self> {
         let listener = TcpListener::bind("127.0.0.1:0").await?;
         let addr = listener.local_addr()?.to_string();
-        let state = Arc::new(BrokerState {
-            addr: addr.clone(),
-            ..Default::default()
-        });
+        // The TCP spike embeds host:port in minted mem:// URLs so the C
+        // `network_send_buffer` (which receives the URL with no other context)
+        // can connect back to the right broker.
+        let state = Arc::new(BrokerState::with_addr_label(&addr));
 
         let state_clone = Arc::clone(&state);
         let handle = tokio::spawn(async move {
@@ -353,13 +378,7 @@ impl Broker {
                         return;
                     }
                     if let Ok(put) = serde_json::from_slice::<PutRequest>(&buf) {
-                        let mut objects = state.objects.lock().await;
-                        objects.insert(put.url.clone(), put.blob);
-                        drop(objects);
-                        let resp = PutResponse {
-                            ok: true,
-                            error: None,
-                        };
+                        let resp = state.handle_put(put).await;
                         let _ = write_frame(&mut stream, &resp).await;
                         return;
                     }

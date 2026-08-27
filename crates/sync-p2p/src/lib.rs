@@ -21,11 +21,13 @@
 //! See `docs/internal/sync-p2p.md` (and the S1 appendix) for the verbatim core
 //! call sequence this transport must satisfy.
 
+pub mod agent;
 pub mod broker;
 pub mod identity;
 pub mod peers;
 pub mod protocol;
 
+pub use agent::{P2pAgent, register_direct_addr, self_address};
 pub use broker::Broker;
 pub use identity::{Fingerprint, FingerprintError, Identity, IdentityError};
 pub use peers::{Peer, PeerStore, PeersError};
