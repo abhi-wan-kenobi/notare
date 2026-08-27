@@ -811,3 +811,43 @@ The §12 production requirements not closed by identity/allowlist remain:
 - **No hostile-peer test fixture over iroh** — the `iroh_transport.rs` tests
   cover allowlist refusal on dial + accept; a fixture driving malformed frames
   over a real iroh stream is SYNC-4.
+
+---
+
+## 14. Audit outcome (2026-08-28) — SYNC-3 (`agent.rs`)
+
+`auditor` skill, seats `gpt-oss:120b` + `kimi-k2.7-code` (coder = glm-5.2, glm
+family excluded), focused on the allowlist security boundary. Every finding was
+verified against the real code before acting.
+
+### Fixed
+
+| Finding | Seats | Verdict + fix |
+|---|---|---|
+| **Inbound allowlist checked once per connection, not per bi-stream** — a peer revoked while its QUIC connection is open keeps being served until the connection drops. | kimi (medium) | **REAL but LATENT.** Verified: `dial_peer` currently opens a fresh connection per request, so the connection-level check alone already refuses a revoked peer — a test driven through the agent passes with *or without* the fix (confirmed by reverting it). The accept loop nevertheless serves `conn.accept_bi()` in a loop, so the gap goes live the moment SYNC-4 adds connection reuse. Fixed by re-checking per stream, and pinned by `revoked_peer_is_refused_on_a_reused_connection`, which opens two bi-streams on one connection and **fails against the pre-fix code**. |
+| **Unparseable frame always answered with a `PutResponse`**, even when the caller sent a `Request`. | gpt-oss + kimi (2-seat) | **REAL**, low impact (only truly-garbage frames reach it, and the C side now fails closed on the §12 status check). Fixed: discriminate on `"url"`/`"blob"` and reply in the caller's shape. |
+| **C-facing accept loop `break`s on any error** — a transient `EMFILE`/`ECONNABORTED` silently disables sync for the process lifetime. | gpt-oss (medium) | **REAL.** Fixed: log + back off 50ms + continue. (`tracing` added to the crate; it had no logging at all.) |
+| **`endpoint_authority` also accepted `http://`** — a leftover from the S1 localhost spike. | kimi (low) | **REAL** (scheme confusion on attacker-influenced input). Fixed: `p2p://` only. |
+
+### Carried to later PRs (real, out of scope here)
+
+- **⚠️ SYNC-5: the C-facing localhost TCP port is unauthenticated.** Any local
+  process can connect to the agent and read/write sync data, bypassing the peer
+  allowlist from the local side. Wiring the agent into the desktop app is
+  exactly when this must be closed — use a Unix-domain socket with peer-credential
+  checks, or a token handed over alongside `NOTARE_SYNC_AGENT_ADDR`.
+- **SYNC-4: unbounded per-stream task spawning.** Each inbound bi-stream spawns a
+  task with no cap; an allowlisted-but-misbehaving peer could exhaust resources.
+  Bound it with a semaphore when connection reuse lands.
+- **SYNC-4: 64 MiB frame ceiling** is generous for a control-plane message; tighten
+  once the real payload sizes are known.
+- **SYNC-8: `lookup_direct_addrs` `try_lock` falls back to an empty address list**
+  under contention, causing a spurious dial failure. This is proof-scaffold code
+  (`register_direct_addr` exists only because `RelayMode::Disabled`); it is
+  replaced wholesale by iroh relay/DNS discovery.
+
+### Rejected
+
+None outright this round — but note the *severity* of the per-stream finding was
+overstated (reported as an active revocation bypass; it is latent until
+connection reuse exists). Recording that distinction matters more than the label.

@@ -61,7 +61,11 @@ use crate::peers::PeerStore;
 use crate::protocol::{PutRequest, PutResponse, Request, Response, read_frame, write_frame};
 
 /// The ALPN the sync transport speaks over iroh. Both peers must match.
-const SYNC_ALPN: &[u8] = b"/notare/sync/1";
+///
+/// Public because it is part of the wire contract: any peer implementation —
+/// and the allowlist regression test, which opens two raw bi-streams on a
+/// single connection — has to negotiate the same ALPN.
+pub const SYNC_ALPN: &[u8] = b"/notare/sync/1";
 
 /// Errors from starting or running the P2P agent.
 #[derive(Debug, thiserror::Error)]
@@ -227,9 +231,17 @@ async fn accept_c_tcp(
     self_label: String,
 ) {
     loop {
+        // AUDIT (2026-08-28, gpt-oss): a transient accept error (EMFILE,
+        // ECONNABORTED, EINTR) must not kill the listener — breaking here would
+        // silently disable sync for the rest of the process lifetime. Back off
+        // briefly and keep serving.
         let (mut stream, _) = match listener.accept().await {
             Ok(s) => s,
-            Err(_) => break,
+            Err(e) => {
+                tracing::warn!("sync-p2p: C-facing accept failed: {e}");
+                tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+                continue;
+            }
         };
         let ctx = Ctx {
             broker: Arc::clone(&broker),
@@ -268,12 +280,40 @@ async fn handle_c_connection(stream: &mut tokio::net::TcpStream, ctx: &Ctx) -> s
         write_frame(stream, &resp).await?;
         return Ok(());
     }
-    let resp = PutResponse {
-        ok: false,
-        error: Some("unparseable frame".into()),
-    };
-    write_frame(stream, &resp).await?;
+    // AUDIT (2026-08-28, gpt-oss + kimi, 2-seat agreement): reply in the shape
+    // the caller expects. `network_receive_buffer` parses a `Response`
+    // (`status`/`body`), `network_send_buffer` parses a `PutResponse` (`ok`).
+    // Always answering with a PutResponse meant a malformed receive-side frame
+    // came back in the wrong shape. `Request` and `PutRequest` have disjoint
+    // required fields, so the presence of `"url"` is a sound discriminator for
+    // a frame that failed both deserializations.
+    if buf_looks_like_put(&buf) {
+        let resp = PutResponse {
+            ok: false,
+            error: Some("unparseable frame".into()),
+        };
+        write_frame(stream, &resp).await?;
+    } else {
+        let resp = Response {
+            status: 400,
+            body: None,
+            error: Some("unparseable frame".into()),
+        };
+        write_frame(stream, &resp).await?;
+    }
     Ok(())
+}
+
+/// Best-effort discriminator for a frame that failed both deserializations:
+/// `PutRequest` carries `"url"`/`"blob"`, `Request` carries `"endpoint"`.
+fn buf_looks_like_put(buf: &[u8]) -> bool {
+    let v: Option<serde_json::Value> = serde_json::from_slice(buf).ok();
+    match v {
+        Some(serde_json::Value::Object(m)) => {
+            m.contains_key("url") || m.contains_key("blob")
+        }
+        _ => false,
+    }
 }
 
 /// Route a `Request` (a `network_receive_buffer` call) to the local broker or
@@ -549,7 +589,18 @@ async fn accept_iroh(endpoint: Endpoint, broker: Arc<BrokerState>, peers: PeerSt
             peers.touch_last_seen(&remote);
             // Serve bi-streams from this connection until it closes. Each
             // bi-stream is one framed Request/PutRequest → one framed reply.
+            //
+            // AUDIT (2026-08-28, kimi): the allowlist MUST be re-checked per
+            // stream, not only once per connection. The check above happens at
+            // handshake time; without this re-check a peer revoked while its
+            // QUIC connection is still open keeps syncing until that connection
+            // happens to drop — i.e. revocation would not take effect against an
+            // actively-connected peer, which is the case revocation exists for.
             while let Ok((mut send, mut recv)) = conn.accept_bi().await {
+                if !peers_refuse.is_allowed(&remote) {
+                    conn.close(iroh::endpoint::VarInt::from_u32(1), b"revoked");
+                    break;
+                }
                 let broker = Arc::clone(&broker);
                 tokio::spawn(async move {
                     let _ = serve_peer_stream(&mut send, &mut recv, &broker).await;
@@ -610,11 +661,15 @@ async fn read_raw_frame<R: AsyncReadExt + Unpin>(
 }
 
 /// Extract the authority segment (between the scheme and the first `/`) of a
-/// `p2p://` or `http://` endpoint URL.
+/// `p2p://` endpoint URL.
+///
+/// AUDIT (2026-08-28, kimi): `http://` was also accepted here, a leftover from
+/// the S1 localhost spike. The endpoint is attacker-influenced (it derives from
+/// the SQL-supplied address), so accepting a second scheme only widens the
+/// surface for scheme confusion — `p2p://` is the only scheme this transport
+/// defines. `mem://` is handled separately by the caller.
 fn endpoint_authority(url: &str) -> Option<String> {
-    let after = url
-        .strip_prefix("p2p://")
-        .or_else(|| url.strip_prefix("http://"))?;
+    let after = url.strip_prefix("p2p://")?;
     let auth = after.split_once('/').map(|(a, _)| a).unwrap_or(after);
     if auth.is_empty() {
         None

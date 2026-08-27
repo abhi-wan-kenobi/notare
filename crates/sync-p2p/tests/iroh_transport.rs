@@ -331,3 +331,95 @@ async fn full_collapsed_s3_flow_over_iroh() {
     agent_a.stop().await;
     agent_b.stop().await;
 }
+
+/// REGRESSION (audit 2026-08-28, kimi): the inbound allowlist must be
+/// re-checked **per bi-stream**, not once per QUIC connection.
+///
+/// Why this test opens raw streams instead of using `P2pAgent`: the agent's
+/// `dial_peer` currently opens a *fresh* connection per request, so the
+/// connection-level check alone already refuses a revoked peer — a test driven
+/// through the agent passes with or without the fix and proves nothing (this
+/// was verified by reverting the fix). The gap is therefore **latent**: the
+/// accept loop serves `conn.accept_bi()` in a loop, so the moment SYNC-4 adds
+/// connection reuse/pooling (which it should, for efficiency), a peer revoked
+/// mid-connection would keep being served until the connection dropped.
+///
+/// This test pins the invariant now by doing what a pooling client will do:
+/// two bi-streams on ONE connection, with the revocation in between. It fails
+/// against the pre-fix code.
+#[tokio::test]
+async fn revoked_peer_is_refused_on_a_reused_connection() {
+    let dir_b = tempfile::tempdir().unwrap();
+    let id_b = Identity::load_or_create_in(dir_b.path()).unwrap();
+    let peers_b = PeerStore::load_or_create_in(dir_b.path()).unwrap();
+
+    // A test-local iroh endpoint plays the peer, so we control its streams.
+    let dir_p = tempfile::tempdir().unwrap();
+    let id_p = Identity::load_or_create_in(dir_p.path()).unwrap();
+    peers_b.add_peer(id_p.id(), "peer").unwrap();
+
+    let agent_b = P2pAgent::start_with(id_b, peers_b.clone()).await.unwrap();
+    register_direct_addr(agent_b.node_id(), agent_b.direct_addresses()).await;
+
+    let peer_ep = iroh::Endpoint::builder(iroh::endpoint::presets::Minimal)
+        .secret_key(id_p.secret_key().clone())
+        .alpns(vec![sync_p2p::agent::SYNC_ALPN.to_vec()])
+        .relay_mode(iroh::RelayMode::Disabled)
+        .bind_addr("127.0.0.1:0")
+        .unwrap()
+        .bind()
+        .await
+        .unwrap();
+    tokio::time::sleep(Duration::from_millis(100)).await;
+
+    let mut addr = iroh::EndpointAddr::new(agent_b.node_id());
+    for a in agent_b.direct_addresses() {
+        addr = addr.with_ip_addr(a);
+    }
+    let conn = peer_ep
+        .connect(addr, sync_p2p::agent::SYNC_ALPN)
+        .await
+        .expect("dial B while allowlisted");
+
+    let upload_ep = format!(
+        "{}/v2/cloudsync/databases/test-db/site-p/upload",
+        agent_b.address()
+    );
+    let req = Request {
+        endpoint: upload_ep,
+        is_post: false,
+        body: None,
+    };
+
+    // Stream 1, while allowlisted: served.
+    let (mut send, mut recv) = conn.open_bi().await.expect("open first bi-stream");
+    sync_p2p::protocol::write_frame(&mut send, &req).await.unwrap();
+    send.finish().unwrap();
+    let first: Response = sync_p2p::protocol::read_frame(&mut recv).await.unwrap();
+    assert_eq!(first.status, 200, "allowlisted peer served on stream 1");
+
+    // Revoke while the SAME connection stays open.
+    peers_b.remove_peer(&id_p.id());
+
+    // Stream 2 on that same connection must NOT be served.
+    let served_after_revocation = match conn.open_bi().await {
+        Err(_) => false, // connection torn down — refused
+        Ok((mut send2, mut recv2)) => {
+            if sync_p2p::protocol::write_frame(&mut send2, &req).await.is_err() {
+                false
+            } else {
+                let _ = send2.finish();
+                match sync_p2p::protocol::read_frame::<_, Response>(&mut recv2).await {
+                    Err(_) => false,
+                    Ok(r) => r.status == 200,
+                }
+            }
+        }
+    };
+    assert!(
+        !served_after_revocation,
+        "revoked peer must NOT be served on a reused connection"
+    );
+
+    agent_b.stop().await;
+}
