@@ -57,7 +57,9 @@ fn main() {
     ];
 
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
-    let stub = manifest_dir.join("build").join("network_stub.c");
+    // S1: compile the real P2P network layer instead of the S0b stub. The stub
+    // (network_stub.c) is retained on disk for reference but no longer built.
+    let stub = manifest_dir.join("build").join("network_p2p.c");
 
     // Compile each vendored source to an object file. One cc::Build per file
     // so we can collect the object paths from compile_intermediates().
