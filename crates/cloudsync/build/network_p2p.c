@@ -333,6 +333,26 @@ NETWORK_RESULT network_receive_buffer(network_data *data, const char *endpoint,
     // the base64 "body" field (jsmn helpers are static in network.c — unavailable
     // here) then base64-decode it.
 
+    // AUDIT (2026-08-27, 2-seat agreement: kimi HIGH #1 + mistral): the status
+    // field must gate the body. Without this, a broker error response that
+    // carries a body (e.g. {"status":500,"body":"..."}) is handed to the core as
+    // a valid sync buffer, and an error with a null body reads as "no changes".
+    char *st_key = strstr(resp, "\"status\"");
+    if (!st_key) {
+        cloudsync_memory_free(resp);
+        char *msg = cloudsync_string_dup("network_receive_buffer: no status field");
+        return (NETWORK_RESULT){CLOUDSYNC_NETWORK_ERROR, msg, 1, NULL, NULL};
+    }
+    char *st_val = st_key + 8;
+    while (*st_val == ' ' || *st_val == ':' || *st_val == '\t' ||
+           *st_val == '\n' || *st_val == '\r') st_val++;
+    long status = strtol(st_val, NULL, 10);
+    if (status < 200 || status > 299) {
+        cloudsync_memory_free(resp);
+        char *msg = cloudsync_string_dup("network_receive_buffer: broker returned non-2xx");
+        return (NETWORK_RESULT){CLOUDSYNC_NETWORK_ERROR, msg, 1, NULL, NULL};
+    }
+
     // Find "body":"..."  or  "body":null
     char *key = strstr(resp, "\"body\"");
     if (!key) {
@@ -341,7 +361,10 @@ NETWORK_RESULT network_receive_buffer(network_data *data, const char *endpoint,
         return (NETWORK_RESULT){CLOUDSYNC_NETWORK_ERROR, msg, 1, NULL, NULL};
     }
     char *val = key + 6;
-    while (*val == ' ' || *val == ':' || *val == '\t') val++;
+    // AUDIT (kimi #5): skip all JSON whitespace, not just space/tab, so a
+    // pretty-printed response is not rejected as "bad body value".
+    while (*val == ' ' || *val == ':' || *val == '\t' ||
+           *val == '\n' || *val == '\r') val++;
     if (strncmp(val, "null", 4) == 0) {
         // 204 No Content: success with no body.
         cloudsync_memory_free(resp);
@@ -362,6 +385,29 @@ NETWORK_RESULT network_receive_buffer(network_data *data, const char *endpoint,
         return (NETWORK_RESULT){CLOUDSYNC_NETWORK_ERROR, msg, 1, NULL, NULL};
     }
     size_t b64_len = (size_t)(b64_end - b64_start);
+
+    // AUDIT (2026-08-27, 2-seat agreement: gpt-oss + kimi #3): validate the
+    // base64 before decoding. Without the %4 check the final iteration reads
+    // b64_start[i+1..3] past the closing quote (still inside `resp`, so not a
+    // heap overread, but it decodes the surrounding JSON into the payload);
+    // without the alphabet check any stray byte silently decodes as 0 instead
+    // of erroring.
+    if (b64_len == 0 || (b64_len % 4) != 0) {
+        cloudsync_memory_free(resp);
+        char *msg = cloudsync_string_dup("network_receive_buffer: bad base64 length");
+        return (NETWORK_RESULT){CLOUDSYNC_NETWORK_ERROR, msg, 1, NULL, NULL};
+    }
+    for (size_t i = 0; i < b64_len; i++) {
+        char bc = b64_start[i];
+        bool valid = (bc >= 'A' && bc <= 'Z') || (bc >= 'a' && bc <= 'z') ||
+                     (bc >= '0' && bc <= '9') || bc == '+' || bc == '/' ||
+                     (bc == '=' && i >= b64_len - 2);
+        if (!valid) {
+            cloudsync_memory_free(resp);
+            char *msg = cloudsync_string_dup("network_receive_buffer: bad base64 char");
+            return (NETWORK_RESULT){CLOUDSYNC_NETWORK_ERROR, msg, 1, NULL, NULL};
+        }
+    }
 
     // base64-decode into a cloudsync-allocated, NUL-terminated buffer.
     size_t dec_cap = (b64_len / 4) * 3 + 1;

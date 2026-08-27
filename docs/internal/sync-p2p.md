@@ -571,3 +571,72 @@ a `notes(id INTEGER PRIMARY KEY, body TEXT)` table, syncing through one broker:
   the address as a SQL arg, so discovery just needs to produce that string.
 - **`bundle.rs` env-var fix** (§11.5 #2) before the from-source build is used
   by any non-cloudsync binary in the real app.
+
+---
+
+## 12. Audit outcome (2026-08-27) — `network_p2p.c`
+
+Adversarial panel via the `auditor` skill, 4 seats over two runs (coder =
+glm-5.2, so the glm family was excluded from every panel). Seats:
+`mistral-large-3`, `nemotron-3-ultra`, `gpt-oss:120b`, `kimi-k2.7-code`.
+`nemotron` returned a bare `AUDIT COMPLETE - 17 findings` with no report body —
+the reasoning-burn failure mode; treated as a **dead seat, not agreement**.
+
+Every finding was verified against the real code before acting. Roughly half
+did not hold up.
+
+### Fixed (confirmed by ≥2 independent seats)
+
+| # | Finding | Seats | Fix |
+|---|---|---|---|
+| 1 | `network_receive_buffer` ignored the broker's `status` field — a `{"status":500,"body":…}` response was handed to the CloudSync core as a **valid sync buffer**, and an error with a null body read as "no changes". | kimi (HIGH), mistral | Parse `status` immediately after the frame read; non-2xx → `CLOUDSYNC_NETWORK_ERROR`. |
+| 2 | base64 decoder validated neither length-%4 nor the alphabet: a non-multiple-of-4 body made the last iteration decode the closing quote and trailing JSON into the payload, and any stray byte silently decoded as `0`. | gpt-oss, kimi | Reject `b64_len % 4 != 0` / empty, and validate every char against the alphabet (`=` only in the last two positions). |
+| 3 | Whitespace skip after the `"body"` key handled only space/tab/colon, so a pretty-printed response was rejected as `bad body value`. | kimi | Skip `\n`/`\r` too (applied to the `status` scan as well). |
+
+Re-verified after the fixes: two-node convergence proof still GO, `cargo test
+-p sync-p2p` 2/2, `cargo test -p cloudsync --features from-source` 1/1.
+
+### Rejected as false positives (verified against the code)
+
+- **`base64_encode` overflows when `len % 3 == 1`** (mistral, HIGH) — false.
+  `enc_len = ((len+2)/3)*4` is the standard ceiling and the allocation is
+  `enc_len + 1`; `len=1` allocates 5, writes indices 0–3 plus NUL at 4.
+- **base64 decode output buffer too small** (mistral, HIGH) — false. `dec_cap =
+  (b64_len/4)*3 + 1` then allocates `dec_cap + 1`, i.e. one byte *more* than the
+  maximum decode plus terminator.
+- **`read_frame` ignores the `read_all` return** (mistral) — false. The exact
+  check it proposes is already there (free + return NULL on short read).
+- **Empty hostname not rejected before the copy** (mistral) — false; `host_len
+  == 0` is checked on the line before the `memcpy`.
+- **`json_escape` must escape `/`** (mistral) — false. JSON does not require it;
+  the payload is a TCP frame to a Rust broker and is never embedded in HTML.
+- **`json_escape` `strlen*6` integer overflow** (gpt-oss) — theoretically true,
+  practically unreachable (needs a >3×10¹⁸-byte endpoint). Not actioned.
+- **`read_frame` should reject `len == 0`** (gpt-oss) — benign; allocates 1 byte,
+  `read_all` returns immediately, buffer is `""`.
+
+### Carried to v0.6 as production requirements (real, out of spike scope)
+
+- **⚠️ SSRF / no peer allowlist** (gpt-oss, HIGH). `endpoint` derives from the
+  SQL-supplied `address`, so the extension will open a TCP connection to *any*
+  host:port it is handed. In the spike that is the user's own localhost broker.
+  In production the endpoint legitimately **is** a remote peer, so the fix is
+  not "restrict to localhost" — it is the **device-pairing allowlist already in
+  the v0.6 design**: refuse to connect to a node id / address that is not a
+  paired peer. This finding independently validates that design requirement.
+- **IPv6 endpoints are not usable** (mistral + gpt-oss, both HIGH). The
+  last-colon split keeps the brackets, so `p2p://[::1]:1234/…` yields host
+  `"[::1]"` and `getaddrinfo` fails. No memory-safety consequence (the host
+  length is bounds-checked against `host_cap`) — it fails closed. The spike is
+  IPv4-localhost by design; the production transport must strip brackets.
+- **`strstr`-based field lookup is not JSON-aware** (kimi). `strstr(resp,
+  "\"body\"")` and `strstr(resp, "\"ok\":true")` can match inside a *string
+  value*. Doesn't fire against the current broker's response shapes, but the
+  production transport should parse JSON properly (share jsmn from `network.c`
+  or move the framing to a typed codec).
+- **Non-UTF-8 bytes in the endpoint** (kimi) pass through `json_escape` and make
+  serde reject the frame — fails closed as a sync error, no corruption.
+- **No hostile-broker test fixture.** The three fixes above are defensive
+  against responses the spike's own broker never produces, so the existing
+  tests cannot regress them. v0.6 needs a fake-broker harness (non-2xx status,
+  malformed base64, truncated frame) driving the extension end-to-end.
