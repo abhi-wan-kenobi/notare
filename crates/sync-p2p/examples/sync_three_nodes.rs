@@ -117,17 +117,25 @@ async fn run_check(pool: &SqlitePool, local_agent_tcp: &str) -> String {
 /// from the site's high-water mark and returns the next unseen entry). A spoke
 /// that missed several uploads therefore needs several checks. Returns the
 /// number of checks that actually applied rows.
+///
+/// Parsed with serde, not string-matched. `check`'s reply is
+/// `{"receive":{"rows":N,"tables":[...]}}`, and the §12 audit already called out
+/// `strstr`-style JSON handling in the C layer as a real defect — a reference
+/// shape SYNC-5 is meant to copy should not repeat it. An unparseable or
+/// `receive`-less reply is treated as "nothing pending", which is the safe
+/// direction: it ends the loop rather than spinning.
+fn rows_received(resp: &str) -> u64 {
+    serde_json::from_str::<serde_json::Value>(resp)
+        .ok()
+        .and_then(|v| v["receive"]["rows"].as_u64())
+        .unwrap_or(0)
+}
+
 async fn drain_check(pool: &SqlitePool, tcp: &str, label: &str) -> usize {
     let mut applied = 0;
     for _ in 0..MAX_DRAIN {
-        let before = count_notes(pool).await;
         let resp = run_check(pool, tcp).await;
-        let after = count_notes(pool).await;
-        // "rows":0 / a 204 (no body) both mean nothing was pending. Row count
-        // alone is not enough — an UPDATE changes no count — so trust the
-        // response payload and stop when it reports no rows.
-        let quiet = resp.contains("\"rows\":0") || !resp.contains("\"rows\"");
-        if quiet && after == before {
+        if rows_received(&resp) == 0 {
             break;
         }
         applied += 1;
