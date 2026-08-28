@@ -393,7 +393,9 @@ async fn revoked_peer_is_refused_on_a_reused_connection() {
 
     // Stream 1, while allowlisted: served.
     let (mut send, mut recv) = conn.open_bi().await.expect("open first bi-stream");
-    sync_p2p::protocol::write_frame(&mut send, &req).await.unwrap();
+    sync_p2p::protocol::write_frame(&mut send, &req)
+        .await
+        .unwrap();
     send.finish().unwrap();
     let first: Response = sync_p2p::protocol::read_frame(&mut recv).await.unwrap();
     assert_eq!(first.status, 200, "allowlisted peer served on stream 1");
@@ -407,7 +409,10 @@ async fn revoked_peer_is_refused_on_a_reused_connection() {
     let served_after_revocation = match conn.open_bi().await {
         Err(_) => false, // connection torn down — refused
         Ok((mut send2, mut recv2)) => {
-            if sync_p2p::protocol::write_frame(&mut send2, &req).await.is_err() {
+            if sync_p2p::protocol::write_frame(&mut send2, &req)
+                .await
+                .is_err()
+            {
                 false
             } else {
                 let _ = send2.finish();

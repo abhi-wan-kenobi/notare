@@ -309,9 +309,7 @@ async fn handle_c_connection(stream: &mut tokio::net::TcpStream, ctx: &Ctx) -> s
 fn buf_looks_like_put(buf: &[u8]) -> bool {
     let v: Option<serde_json::Value> = serde_json::from_slice(buf).ok();
     match v {
-        Some(serde_json::Value::Object(m)) => {
-            m.contains_key("url") || m.contains_key("blob")
-        }
+        Some(serde_json::Value::Object(m)) => m.contains_key("url") || m.contains_key("blob"),
         _ => false,
     }
 }
