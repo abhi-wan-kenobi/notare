@@ -32,7 +32,7 @@ jobs:
     outputs:
       providers: ${{ steps.detect.outputs.providers }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
       - uses: dorny/paths-filter@7b450fff21473bca461d4b92ce414b9d0420d706 # v4.0.2
@@ -104,7 +104,7 @@ jobs:
       matrix:
         provider: ${{ fromJson(needs.setup.outputs.providers) }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
       - uses: ./.github/actions/rust_install
@@ -162,7 +162,7 @@ jobs:
       matrix:
         provider: ${{ fromJson(needs.setup.outputs.providers) }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
       - uses: ./.github/actions/rust_install
