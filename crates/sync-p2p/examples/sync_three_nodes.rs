@@ -121,27 +121,38 @@ async fn run_check(pool: &SqlitePool, local_agent_tcp: &str) -> String {
 /// Parsed with serde, not string-matched. `check`'s reply is
 /// `{"receive":{"rows":N,"tables":[...]}}`, and the §12 audit already called out
 /// `strstr`-style JSON handling in the C layer as a real defect — a reference
-/// shape SYNC-5 is meant to copy should not repeat it. An unparseable or
-/// `receive`-less reply is treated as "nothing pending", which is the safe
-/// direction: it ends the loop rather than spinning.
-fn rows_received(resp: &str) -> u64 {
-    serde_json::from_str::<serde_json::Value>(resp)
-        .ok()
-        .and_then(|v| v["receive"]["rows"].as_u64())
-        .unwrap_or(0)
+/// shape SYNC-5 is meant to copy should not repeat it.
+///
+/// Returns `None` for a reply we could not read at all. That is deliberately
+/// **not** folded into `Some(0)`: "the hub has nothing for me" and "I could not
+/// tell what the hub said" are different states, and conflating them is the
+/// silent-divergence bug this whole file exists to warn about. The caller must
+/// decide, and here it fails loudly.
+fn rows_received(resp: &str) -> Option<u64> {
+    let v: serde_json::Value = serde_json::from_str(resp).ok()?;
+    v.get("receive")?.get("rows")?.as_u64()
 }
 
 async fn drain_check(pool: &SqlitePool, tcp: &str, label: &str) -> usize {
     let mut applied = 0;
     for _ in 0..MAX_DRAIN {
         let resp = run_check(pool, tcp).await;
-        if rows_received(&resp) == 0 {
-            break;
+        match rows_received(&resp) {
+            None => panic!(
+                "[{label}] unreadable check reply, cannot know if changes are pending: {resp}"
+            ),
+            Some(0) => {
+                println!("[{label}] drained {applied} change set(s)");
+                return applied;
+            }
+            Some(_) => applied += 1,
         }
-        applied += 1;
     }
-    println!("[{label}] drained {applied} change set(s)");
-    applied
+    // Falling out of the loop means we stopped because of the bound, not
+    // because the hub was empty — the site may still be behind. Silently
+    // returning here would be the same class of bug as swallowing a malformed
+    // reply.
+    panic!("[{label}] hit MAX_DRAIN ({MAX_DRAIN}) with changes still pending");
 }
 
 /// Push local changes, then drain everything pending for this site.
@@ -275,6 +286,28 @@ async fn main() {
     assert_eq!(count_notes(&b).await, 4, "B caught up on both of C's blobs");
     println!("[conv] multi-blob catch-up OK (2 blobs behind -> drained)");
 
+    // 3b. The same, spoke-to-spoke and in the other direction: B writes two
+    //     blobs and C must catch up on both, having never talked to B. Step 2
+    //     proved spoke->hub->spoke at depth 1 and step 3 proved depth 2 into
+    //     the hub; this is the combination — depth 2, spoke to spoke.
+    sqlx::query("INSERT INTO notes (id, body) VALUES (5, 'from B #1')")
+        .execute(&b)
+        .await
+        .unwrap();
+    run_sync(&b, &b_tcp).await;
+    sqlx::query("INSERT INTO notes (id, body) VALUES (6, 'from B #2')")
+        .execute(&b)
+        .await
+        .unwrap();
+    run_sync(&b, &b_tcp).await;
+
+    drain_check(&c, &c_tcp, "C").await;
+    assert_eq!(count_notes(&c).await, 6, "C caught up on both of B's blobs");
+    assert_eq!(note_body(&c, 5).await, "from B #1");
+    assert_eq!(note_body(&c, 6).await, "from B #2");
+    println!("[conv] multi-blob spoke-to-spoke OK (C drained 2 of B's blobs)");
+    drain_check(&a, &a_tcp, "A").await;
+
     // 4. Three-way concurrent update on one row converges to a single value.
     sqlx::query("UPDATE notes SET body = 'A wins' WHERE id = 1")
         .execute(&a)
@@ -301,7 +334,28 @@ async fn main() {
             note_body(&c, 1).await,
         );
         if ba == bb && bb == bc {
-            println!("[conv] three-way concurrent update converged (row 1 = {ba:?} on all three)");
+            // Agreement is not yet convergence: the three sites might match on
+            // an intermediate value while the hub still holds a blob that would
+            // move one of them. Run one more full round and require the value
+            // to be unchanged, so the proof asserts "agreed AND stable" rather
+            // than catching a moment that happens to line up.
+            sync_and_drain(&a, &a_tcp, "A").await;
+            sync_and_drain(&b, &b_tcp, "B").await;
+            sync_and_drain(&c, &c_tcp, "C").await;
+            let (fa, fb, fc) = (
+                note_body(&a, 1).await,
+                note_body(&b, 1).await,
+                note_body(&c, 1).await,
+            );
+            assert_eq!(fa, fb, "row 1 diverged A vs B after a settling round");
+            assert_eq!(fb, fc, "row 1 diverged B vs C after a settling round");
+            assert_eq!(
+                fa, ba,
+                "row 1 was not stable — agreed on {ba:?} then moved to {fa:?}"
+            );
+            println!(
+                "[conv] three-way concurrent update converged and held (row 1 = {ba:?} on all three)"
+            );
             settled = true;
             break;
         }
@@ -309,7 +363,7 @@ async fn main() {
     assert!(settled, "three-way concurrent update did not converge");
 
     // All three agree on the whole table, not just the contended row.
-    for id in 1..=4 {
+    for id in 1..=6 {
         let (ba, bb, bc) = (
             note_body(&a, id).await,
             note_body(&b, id).await,
@@ -318,9 +372,9 @@ async fn main() {
         assert_eq!(ba, bb, "row {id} differs A vs B");
         assert_eq!(bb, bc, "row {id} differs B vs C");
     }
-    assert_eq!(count_notes(&a).await, 4);
-    assert_eq!(count_notes(&b).await, 4);
-    assert_eq!(count_notes(&c).await, 4);
+    assert_eq!(count_notes(&a).await, 6);
+    assert_eq!(count_notes(&b).await, 6);
+    assert_eq!(count_notes(&c).await, 6);
 
     println!("\n=== SYNC-4 GO: three-node convergence over an elected hub ===");
 

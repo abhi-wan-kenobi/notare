@@ -879,8 +879,11 @@ Green run covers:
    special case.
 3. **multi-blob catch-up.** C writes twice while A and B are idle; both then
    drain *two* change sets each.
-4. **three-way concurrent update** on one row converging to a single value on
-   all three, plus whole-table agreement across all four rows.
+4. **multi-blob spoke-to-spoke.** B writes twice and C drains both, having
+   never talked to B — step 2 at depth 1, step 3 at depth 2 into the hub, this
+   is the combination.
+5. **three-way concurrent update** on one row converging to a single value on
+   all three, plus whole-table agreement across every row.
 
 ### 15.1 The finding: `check` serves ONE blob per call — callers must drain
 
@@ -923,3 +926,44 @@ is proven.
   hub can trust — interacting with pairing (SYNC-6).
 - Still same-machine, same-process, Linux/x86_64. Real two-desktop, offline
   reconnect and NAT-relay remain gate items.
+
+### 15.3 Audit (2026-08-28) — SYNC-4
+
+`auditor`, coder=opus. ⚠️ **One of two seats was dead:** `nemotron-3-ultra`
+returned `AUDIT COMPLETE - 7 findings` with an empty body — the reasoning-burn
+failure mode, and the second time it has done this (see §12). It emits the
+terminator line, so it passes the harness's liveness check while contributing
+nothing. Treat a bare count with no findings as a dead seat, never as
+agreement. That left an effective single-seat panel, so every finding was a
+lead verified by hand rather than a corroborated fact.
+
+**Fixed (verified real):**
+
+- `rows_received` folded "unparseable reply" into "nothing pending", so a
+  malformed or error reply ended the drain silently — precisely the
+  silent-divergence class this file exists to warn about, and worse for being
+  in code documented as the shape SYNC-5 should copy. Now returns `Option` and
+  the caller fails loudly on `None`.
+- `drain_check` fell out of its `MAX_DRAIN` bound and returned normally, so
+  hitting the bound was indistinguishable from a drained queue. Now panics.
+- The convergence loop exited on the first round where all three agreed. Three
+  sites can match on an intermediate value while the hub still holds a blob
+  that would move one of them, so a pass did not strictly imply convergence.
+  Now runs a settling round and requires the value to be **unchanged** —
+  "agreed AND stable" rather than a moment that happened to line up.
+- Added scenario 4 (multi-blob spoke-to-spoke), which was the one delivery
+  combination the proof left uncovered.
+
+**Rejected as a false positive:** a claim that `drain_check` should reconcile
+the hub's reported row count against rows actually applied, to catch partial
+delivery. `rows` is not a hub promise — it is the core reporting what it
+applied, so there is no gap to check. The proposed fix also compared a table
+total against a sum of changeset row counts, which are different quantities
+(updates change no total) and would have produced false panics on any update.
+
+**Noted, not changed:** the `unsafe { set_var(NOTARE_SYNC_AGENT_ADDR) }` per-node
+switching is brittle. It is sound here because the example is strictly
+sequential, but a process-global env var as the C layer's routing channel does
+not survive more than one agent per process. Not a problem for the desktop app
+(one agent), but SYNC-5 should not widen it. The seat's proposed fix invented a
+`cloudsync_network_sync_custom` SQL function that does not exist.
