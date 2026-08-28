@@ -16,7 +16,11 @@
 //!     must drain (see [`drain_check`]);
 //!   - a concurrent update on all three sites converges to a single value.
 //!
-//! Run: `cargo run -p sync-p2p --example sync_three_nodes`
+//! Run: `cargo run -p sync-p2p --example sync_three_nodes --features from-source`
+//!
+//! The `from-source` feature is required (and is why this is not built by a
+//! plain `cargo test --workspace`): the custom P2P network layer only exists in
+//! the from-source cloudsync build, and that build is linux/x86_64 only so far.
 
 use std::str::FromStr;
 use std::time::Duration;

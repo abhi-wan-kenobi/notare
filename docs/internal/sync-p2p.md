@@ -864,8 +864,10 @@ connection reuse exists). Recording that distinction matters more than the label
 
 ## 15. SYNC-4 — N-way convergence over an elected hub (GO)
 
-`examples/sync_three_nodes.rs`. Three independent databases, three sites, one
-elected hub (node A), no server anywhere. Proves the case two nodes structurally
+`examples/sync_three_nodes.rs`, run with
+`cargo run -p sync-p2p --example sync_three_nodes --features from-source`.
+Three independent databases, three sites, one elected hub (node A), no server
+anywhere. Proves the case two nodes structurally
 cannot: with a single spoke the hub's delivery log is never more than one blob
 ahead of anybody, so the interesting failure modes stay hidden.
 
@@ -926,6 +928,29 @@ is proven.
   hub can trust — interacting with pairing (SYNC-6).
 - Still same-machine, same-process, Linux/x86_64. Real two-desktop, offline
   reconnect and NAT-relay remain gate items.
+
+### 15.2b Both proofs are behind `--features from-source` — deliberately
+
+`sync-p2p`'s dev-dependency on `cloudsync` originally hard-enabled
+`features = ["from-source"]`. **Cargo unifies features across the workspace**, so
+that one line turned an opt-in, linux-only build into a workspace-wide one:
+`cargo test --locked --workspace` on the macOS runner reached cloudsync's
+`build.rs` and panicked with *"from-source is only implemented for linux/x86_64;
+got macos-aarch64"*. It went unnoticed because the spike branch had never been
+pushed — CI saw it the first time the branch was put through a PR.
+
+The fix is feature wiring, not `build.rs`. cloudsync's prebuilt `include_bytes!`
+artifacts are `cfg(not(feature = "from-source"))`, so the feature is an
+either/or and there is nothing for `build.rs` to fall back *to* — a silent
+return would only fail later and more confusingly. So: the dev-dependency no
+longer forces the feature, `sync-p2p/from-source` maps to `cloudsync/from-source`,
+and both examples declare `required-features = ["from-source"]` so a default
+workspace build skips them instead of failing to compile.
+
+Verified by resolved features rather than by "it built": a default
+`cargo check --workspace --all-targets` reports `cloudsync: features=[]`.
+**SYNC-9 must not undo this** — adding the other four targets means extending
+`supported()` in `build.rs`, never making the feature default-on.
 
 ### 15.3 Audit (2026-08-28) — SYNC-4
 

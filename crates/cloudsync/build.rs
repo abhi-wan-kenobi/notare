@@ -4,8 +4,14 @@
 // When the feature is OFF (the default), this script is a no-op and the crate
 // keeps using the prebuilt `include_bytes!` artifacts in `vendor/cloudsync/`.
 //
-// Scope: linux/x86_64 only (S0b). Other targets fall through to the prebuilt
-// path; extend the `supported()` check for SYNC-9.
+// Scope: linux/x86_64 only (S0b); extend the `supported()` check for SYNC-9.
+//
+// On any other target this PANICS rather than quietly falling back, because it
+// cannot fall back: the prebuilt `include_bytes!` artifacts in `bundle.rs` are
+// `cfg(not(feature = "from-source"))`, so with the feature on there is nothing
+// to degrade to and a silent return would just fail later, more confusingly.
+// Enabling the feature is therefore a deliberate, platform-specific act — see
+// the note in `crates/sync-p2p/Cargo.toml` about never forcing it workspace-wide.
 
 use std::env;
 use std::path::PathBuf;

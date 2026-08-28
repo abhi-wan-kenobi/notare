@@ -12,7 +12,7 @@
 //! each node serves the CloudSync control protocol directly, collapsing the
 //! S3 3-step flow onto an in-memory object store.
 //!
-//! Run: `cargo run -p sync-p2p --example sync_two_nodes`
+//! Run: `cargo run -p sync-p2p --example sync_two_nodes --features from-source`
 //!
 //! A green run = the iroh transport converges, conflict-free.
 
