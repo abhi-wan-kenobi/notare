@@ -20,25 +20,25 @@ runs:
         fi
       shell: bash
     - if: inputs.platform == 'macos'
-      uses: dtolnay/rust-toolchain@master
+      uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
       with:
         toolchain: ${{ steps.toolchain.outputs.channel }}
         targets: aarch64-apple-darwin,x86_64-apple-darwin
         components: ${{ steps.toolchain.outputs.components }}
     - if: inputs.platform == 'ios'
-      uses: dtolnay/rust-toolchain@master
+      uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
       with:
         toolchain: ${{ steps.toolchain.outputs.channel }}
         targets: aarch64-apple-ios,x86_64-apple-ios,aarch64-apple-ios-sim
         components: ${{ steps.toolchain.outputs.components }}
     - if: inputs.platform == 'android'
-      uses: dtolnay/rust-toolchain@master
+      uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
       with:
         toolchain: ${{ steps.toolchain.outputs.channel }}
         targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
         components: ${{ steps.toolchain.outputs.components }}
     - if: inputs.platform == 'windows'
-      uses: dtolnay/rust-toolchain@master
+      uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
       with:
         toolchain: ${{ steps.toolchain.outputs.channel }}
         targets: x86_64-pc-windows-msvc
@@ -49,7 +49,7 @@ runs:
       env:
         GITHUB_TOKEN: ${{ github.token }}
     - if: inputs.platform == 'linux'
-      uses: dtolnay/rust-toolchain@master
+      uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
       with:
         toolchain: ${{ steps.toolchain.outputs.channel }}
         components: ${{ steps.toolchain.outputs.components }}
@@ -59,23 +59,23 @@ runs:
         sudo apt-get install -y libasound2-dev
       shell: bash
     - if: inputs.platform == 'linux-x86_64'
-      uses: dtolnay/rust-toolchain@master
+      uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
       with:
         toolchain: ${{ steps.toolchain.outputs.channel }}
         targets: x86_64-unknown-linux-gnu
         components: ${{ steps.toolchain.outputs.components }}
     - if: inputs.platform == 'linux-aarch64'
-      uses: dtolnay/rust-toolchain@master
+      uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
       with:
         toolchain: ${{ steps.toolchain.outputs.channel }}
         targets: aarch64-unknown-linux-gnu
         components: ${{ steps.toolchain.outputs.components }}
     - if: inputs.platform == ''
-      uses: dtolnay/rust-toolchain@master
+      uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
       with:
         toolchain: ${{ steps.toolchain.outputs.channel }}
         components: ${{ steps.toolchain.outputs.components }}
-    - uses: Swatinem/rust-cache@v2
+    - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
       with:
         cache-targets: "true"
         # v0 -> v1: v0 entries were latently poisoned - ort/sherpa build-script
