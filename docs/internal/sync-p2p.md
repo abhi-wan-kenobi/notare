@@ -766,10 +766,20 @@ a later increment; same-machine convergence is the proof scope for this PR.)
 A green run: A→B (2 rows over iroh), B→A (1 row), and a concurrent update on
 row 1 converging conflict-free to the same value on both.
 
-> The `sqlx-sqlite-worker` close panics at example exit are a pre-existing
+> The `sqlx-sqlite-worker` close panics at example exit (`(code: 5) unable to
+> close due to unfinalized statements or unfinished backups`) are a pre-existing
 > artifact (the cloudsync extension holds prepared statements sqlx's pool close
 > cannot finalize) — the original S1 spike had the identical teardown. The
 > convergence assertions all pass before close.
+>
+> ⚠️ **Harmless in the example; NOT harmless in SYNC-5.** In the example the
+> process is exiting anyway, so a failed close costs nothing. Once a `P2pAgent`
+> runs inside the desktop app, this becomes a close on the app's *real* database
+> during shutdown — and Notare already has a bug class here (#101, recording
+> data-loss because exit didn't drain before teardown). A close that fails with
+> SQLITE_BUSY on exit risks leaving a hot journal/WAL behind. SYNC-5 must
+> establish an explicit cloudsync teardown order — finalize/`cloudsync_terminate`
+> before the sqlx pool closes — and assert it, rather than inheriting this.
 
 ### 13.8 What's plugged in where (for SYNC-4/5/6/7/8/9)
 

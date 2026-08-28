@@ -398,8 +398,10 @@ async fn revoked_peer_is_refused_on_a_reused_connection() {
     let first: Response = sync_p2p::protocol::read_frame(&mut recv).await.unwrap();
     assert_eq!(first.status, 200, "allowlisted peer served on stream 1");
 
-    // Revoke while the SAME connection stays open.
-    peers_b.remove_peer(&id_p.id());
+    // Revoke while the SAME connection stays open. Checked so a failed
+    // revocation reports itself, rather than surfacing as the less obvious
+    // "revoked peer must NOT be served" assertion below.
+    peers_b.remove_peer(&id_p.id()).expect("revoke peer");
 
     // Stream 2 on that same connection must NOT be served.
     let served_after_revocation = match conn.open_bi().await {

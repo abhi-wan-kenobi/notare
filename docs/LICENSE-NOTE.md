@@ -1,7 +1,48 @@
 # License & Legal Diligence Note
 
-_Status: final 2026-07-14. All licenses verified from the actual repos & HF model
-cards, not from memory._
+_Status: final 2026-07-14, extended 2026-08-28 with the sqlite-sync / ELv2
+determination (see "Sync engine" below). All licenses verified from the actual
+repos & HF model cards, not from memory._
+
+## Sync engine: sqlite-sync (Elastic License 2.0) — CLEARED 2026-08-28
+
+The v0.6 P2P sync work is built on **sqlite-sync v1.0.12** (SQLite Cloud), vendored
+at `crates/cloudsync/vendor/` (upstream SHA `6694c2e8`). Unlike everything else in
+this document it is **not** an OSI-approved licence: it is **Elastic License 2.0**
+(ELv2) — source-available, with the headline restriction that you may not "provide
+the software to third parties as a hosted or managed service."
+
+**Why this needed a determination.** Notare is MIT. It embeds the extension, builds
+it *from source* (required for the custom P2P network layer — see
+`docs/internal/sync-p2p.md`), and replaces the upstream transport entirely. That
+combination is more than plain redistribution, so it was treated as a blocking gate
+(**risk R1**, the only cycle-killing risk in the v0.6 plan) rather than assumed.
+
+**Determination: PERMITTED.** Abhishek raised the intended use with SQLite Cloud —
+MIT open-source desktop app, extension embedded and built from source, custom
+device-to-device transport, no managed service, no resale — and confirmed on
+**2026-08-28** that the licence allows it. This matches the independent reading done
+during the S0a spike: ELv2's restrictions target managed-service resale, which Notare
+is not.
+
+**Consequences:**
+
+- sqlite-sync **stays** the CRDT engine for v0.6. The pre-approved fallback
+  (**cr-sqlite**, vlcn, MIT/Apache) is **dead scope** — do not re-plan onto it.
+- ELv2 is **not** MIT. Notare's own MIT licence is unaffected, but the vendored
+  tree is separately licensed and must keep its upstream LICENSE file and notices
+  intact. Do not represent the bundled extension as MIT.
+- The restriction that must never be violated: **do not offer sqlite-sync to third
+  parties as a hosted or managed service.** The planned notare.dev rendezvous /
+  relay Worker is deliberately outside this line — it brokers discovery and
+  store-and-forwards opaque ciphertext blobs; it never runs sqlite-sync and never
+  sees plaintext (E2E covenant, v0.6 plan §3.5).
+- If the product ever grows a hosted sync service, this determination **does not
+  cover it** and must be re-opened with SQLite Cloud.
+
+**Evidence gap to close:** the confirmation is recorded here second-hand. Archive
+SQLite Cloud's actual reply (email or support-ticket export) alongside this note so
+the determination rests on a primary source rather than a summary of one.
 
 ## Upstream: anarlog (formerly Hyprnote) — VERIFIED
 
