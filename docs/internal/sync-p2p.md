@@ -861,3 +861,65 @@ verified against the real code before acting.
 None outright this round — but note the *severity* of the per-stream finding was
 overstated (reported as an active revocation bypass; it is latent until
 connection reuse exists). Recording that distinction matters more than the label.
+
+## 15. SYNC-4 — N-way convergence over an elected hub (GO)
+
+`examples/sync_three_nodes.rs`. Three independent databases, three sites, one
+elected hub (node A), no server anywhere. Proves the case two nodes structurally
+cannot: with a single spoke the hub's delivery log is never more than one blob
+ahead of anybody, so the interesting failure modes stay hidden.
+
+Green run covers:
+
+1. **hub -> both spokes.** A writes; B and C each receive it.
+2. **spoke -> hub -> spoke.** B writes and C receives it, while B and C
+   deliberately do **not** allowlist each other. No spoke-to-spoke connection
+   exists, so this can only have travelled through the hub. This is the
+   property that makes elected-hub a real topology rather than a two-party
+   special case.
+3. **multi-blob catch-up.** C writes twice while A and B are idle; both then
+   drain *two* change sets each.
+4. **three-way concurrent update** on one row converging to a single value on
+   all three, plus whole-table agreement across all four rows.
+
+### 15.1 The finding: `check` serves ONE blob per call — callers must drain
+
+The hub's `check` walks its append-only blob log from the calling site's
+high-water mark and returns **the next unseen entry**, not all of them. One
+`cloudsync_network_check_changes()` therefore advances a site by exactly one
+change set.
+
+Two nodes never expose this: the puller is only ever one blob behind, so a
+single check looks complete. Add a second spoke and it is immediately wrong —
+step 3 above needs two checks per node, and a caller that checks once silently
+stays a change set behind, with no error and no signal.
+
+**This is a SYNC-5 correctness requirement, not a nicety.** Whatever drives sync
+in the app must loop until the hub reports nothing pending (`drain_check` in the
+example is the reference shape: stop on `"rows":0` / a body-less 204, bounded so
+a non-converging hub fails fast instead of spinning). Wiring the app to a single
+check per tick would produce exactly the class of bug v0.6's gate exists to
+catch: no crash, no error, just peers quietly diverging under load.
+
+The alternative — have `check` return every pending blob in one response — was
+not taken. One-blob-per-call keeps each response bounded, which matters once
+blobs carry real session payloads and the transport is a relayed QUIC stream;
+the drain loop is the cheaper place to absorb that.
+
+### 15.2 What this does and does not establish
+
+Established: the per-site high-water-mark design in `DbState.delivered` is
+sound at N > 2, and the CRDT converges three ways. Elected-hub (plan topology A)
+is proven.
+
+**Not** established, and still open for the v0.6 gate:
+
+- **Hub failover.** The hub is a single point of failure and the hub identity is
+  static here. If A is offline, B and C cannot sync at all — they have no path
+  to each other. Election, and what happens to the blob log when the hub
+  changes, is unbuilt.
+- **Blob-log growth.** The hub retains every blob forever. GC needs a
+  "delivered to every *known* peer" watermark, which needs a peer roster the
+  hub can trust — interacting with pairing (SYNC-6).
+- Still same-machine, same-process, Linux/x86_64. Real two-desktop, offline
+  reconnect and NAT-relay remain gate items.
