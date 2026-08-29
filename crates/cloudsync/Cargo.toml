@@ -3,6 +3,15 @@ name = "cloudsync"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+# Build the sqlite-sync extension from vendored source (linux/x86_64) with a
+# custom network layer instead of using the prebuilt `include_bytes!` artifact.
+# Default OFF keeps the existing prebuilt path byte-identical.
+from-source = []
+
+[build-dependencies]
+cc = "1.2"
+
 [dependencies]
 dirs = { workspace = true }
 sqlx = { workspace = true, features = ["runtime-tokio", "sqlite", "sqlite-unbundled"] }

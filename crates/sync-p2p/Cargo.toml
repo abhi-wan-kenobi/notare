@@ -1,0 +1,54 @@
+[package]
+name = "sync-p2p"
+version = "0.1.0"
+edition = "2024"
+description = "P2P sync transport — iroh/QUIC + device identity + peer allowlist for notare's v0.6 CRDT sync."
+
+[features]
+# Build the cloudsync extension from source with the custom P2P network layer
+# wired in (linux/x86_64 only, until SYNC-9 adds the other targets).
+#
+# OFF by default, and it must stay that way. cloudsync's prebuilt
+# `include_bytes!` artifacts are `cfg(not(feature = "from-source"))`, so this is
+# an either/or rather than an addition — and Cargo unifies features across the
+# whole workspace, so forcing it in one crate forces it everywhere, on every
+# platform. That is exactly what broke `cargo test --workspace` on macOS: the
+# dev-dependency below used to hard-enable `cloudsync/from-source`, so a macOS
+# workspace build reached cloudsync's build.rs and panicked on an unsupported
+# target. Keep this opt-in, and keep the proof examples behind it.
+from-source = ["cloudsync/from-source"]
+
+[dependencies]
+base64 = { workspace = true }
+data-encoding = "2.10"
+dirs = { workspace = true }
+iroh = "1.1"
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["rt", "rt-multi-thread", "net", "io-util", "sync", "macros", "time"] }
+tracing = { workspace = true }
+
+[build-dependencies]
+cc = "1.2"
+
+[dev-dependencies]
+cloudsync = { path = "../cloudsync" }
+sqlx = { workspace = true, features = ["runtime-tokio", "sqlite", "sqlite-unbundled"] }
+tempfile = { workspace = true }
+tokio = { workspace = true, features = ["rt", "rt-multi-thread", "macros", "time"] }
+
+# Both proofs drive the real cloudsync core through the custom P2P network
+# layer, which only exists in the from-source build — so they are gated on that
+# feature rather than compiled on every platform during `cargo test --workspace`.
+#
+#   cargo run -p sync-p2p --example sync_three_nodes --features from-source
+[[example]]
+name = "sync_two_nodes"
+path = "examples/sync_two_nodes.rs"
+required-features = ["from-source"]
+
+[[example]]
+name = "sync_three_nodes"
+path = "examples/sync_three_nodes.rs"
+required-features = ["from-source"]
