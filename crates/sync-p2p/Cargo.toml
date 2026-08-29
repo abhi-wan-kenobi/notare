@@ -25,6 +25,7 @@ dirs = { workspace = true }
 iroh = "1.1"
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
+subtle = "2"
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["rt", "rt-multi-thread", "net", "io-util", "sync", "macros", "time"] }
 tracing = { workspace = true }
@@ -51,4 +52,11 @@ required-features = ["from-source"]
 [[example]]
 name = "sync_three_nodes"
 path = "examples/sync_three_nodes.rs"
+required-features = ["from-source"]
+
+# Same gate as the convergence examples: drives the real cloudsync core
+# through the from-source P2P network layer (linux/x86_64 only).
+[[test]]
+name = "drain_regression"
+path = "tests/drain_regression.rs"
 required-features = ["from-source"]

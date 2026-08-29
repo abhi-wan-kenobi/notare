@@ -40,7 +40,7 @@ const DB_ID: &str = "notare-v06";
 /// hosts the shared broker; B reaches it over iroh. `local_agent_tcp` is this
 /// node's own agent's local TCP address, which the C layer reaches via
 /// `NOTARE_SYNC_AGENT_ADDR`.
-async fn setup_node(uri: &str, broker_addr: &str, local_agent_tcp: &str) -> SqlitePool {
+async fn setup_node(uri: &str, broker_addr: &str, local_agent_tcp: &str, token: &str) -> SqlitePool {
     let options = SqliteConnectOptions::from_str(uri).unwrap();
     let (options, _ext_path) = cloudsync::apply(options).unwrap();
     let pool = SqlitePoolOptions::new()
@@ -90,6 +90,7 @@ async fn setup_node(uri: &str, broker_addr: &str, local_agent_tcp: &str) -> Sqli
     // C `getenv` read happens only during the blocking sync call below.
     unsafe {
         std::env::set_var("NOTARE_SYNC_AGENT_ADDR", local_agent_tcp);
+        std::env::set_var("NOTARE_SYNC_TOKEN", token);
     }
 
     pool
@@ -113,10 +114,11 @@ async fn note_body(pool: &SqlitePool, id: i64) -> String {
 /// Run a sync on `pool`'s node: set the C-facing env var to that node's agent
 /// address, then call cloudsync_network_sync(). The C layer connects to the
 /// local agent, which dials the peer over iroh.
-async fn run_sync(pool: &SqlitePool, local_agent_tcp: &str) -> String {
+async fn run_sync(pool: &SqlitePool, local_agent_tcp: &str, token: &str) -> String {
     // SAFETY: sequential single-process example; see setup_node note.
     unsafe {
         std::env::set_var("NOTARE_SYNC_AGENT_ADDR", local_agent_tcp);
+        std::env::set_var("NOTARE_SYNC_TOKEN", token);
     }
     sqlx::query_scalar::<_, String>("SELECT cloudsync_network_sync()")
         .fetch_one(pool)
@@ -124,10 +126,11 @@ async fn run_sync(pool: &SqlitePool, local_agent_tcp: &str) -> String {
         .unwrap()
 }
 
-async fn run_check(pool: &SqlitePool, local_agent_tcp: &str) -> String {
+async fn run_check(pool: &SqlitePool, local_agent_tcp: &str, token: &str) -> String {
     // SAFETY: sequential single-process example; see setup_node note.
     unsafe {
         std::env::set_var("NOTARE_SYNC_AGENT_ADDR", local_agent_tcp);
+        std::env::set_var("NOTARE_SYNC_TOKEN", token);
     }
     sqlx::query_scalar::<_, String>("SELECT cloudsync_network_check_changes()")
         .fetch_one(pool)
@@ -198,8 +201,8 @@ async fn main() {
         dir_b.path().join("node_b.db").display()
     );
 
-    let a = setup_node(&a_uri, &a_addr, &a_tcp).await;
-    let b = setup_node(&b_uri, &a_addr, &b_tcp).await;
+    let a = setup_node(&a_uri, &a_addr, &a_tcp, agent_a.token()).await;
+    let b = setup_node(&b_uri, &a_addr, &b_tcp, agent_b.token()).await;
     println!("[nodes] A and B initialized; cloudsync enabled on 'notes' (broker = A)");
 
     // 3. Write rows on A.
@@ -215,9 +218,9 @@ async fn main() {
 
     // 4. Sync A → shared broker (A pushes its rows to A's own broker), then
     //    B ← shared broker over iroh (B pulls A's rows from A's broker).
-    let send = run_sync(&a, &a_tcp).await;
+    let send = run_sync(&a, &a_tcp, agent_a.token()).await;
     println!("[A] sync -> broker (local): {send}");
-    let recv = run_check(&b, &b_tcp).await;
+    let recv = run_check(&b, &b_tcp, agent_b.token()).await;
     println!("[B] check <- broker (iroh): {recv}");
 
     assert_eq!(count_notes(&b).await, 2, "B should have A's 2 rows");
@@ -233,8 +236,8 @@ async fn main() {
         .unwrap();
     println!("[B] wrote 1 row");
 
-    run_sync(&b, &b_tcp).await;
-    run_check(&a, &a_tcp).await;
+    run_sync(&b, &b_tcp, agent_b.token()).await;
+    run_check(&a, &a_tcp, agent_a.token()).await;
 
     assert_eq!(count_notes(&a).await, 3, "A should have B's row");
     assert_eq!(note_body(&a, 3).await, "hello from B");
@@ -252,8 +255,8 @@ async fn main() {
     println!("[both] updated row 1 concurrently");
 
     for _ in 0..3 {
-        run_sync(&a, &a_tcp).await;
-        run_sync(&b, &b_tcp).await;
+        run_sync(&a, &a_tcp, agent_a.token()).await;
+        run_sync(&b, &b_tcp, agent_b.token()).await;
     }
     let a_body = note_body(&a, 1).await;
     let b_body = note_body(&b, 1).await;

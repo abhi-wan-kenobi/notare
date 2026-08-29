@@ -7,6 +7,9 @@
 //!     SSRF gate, §12) — the agent returns a 403 and never opens a stream;
 //!   - a non-allowlisted node id is refused on the **accept** side (inbound
 //!     SSRF gate, §12) — the connection is closed with no streams served.
+//!   - the C↔agent socket requires the SYNC-5 bearer token (missing or wrong
+//!     token → 401 / `ok:false`, both frame shapes) — a token-less local
+//!     process can no longer bypass the peer allowlist.
 //!
 //! Same-machine only (both agents in one process); production NAT traversal
 //! is iroh's job and out of scope for this PR.
@@ -83,6 +86,7 @@ async fn allowlisted_peer_is_served_over_iroh() {
     let resp = agent_roundtrip(
         &agent_a.local_addr,
         &Request {
+            token: agent_a.token().to_string(),
             endpoint: upload_ep,
             is_post: false,
             body: None,
@@ -140,6 +144,7 @@ async fn non_allowlisted_peer_refused_on_dial() {
     let resp = agent_roundtrip(
         &agent_a.local_addr,
         &Request {
+            token: agent_a.token().to_string(),
             endpoint: upload_ep,
             is_post: false,
             body: None,
@@ -193,6 +198,7 @@ async fn non_allowlisted_peer_refused_on_accept() {
     let resp = agent_roundtrip(
         &agent_a.local_addr,
         &Request {
+            token: agent_a.token().to_string(),
             endpoint: upload_ep,
             is_post: false,
             body: None,
@@ -228,6 +234,7 @@ async fn full_collapsed_s3_flow_over_iroh() {
     let resp = agent_roundtrip(
         &agent_a.local_addr,
         &Request {
+            token: agent_a.token().to_string(),
             endpoint: upload_ep,
             is_post: false,
             body: None,
@@ -250,6 +257,7 @@ async fn full_collapsed_s3_flow_over_iroh() {
     //    because the mem:// url carries B's fingerprint.
     let blob = b"convergence-payload".to_vec();
     let put = PutRequest {
+        token: agent_a.token().to_string(),
         url: url.clone(),
         blob,
     };
@@ -281,6 +289,7 @@ async fn full_collapsed_s3_flow_over_iroh() {
     let resp = agent_roundtrip(
         &agent_a.local_addr,
         &Request {
+            token: agent_a.token().to_string(),
             endpoint: apply_ep,
             is_post: true,
             body: Some(apply_body),
@@ -303,6 +312,7 @@ async fn full_collapsed_s3_flow_over_iroh() {
     let resp = agent_roundtrip(
         &agent_a.local_addr,
         &Request {
+            token: agent_a.token().to_string(),
             endpoint: check_ep,
             is_post: true,
             body: Some(check_body),
@@ -318,6 +328,7 @@ async fn full_collapsed_s3_flow_over_iroh() {
     let resp = agent_roundtrip(
         &agent_a.local_addr,
         &Request {
+            token: agent_a.token().to_string(),
             endpoint: dl_url,
             is_post: false,
             body: None,
@@ -386,6 +397,7 @@ async fn revoked_peer_is_refused_on_a_reused_connection() {
         agent_b.address()
     );
     let req = Request {
+        token: String::new(),
         endpoint: upload_ep,
         is_post: false,
         body: None,
@@ -428,5 +440,145 @@ async fn revoked_peer_is_refused_on_a_reused_connection() {
         "revoked peer must NOT be served on a reused connection"
     );
 
+    agent_b.stop().await;
+}
+
+/// REGRESSION (SYNC-5): a frame without the bearer token on the C↔agent
+/// socket must be refused (401), not served. Before SYNC-5 the localhost TCP
+/// port was unauthenticated — any local process that could reach it could
+/// read/write sync data, bypassing the peer allowlist from the local side.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn missing_token_is_refused_on_c_socket() {
+    let dir = tempfile::tempdir().unwrap();
+    let id = Identity::load_or_create_in(dir.path()).unwrap();
+    let peers = PeerStore::load_or_create_in(dir.path()).unwrap();
+    let agent = P2pAgent::start_with(id, peers).await.unwrap();
+
+    let upload_ep = format!(
+        "{}/v2/cloudsync/databases/db/site/upload",
+        agent.address()
+    );
+    let resp = agent_roundtrip(
+        &agent.local_addr,
+        &Request {
+            token: String::new(),
+            endpoint: upload_ep,
+            is_post: false,
+            body: None,
+        },
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(resp.status, 401, "token-less frame must be refused");
+    assert!(resp.error.unwrap().contains("invalid sync token"));
+    assert!(resp.body.is_none(), "401 must serve nothing");
+
+    agent.stop().await;
+}
+
+/// REGRESSION (SYNC-5): wrong token refused, receive shape.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn wrong_token_is_refused_on_c_socket_receive() {
+    let dir = tempfile::tempdir().unwrap();
+    let id = Identity::load_or_create_in(dir.path()).unwrap();
+    let peers = PeerStore::load_or_create_in(dir.path()).unwrap();
+    let agent = P2pAgent::start_with(id, peers).await.unwrap();
+
+    let upload_ep = format!(
+        "{}/v2/cloudsync/databases/db/site/upload",
+        agent.address()
+    );
+    let resp = agent_roundtrip(
+        &agent.local_addr,
+        &Request {
+            token: "deadbeefdeadbeefdeadbeefdeadbeef".into(),
+            endpoint: upload_ep,
+            is_post: false,
+            body: None,
+        },
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(resp.status, 401, "wrong token must be refused");
+    assert!(resp.body.is_none(), "401 must serve nothing");
+
+    agent.stop().await;
+}
+
+/// REGRESSION (SYNC-5): wrong token refused, PUT shape (`PutResponse{ok:false}`).
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn wrong_token_is_refused_on_c_socket_put() {
+    let dir = tempfile::tempdir().unwrap();
+    let id = Identity::load_or_create_in(dir.path()).unwrap();
+    let peers = PeerStore::load_or_create_in(dir.path()).unwrap();
+    let agent = P2pAgent::start_with(id, peers).await.unwrap();
+
+    let put = PutRequest {
+        token: "not-the-token".into(),
+        url: format!(
+            "{}/v2/cloudsync/databases/db/site/upload",
+            agent.address()
+        ),
+        blob: b"payload".to_vec(),
+    };
+    let mut stream = TcpStream::connect(&agent.local_addr).await.unwrap();
+    let json = serde_json::to_vec(&put).unwrap();
+    stream
+        .write_all(&(json.len() as u32).to_be_bytes())
+        .await
+        .unwrap();
+    stream.write_all(&json).await.unwrap();
+    stream.flush().await.unwrap();
+    let mut len_buf = [0u8; 4];
+    stream.read_exact(&mut len_buf).await.unwrap();
+    let len = u32::from_be_bytes(len_buf) as usize;
+    let mut buf = vec![0u8; len];
+    stream.read_exact(&mut buf).await.unwrap();
+    let put_resp: serde_json::Value = serde_json::from_slice(&buf).unwrap();
+
+    assert_eq!(put_resp["ok"], false, "wrong token must be refused (PUT)");
+    assert!(
+        put_resp["error"]
+            .as_str()
+            .unwrap()
+            .contains("invalid sync token")
+    );
+
+    agent.stop().await;
+}
+
+/// The C↔agent bearer token is NOT required on the inbound iroh path: a peer
+/// frame (which never carries a token) is still served. Guards against
+/// over-tightening SYNC-5 into the peer path (the wire format over iroh does
+/// not change).
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn token_is_not_required_on_the_iroh_peer_path() {
+    let (agent_a, agent_b) = two_allowlisted_agents().await;
+
+    let upload_ep = format!(
+        "{}/v2/cloudsync/databases/db/site/upload",
+        agent_b.address()
+    );
+    let resp = agent_roundtrip(
+        &agent_a.local_addr,
+        &Request {
+            // Correct token → the agent dials B over iroh. B serves A's frame,
+            // which has NO token of its own (iroh frames never carry one).
+            token: agent_a.token().to_string(),
+            endpoint: upload_ep,
+            is_post: false,
+            body: None,
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(
+        resp.status, 200,
+        "peer path must work without a token (iroh frames never carry one)"
+    );
+
+    agent_a.stop().await;
     agent_b.stop().await;
 }
