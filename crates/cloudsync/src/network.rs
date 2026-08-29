@@ -36,6 +36,48 @@ async fn query_with_optional_params(
     })
 }
 
+/// Build the SQL for a parameterless-or-parameterized cloudsync network call,
+/// returning the raw JSON TEXT the extension emits. The C functions return
+/// JSON (`{"receive":{"rows":N,...}}`), not an integer — `query_scalar::<_,
+/// i64>` would coerce the leading `{` to 0 via `sqlite3_value_int64`, which is
+/// exactly why a drain loop cannot use the i64 return to decide "anything
+/// pending?". Fetch the string and parse `receive.rows` instead (same shape as
+/// `rows_received` in `sync_three_nodes.rs`).
+async fn query_sync_json(
+    pool: &SqlitePool,
+    fn_name: &str,
+    wait_ms: Option<i64>,
+    max_retries: Option<i64>,
+) -> Result<String, Error> {
+    let row: (String,) = match (wait_ms, max_retries) {
+        (None, None) => {
+            sqlx::query_as(sqlx::AssertSqlSafe(format!("SELECT {fn_name}() AS it")))
+                .fetch_one(pool)
+                .await?
+        }
+        (Some(wait_ms), None) => {
+            sqlx::query_as(sqlx::AssertSqlSafe(format!("SELECT {fn_name}(?) AS it")))
+                .bind(wait_ms)
+                .fetch_one(pool)
+                .await?
+        }
+        (None, Some(max_retries)) => {
+            sqlx::query_as(sqlx::AssertSqlSafe(format!("SELECT {fn_name}(NULL, ?) AS it")))
+                .bind(max_retries)
+                .fetch_one(pool)
+                .await?
+        }
+        (Some(wait_ms), Some(max_retries)) => {
+            sqlx::query_as(sqlx::AssertSqlSafe(format!("SELECT {fn_name}(?, ?) AS it")))
+                .bind(wait_ms)
+                .bind(max_retries)
+                .fetch_one(pool)
+                .await?
+        }
+    };
+    Ok(row.0)
+}
+
 /// https://docs.sqlitecloud.io/docs/sqlite-sync-api-cloudsync-network-init
 pub async fn network_init(pool: &SqlitePool, connection_string: &str) -> Result<(), Error> {
     sqlx::query("SELECT cloudsync_network_init(?)")
@@ -126,11 +168,42 @@ pub async fn network_logout(pool: &SqlitePool) -> Result<(), Error> {
     Ok(())
 }
 
+/// Upper bound on drain rounds. The hub serves one blob per `check`; a site
+/// that fell behind needs one round per pending blob. Without a bound a
+/// non-converging hub would spin forever — so we cap and then fail loudly
+/// rather than returning a misleading "synced".
+const MAX_DRAIN: usize = 64;
+
+/// Pull `receive.rows` out of a `network_sync` / `network_check_changes` JSON
+/// reply. Returns `None` for an unreadable reply (deliberately NOT folded into
+/// `Some(0)` — see [`Error::UnreadableSyncReply`]).
+fn rows_received(resp: &str) -> Option<u64> {
+    let v: serde_json::Value = serde_json::from_str(resp).ok()?;
+    v.get("receive")?.get("rows")?.as_u64()
+}
+
 /// https://docs.sqlitecloud.io/docs/sqlite-sync-api-cloudsync-network-sync
+///
+/// **Drains.** The C `cloudsync_network_sync` does a send then loops
+/// `check_internal` up to `max_retries`, **breaking on `nrows > 0`** — so a
+/// single call pulls at most one pending blob (SYNC-4 divergence class: a
+/// caller that syncs once silently stays behind). This wrapper loops the
+/// whole send+check until the hub reports `receive.rows == 0`, bounded by
+/// [`MAX_DRAIN`] and fail-loud on an unreadable reply. The total rows received
+/// across all rounds is returned.
 pub async fn network_sync(
     pool: &SqlitePool,
     wait_ms: Option<i64>,
     max_retries: Option<i64>,
 ) -> Result<i64, Error> {
-    query_with_optional_params(pool, "cloudsync_network_sync", wait_ms, max_retries).await
+    let mut total: i64 = 0;
+    for _ in 0..MAX_DRAIN {
+        let resp = query_sync_json(pool, "cloudsync_network_sync", wait_ms, max_retries).await?;
+        match rows_received(&resp) {
+            None => return Err(Error::UnreadableSyncReply(resp)),
+            Some(0) => return Ok(total),
+            Some(n) => total += n as i64,
+        }
+    }
+    Err(Error::DrainExhausted(MAX_DRAIN))
 }

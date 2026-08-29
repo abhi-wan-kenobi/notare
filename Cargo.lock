@@ -3551,6 +3551,7 @@ version = "0.1.0"
 dependencies = [
  "cc",
  "dirs 6.0.0",
+ "serde_json",
  "sqlx",
  "thiserror 2.0.18",
  "tokio",
@@ -18800,6 +18801,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sqlx",
+ "subtle",
  "tempfile",
  "thiserror 2.0.18",
  "tokio",
