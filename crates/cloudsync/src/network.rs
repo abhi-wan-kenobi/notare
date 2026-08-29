@@ -1,5 +1,6 @@
 use sqlx::SqlitePool;
 
+use crate::CLOUDSYNC_MANAGED_DB_ID;
 use crate::error::Error;
 
 async fn query_with_optional_params(
@@ -79,9 +80,22 @@ async fn query_sync_json(
 }
 
 /// https://docs.sqlitecloud.io/docs/sqlite-sync-api-cloudsync-network-init
+///
+/// SYNC-5: uses the 2-arg `_custom` form. The 1-arg
+/// `cloudsync_network_init(managedDatabaseId)` binds its argument as the
+/// **db id** and hardcodes the address to the sqlitecloud SaaS
+/// (`CLOUDSYNC_DEFAULT_ADDRESS`) — so a `p2p://<fingerprint>` connection
+/// string bound via the 1-arg form never reaches the endpoint builder and
+/// every request routes at the SaaS address instead of the addressed peer.
+/// The convergence proofs (`crates/sync-p2p/examples/`, `drain_regression`)
+/// all use `_custom` for exactly this reason.
 pub async fn network_init(pool: &SqlitePool, connection_string: &str) -> Result<(), Error> {
-    sqlx::query("SELECT cloudsync_network_init(?)")
+    // SYNC-5: the db id namespaces this database's blobs on the hub. The
+    // proofs use the app name; we use the same fixed id so a notare hub
+    // recognises blobs from every device of the same app.
+    sqlx::query("SELECT cloudsync_network_init_custom(?, ?)")
         .bind(connection_string)
+        .bind(CLOUDSYNC_MANAGED_DB_ID)
         .fetch_optional(pool)
         .await?;
 

@@ -83,6 +83,13 @@ impl Db {
         let wait_ms = config.wait_ms;
         let max_retries = config.max_retries;
         let sync_interval_ms = config.sync_interval_ms;
+        // SYNC-5: with no enabled tables there is nothing to sync — no shadow
+        // tables exist, so every send/check query would fail fatally ("no
+        // such table: cloudsync_changes") and kill the loop on its first
+        // tick. The loop still runs (so status/stop stay honest) but treats
+        // every tick as a successful no-op. SYNC-6 extends the enabled-set
+        // and this arm disappears.
+        let no_enabled_tables = config.enabled_tables().next().is_none();
         let join_handle = tokio::spawn(async move {
             cloudsync_background_loop(
                 pool,
@@ -90,6 +97,7 @@ impl Db {
                 sync_interval_ms,
                 wait_ms,
                 max_retries,
+                no_enabled_tables,
                 shutdown_rx,
             )
             .await;
@@ -169,8 +177,19 @@ impl Db {
             )
         };
 
+        // SYNC-5: `cloudsync_network_has_unsent_changes` reads the
+        // `cloudsync_changes` shadow table, which only exists once a table is
+        // cloudsync-enabled — so with zero enabled tables the answer is a
+        // plain `false`, not a query that would fail.
+        let no_enabled_tables = config
+            .as_ref()
+            .is_some_and(|config| config.enabled_tables().next().is_none());
         let has_unsent_changes = if self.cloudsync_enabled && network_initialized {
-            Some(self.cloudsync_network_has_unsent_changes().await?)
+            if no_enabled_tables {
+                Some(false)
+            } else {
+                Some(self.cloudsync_network_has_unsent_changes().await?)
+            }
         } else {
             None
         };
@@ -197,7 +216,7 @@ impl Db {
             return Ok(0);
         }
 
-        let (wait_ms, max_retries, network_initialized) = {
+        let (wait_ms, max_retries, network_initialized, no_enabled_tables) = {
             let runtime = self.cloudsync_runtime.lock().unwrap();
             let config = runtime
                 .config
@@ -207,8 +226,15 @@ impl Db {
                 config.wait_ms,
                 config.max_retries,
                 runtime.network_initialized,
+                config.enabled_tables().next().is_none(),
             )
         };
+        // SYNC-5: zero enabled tables → nothing to send or receive (see
+        // `cloudsync_start`). Report an honest, successful no-op.
+        if no_enabled_tables {
+            record_sync_result(&self.cloudsync_runtime, 0);
+            return Ok(0);
+        }
         if !network_initialized {
             return Err(CloudsyncRuntimeError::NotStarted);
         }
@@ -236,6 +262,7 @@ async fn cloudsync_background_loop(
     sync_interval_ms: u64,
     wait_ms: Option<i64>,
     max_retries: Option<i64>,
+    no_enabled_tables: bool,
     mut shutdown_rx: oneshot::Receiver<()>,
 ) {
     let base_interval = Duration::from_millis(sync_interval_ms);
@@ -245,6 +272,13 @@ async fn cloudsync_background_loop(
             _ = &mut shutdown_rx => break,
             _ = tokio::time::sleep(base_interval) => {
                 let state = Arc::clone(&runtime_state);
+
+                // SYNC-5: zero enabled tables → successful no-op tick (see
+                // `cloudsync_start`); skip the network entirely.
+                if no_enabled_tables {
+                    record_sync_result(&runtime_state, 0);
+                    continue;
+                }
 
                 let result = (|| async {
                     hypr_cloudsync::network_sync(&pool, wait_ms, max_retries).await

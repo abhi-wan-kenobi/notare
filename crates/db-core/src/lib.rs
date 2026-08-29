@@ -239,6 +239,17 @@ async fn connect_with_options(
             }
         }
     };
+
+    // SYNC-5: the cloudsync extension keeps its network context (and its
+    // commit hooks) in per-connection auxdata — `network_init` on one pooled
+    // connection does not reach any other, so a multi-connection pool breaks
+    // every later network call with "Unable to retrieve CloudSync network
+    // context". Every SYNC-4 proof opened with a single connection for
+    // exactly this reason. Any cloudsync-enabled open is therefore clamped
+    // to one connection, regardless of what the caller asked for.
+    if options.cloudsync_enabled {
+        pool_options = pool_options.max_connections(1);
+    }
     let pool = pool_options.connect_with(connect_options).await?;
 
     Ok(Db {
