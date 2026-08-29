@@ -2,6 +2,74 @@ use tauri::ipc::Channel;
 
 use crate::{ExecuteProxyResult, ManagedState, QueryEvent, TransactionStatement};
 
+/// Wire shape of [`hypr_db_core::CloudsyncStatus`] for the specta surface —
+/// db-core's own type is serde-only and stays that way (it predates specta
+/// and is used by non-tauri consumers); this mirror keeps the boundary.
+#[derive(Debug, Clone, serde::Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct SyncStatusPayload {
+    pub cloudsync_enabled: bool,
+    pub extension_loaded: bool,
+    pub configured: bool,
+    pub running: bool,
+    pub network_initialized: bool,
+    pub last_sync_downloaded_count: Option<i64>,
+    pub last_sync_at_ms: Option<u64>,
+    pub has_unsent_changes: Option<bool>,
+    pub last_error: Option<String>,
+    pub consecutive_failures: u32,
+}
+
+impl From<hypr_db_core::CloudsyncStatus> for SyncStatusPayload {
+    fn from(status: hypr_db_core::CloudsyncStatus) -> Self {
+        Self {
+            cloudsync_enabled: status.cloudsync_enabled,
+            extension_loaded: status.extension_loaded,
+            configured: status.configured,
+            running: status.running,
+            network_initialized: status.network_initialized,
+            last_sync_downloaded_count: status.last_sync_downloaded_count,
+            last_sync_at_ms: status.last_sync_at_ms,
+            has_unsent_changes: status.has_unsent_changes,
+            last_error: status.last_error,
+            consecutive_failures: status.consecutive_failures,
+        }
+    }
+}
+
+/// The command result for `sync_status`: the live status when sync is built
+/// in, or a stub carrying just `cloudsync_enabled: false` otherwise, so the
+/// frontend can render one shape in every configuration.
+#[derive(Debug, Clone, serde::Serialize, specta::Type)]
+#[serde(rename_all = "camelCase", tag = "kind")]
+#[allow(dead_code)] // exactly one variant is constructed per feature config
+pub(crate) enum SyncStatusResult {
+    Live(SyncStatusPayload),
+    Unavailable,
+}
+
+/// Wire shape of a paired peer from the allowlist.
+#[derive(Debug, Clone, serde::Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct SyncPeer {
+    pub node_id: String,
+    pub label: String,
+    pub added_at: i64,
+    pub last_seen: i64,
+}
+
+#[cfg(all(feature = "sync", target_os = "linux"))]
+impl From<sync_p2p::Peer> for SyncPeer {
+    fn from(peer: sync_p2p::Peer) -> Self {
+        Self {
+            node_id: peer.node_id.to_z32(),
+            label: peer.label,
+            added_at: peer.added_at,
+            last_seen: peer.last_seen,
+        }
+    }
+}
+
 #[tauri::command]
 #[specta::specta]
 pub(crate) async fn list_meetings(
@@ -158,4 +226,80 @@ pub(crate) async fn unsubscribe(
         .unsubscribe(&subscription_id)
         .await
         .map_err(|error| error.to_string())
+}
+
+// SYNC-5 sync commands. The specta builder's `collect_commands!` macro does
+// not accept `#[cfg]` items, so these exist unconditionally and the bodies
+// cfg-gate: on any non-sync build every command is a plain "sync is not
+// available" error, keeping the specta surface identical across configs so
+// generated bindings don't churn between feature sets.
+
+#[tauri::command]
+#[specta::specta]
+pub(crate) async fn sync_status(
+    state: tauri::State<'_, ManagedState>,
+) -> Result<SyncStatusResult, String> {
+    #[cfg(all(feature = "sync", target_os = "linux"))]
+    {
+        state
+            .sync_status()
+            .await
+            .map(|status| SyncStatusResult::Live(SyncStatusPayload::from(status)))
+            .map_err(|error| error.to_string())
+    }
+    #[cfg(not(all(feature = "sync", target_os = "linux")))]
+    {
+        let _ = &state;
+        Ok(SyncStatusResult::Unavailable)
+    }
+}
+
+#[tauri::command]
+#[specta::specta]
+pub(crate) async fn sync_trigger(state: tauri::State<'_, ManagedState>) -> Result<i64, String> {
+    #[cfg(all(feature = "sync", target_os = "linux"))]
+    {
+        state.sync_trigger().await.map_err(|error| error.to_string())
+    }
+    #[cfg(not(all(feature = "sync", target_os = "linux")))]
+    {
+        let _ = &state;
+        Err("sync is not available in this build".to_string())
+    }
+}
+
+#[tauri::command]
+#[specta::specta]
+pub(crate) async fn sync_list_peers(
+    state: tauri::State<'_, ManagedState>,
+) -> Result<Vec<SyncPeer>, String> {
+    #[cfg(all(feature = "sync", target_os = "linux"))]
+    {
+        Ok(state
+            .sync_list_peers()
+            .into_iter()
+            .map(SyncPeer::from)
+            .collect())
+    }
+    #[cfg(not(all(feature = "sync", target_os = "linux")))]
+    {
+        let _ = &state;
+        Err("sync is not available in this build".to_string())
+    }
+}
+
+#[tauri::command]
+#[specta::specta]
+pub(crate) async fn sync_this_device(
+    state: tauri::State<'_, ManagedState>,
+) -> Result<String, String> {
+    #[cfg(all(feature = "sync", target_os = "linux"))]
+    {
+        state.sync_this_device().map_err(|error| error.to_string())
+    }
+    #[cfg(not(all(feature = "sync", target_os = "linux")))]
+    {
+        let _ = &state;
+        Err("sync is not available in this build".to_string())
+    }
 }

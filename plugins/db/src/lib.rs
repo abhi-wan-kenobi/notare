@@ -2,9 +2,11 @@ mod commands;
 mod error;
 mod import;
 mod runtime;
+#[cfg(all(feature = "sync", target_os = "linux"))]
+pub mod sync;
 
 pub use error::{Error, Result};
-pub use runtime::open_app_db;
+pub use runtime::{PluginDbRuntime, open_app_db};
 use tauri::Manager;
 
 const PLUGIN_NAME: &str = "db";
@@ -135,6 +137,10 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
             commands::run_legacy_import,
             commands::subscribe,
             commands::unsubscribe,
+            commands::sync_status,
+            commands::sync_trigger,
+            commands::sync_list_peers,
+            commands::sync_this_device,
         ])
         .error_handling(tauri_specta::ErrorHandlingMode::Result)
 }

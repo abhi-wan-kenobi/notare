@@ -5,6 +5,8 @@ use hypr_db_execute::{DbExecutor, ProxyQueryMethod, ProxyQueryResult};
 use hypr_db_reactive::{LiveQueryRuntime, QueryEventSink, SubscriptionRegistration};
 use tauri::ipc::Channel;
 
+#[cfg(all(feature = "sync", target_os = "linux"))]
+use crate::sync::SyncLifecycle;
 use crate::{QueryEvent, Result, TransactionStatement};
 
 #[derive(Clone)]
@@ -35,6 +37,8 @@ pub struct PluginDbRuntime {
     schema_ready: tokio::sync::OnceCell<()>,
     executor: DbExecutor,
     live_query_runtime: LiveQueryRuntime<QueryEventChannel>,
+    #[cfg(all(feature = "sync", target_os = "linux"))]
+    sync: tokio::sync::Mutex<Option<SyncLifecycle>>,
 }
 
 impl PluginDbRuntime {
@@ -43,7 +47,9 @@ impl PluginDbRuntime {
             db: std::sync::Arc::clone(&db),
             schema_ready: tokio::sync::OnceCell::new(),
             executor: DbExecutor::new(std::sync::Arc::clone(&db)),
-            live_query_runtime: LiveQueryRuntime::new(db),
+            live_query_runtime: LiveQueryRuntime::new(std::sync::Arc::clone(&db)),
+            #[cfg(all(feature = "sync", target_os = "linux"))]
+            sync: tokio::sync::Mutex::new(None),
         }
     }
 
@@ -122,6 +128,113 @@ impl PluginDbRuntime {
     pub async fn unsubscribe(&self, subscription_id: &str) -> hypr_db_reactive::Result<()> {
         self.live_query_runtime.unsubscribe(subscription_id).await
     }
+
+    /// SYNC-5: start the P2P sync stack (agent + cloudsync). Only exists when
+    /// the `sync` feature is on AND the target is linux; elsewhere the db was
+    /// opened with `cloudsync_enabled: false` and this is never callable.
+    #[cfg(all(feature = "sync", target_os = "linux"))]
+    pub async fn start_sync(&self) -> std::result::Result<(), crate::sync::SyncError> {
+        let mut guard = self.sync.lock().await;
+        if guard.is_some() {
+            return Ok(());
+        }
+        let lifecycle = SyncLifecycle::start(std::sync::Arc::clone(&self.db)).await?;
+        *guard = Some(lifecycle);
+        Ok(())
+    }
+
+    #[cfg(all(feature = "sync", target_os = "linux"))]
+    pub async fn sync_status(
+        &self,
+    ) -> std::result::Result<hypr_db_core::CloudsyncStatus, crate::sync::SyncError> {
+        let guard = self.sync.lock().await;
+        match guard.as_ref() {
+            Some(lifecycle) => Ok(lifecycle.status().await?),
+            None => Ok(self.db.cloudsync_status().await?),
+        }
+    }
+
+    #[cfg(all(feature = "sync", target_os = "linux"))]
+    pub async fn sync_trigger(&self) -> std::result::Result<i64, crate::sync::SyncError> {
+        let guard = self.sync.lock().await;
+        match guard.as_ref() {
+            Some(lifecycle) => Ok(lifecycle.trigger().await?),
+            None => Ok(self.db.cloudsync_trigger_sync().await?),
+        }
+    }
+
+    #[cfg(all(feature = "sync", target_os = "linux"))]
+    pub fn sync_list_peers(&self) -> Vec<sync_p2p::Peer> {
+        // The agent's PeerStore is a cheap Arc clone over the same on-disk
+        // allowlist; reading it does not need the lifecycle up.
+        match self.sync.try_lock() {
+            Ok(guard) => match guard.as_ref() {
+                Some(lifecycle) => lifecycle.list_peers(),
+                None => sync_p2p::PeerStore::load_or_create()
+                    .map(|peers| peers.list_peers())
+                    .unwrap_or_default(),
+            },
+            Err(_) => sync_p2p::PeerStore::load_or_create()
+                .map(|peers| peers.list_peers())
+                .unwrap_or_default(),
+        }
+    }
+
+    #[cfg(all(feature = "sync", target_os = "linux"))]
+    pub fn sync_this_device(&self) -> std::result::Result<String, crate::sync::SyncError> {
+        let guard = self.sync.blocking_lock();
+        match guard.as_ref() {
+            Some(lifecycle) => Ok(lifecycle.this_device()),
+            None => sync_p2p::Identity::load_or_create()
+                .map(|identity| identity.id().to_z32())
+                .map_err(|e| crate::sync::SyncError::Agent(e.into())),
+        }
+    }
+
+    /// The #101 teardown sequence, exactly once and in order:
+    /// `cloudsync_stop` → stop live-query dispatcher → `pool().close()` →
+    /// stop agent. Best-effort: a step that fails must not block the rest —
+    /// the remaining steps are what actually release resources the OS would
+    /// otherwise reclaim at process death.
+    ///
+    /// The runtime stays behind its Arc (Tauri's state map holds a clone for
+    /// the whole app lifetime, so it cannot be uniquely unwound here); the
+    /// live-query dispatcher is stopped through an explicit `shutdown()` for
+    /// exactly that reason.
+    pub async fn shutdown(&self) {
+        #[cfg(all(feature = "sync", target_os = "linux"))]
+        let lifecycle = {
+            let mut guard = self.sync.lock().await;
+            guard.take()
+        };
+
+        #[cfg(all(feature = "sync", target_os = "linux"))]
+        if let Some(lifecycle) = lifecycle.as_ref() {
+            // (1) cloudsync_stop first: the extension finalizes prepared
+            // statements against live pool connections here.
+            if let Err(error) = lifecycle.db_cloudsync_stop().await {
+                tracing::warn!("sync shutdown: cloudsync_stop failed: {error}");
+            }
+        }
+
+        // (2) live queries hold pool connections open and their dispatcher
+        // holds a Db handle — stop it before closing the pool. Runs on the
+        // default path too: closing a pool under a live dispatcher is what
+        // #101 is about, sync or not.
+        self.live_query_runtime.shutdown();
+
+        // (3) the pool itself.
+        self.db.pool().close().await;
+
+        // (4) the agent last: the C layer is gone, nothing relays through it
+        // anymore.
+        #[cfg(all(feature = "sync", target_os = "linux"))]
+        if let Some(lifecycle) = lifecycle {
+            if let Err(error) = lifecycle.stop_agent().await {
+                tracing::warn!("sync shutdown: stop agent failed: {error}");
+            }
+        }
+    }
 }
 
 fn bind_params<'q>(
@@ -153,9 +266,14 @@ pub async fn open_app_db(db_path: Option<&Path>) -> Result<Db> {
         None => DbStorage::Memory,
     };
 
+    // SYNC-5: cloudsync is only loadable in the from-source build, which the
+    // `sync` feature turns on (linux/x86_64 only). Every other configuration
+    // must keep opening exactly as before — no extension, no env vars.
+    let cloudsync_enabled = cfg!(all(feature = "sync", target_os = "linux"));
+
     let db = Db::open(DbOpenOptions {
         storage,
-        cloudsync_enabled: false,
+        cloudsync_enabled,
         journal_mode_wal: true,
         foreign_keys: true,
         max_connections: Some(4),

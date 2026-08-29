@@ -19461,6 +19461,7 @@ version = "0.1.0"
 dependencies = [
  "agent-access",
  "anyhow",
+ "cloudsync",
  "db-app",
  "db-core",
  "db-execute",
@@ -19474,6 +19475,7 @@ dependencies = [
  "specta-typescript",
  "sqlx",
  "storage",
+ "sync-p2p",
  "tauri",
  "tauri-plugin",
  "tauri-specta",
@@ -19481,6 +19483,7 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.18",
  "tokio",
+ "tracing",
  "uuid",
 ]
 

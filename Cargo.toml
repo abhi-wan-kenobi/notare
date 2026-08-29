@@ -286,6 +286,7 @@ reqwest-middleware = "0.5"
 reqwest-retry = "0.9"
 reqwest-streams = "0.15"
 reqwest-tracing = "0.6"
+sync-p2p = { path = "crates/sync-p2p" }
 tokio = "1"
 tokio-stream = "0.1.17"
 tokio-tungstenite = "0.29"
