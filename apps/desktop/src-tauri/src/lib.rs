@@ -288,7 +288,7 @@ pub async fn main() {
             // plugin's setup has registered its managed runtime (this is the
             // instance the sync commands share). A failure is logged and the
             // app keeps running with sync disabled.
-            #[cfg(all(feature = "sync", target_os = "linux"))]
+            #[cfg(all(feature = "sync", target_os = "linux", target_arch = "x86_64"))]
             {
                 let handle = app_handle.clone();
                 tauri::async_runtime::spawn(async move {
@@ -381,13 +381,8 @@ pub async fn main() {
             // queries → pool close → stop agent) with a hard bound —
             // `RunEvent::Exit` is synchronous, so the app must not hang here
             // on a stuck teardown; better to leak than to never exit.
-            #[cfg(all(feature = "sync", target_os = "linux"))]
+            #[cfg(all(feature = "sync", target_os = "linux", target_arch = "x86_64"))]
             shutdown_sync(app);
-
-            if let Some(ref ctx) = root_supervisor_ctx_for_run {
-                ctx.mark_exiting();
-                ctx.stop();
-            }
 
             if let Some(ref ctx) = root_supervisor_ctx_for_run {
                 ctx.mark_exiting();
@@ -404,22 +399,26 @@ fn startup_failure_message(error: &impl std::fmt::Display) -> String {
     format!("Notare failed to start: {error}")
 }
 
-/// SYNC-5 linux-only sync start, through the db plugin's managed runtime —
+/// SYNC-5 linux/x86_64-only sync start, through the db plugin's managed runtime —
 /// the same instance the sync commands use. Starting a second runtime would
 /// orphan the agent, so this must be the only start path.
-#[cfg(all(feature = "sync", target_os = "linux"))]
+#[cfg(all(feature = "sync", target_os = "linux", target_arch = "x86_64"))]
 async fn start_sync(app: &tauri::AppHandle) -> Result<(), String> {
     use tauri::Manager;
 
-    let state = app.state::<tauri_plugin_db::ManagedState>();
+    // try_state, not state: this is best-effort by contract — a missing
+    // runtime must degrade to "sync off", never panic at startup.
+    let Some(state) = app.try_state::<tauri_plugin_db::ManagedState>() else {
+        return Err("db runtime not registered".to_string());
+    };
     state.start_sync().await.map_err(|e| e.to_string())
 }
 
-/// SYNC-5 linux-only teardown from `RunEvent::Exit`: run the #101 sequence
+/// SYNC-5 linux/x86_64-only teardown from `RunEvent::Exit`: run the #101 sequence
 /// through the plugin's managed runtime, on a dedicated thread with a hard
 /// timeout — `RunEvent::Exit` is synchronous and the app must exit even if
 /// the teardown wedges.
-#[cfg(all(feature = "sync", target_os = "linux"))]
+#[cfg(all(feature = "sync", target_os = "linux", target_arch = "x86_64"))]
 fn shutdown_sync(app: &tauri::AppHandle) {
     use std::time::Duration;
 
@@ -430,7 +429,12 @@ fn shutdown_sync(app: &tauri::AppHandle) {
     /// background task to join) but finite.
     const SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(5);
 
-    let state = app.state::<tauri_plugin_db::ManagedState>();
+    // try_state, not state: `RunEvent::Exit` must never panic on the way out —
+    // if the runtime is somehow absent there is simply nothing to tear down.
+    let Some(state) = app.try_state::<tauri_plugin_db::ManagedState>() else {
+        tracing::warn!("sync shutdown skipped: db runtime not registered");
+        return;
+    };
     let runtime = std::sync::Arc::clone(state.inner());
 
     let (tx, rx) = std::sync::mpsc::channel();

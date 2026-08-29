@@ -109,6 +109,38 @@ async unsubscribe(subscriptionId: string) : Promise<Result<null, string>> {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
+},
+async syncStatus() : Promise<Result<SyncStatusResult, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:db|sync_status") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async syncTrigger() : Promise<Result<number, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:db|sync_trigger") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async syncListPeers() : Promise<Result<SyncPeer[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:db|sync_list_peers") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async syncThisDevice() : Promise<Result<string, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:db|sync_this_device") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 }
 }
 
@@ -146,6 +178,22 @@ export type Participant = { human_id: string; display_name: string; email: strin
 export type QueryEvent = { event: "result"; data: JsonValue[] } | { event: "error"; data: string }
 export type StorageMigrationState = { phase: string; latestRunId: string; parityVerified: boolean; cutoverAt: string | null; rollbackUntil: string | null; lastError: string; updatedAt: string }
 export type SubscriptionRegistration = { id: string; analysis: DependencyAnalysis }
+/**
+ * Wire shape of a paired peer from the allowlist.
+ */
+export type SyncPeer = { nodeId: string; label: string; addedAt: number; lastSeen: number }
+/**
+ * Wire shape of [`hypr_db_core::CloudsyncStatus`] for the specta surface —
+ * db-core's own type is serde-only and stays that way (it predates specta
+ * and is used by non-tauri consumers); this mirror keeps the boundary.
+ */
+export type SyncStatusPayload = { cloudsyncEnabled: boolean; extensionLoaded: boolean; configured: boolean; running: boolean; networkInitialized: boolean; lastSyncDownloadedCount: number | null; lastSyncAtMs: number | null; hasUnsentChanges: boolean | null; lastError: string | null; consecutiveFailures: number }
+/**
+ * The command result for `sync_status`: the live status when sync is built
+ * in, or a stub carrying just `cloudsync_enabled: false` otherwise, so the
+ * frontend can render one shape in every configuration.
+ */
+export type SyncStatusResult = ({ kind: "live" } & SyncStatusPayload) | { kind: "unavailable" }
 export type TAURI_CHANNEL<TSend> = null
 export type TransactionStatement = { sql: string; params: JsonValue[]; expectedRowsAffected?: number | null }
 export type TranscriptPage = { meeting_id: string; text: string; words: JsonValue[]; pagination: Pagination }

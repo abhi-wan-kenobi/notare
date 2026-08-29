@@ -115,9 +115,9 @@ tracing = { workspace = true }
 default = []
 dev = ["dep:hypr-audio-mock"]
 # SYNC-5 passthrough: turns on tauri-plugin-db's sync lifecycle (linux/x86_64
-# only — the target table below adds the feature; on any other target this
-# feature exists but gates nothing on, keeping the build unchanged).
-sync = ["tauri-plugin-db/sync"]
+# only — on any other target `dep:tauri-plugin-db` selects nothing and this
+# feature gates no code on, keeping the build unchanged).
+sync = ["dep:tauri-plugin-db", "tauri-plugin-db/sync"]
 devtools = ["tauri/devtools", "dep:hypr-audio-mock"]
 automation = ["tauri-plugin-automation"]
 # Vulkan GPU offload for whisper.cpp (covers NVIDIA/AMD/Intel on Windows+Linux).
@@ -155,15 +155,19 @@ tauri-plugin-local-stt = { workspace = true, features = ["whisper-cpp", "parakee
 # SYNC-5: P2P sync on linux/x86_64 only — the from-source cloudsync build the
 # `sync` feature enables panics on any other target (see plugins/db
 # Cargo.toml). Cargo target tables cannot see target_arch for feature
-# selection, so the crate dep is target-gated here and the feature enables the
-# plugin's sync code; on every other target/feature combination the build is
+# selection, so the crate dep is target-gated here and the `sync` feature
+# above turns it on; on every other target/feature combination the build is
 # unchanged (no agent, no extension, no env vars).
+#
+# The dep MUST be optional. A non-optional target-gated entry unifies with the
+# plain `tauri-plugin-db` dep in [dependencies] and pushes `features =
+# ["sync"]` into EVERY desktop build on this target — "default" stopped meaning
+# "sync off" (caught by the 2026-08-30 audit; the earlier `cargo check -p
+# desktop` was run on linux/x86_64, where default already resolved sync on,
+# so it could not see this). Optional + `dep:` keeps the feature the only
+# switch.
 [target.'cfg(all(target_os = "linux", target_arch = "x86_64"))'.dependencies]
-# SYNC-5: linux/x86_64-only sync. On this target this entry *replaces* the
-# generic `tauri-plugin-db` dependency in [dependencies] above (same package,
-# so cargo unifies them; the union of features lands here as `sync`). Every
-# other target resolves the plain dependency and gets an unchanged build.
-tauri-plugin-db = { workspace = true, features = ["sync"] }
+tauri-plugin-db = { workspace = true, features = ["sync"], optional = true }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 tauri-plugin-automation = { version = "0.1", optional = true }

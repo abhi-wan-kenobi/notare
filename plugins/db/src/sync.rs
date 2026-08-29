@@ -71,11 +71,15 @@ impl SyncLifecycle {
         db: std::sync::Arc<Db>,
         agent: P2pAgent,
     ) -> Result<Self, SyncError> {
-        // SAFETY: this is the only writer of these two env vars in the
-        // process, it runs once during startup before any cloudsync call,
-        // and nothing reads them until cloudsync_start below. The C layer
-        // getenvs them per network call — this is the single point of
-        // publication.
+        // SAFETY: the C layer getenvs `NOTARE_SYNC_AGENT_ADDR` /
+        // `NOTARE_SYNC_TOKEN` per network call, so a `set_var` racing a
+        // `getenv` from cloudsync's threads would be UB. The contract that
+        // makes this sound: exactly one SyncLifecycle per process. In the app
+        // that is structural — one `PluginDbRuntime`, and `start_sync` holds
+        // the runtime's sync mutex across this whole call, while the only
+        // readers (cloudsync's background loop + network calls) spawn inside
+        // the `cloudsync_start` BELOW, after publication. Callers that go
+        // through `start_with` directly (tests) must serialize themselves.
         unsafe {
             std::env::set_var("NOTARE_SYNC_AGENT_ADDR", &agent.local_addr);
             std::env::set_var("NOTARE_SYNC_TOKEN", agent.token());

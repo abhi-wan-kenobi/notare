@@ -2,7 +2,7 @@ mod commands;
 mod error;
 mod import;
 mod runtime;
-#[cfg(all(feature = "sync", target_os = "linux"))]
+#[cfg(all(feature = "sync", target_os = "linux", target_arch = "x86_64"))]
 pub mod sync;
 
 pub use error::{Error, Result};

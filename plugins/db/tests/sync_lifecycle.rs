@@ -23,7 +23,7 @@
 //!
 //! Requires the `sync` feature (linux/x86_64) — see the crate's Cargo.toml.
 
-#![cfg(all(feature = "sync", target_os = "linux"))]
+#![cfg(all(feature = "sync", target_os = "linux", target_arch = "x86_64"))]
 
 use std::sync::Arc;
 use std::sync::OnceLock;
@@ -112,6 +112,49 @@ async fn start_runs_the_agent_before_cloudsync_and_stop_shuts_down_in_order() {
     db.pool().close().await;
     // The agent is stopped last.
     lifecycle.stop_agent().await.unwrap();
+
+    drop(agent_dir);
+    drop(db_dir);
+}
+
+/// A second lifecycle on the same agent shape pins that `take()` in
+/// `PluginDbRuntime::shutdown` hands the owned `Option` to the teardown steps
+/// (auditors once read `guard.take()` as "discard" and claimed step 1 never
+/// runs) — and exercises the `sync_this_device`/`sync_list_peers` fallbacks on
+/// a runtime whose lifecycle is not up.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn runtime_teardown_runs_every_step_and_fallbacks_answer_without_lifecycle() {
+    let _env = lifecycle_env_lock().lock().await;
+
+    let (agent_dir, agent) = test_agent().await;
+    let db_dir = tempfile::tempdir().unwrap();
+    let db = test_db(&db_dir).await;
+    let runtime = tauri_plugin_db::PluginDbRuntime::new(std::sync::Arc::clone(&db));
+
+    // Before start_sync: the fallbacks answer from disk, not from a lifecycle.
+    let device = runtime.sync_this_device().await.unwrap();
+    assert!(
+        !device.is_empty(),
+        "fallback identity fingerprint should be a non-empty z32, got {device:?}"
+    );
+    assert!(
+        runtime.sync_list_peers().await.is_empty(),
+        "fresh allowlist has no peers"
+    );
+
+    runtime.start_sync_with(agent).await.unwrap();
+    let status = runtime.sync_status().await.unwrap();
+    assert!(status.running, "lifecycle started");
+
+    runtime.shutdown().await;
+
+    // shutdown ran cloudsync_stop before closing the pool: the db-level
+    // status must show the stopped state, and the pool must be closed.
+    let status = db.cloudsync_status().await.unwrap();
+    assert!(
+        !status.running && !status.network_initialized,
+        "shutdown must have run cloudsync_stop (take() must hand the lifecycle to the steps, not discard it)"
+    );
 
     drop(agent_dir);
     drop(db_dir);

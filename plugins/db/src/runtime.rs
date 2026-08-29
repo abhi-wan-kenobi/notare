@@ -5,7 +5,7 @@ use hypr_db_execute::{DbExecutor, ProxyQueryMethod, ProxyQueryResult};
 use hypr_db_reactive::{LiveQueryRuntime, QueryEventSink, SubscriptionRegistration};
 use tauri::ipc::Channel;
 
-#[cfg(all(feature = "sync", target_os = "linux"))]
+#[cfg(all(feature = "sync", target_os = "linux", target_arch = "x86_64"))]
 use crate::sync::SyncLifecycle;
 use crate::{QueryEvent, Result, TransactionStatement};
 
@@ -37,7 +37,7 @@ pub struct PluginDbRuntime {
     schema_ready: tokio::sync::OnceCell<()>,
     executor: DbExecutor,
     live_query_runtime: LiveQueryRuntime<QueryEventChannel>,
-    #[cfg(all(feature = "sync", target_os = "linux"))]
+    #[cfg(all(feature = "sync", target_os = "linux", target_arch = "x86_64"))]
     sync: tokio::sync::Mutex<Option<SyncLifecycle>>,
 }
 
@@ -48,7 +48,7 @@ impl PluginDbRuntime {
             schema_ready: tokio::sync::OnceCell::new(),
             executor: DbExecutor::new(std::sync::Arc::clone(&db)),
             live_query_runtime: LiveQueryRuntime::new(std::sync::Arc::clone(&db)),
-            #[cfg(all(feature = "sync", target_os = "linux"))]
+            #[cfg(all(feature = "sync", target_os = "linux", target_arch = "x86_64"))]
             sync: tokio::sync::Mutex::new(None),
         }
     }
@@ -132,7 +132,7 @@ impl PluginDbRuntime {
     /// SYNC-5: start the P2P sync stack (agent + cloudsync). Only exists when
     /// the `sync` feature is on AND the target is linux; elsewhere the db was
     /// opened with `cloudsync_enabled: false` and this is never callable.
-    #[cfg(all(feature = "sync", target_os = "linux"))]
+    #[cfg(all(feature = "sync", target_os = "linux", target_arch = "x86_64"))]
     pub async fn start_sync(&self) -> std::result::Result<(), crate::sync::SyncError> {
         let mut guard = self.sync.lock().await;
         if guard.is_some() {
@@ -143,7 +143,22 @@ impl PluginDbRuntime {
         Ok(())
     }
 
-    #[cfg(all(feature = "sync", target_os = "linux"))]
+    /// Install a sync lifecycle on an already-running agent — the seam the
+    /// lifecycle test uses, so it never touches the real
+    /// `<data_dir>/notare/sync/` identity the app's `start_sync` would load.
+    #[cfg(all(feature = "sync", target_os = "linux", target_arch = "x86_64"))]
+    pub async fn start_sync_with(&self, agent: sync_p2p::P2pAgent) -> std::result::Result<(), crate::sync::SyncError> {
+        let mut guard = self.sync.lock().await;
+        if guard.is_some() {
+            return Ok(());
+        }
+        let lifecycle =
+            SyncLifecycle::start_with(std::sync::Arc::clone(&self.db), agent).await?;
+        *guard = Some(lifecycle);
+        Ok(())
+    }
+
+    #[cfg(all(feature = "sync", target_os = "linux", target_arch = "x86_64"))]
     pub async fn sync_status(
         &self,
     ) -> std::result::Result<hypr_db_core::CloudsyncStatus, crate::sync::SyncError> {
@@ -154,7 +169,7 @@ impl PluginDbRuntime {
         }
     }
 
-    #[cfg(all(feature = "sync", target_os = "linux"))]
+    #[cfg(all(feature = "sync", target_os = "linux", target_arch = "x86_64"))]
     pub async fn sync_trigger(&self) -> std::result::Result<i64, crate::sync::SyncError> {
         let guard = self.sync.lock().await;
         match guard.as_ref() {
@@ -163,26 +178,26 @@ impl PluginDbRuntime {
         }
     }
 
-    #[cfg(all(feature = "sync", target_os = "linux"))]
-    pub fn sync_list_peers(&self) -> Vec<sync_p2p::Peer> {
+    #[cfg(all(feature = "sync", target_os = "linux", target_arch = "x86_64"))]
+    pub async fn sync_list_peers(&self) -> Vec<sync_p2p::Peer> {
         // The agent's PeerStore is a cheap Arc clone over the same on-disk
         // allowlist; reading it does not need the lifecycle up.
-        match self.sync.try_lock() {
-            Ok(guard) => match guard.as_ref() {
-                Some(lifecycle) => lifecycle.list_peers(),
-                None => sync_p2p::PeerStore::load_or_create()
-                    .map(|peers| peers.list_peers())
-                    .unwrap_or_default(),
-            },
-            Err(_) => sync_p2p::PeerStore::load_or_create()
+        let guard = self.sync.lock().await;
+        match guard.as_ref() {
+            Some(lifecycle) => lifecycle.list_peers(),
+            None => sync_p2p::PeerStore::load_or_create()
                 .map(|peers| peers.list_peers())
                 .unwrap_or_default(),
         }
     }
 
-    #[cfg(all(feature = "sync", target_os = "linux"))]
-    pub fn sync_this_device(&self) -> std::result::Result<String, crate::sync::SyncError> {
-        let guard = self.sync.blocking_lock();
+    #[cfg(all(feature = "sync", target_os = "linux", target_arch = "x86_64"))]
+    pub async fn sync_this_device(&self) -> std::result::Result<String, crate::sync::SyncError> {
+        // Must await the mutex, never blocking_lock: the command runs on an
+        // async worker, and start_sync/shutdown hold this mutex across awaits
+        // (network init) — a blocking acquire would stall the executor thread,
+        // or deadlock it outright on a current_thread runtime.
+        let guard = self.sync.lock().await;
         match guard.as_ref() {
             Some(lifecycle) => Ok(lifecycle.this_device()),
             None => sync_p2p::Identity::load_or_create()
@@ -202,13 +217,13 @@ impl PluginDbRuntime {
     /// live-query dispatcher is stopped through an explicit `shutdown()` for
     /// exactly that reason.
     pub async fn shutdown(&self) {
-        #[cfg(all(feature = "sync", target_os = "linux"))]
+        #[cfg(all(feature = "sync", target_os = "linux", target_arch = "x86_64"))]
         let lifecycle = {
             let mut guard = self.sync.lock().await;
             guard.take()
         };
 
-        #[cfg(all(feature = "sync", target_os = "linux"))]
+        #[cfg(all(feature = "sync", target_os = "linux", target_arch = "x86_64"))]
         if let Some(lifecycle) = lifecycle.as_ref() {
             // (1) cloudsync_stop first: the extension finalizes prepared
             // statements against live pool connections here.
@@ -228,7 +243,7 @@ impl PluginDbRuntime {
 
         // (4) the agent last: the C layer is gone, nothing relays through it
         // anymore.
-        #[cfg(all(feature = "sync", target_os = "linux"))]
+        #[cfg(all(feature = "sync", target_os = "linux", target_arch = "x86_64"))]
         if let Some(lifecycle) = lifecycle {
             if let Err(error) = lifecycle.stop_agent().await {
                 tracing::warn!("sync shutdown: stop agent failed: {error}");
