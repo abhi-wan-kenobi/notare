@@ -284,6 +284,20 @@ pub async fn main() {
                 supervisor::monitor_supervisor(handle, ctx.is_exiting.clone(), app_handle.clone());
             }
 
+            // SYNC-5: best-effort sync start on linux/x86_64, after the db
+            // plugin's setup has registered its managed runtime (this is the
+            // instance the sync commands share). A failure is logged and the
+            // app keeps running with sync disabled.
+            #[cfg(all(feature = "sync", target_os = "linux"))]
+            {
+                let handle = app_handle.clone();
+                tauri::async_runtime::spawn(async move {
+                    if let Err(error) = start_sync(&handle).await {
+                        tracing::warn!("sync did not start; continuing without it: {error}");
+                    }
+                });
+            }
+
             {
                 use tauri_plugin_local_llm::LocalLlmPluginExt;
                 if false {
@@ -363,6 +377,18 @@ pub async fn main() {
                 }
             }
 
+            // SYNC-5: run the #101 teardown (cloudsync_stop → drop live
+            // queries → pool close → stop agent) with a hard bound —
+            // `RunEvent::Exit` is synchronous, so the app must not hang here
+            // on a stuck teardown; better to leak than to never exit.
+            #[cfg(all(feature = "sync", target_os = "linux"))]
+            shutdown_sync(app);
+
+            if let Some(ref ctx) = root_supervisor_ctx_for_run {
+                ctx.mark_exiting();
+                ctx.stop();
+            }
+
             if let Some(ref ctx) = root_supervisor_ctx_for_run {
                 ctx.mark_exiting();
                 ctx.stop();
@@ -376,6 +402,62 @@ pub async fn main() {
 
 fn startup_failure_message(error: &impl std::fmt::Display) -> String {
     format!("Notare failed to start: {error}")
+}
+
+/// SYNC-5 linux-only sync start, through the db plugin's managed runtime —
+/// the same instance the sync commands use. Starting a second runtime would
+/// orphan the agent, so this must be the only start path.
+#[cfg(all(feature = "sync", target_os = "linux"))]
+async fn start_sync(app: &tauri::AppHandle) -> Result<(), String> {
+    use tauri::Manager;
+
+    let state = app.state::<tauri_plugin_db::ManagedState>();
+    state.start_sync().await.map_err(|e| e.to_string())
+}
+
+/// SYNC-5 linux-only teardown from `RunEvent::Exit`: run the #101 sequence
+/// through the plugin's managed runtime, on a dedicated thread with a hard
+/// timeout — `RunEvent::Exit` is synchronous and the app must exit even if
+/// the teardown wedges.
+#[cfg(all(feature = "sync", target_os = "linux"))]
+fn shutdown_sync(app: &tauri::AppHandle) {
+    use std::time::Duration;
+
+    use tauri::Manager;
+
+    /// Upper bound on the whole teardown sequence. Generous (a full
+    /// `cloudsync_stop` finalizes extension statements and waits for the
+    /// background task to join) but finite.
+    const SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(5);
+
+    let state = app.state::<tauri_plugin_db::ManagedState>();
+    let runtime = std::sync::Arc::clone(state.inner());
+
+    let (tx, rx) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .expect("teardown runtime");
+        let _ = rt.block_on(async {
+            // The runtime stays behind the Arc (the state map holds a clone
+            // for the whole app lifetime); shutdown borrows it.
+            match tokio::time::timeout(SHUTDOWN_TIMEOUT, runtime.shutdown()).await {
+                Ok(()) => {}
+                Err(_) => tracing::warn!("sync shutdown timed out after {SHUTDOWN_TIMEOUT:?}"),
+            }
+            let _ = tx.send(());
+        });
+    });
+
+    // Wait for the bounded teardown; on timeout the thread is left to
+    // finish in the background while the process exits.
+    if rx
+        .recv_timeout(SHUTDOWN_TIMEOUT + Duration::from_secs(1))
+        .is_err()
+    {
+        tracing::warn!("sync shutdown thread did not signal completion");
+    }
 }
 
 fn exit_after_startup_failure(error: &impl std::fmt::Display) -> ! {

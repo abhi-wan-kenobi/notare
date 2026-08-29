@@ -114,6 +114,10 @@ tracing = { workspace = true }
 [features]
 default = []
 dev = ["dep:hypr-audio-mock"]
+# SYNC-5 passthrough: turns on tauri-plugin-db's sync lifecycle (linux/x86_64
+# only — the target table below adds the feature; on any other target this
+# feature exists but gates nothing on, keeping the build unchanged).
+sync = ["tauri-plugin-db/sync"]
 devtools = ["tauri/devtools", "dep:hypr-audio-mock"]
 automation = ["tauri-plugin-automation"]
 # Vulkan GPU offload for whisper.cpp (covers NVIDIA/AMD/Intel on Windows+Linux).
@@ -147,6 +151,19 @@ directml = ["tauri-plugin-local-stt/directml"]
 # plugins/local-stt/Cargo.toml; never bundled into the default release MSI).
 [target.'cfg(any(target_os = "linux", target_os = "windows"))'.dependencies]
 tauri-plugin-local-stt = { workspace = true, features = ["whisper-cpp", "parakeet-onnx", "voxtral-llama"] }
+
+# SYNC-5: P2P sync on linux/x86_64 only — the from-source cloudsync build the
+# `sync` feature enables panics on any other target (see plugins/db
+# Cargo.toml). Cargo target tables cannot see target_arch for feature
+# selection, so the crate dep is target-gated here and the feature enables the
+# plugin's sync code; on every other target/feature combination the build is
+# unchanged (no agent, no extension, no env vars).
+[target.'cfg(all(target_os = "linux", target_arch = "x86_64"))'.dependencies]
+# SYNC-5: linux/x86_64-only sync. On this target this entry *replaces* the
+# generic `tauri-plugin-db` dependency in [dependencies] above (same package,
+# so cargo unifies them; the union of features lands here as `sync`). Every
+# other target resolves the plain dependency and gets an unchanged build.
+tauri-plugin-db = { workspace = true, features = ["sync"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 tauri-plugin-automation = { version = "0.1", optional = true }
