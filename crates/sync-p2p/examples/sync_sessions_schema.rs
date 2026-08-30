@@ -277,7 +277,9 @@ async fn main() {
         &b_tcp,
     )
     .await;
-    println!("[nodes] A and B initialized; cloudsync enabled on sessions + session_documents (broker = A)");
+    println!(
+        "[nodes] A and B initialized; cloudsync enabled on sessions + session_documents (broker = A)"
+    );
 
     // 3. Scenario 1 — A -> B converge, with the FK live. A inserts a session
     //    and a child session_document (TEXT-PK uuids); B must end up with
@@ -303,7 +305,11 @@ async fn main() {
     run_sync(&a, &a_tcp).await;
     drain_check(&b, &b_tcp, "B").await;
 
-    assert_eq!(session_title(&b, "11111111-1111-1111-1111-111111111111").await, Some("A writes first".into()), "B has A's session");
+    assert_eq!(
+        session_title(&b, "11111111-1111-1111-1111-111111111111").await,
+        Some("A writes first".into()),
+        "B has A's session"
+    );
     assert_eq!(
         doc_row(&b, "22222222-2222-2222-2222-222222222222").await,
         Some((
@@ -337,7 +343,11 @@ async fn main() {
     run_sync(&b, &b_tcp).await;
     drain_check(&a, &a_tcp, "A").await;
 
-    assert_eq!(session_title(&a, "33333333-3333-3333-3333-333333333333").await, Some("B writes second".into()), "A has B's session");
+    assert_eq!(
+        session_title(&a, "33333333-3333-3333-3333-333333333333").await,
+        Some("B writes second".into()),
+        "A has B's session"
+    );
     assert_eq!(
         doc_row(&a, "44444444-4444-4444-4444-444444444444").await,
         Some((
@@ -502,10 +512,26 @@ async fn main() {
         sync_and_drain(&b, &b_tcp, "B").await;
     }
 
-    assert_eq!(count(&a, Table::Sessions).await, count(&b, Table::Sessions).await, "session count differs A vs B");
-    assert_eq!(count(&a, Table::SessionDocuments).await, count(&b, Table::SessionDocuments).await, "document count differs A vs B");
-    assert_eq!(count(&a, Table::Sessions).await, 2 + 3 + 3, "expected 8 sessions on A");
-    assert_eq!(count(&a, Table::SessionDocuments).await, 2 + 3 - 1, "expected 4 documents on A (one deleted)");
+    assert_eq!(
+        count(&a, Table::Sessions).await,
+        count(&b, Table::Sessions).await,
+        "session count differs A vs B"
+    );
+    assert_eq!(
+        count(&a, Table::SessionDocuments).await,
+        count(&b, Table::SessionDocuments).await,
+        "document count differs A vs B"
+    );
+    assert_eq!(
+        count(&a, Table::Sessions).await,
+        2 + 3 + 3,
+        "expected 8 sessions on A"
+    );
+    assert_eq!(
+        count(&a, Table::SessionDocuments).await,
+        2 + 3 - 1,
+        "expected 4 documents on A (one deleted)"
+    );
     assert_eq!(
         session_title(&b, "aaaa0000-0000-0000-0000-000000000002").await,
         Some("bulk session 2 from A".into()),
@@ -548,7 +574,9 @@ async fn main() {
         );
     }
 
-    println!("\n=== SYNC-6 schema proof: real sessions + session_documents converge (TEXT-PK, STRICT, FK, tombstones) ===");
+    println!(
+        "\n=== SYNC-6 schema proof: real sessions + session_documents converge (TEXT-PK, STRICT, FK, tombstones) ==="
+    );
 
     a.close().await;
     b.close().await;
