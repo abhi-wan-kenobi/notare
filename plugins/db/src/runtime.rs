@@ -147,13 +147,15 @@ impl PluginDbRuntime {
     /// lifecycle test uses, so it never touches the real
     /// `<data_dir>/notare/sync/` identity the app's `start_sync` would load.
     #[cfg(all(feature = "sync", target_os = "linux", target_arch = "x86_64"))]
-    pub async fn start_sync_with(&self, agent: sync_p2p::P2pAgent) -> std::result::Result<(), crate::sync::SyncError> {
+    pub async fn start_sync_with(
+        &self,
+        agent: sync_p2p::P2pAgent,
+    ) -> std::result::Result<(), crate::sync::SyncError> {
         let mut guard = self.sync.lock().await;
         if guard.is_some() {
             return Ok(());
         }
-        let lifecycle =
-            SyncLifecycle::start_with(std::sync::Arc::clone(&self.db), agent).await?;
+        let lifecycle = SyncLifecycle::start_with(std::sync::Arc::clone(&self.db), agent).await?;
         *guard = Some(lifecycle);
         Ok(())
     }

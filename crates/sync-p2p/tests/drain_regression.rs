@@ -24,7 +24,12 @@ use sync_p2p::{Identity, P2pAgent, PeerStore, register_direct_addr};
 
 const DB_ID: &str = "notare-v06-drain";
 
-async fn setup_node(uri: &str, broker_addr: &str, local_agent_tcp: &str, token: &str) -> SqlitePool {
+async fn setup_node(
+    uri: &str,
+    broker_addr: &str,
+    local_agent_tcp: &str,
+    token: &str,
+) -> SqlitePool {
     let options = SqliteConnectOptions::from_str(uri).unwrap();
     let (options, _ext_path) = cloudsync::apply(options).unwrap();
     let pool = SqlitePoolOptions::new()
@@ -143,8 +148,7 @@ async fn network_sync_drains_all_pending_blobs_in_one_call() {
     // THE assertion: a single network_sync call on B must drain BOTH blobs.
     let received = sync_once(&b, &b_tcp, agent_b.token()).await;
     assert_eq!(
-        received,
-        2,
+        received, 2,
         "one network_sync call must drain all pending blobs (rows received)"
     );
     assert_eq!(

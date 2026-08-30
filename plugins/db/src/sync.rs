@@ -67,10 +67,7 @@ impl SyncLifecycle {
     /// Same startup, on an already-running agent — for tests, which supply an
     /// agent rooted at a tempdir identity instead of the real
     /// `<data_dir>/notare/sync/`.
-    pub async fn start_with(
-        db: std::sync::Arc<Db>,
-        agent: P2pAgent,
-    ) -> Result<Self, SyncError> {
+    pub async fn start_with(db: std::sync::Arc<Db>, agent: P2pAgent) -> Result<Self, SyncError> {
         // SAFETY: the C layer getenvs `NOTARE_SYNC_AGENT_ADDR` /
         // `NOTARE_SYNC_TOKEN` per network call, so a `set_var` racing a
         // `getenv` from cloudsync's threads would be UB. The contract that

@@ -75,7 +75,9 @@ async fn start_runs_the_agent_before_cloudsync_and_stop_shuts_down_in_order() {
     let db_dir = tempfile::tempdir().unwrap();
     let db = test_db(&db_dir).await;
 
-    let lifecycle = SyncLifecycle::start_with(Arc::clone(&db), agent).await.unwrap();
+    let lifecycle = SyncLifecycle::start_with(Arc::clone(&db), agent)
+        .await
+        .unwrap();
 
     // The agent was already live when cloudsync started, so an immediate
     // trigger must succeed through it end-to-end. This is the observable

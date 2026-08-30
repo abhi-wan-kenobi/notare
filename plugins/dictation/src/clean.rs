@@ -264,7 +264,10 @@ mod tests {
     fn dictionary_respects_case_sensitivity() {
         let rules = [m("ios", "iOS", true)];
         // Exact case matches; other casings are left untouched.
-        assert_eq!(apply_dictionary("ship ios not IOS", &rules), "ship iOS not IOS");
+        assert_eq!(
+            apply_dictionary("ship ios not IOS", &rules),
+            "ship iOS not IOS"
+        );
     }
 
     #[test]
@@ -282,7 +285,10 @@ mod tests {
         let rules = [m("c++", "cpp", false)];
         // Trailing '+' is a non-word char, so the term matches against an
         // adjacent letter/space on that side.
-        assert_eq!(apply_dictionary("i love c++ code", &rules), "i love cpp code");
+        assert_eq!(
+            apply_dictionary("i love c++ code", &rules),
+            "i love cpp code"
+        );
     }
 
     #[test]
@@ -309,7 +315,10 @@ mod tests {
         // Emoji (astral plane) and CJK are single Rust chars; matching a term
         // next to them must not corrupt the code points.
         let rules = [m("hi", "HELLO", false)];
-        assert_eq!(apply_dictionary("hi 😀 hi 世界", &rules), "HELLO 😀 HELLO 世界");
+        assert_eq!(
+            apply_dictionary("hi 😀 hi 世界", &rules),
+            "HELLO 😀 HELLO 世界"
+        );
     }
 
     #[test]

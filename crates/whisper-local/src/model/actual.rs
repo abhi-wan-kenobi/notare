@@ -395,7 +395,10 @@ mod tests {
     #[test]
     fn resolve_sampling_defaults_to_beam_search() {
         match resolve_sampling(None, None, None) {
-            SamplingStrategy::BeamSearch { beam_size, patience } => {
+            SamplingStrategy::BeamSearch {
+                beam_size,
+                patience,
+            } => {
                 assert_eq!(beam_size, DEFAULT_BEAM_SIZE);
                 assert_eq!(patience, DEFAULT_BEAM_PATIENCE);
             }
@@ -406,7 +409,10 @@ mod tests {
     #[test]
     fn resolve_sampling_honors_explicit_beam_knobs() {
         match resolve_sampling(Some(8), None, Some(0.5)) {
-            SamplingStrategy::BeamSearch { beam_size, patience } => {
+            SamplingStrategy::BeamSearch {
+                beam_size,
+                patience,
+            } => {
                 assert_eq!(beam_size, 8);
                 assert_eq!(patience, 0.5);
             }

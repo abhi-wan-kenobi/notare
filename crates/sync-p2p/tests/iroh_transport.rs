@@ -454,10 +454,7 @@ async fn missing_token_is_refused_on_c_socket() {
     let peers = PeerStore::load_or_create_in(dir.path()).unwrap();
     let agent = P2pAgent::start_with(id, peers).await.unwrap();
 
-    let upload_ep = format!(
-        "{}/v2/cloudsync/databases/db/site/upload",
-        agent.address()
-    );
+    let upload_ep = format!("{}/v2/cloudsync/databases/db/site/upload", agent.address());
     let resp = agent_roundtrip(
         &agent.local_addr,
         &Request {
@@ -485,10 +482,7 @@ async fn wrong_token_is_refused_on_c_socket_receive() {
     let peers = PeerStore::load_or_create_in(dir.path()).unwrap();
     let agent = P2pAgent::start_with(id, peers).await.unwrap();
 
-    let upload_ep = format!(
-        "{}/v2/cloudsync/databases/db/site/upload",
-        agent.address()
-    );
+    let upload_ep = format!("{}/v2/cloudsync/databases/db/site/upload", agent.address());
     let resp = agent_roundtrip(
         &agent.local_addr,
         &Request {
@@ -517,10 +511,7 @@ async fn wrong_token_is_refused_on_c_socket_put() {
 
     let put = PutRequest {
         token: "not-the-token".into(),
-        url: format!(
-            "{}/v2/cloudsync/databases/db/site/upload",
-            agent.address()
-        ),
+        url: format!("{}/v2/cloudsync/databases/db/site/upload", agent.address()),
         blob: b"payload".to_vec(),
     };
     let mut stream = TcpStream::connect(&agent.local_addr).await.unwrap();

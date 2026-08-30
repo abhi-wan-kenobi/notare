@@ -63,10 +63,12 @@ async fn query_sync_json(
                 .await?
         }
         (None, Some(max_retries)) => {
-            sqlx::query_as(sqlx::AssertSqlSafe(format!("SELECT {fn_name}(NULL, ?) AS it")))
-                .bind(max_retries)
-                .fetch_one(pool)
-                .await?
+            sqlx::query_as(sqlx::AssertSqlSafe(format!(
+                "SELECT {fn_name}(NULL, ?) AS it"
+            )))
+            .bind(max_retries)
+            .fetch_one(pool)
+            .await?
         }
         (Some(wait_ms), Some(max_retries)) => {
             sqlx::query_as(sqlx::AssertSqlSafe(format!("SELECT {fn_name}(?, ?) AS it")))

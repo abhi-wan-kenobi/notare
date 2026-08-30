@@ -259,7 +259,10 @@ pub(crate) async fn sync_status(
 pub(crate) async fn sync_trigger(state: tauri::State<'_, ManagedState>) -> Result<i64, String> {
     #[cfg(all(feature = "sync", target_os = "linux", target_arch = "x86_64"))]
     {
-        state.sync_trigger().await.map_err(|error| error.to_string())
+        state
+            .sync_trigger()
+            .await
+            .map_err(|error| error.to_string())
     }
     #[cfg(not(all(feature = "sync", target_os = "linux")))]
     {

@@ -40,7 +40,12 @@ const DB_ID: &str = "notare-v06";
 /// hosts the shared broker; B reaches it over iroh. `local_agent_tcp` is this
 /// node's own agent's local TCP address, which the C layer reaches via
 /// `NOTARE_SYNC_AGENT_ADDR`.
-async fn setup_node(uri: &str, broker_addr: &str, local_agent_tcp: &str, token: &str) -> SqlitePool {
+async fn setup_node(
+    uri: &str,
+    broker_addr: &str,
+    local_agent_tcp: &str,
+    token: &str,
+) -> SqlitePool {
     let options = SqliteConnectOptions::from_str(uri).unwrap();
     let (options, _ext_path) = cloudsync::apply(options).unwrap();
     let pool = SqlitePoolOptions::new()
