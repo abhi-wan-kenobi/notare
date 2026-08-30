@@ -27,13 +27,6 @@ hypr-fs-sync-core = { workspace = true }
 hypr-storage = { workspace = true }
 hypr-tauri-utils = { workspace = true }
 
-# Target-gated like the from-source cloudsync build it enables: linux only.
-# cloudsync is a dep only so the `sync` feature can turn on `from-source` —
-# feature unification propagates it to db-core's hypr-cloudsync usage.
-[target.'cfg(all(target_os = "linux", target_arch = "x86_64"))'.dependencies]
-sync-p2p = { workspace = true, optional = true }
-hypr-cloudsync = { workspace = true, optional = true }
-
 serde = { workspace = true }
 serde_json = { workspace = true }
 sha2 = { workspace = true }
@@ -46,6 +39,19 @@ thiserror = { workspace = true }
 tokio = { workspace = true, features = ["sync"] }
 tracing = { workspace = true }
 uuid = { workspace = true, features = ["v4"] }
+
+# Target-gated like the from-source cloudsync build it enables: linux only.
+# cloudsync is a dep only so the `sync` feature can turn on `from-source` —
+# feature unification propagates it to db-core's hypr-cloudsync usage.
+#
+# This MUST come after the plain [dependencies] entries above. A `[target…]`
+# table opened before them would swallow every following entry into the
+# linux-x86_64 table, so on macOS/Windows the plain `serde`/`tauri`/`sqlx`/…
+# would not resolve at all (the exact E0432/E0433 the macOS desktop_ci hit).
+# Linux never surfaced it because both cfgs are true there.
+[target.'cfg(all(target_os = "linux", target_arch = "x86_64"))'.dependencies]
+sync-p2p = { workspace = true, optional = true }
+hypr-cloudsync = { workspace = true, optional = true }
 
 [dev-dependencies]
 anyhow = { workspace = true }
