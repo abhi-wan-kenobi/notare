@@ -72,7 +72,12 @@ const CREATE_SESSION_DOCUMENTS: &str = "CREATE TABLE IF NOT EXISTS session_docum
   FOREIGN KEY (session_id) REFERENCES sessions (id)
 ) STRICT";
 
-async fn setup_node(uri: &str, broker_addr: &str, local_agent_tcp: &str) -> SqlitePool {
+async fn setup_node(
+    uri: &str,
+    broker_addr: &str,
+    local_agent_tcp: &str,
+    local_token: &str,
+) -> SqlitePool {
     let options = SqliteConnectOptions::from_str(uri).unwrap();
     // The real app enforces FKs on every connection (crates/db-core sets
     // PRAGMA foreign_keys=ON), so the proof must pay the same price — the FK
@@ -115,19 +120,23 @@ async fn setup_node(uri: &str, broker_addr: &str, local_agent_tcp: &str) -> Sqli
         .await
         .unwrap();
 
-    // SAFETY: sequential single-process example; every sync call re-sets this
-    // immediately before use, and no other thread reads it concurrently.
+    // SAFETY: sequential single-process example; every sync call re-sets both
+    // env vars immediately before use, and no other thread reads them
+    // concurrently. The token is per-agent (each node's P2pAgent mints its
+    // own), so it must flip together with the address — SYNC-5 requires it.
     unsafe {
         std::env::set_var("NOTARE_SYNC_AGENT_ADDR", local_agent_tcp);
+        std::env::set_var("NOTARE_SYNC_TOKEN", local_token);
     }
 
     pool
 }
 
-async fn run_sync(pool: &SqlitePool, local_agent_tcp: &str) -> String {
+async fn run_sync(pool: &SqlitePool, local_agent_tcp: &str, local_token: &str) -> String {
     // SAFETY: see setup_node.
     unsafe {
         std::env::set_var("NOTARE_SYNC_AGENT_ADDR", local_agent_tcp);
+        std::env::set_var("NOTARE_SYNC_TOKEN", local_token);
     }
     sqlx::query_scalar::<_, String>("SELECT cloudsync_network_sync()")
         .fetch_one(pool)
@@ -135,10 +144,11 @@ async fn run_sync(pool: &SqlitePool, local_agent_tcp: &str) -> String {
         .unwrap()
 }
 
-async fn run_check(pool: &SqlitePool, local_agent_tcp: &str) -> String {
+async fn run_check(pool: &SqlitePool, local_agent_tcp: &str, local_token: &str) -> String {
     // SAFETY: see setup_node.
     unsafe {
         std::env::set_var("NOTARE_SYNC_AGENT_ADDR", local_agent_tcp);
+        std::env::set_var("NOTARE_SYNC_TOKEN", local_token);
     }
     sqlx::query_scalar::<_, String>("SELECT cloudsync_network_check_changes()")
         .fetch_one(pool)
@@ -157,10 +167,10 @@ fn rows_received(resp: &str) -> Option<u64> {
 
 /// Pull until the hub has nothing left for this site (the hub serves one
 /// blob per `check` — see docs/internal/sync-p2p.md §15.1).
-async fn drain_check(pool: &SqlitePool, tcp: &str, label: &str) -> usize {
+async fn drain_check(pool: &SqlitePool, tcp: &str, token: &str, label: &str) -> usize {
     let mut applied = 0;
     for _ in 0..MAX_DRAIN {
-        let resp = run_check(pool, tcp).await;
+        let resp = run_check(pool, tcp, token).await;
         match rows_received(&resp) {
             None => panic!(
                 "[{label}] unreadable check reply, cannot know if changes are pending: {resp}"
@@ -176,9 +186,9 @@ async fn drain_check(pool: &SqlitePool, tcp: &str, label: &str) -> usize {
 }
 
 /// Push local changes, then drain everything pending for this site.
-async fn sync_and_drain(pool: &SqlitePool, tcp: &str, label: &str) {
-    run_sync(pool, tcp).await;
-    drain_check(pool, tcp, label).await;
+async fn sync_and_drain(pool: &SqlitePool, tcp: &str, token: &str, label: &str) {
+    run_sync(pool, tcp, token).await;
+    drain_check(pool, tcp, token, label).await;
 }
 
 async fn session_title(pool: &SqlitePool, id: &str) -> Option<String> {
@@ -250,6 +260,8 @@ async fn main() {
 
     let a_tcp = agent_a.local_addr.clone();
     let b_tcp = agent_b.local_addr.clone();
+    let a_token = agent_a.token().to_string();
+    let b_token = agent_b.token().to_string();
     let broker = agent_a.address(); // A hosts the shared broker
 
     println!("[agents] A={} (broker, tcp {a_tcp})", short(&agent_a));
@@ -266,6 +278,7 @@ async fn main() {
         ),
         &broker,
         &a_tcp,
+        &a_token,
     )
     .await;
     let b = setup_node(
@@ -275,6 +288,7 @@ async fn main() {
         ),
         &broker,
         &b_tcp,
+        &b_token,
     )
     .await;
     println!(
@@ -302,8 +316,8 @@ async fn main() {
     .unwrap();
     println!("[A] wrote session + child document (FK live)");
 
-    run_sync(&a, &a_tcp).await;
-    drain_check(&b, &b_tcp, "B").await;
+    run_sync(&a, &a_tcp, &a_token).await;
+    drain_check(&b, &b_tcp, &b_token, "B").await;
 
     assert_eq!(
         session_title(&b, "11111111-1111-1111-1111-111111111111").await,
@@ -340,8 +354,8 @@ async fn main() {
     .unwrap();
     println!("[B] wrote session + child document");
 
-    run_sync(&b, &b_tcp).await;
-    drain_check(&a, &a_tcp, "A").await;
+    run_sync(&b, &b_tcp, &b_token).await;
+    drain_check(&a, &a_tcp, &a_token, "A").await;
 
     assert_eq!(
         session_title(&a, "33333333-3333-3333-3333-333333333333").await,
@@ -373,8 +387,8 @@ async fn main() {
     println!("[both] updated session 1111…'s title concurrently while disconnected");
 
     for _ in 0..MAX_DRAIN {
-        sync_and_drain(&a, &a_tcp, "A").await;
-        sync_and_drain(&b, &b_tcp, "B").await;
+        sync_and_drain(&a, &a_tcp, &a_token, "A").await;
+        sync_and_drain(&b, &b_tcp, &b_token, "B").await;
         let (ta, tb) = (
             session_title(&a, "11111111-1111-1111-1111-111111111111").await,
             session_title(&b, "11111111-1111-1111-1111-111111111111").await,
@@ -383,8 +397,8 @@ async fn main() {
             // Agreement is not yet convergence: an intermediate value can
             // match on both while a pending blob would still move one. Settle
             // one more round and require the value to be unchanged.
-            sync_and_drain(&a, &a_tcp, "A").await;
-            sync_and_drain(&b, &b_tcp, "B").await;
+            sync_and_drain(&a, &a_tcp, &a_token, "A").await;
+            sync_and_drain(&b, &b_tcp, &b_token, "B").await;
             let (fa, fb) = (
                 session_title(&a, "11111111-1111-1111-1111-111111111111").await,
                 session_title(&b, "11111111-1111-1111-1111-111111111111").await,
@@ -427,8 +441,8 @@ async fn main() {
         .unwrap();
     println!("[A] soft-deleted session 1111… (deleted_at) and hard-deleted its child document");
 
-    run_sync(&a, &a_tcp).await;
-    drain_check(&b, &b_tcp, "B").await;
+    run_sync(&a, &a_tcp, &a_token).await;
+    drain_check(&b, &b_tcp, &b_token, "B").await;
 
     assert_eq!(
         session_deleted_at(&b, "11111111-1111-1111-1111-111111111111").await,
@@ -451,8 +465,8 @@ async fn main() {
     //     rounds — if the tombstone or the delete ever loses to an older
     //     concurrent change, this is where it shows.
     for _ in 0..3 {
-        sync_and_drain(&a, &a_tcp, "A").await;
-        sync_and_drain(&b, &b_tcp, "B").await;
+        sync_and_drain(&a, &a_tcp, &a_token, "A").await;
+        sync_and_drain(&b, &b_tcp, &b_token, "B").await;
     }
     assert!(
         doc_row(&b, RIP_DOC).await.is_none(),
@@ -508,8 +522,8 @@ async fn main() {
     println!("[both] wrote 3 sessions + 3 docs (A) and 3 sessions (B) before draining");
 
     for _ in 0..MAX_DRAIN {
-        sync_and_drain(&a, &a_tcp, "A").await;
-        sync_and_drain(&b, &b_tcp, "B").await;
+        sync_and_drain(&a, &a_tcp, &a_token, "A").await;
+        sync_and_drain(&b, &b_tcp, &b_token, "B").await;
     }
 
     assert_eq!(
