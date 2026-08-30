@@ -1198,3 +1198,37 @@ not a compile error in the plugin.
 per-node env-var switching in the examples remains the standing constraint:
 one agent per process. SYNC-5 did not widen it — `SyncLifecycle` is the single
 publisher, and the audit confirmed the contract now states it.
+
+## 17. SYNC-6 part A — real-schema convergence proof (2026-08-30) — GO
+
+SYNC-5 wired the stack into the app but enabled **zero** tables
+(`SYNCED_TABLES = []`) because §11–§15 only proved convergence on a synthetic
+`notes (id INTEGER PRIMARY KEY, body TEXT)` table. This section closes that gap:
+`crates/sync-p2p/examples/sync_sessions_schema.rs` (from-source gated) converges
+the **real** session schema — `sessions` and `session_documents` — which are
+TEXT-PK, `STRICT`, carry NOT-NULL-defaulted TEXT columns, a `deleted_at`
+tombstone column, and a FOREIGN KEY (`session_documents.session_id → sessions.id`).
+
+Run: `cargo run -p sync-p2p --example sync_sessions_schema --features from-source`.
+
+**All scenarios PASS over iroh with `cls`:**
+- A→B and B→A converge — TEXT-PK rows, STRICT typing, FK intact.
+- Disconnected concurrent UPDATE of the same row converges conflict-free
+  (single value on both nodes, equal to one of the writes — no torn merge).
+- **Tombstone-as-delete:** A sets `deleted_at` on a session and hard-deletes its
+  child document; B drains — the `deleted_at` value syncs, the child is gone,
+  and the row does **not** resurrect across further sync rounds. This is the
+  v0.6-gate property the trash view depends on.
+- Multi-row catch-up: several inserts on both sides drained to full set
+  equality (exercises the SYNC-5 drain loop).
+
+**What this unblocks:** `sessions` + `session_documents` are now *proven* to
+converge and are candidates for SYNC-6's `SYNCED_TABLES` enable-set. The
+remaining 15 registered tables (transcripts, tags, action_items, …) are NOT yet
+proven — enable each only after it gets the same proof, especially any with
+different PK shape or a self/multi-level FK.
+
+**Known noise:** the example exits with the `sqlx-sqlite-worker` "unable to
+close due to unfinalized statements" panic — the same benign teardown ordering
+§13.7/§16 recorded. SYNC-5's app teardown orders cloudsync_stop before pool
+close, so this is example-lifecycle noise, not an app defect.
