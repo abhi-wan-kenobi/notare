@@ -1,13 +1,25 @@
 //! Framed length-prefixed TCP protocol between a cloudsync site (the C FFI
-//! bridge) and the in-process/cross-process [`crate::broker::Broker`] server.
+//! bridge) and the in-process [`crate::broker::Broker`] / [`crate::agent::P2pAgent`].
 //!
 //! Every frame is: 4-byte big-endian length, then `len` bytes of JSON.
 //! Blob bodies (upload PUT, check/download GET) are base64 inside the JSON so
 //! the whole frame stays a single JSON object — keeping the protocol a pair of
 //! plain `serde_json::Value` round-trips and avoiding a second framing channel.
 //!
-//! This is a SPIKE transport: localhost, unencrypted, no auth. Production
-//! (iroh/QUIC, encryption, relay, pairing) is out of scope — see the S1 report.
+//! ## SYNC-5: bearer-token auth on the C↔agent socket
+//!
+//! The localhost TCP port the agent binds for the C `network_p2p.c` layer is
+//! not otherwise gated (any local process that can reach the port can read/write
+//! sync data). SYNC-5 adds a bearer token: every frame from the C side carries
+//! a `token` field, and the agent rejects any frame whose token mismatches the
+//! one it minted at start. The token is **process-local only** — it is never sent
+//! over the iroh peer link (the inbound iroh path is already gated by the
+//! Ed25519-authenticated EndpointId + allowlist, see `agent.rs`); it exists solely
+//! to stop a *different* local process from talking to *this* device's agent.
+//!
+//! `token` is `#[serde(default)]` so a peer-side frame (which never carries one)
+//! still deserializes over the iroh path — the token is checked only in
+//! `handle_c_connection`, never in `serve_peer_stream`.
 
 use std::io;
 
@@ -18,6 +30,11 @@ use tokio::net::TcpStream;
 /// One request from a site (the C FFI bridge) to the broker.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Request {
+    /// Bearer token for the local C↔agent socket (SYNC-5). `default` so an
+    /// iroh-peer-side frame (which never carries one) still deserializes; the
+    /// token is only enforced in `handle_c_connection`, not on the peer path.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub token: String,
     /// The full endpoint URL the cloudsync core handed us, e.g.
     /// `p2p://127.0.0.1:38321/<dbId>/<siteId>/upload`.
     pub endpoint: String,
@@ -52,6 +69,9 @@ pub struct Response {
 /// URL the broker handed back from the upload step.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PutRequest {
+    /// Bearer token for the local C↔agent socket (SYNC-5). See [`Request::token`].
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub token: String,
     /// The `mem://<id>` URL returned by the broker's upload endpoint.
     pub url: String,
     #[serde(with = "serde_bytes_base64")]

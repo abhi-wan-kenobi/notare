@@ -247,7 +247,8 @@ mod dictation_contract_tests {
         );
         let q = params.custom_query.unwrap();
         assert_eq!(
-            q.get(ListenParams::REDEMPTION_TIME_QUERY_KEY).map(String::as_str),
+            q.get(ListenParams::REDEMPTION_TIME_QUERY_KEY)
+                .map(String::as_str),
             Some("400")
         );
     }

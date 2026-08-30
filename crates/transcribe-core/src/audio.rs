@@ -194,9 +194,12 @@ mod tests {
                 sample_end: TARGET_SAMPLE_RATE as usize * 15,
             }],
         };
-        let chunks =
-            chunk_channel_audio_with(&vec![0.0; TARGET_SAMPLE_RATE as usize * 15], &mut chunker, usize::MAX)
-                .unwrap();
+        let chunks = chunk_channel_audio_with(
+            &vec![0.0; TARGET_SAMPLE_RATE as usize * 15],
+            &mut chunker,
+            usize::MAX,
+        )
+        .unwrap();
 
         assert_eq!(initial_resolved_until(&chunks, 40.0), 12.0);
     }
@@ -294,9 +297,12 @@ mod tests {
             ],
         };
 
-        let chunks =
-            chunk_channel_audio_with(&vec![0.0; TARGET_SAMPLE_RATE as usize * 45], &mut chunker, usize::MAX)
-                .unwrap();
+        let chunks = chunk_channel_audio_with(
+            &vec![0.0; TARGET_SAMPLE_RATE as usize * 45],
+            &mut chunker,
+            usize::MAX,
+        )
+        .unwrap();
 
         assert_eq!(chunks.len(), 2);
         assert_eq!(initial_resolved_until(&chunks, 45.0), 4.0);
@@ -318,9 +324,12 @@ mod tests {
             .collect();
         let mut chunker = FakeChunker { chunks };
 
-        let out =
-            chunk_channel_audio_with(&vec![0.0; TARGET_SAMPLE_RATE as usize * 20], &mut chunker, usize::MAX)
-                .unwrap();
+        let out = chunk_channel_audio_with(
+            &vec![0.0; TARGET_SAMPLE_RATE as usize * 20],
+            &mut chunker,
+            usize::MAX,
+        )
+        .unwrap();
 
         assert_eq!(
             out.len(),

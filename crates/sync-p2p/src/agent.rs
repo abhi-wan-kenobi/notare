@@ -52,6 +52,7 @@ use std::sync::Arc;
 
 use iroh::endpoint::{RecvStream, SendStream};
 use iroh::{Endpoint, EndpointAddr, PublicKey, RelayMode};
+use subtle::ConstantTimeEq;
 use tokio::io::AsyncReadExt;
 use tokio::net::TcpListener;
 
@@ -66,6 +67,38 @@ use crate::protocol::{PutRequest, PutResponse, Request, Response, read_frame, wr
 /// and the allowlist regression test, which opens two raw bi-streams on a
 /// single connection — has to negotiate the same ALPN.
 pub const SYNC_ALPN: &[u8] = b"/notare/sync/1";
+
+/// The length, in bytes, of the bearer token that gates the C↔agent socket.
+/// 128 bits: enough that a blind local brute-force is infeasible, small enough
+/// to ship in every frame and read as a 32-char hex env var.
+const TOKEN_LEN: usize = 16;
+
+/// Generate a fresh bearer token for the C↔agent socket: 16 cryptographically
+/// random bytes, hex-encoded (32 chars). The randomness comes from iroh's
+/// `SecretKey` (it uses the OS CSPRNG), so no separate crypto crate is pulled
+/// in just for this. The token is process-local and read per call by the C
+/// layer via `NOTARE_SYNC_TOKEN` — it is never sent over the iroh peer link.
+fn generate_token() -> String {
+    let bytes = iroh::SecretKey::generate().to_bytes();
+    let token_bytes = &bytes[..TOKEN_LEN];
+    data_encoding::HEXLOWER.encode(token_bytes)
+}
+
+/// Constant-time comparison of two token strings. Guards the C↔agent socket
+/// against a local process that can reach the port but does not have the
+/// token: a plain `==` on the secret would short-circuit on the first
+/// differing byte and leak its position over timing.
+fn token_matches(provided: &str, expected: &str) -> bool {
+    let p = provided.as_bytes();
+    let e = expected.as_bytes();
+    if p.len() != e.len() {
+        // Length is not secret (the C layer always sends the full env-var
+        // value), but the early return still avoids indexing mismatched
+        // slices. The comparison of equal-length slices below is constant-time.
+        return false;
+    }
+    p.ct_eq(e).into()
+}
 
 /// Errors from starting or running the P2P agent.
 #[derive(Debug, thiserror::Error)]
@@ -104,6 +137,9 @@ pub struct P2pAgent {
     self_label: String,
     /// The localhost TCP address the C layer connects to.
     pub local_addr: String,
+    /// The bearer token the C layer must present on every frame to this
+    /// agent's TCP socket (SYNC-5). Process-local; never sent over iroh.
+    token: String,
     /// The join handle for the C-facing TCP accept loop.
     tcp_handle: tokio::task::JoinHandle<()>,
     /// The join handle for the iroh inbound connection accept loop.
@@ -151,10 +187,16 @@ impl P2pAgent {
         let tcp_listener = TcpListener::bind("127.0.0.1:0").await?;
         let local_addr = tcp_listener.local_addr()?.to_string();
 
+        // SYNC-5: mint a bearer token for the C↔agent socket. The host process
+        // publishes it as NOTARE_SYNC_TOKEN alongside NOTARE_SYNC_AGENT_ADDR;
+        // the C layer includes it in every frame and we reject mismatches.
+        let token = generate_token();
+
         let tcp_state = Arc::clone(&broker);
         let tcp_peers = peers.clone();
         let tcp_endpoint = endpoint.clone();
         let tcp_self_label = self_label.clone();
+        let tcp_token = token.clone();
         let tcp_handle = tokio::spawn(async move {
             accept_c_tcp(
                 tcp_listener,
@@ -162,6 +204,7 @@ impl P2pAgent {
                 tcp_peers,
                 tcp_endpoint,
                 tcp_self_label,
+                tcp_token,
             )
             .await;
         });
@@ -181,6 +224,7 @@ impl P2pAgent {
             broker,
             self_label,
             local_addr,
+            token,
             tcp_handle,
             iroh_handle,
         })
@@ -189,6 +233,13 @@ impl P2pAgent {
     /// This device's node id / iroh EndpointId.
     pub fn node_id(&self) -> PublicKey {
         self.identity.id()
+    }
+
+    /// The bearer token the C layer must present on every frame to this
+    /// agent's local TCP socket (SYNC-5). The host process sets it as the
+    /// `NOTARE_SYNC_TOKEN` env var alongside `NOTARE_SYNC_AGENT_ADDR`.
+    pub fn token(&self) -> &str {
+        &self.token
     }
 
     /// The endpoint address sites use to sync with this device.
@@ -229,6 +280,7 @@ async fn accept_c_tcp(
     peers: PeerStore,
     endpoint: Endpoint,
     self_label: String,
+    token: String,
 ) {
     loop {
         // AUDIT (2026-08-28, gpt-oss): a transient accept error (EMFILE,
@@ -248,6 +300,7 @@ async fn accept_c_tcp(
             peers: peers.clone(),
             endpoint: endpoint.clone(),
             self_label: self_label.clone(),
+            token: token.clone(),
         };
         tokio::spawn(async move {
             // A connection that errors is just a dropped/short C call; nothing
@@ -262,6 +315,7 @@ struct Ctx {
     peers: PeerStore,
     endpoint: Endpoint,
     self_label: String,
+    token: String,
 }
 
 async fn handle_c_connection(stream: &mut tokio::net::TcpStream, ctx: &Ctx) -> std::io::Result<()> {
@@ -271,11 +325,35 @@ async fn handle_c_connection(stream: &mut tokio::net::TcpStream, ctx: &Ctx) -> s
     read_raw_frame(stream, &mut buf).await?;
 
     if let Ok(req) = serde_json::from_slice::<Request>(&buf) {
+        // SYNC-5: gate the C↔agent socket with a bearer token. A frame whose
+        // token does not match the one we minted at start is refused with the
+        // shape the caller expects (`Response{status:401}` for a receive) and
+        // served nothing. This closes the §14 audit finding: any local process
+        // that can reach the port can otherwise read/write sync data, bypassing
+        // the peer allowlist from the local side.
+        if !token_matches(&req.token, &ctx.token) {
+            let resp = Response {
+                status: 401,
+                body: None,
+                error: Some("invalid sync token".into()),
+            };
+            write_frame(stream, &resp).await?;
+            return Ok(());
+        }
         let resp = route_request(&req, ctx).await;
         write_frame(stream, &resp).await?;
         return Ok(());
     }
     if let Ok(put) = serde_json::from_slice::<PutRequest>(&buf) {
+        // SYNC-5: same token gate on the PUT path — `PutResponse{ok:false}`.
+        if !token_matches(&put.token, &ctx.token) {
+            let resp = PutResponse {
+                ok: false,
+                error: Some("invalid sync token".into()),
+            };
+            write_frame(stream, &resp).await?;
+            return Ok(());
+        }
         let resp = route_put(&put, ctx).await;
         write_frame(stream, &resp).await?;
         return Ok(());

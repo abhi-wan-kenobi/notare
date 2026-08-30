@@ -132,11 +132,20 @@ configure_cloudsync_target!(
 pub fn bundled_extension_path() -> Result<PathBuf, Error> {
     // From-source build: return the freshly-built .so from OUT_DIR (set by
     // build.rs via `cargo:rustc-env`). Only linux/x86_64 is supported (S0b).
+    //
+    // SYNC-5: baked in with `env!` (compile-time), NOT `std::env::var`
+    // (runtime). cargo injects a build script's `cargo:rustc-env` into the
+    // *rustc process compiling that crate*, where `env!` captures it —
+    // but does NOT inject it into downstream binaries at runtime, so a
+    // runtime read made every from-source consumer that is not the
+    // cloudsync crate's own test binary fail with
+    // `UnsupportedBundledCloudsync` (the desktop app included).
     #[cfg(feature = "from-source")]
     {
-        let so = std::env::var("CLOUDSYNC_FROM_SOURCE_SO")
-            .map_err(|_| Error::UnsupportedBundledCloudsync)?;
-        return Ok(PathBuf::from(so));
+        return Ok(PathBuf::from(env!(
+            "CLOUDSYNC_FROM_SOURCE_SO",
+            "from-source builds must be compiled through crates/cloudsync/build.rs"
+        )));
     }
 
     #[cfg(not(feature = "from-source"))]

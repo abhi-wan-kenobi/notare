@@ -28,16 +28,36 @@ pub enum Error {
         "the bundled cloudsync extension is not available for this target; supported targets: {SUPPORTED_CLOUDSYNC_TARGETS}"
     )]
     UnsupportedBundledCloudsync,
+    /// `network_sync` drained {MAX_DRAIN} rounds and the hub still had pending
+    /// changes. The site may be behind — returning a stale "synced" would be
+    /// the silent-divergence bug SYNC-4 found (one `check` per call serves at
+    /// most one blob). Fail loudly so the caller can retry/backoff.
+    #[error("network_sync did not drain in {0} rounds; changes still pending")]
+    DrainExhausted(usize),
+    /// `network_sync` got a reply it could not parse for `receive.rows`. "the
+    /// hub has nothing for me" and "I could not tell what the hub said" are
+    /// different states — folding the latter into the former is the same
+    /// silent-divergence class as not draining at all.
+    #[error("network_sync got an unreadable sync reply: {0}")]
+    UnreadableSyncReply(String),
 }
 
 impl Error {
     pub fn kind(&self) -> ErrorKind {
-        if let Self::Sqlx(sqlx_err) = self {
-            if let Some(code) = extract_error_code(sqlx_err) {
-                return classify_error_code(code);
+        match self {
+            Self::Sqlx(sqlx_err) => {
+                if let Some(code) = extract_error_code(sqlx_err) {
+                    classify_error_code(code)
+                } else {
+                    ErrorKind::Fatal
+                }
             }
+            // A non-converging drain or an unreadable reply is not a transient
+            // blip — retrying identically would loop forever or paper over a
+            // protocol/schema drift. Surface it so the caller stops.
+            Self::DrainExhausted(_) | Self::UnreadableSyncReply(_) => ErrorKind::Fatal,
+            _ => ErrorKind::Fatal,
         }
-        ErrorKind::Fatal
     }
 }
 

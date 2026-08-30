@@ -19,6 +19,7 @@ async fn broker_serves_collapsed_s3_flow() {
     let resp = roundtrip(
         host,
         &Request {
+            token: String::new(),
             endpoint: upload_ep,
             is_post: false,
             body: None,
@@ -45,6 +46,7 @@ async fn broker_serves_collapsed_s3_flow() {
     let put_resp = put(
         host,
         &PutRequest {
+            token: String::new(),
             url: url.clone(),
             blob,
         },
@@ -65,6 +67,7 @@ async fn broker_serves_collapsed_s3_flow() {
     let resp = roundtrip(
         host,
         &Request {
+            token: String::new(),
             endpoint: apply_ep,
             is_post: true,
             body: Some(apply_body),
@@ -83,6 +86,7 @@ async fn broker_serves_collapsed_s3_flow() {
     let resp = roundtrip(
         host,
         &Request {
+            token: String::new(),
             endpoint: status_ep,
             is_post: false,
             body: None,
@@ -102,6 +106,7 @@ async fn broker_serves_collapsed_s3_flow() {
     let resp = roundtrip(
         host,
         &Request {
+            token: String::new(),
             endpoint: check_ep,
             is_post: true,
             body: Some(check_body),
@@ -121,6 +126,7 @@ async fn broker_serves_collapsed_s3_flow() {
     let dl_resp = roundtrip(
         host,
         &Request {
+            token: String::new(),
             endpoint: dl_url,
             is_post: false,
             body: None,
@@ -140,6 +146,7 @@ async fn broker_serves_collapsed_s3_flow() {
     let resp = roundtrip(
         host,
         &Request {
+            token: String::new(),
             endpoint: check_ep,
             is_post: true,
             body: Some(check_body),
@@ -161,6 +168,7 @@ async fn broker_rejects_bad_endpoint() {
     let resp: Response = roundtrip(
         host,
         &Request {
+            token: String::new(),
             endpoint: "garbage://nope".into(),
             is_post: false,
             body: None,

@@ -35,7 +35,12 @@ const DB_ID: &str = "notare-v06";
 /// rather than spinning.
 const MAX_DRAIN: usize = 16;
 
-async fn setup_node(uri: &str, broker_addr: &str, local_agent_tcp: &str) -> SqlitePool {
+async fn setup_node(
+    uri: &str,
+    broker_addr: &str,
+    local_agent_tcp: &str,
+    token: &str,
+) -> SqlitePool {
     let options = SqliteConnectOptions::from_str(uri).unwrap();
     let (options, _ext_path) = cloudsync::apply(options).unwrap();
     let pool = SqlitePoolOptions::new()
@@ -73,6 +78,7 @@ async fn setup_node(uri: &str, broker_addr: &str, local_agent_tcp: &str) -> Sqli
     // immediately before use, and no other thread reads it concurrently.
     unsafe {
         std::env::set_var("NOTARE_SYNC_AGENT_ADDR", local_agent_tcp);
+        std::env::set_var("NOTARE_SYNC_TOKEN", token);
     }
 
     pool
@@ -93,10 +99,11 @@ async fn note_body(pool: &SqlitePool, id: i64) -> String {
         .unwrap()
 }
 
-async fn run_sync(pool: &SqlitePool, local_agent_tcp: &str) -> String {
+async fn run_sync(pool: &SqlitePool, local_agent_tcp: &str, token: &str) -> String {
     // SAFETY: see setup_node.
     unsafe {
         std::env::set_var("NOTARE_SYNC_AGENT_ADDR", local_agent_tcp);
+        std::env::set_var("NOTARE_SYNC_TOKEN", token);
     }
     sqlx::query_scalar::<_, String>("SELECT cloudsync_network_sync()")
         .fetch_one(pool)
@@ -104,10 +111,11 @@ async fn run_sync(pool: &SqlitePool, local_agent_tcp: &str) -> String {
         .unwrap()
 }
 
-async fn run_check(pool: &SqlitePool, local_agent_tcp: &str) -> String {
+async fn run_check(pool: &SqlitePool, local_agent_tcp: &str, token: &str) -> String {
     // SAFETY: see setup_node.
     unsafe {
         std::env::set_var("NOTARE_SYNC_AGENT_ADDR", local_agent_tcp);
+        std::env::set_var("NOTARE_SYNC_TOKEN", token);
     }
     sqlx::query_scalar::<_, String>("SELECT cloudsync_network_check_changes()")
         .fetch_one(pool)
@@ -137,10 +145,10 @@ fn rows_received(resp: &str) -> Option<u64> {
     v.get("receive")?.get("rows")?.as_u64()
 }
 
-async fn drain_check(pool: &SqlitePool, tcp: &str, label: &str) -> usize {
+async fn drain_check(pool: &SqlitePool, tcp: &str, token: &str, label: &str) -> usize {
     let mut applied = 0;
     for _ in 0..MAX_DRAIN {
-        let resp = run_check(pool, tcp).await;
+        let resp = run_check(pool, tcp, token).await;
         match rows_received(&resp) {
             None => panic!(
                 "[{label}] unreadable check reply, cannot know if changes are pending: {resp}"
@@ -160,9 +168,9 @@ async fn drain_check(pool: &SqlitePool, tcp: &str, label: &str) -> usize {
 }
 
 /// Push local changes, then drain everything pending for this site.
-async fn sync_and_drain(pool: &SqlitePool, tcp: &str, label: &str) {
-    run_sync(pool, tcp).await;
-    drain_check(pool, tcp, label).await;
+async fn sync_and_drain(pool: &SqlitePool, tcp: &str, token: &str, label: &str) {
+    run_sync(pool, tcp, token).await;
+    drain_check(pool, tcp, token, label).await;
 }
 
 fn short(agent: &P2pAgent) -> String {
@@ -220,6 +228,7 @@ async fn main() {
         ),
         &hub,
         &a_tcp,
+        agent_a.token(),
     )
     .await;
     let b = setup_node(
@@ -229,6 +238,7 @@ async fn main() {
         ),
         &hub,
         &b_tcp,
+        agent_b.token(),
     )
     .await;
     let c = setup_node(
@@ -238,6 +248,7 @@ async fn main() {
         ),
         &hub,
         &c_tcp,
+        agent_c.token(),
     )
     .await;
     println!("[nodes] A, B, C initialized; cloudsync enabled on 'notes' (hub = A)");
@@ -247,9 +258,9 @@ async fn main() {
         .execute(&a)
         .await
         .unwrap();
-    run_sync(&a, &a_tcp).await;
-    drain_check(&b, &b_tcp, "B").await;
-    drain_check(&c, &c_tcp, "C").await;
+    run_sync(&a, &a_tcp, agent_a.token()).await;
+    drain_check(&b, &b_tcp, agent_b.token(), "B").await;
+    drain_check(&c, &c_tcp, agent_c.token(), "C").await;
     assert_eq!(count_notes(&b).await, 1, "B has the hub's row");
     assert_eq!(count_notes(&c).await, 1, "C has the hub's row");
     println!("[conv] A -> B and A -> C OK");
@@ -260,9 +271,9 @@ async fn main() {
         .execute(&b)
         .await
         .unwrap();
-    run_sync(&b, &b_tcp).await;
-    drain_check(&a, &a_tcp, "A").await;
-    drain_check(&c, &c_tcp, "C").await;
+    run_sync(&b, &b_tcp, agent_b.token()).await;
+    drain_check(&a, &a_tcp, agent_a.token(), "A").await;
+    drain_check(&c, &c_tcp, agent_c.token(), "C").await;
     assert_eq!(count_notes(&c).await, 2, "C got B's row via the hub");
     assert_eq!(note_body(&c, 2).await, "from B");
     println!("[conv] B -> hub -> C OK (no spoke-to-spoke connection)");
@@ -273,15 +284,15 @@ async fn main() {
         .execute(&c)
         .await
         .unwrap();
-    run_sync(&c, &c_tcp).await;
+    run_sync(&c, &c_tcp, agent_c.token()).await;
     sqlx::query("INSERT INTO notes (id, body) VALUES (4, 'from C #2')")
         .execute(&c)
         .await
         .unwrap();
-    run_sync(&c, &c_tcp).await;
+    run_sync(&c, &c_tcp, agent_c.token()).await;
 
-    drain_check(&a, &a_tcp, "A").await;
-    drain_check(&b, &b_tcp, "B").await;
+    drain_check(&a, &a_tcp, agent_a.token(), "A").await;
+    drain_check(&b, &b_tcp, agent_b.token(), "B").await;
     assert_eq!(
         count_notes(&a).await,
         4,
@@ -298,19 +309,19 @@ async fn main() {
         .execute(&b)
         .await
         .unwrap();
-    run_sync(&b, &b_tcp).await;
+    run_sync(&b, &b_tcp, agent_b.token()).await;
     sqlx::query("INSERT INTO notes (id, body) VALUES (6, 'from B #2')")
         .execute(&b)
         .await
         .unwrap();
-    run_sync(&b, &b_tcp).await;
+    run_sync(&b, &b_tcp, agent_b.token()).await;
 
-    drain_check(&c, &c_tcp, "C").await;
+    drain_check(&c, &c_tcp, agent_c.token(), "C").await;
     assert_eq!(count_notes(&c).await, 6, "C caught up on both of B's blobs");
     assert_eq!(note_body(&c, 5).await, "from B #1");
     assert_eq!(note_body(&c, 6).await, "from B #2");
     println!("[conv] multi-blob spoke-to-spoke OK (C drained 2 of B's blobs)");
-    drain_check(&a, &a_tcp, "A").await;
+    drain_check(&a, &a_tcp, agent_a.token(), "A").await;
 
     // 4. Three-way concurrent update on one row converges to a single value.
     sqlx::query("UPDATE notes SET body = 'A wins' WHERE id = 1")
@@ -329,9 +340,9 @@ async fn main() {
 
     let mut settled = false;
     for _ in 0..MAX_DRAIN {
-        sync_and_drain(&a, &a_tcp, "A").await;
-        sync_and_drain(&b, &b_tcp, "B").await;
-        sync_and_drain(&c, &c_tcp, "C").await;
+        sync_and_drain(&a, &a_tcp, agent_a.token(), "A").await;
+        sync_and_drain(&b, &b_tcp, agent_b.token(), "B").await;
+        sync_and_drain(&c, &c_tcp, agent_c.token(), "C").await;
         let (ba, bb, bc) = (
             note_body(&a, 1).await,
             note_body(&b, 1).await,
@@ -343,9 +354,9 @@ async fn main() {
             // move one of them. Run one more full round and require the value
             // to be unchanged, so the proof asserts "agreed AND stable" rather
             // than catching a moment that happens to line up.
-            sync_and_drain(&a, &a_tcp, "A").await;
-            sync_and_drain(&b, &b_tcp, "B").await;
-            sync_and_drain(&c, &c_tcp, "C").await;
+            sync_and_drain(&a, &a_tcp, agent_a.token(), "A").await;
+            sync_and_drain(&b, &b_tcp, agent_b.token(), "B").await;
+            sync_and_drain(&c, &c_tcp, agent_c.token(), "C").await;
             let (fa, fb, fc) = (
                 note_body(&a, 1).await,
                 note_body(&b, 1).await,

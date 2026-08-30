@@ -554,7 +554,8 @@ fn soniqo_channel_chunks(
 
     // Non-Parakeet soniqo models tolerate the universal 25s ceiling (ParakeetBatch
     // is capped above); no per-call engine limit to thread here.
-    chunk_channel_audio::<hypr_audio_chunking::Error>(samples, usize::MAX).map_err(|e| e.to_string())
+    chunk_channel_audio::<hypr_audio_chunking::Error>(samples, usize::MAX)
+        .map_err(|e| e.to_string())
 }
 
 fn split_audio_samples(samples: &[f32], max_samples: usize) -> Vec<AudioChunk> {

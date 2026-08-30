@@ -992,3 +992,209 @@ sequential, but a process-global env var as the C layer's routing channel does
 not survive more than one agent per process. Not a problem for the desktop app
 (one agent), but SYNC-5 should not widen it. The seat's proposed fix invented a
 `cloudsync_network_sync_custom` SQL function that does not exist.
+
+## 16. SYNC-5 — wiring the sync stack into the app (2026-08-30)
+
+Scope: `plugins/db` (sync lifecycle + commands), desktop wiring, the
+`hypr_db_app` table registry, and the three fixes the new lifecycle test
+forced. Four commits on `feat/sync-5-wire-plugins-db`:
+`df3c6b3e1` (plugins/db sync module), `cc1b450e9` (desktop wiring),
+`528a8e085` (SYNCED_TABLES), `6d743fab5` (lifecycle-test findings + test).
+
+### 16.1 What was built
+
+- `plugins/db/src/sync.rs` — `SyncLifecycle`: agent up → publish
+  `NOTARE_SYNC_AGENT_ADDR`/`NOTARE_SYNC_TOKEN` (single point of publication)
+  → `cloudsync_configure` (own `p2p://<fingerprint>` as the address, elected
+  hub, table registry from `hypr_db_app`) → `cloudsync_start`. Teardown split
+  so `PluginDbRuntime::shutdown` can run the #101 order:
+  `cloudsync_stop` → live-query dispatcher stop → `pool().close()` → agent.
+- `plugins/db/src/runtime.rs` — `PluginDbRuntime::shutdown(&self)` (the Arc
+  stays in Tauri's state map; the dispatcher stops through an explicit
+  `LiveQueryRuntime::shutdown`), plus `start_sync` / `sync_status` /
+  `sync_trigger` / `sync_list_peers` / `sync_this_device`, all behind
+  `all(feature = "sync", target_os = "linux")`.
+- `plugins/db/src/commands.rs` — four specta commands with cfg-gated bodies
+  (unconditional names: `collect_commands!` rejects `#[cfg]` entries, so the
+  bindings surface stays identical across feature sets).
+- `apps/desktop/src-tauri/src/lib.rs` — `start_sync` in setup (spawned,
+  best-effort), `shutdown_sync` on `RunEvent::Exit` on a dedicated thread with
+  its own current-thread runtime and a 5 s bound.
+- `crates/db-app/src/cloudsync.rs` — the table registry now carries
+  `enabled: SYNCED_TABLES.contains(&table_name)`.
+
+### 16.2 Three production bugs the lifecycle test caught
+
+Each was invisible to `cargo check` and to every earlier test, because none of
+them had ever driven the full stack in one process.
+
+1. **1-arg `cloudsync_network_init(dbId)` ignored the configured address.**
+   The C layer hardcodes `CLOUDSYNC_DEFAULT_ADDRESS`
+   (`https://cloudsync.sqlite.ai`) in that form; only the 2-arg
+   `cloudsync_network_init_custom(address, dbId)` routes `p2p://` addresses.
+   Symptom: `network_init` "succeeds" against a URL that has nothing to do
+   with our agent. Fixed in `crates/cloudsync/src/network.rs`.
+2. **Per-connection auxdata vs a 4-connection pool.**
+   `dbsync_register_functions` installs a fresh `cloudsync_context` per
+   sqlite3 handle; network_data lives in per-connection auxdata, so with
+   more than one pooled connection a network call can land on a connection
+   whose auxdata was never initialized → "Unable to retrieve CloudSync network
+   context". `Db::open` now clamps cloudsync-enabled opens to
+   `max_connections(1)` (`crates/db-core/src/lib.rs`).
+3. **Runtime `std::env::var` vs compile-time `env!` for
+   `CLOUDSYNC_FROM_SOURCE_SO`.** Cargo injects a build-script's `rustc-env`
+   only into that package's own binaries — sync-p2p's build.rs sets it for
+   sync-p2p's own test/example binaries, but not for tauri-plugin-db's. The
+   bundle path must be baked with `env!` at compile time
+   (`crates/cloudsync/src/bundle.rs`).
+4. **Zero-enabled-tables fatal first tick.** (Found by reasoning, not the
+   test, but in the same session.) With no `cloudsync_init(<table>)` anywhere,
+   the `cloudsync_changes` shadow table does not exist and every send/check
+   query fails fatally (SQLite code 1), killing the background loop's first
+   tick. `cloudsync_start`/`cloudsync_trigger_sync`/`cloudsync_status` now
+   short-circuit to an honest no-op when `enabled_tables().next().is_none()`
+   (`crates/db-core/src/cloudsync/runtime.rs`).
+
+### 16.3 Tables enabled: none (a STOP, per spec)
+
+`SYNCED_TABLES = []` in `crates/db-app/src/cloudsync.rs`, deliberately. The
+spec's instruction was explicit: justify any enable from what
+`crates/sync-p2p/examples/sync_three_nodes.rs` actually converged on, and
+**stop and report rather than enabling broadly** if the mapping is unclear.
+
+The proofs (sync_two_nodes, sync_three_nodes, drain_regression) converge a
+**synthetic** `notes (id INTEGER PRIMARY KEY, body TEXT)` table — a minimal
+INTEGER PRIMARY KEY rowid table. Notare's app tables are UUID-text-primary-key
+tables (sessions, session_tags, notes etc.) with FKs between them
+(sessions → meeting FK, etc.). The proofs say nothing about:
+
+- whether the vendored cloudsync CRDT handles TEXT primary keys at all,
+- FK cascading under CRDT merge order,
+- per-table `crdt_algo` choice for notare's actual mutation patterns,
+- or which subset of the schema forms a safe unit to sync first.
+
+Enabling app tables on that evidence would have been guessing. SYNC-6 (pairing
+UI) is where the enable-set is decided, with a proof against the real schema.
+This is the spec's STOP, documented, not a silent omission.
+
+### 16.4 Audit outcome (2026-08-30) — the SYNC-5 commits
+
+`--coder glm-5.3`, `--scope dfb57baf1` (all four commits), split by area with
+`--only`. Seats: `audit-minimax-m2.7` (plugins/db area, 7 findings) +
+`audit-qwen3.5:397b` (second seat; the roster's `kimi-k3` is not routable on
+the gateway — see below). Payloads kept under the ~20k-char size cliff by
+`--only` per area.
+
+**Confirmed and fixed (verified real):**
+
+- **`sync_this_device` used `blocking_lock()` in a sync fn** (and
+  `sync_list_peers` a try_lock+fallback). The command is async;
+  `start_sync`/`shutdown` hold the runtime's sync mutex across awaits
+  (network init can take seconds), so a blocking acquire stalls an executor
+  thread — and deadlocks outright on a current_thread runtime, the exact
+  pattern the shutdown path uses. Both methods are now async with
+  `.lock().await` and one shared fallback. This also removed the duplicated
+  PeerStore fallback the same seat flagged separately (its Finding 4).
+- **SAFETY comment on `set_var` understated its contract** (seat's Findings 2
+  + 6). The comment now states the actual invariant: exactly one
+  `SyncLifecycle` per process; in the app structural (one
+  `PluginDbRuntime`, mutex-held startup, readers spawn only after
+  publication inside `cloudsync_start`); direct `start_with` callers (tests)
+  must serialize.
+
+**Rejected as a false positive (verified against the code):**
+
+- **CRITICAL claim that `guard.take()` makes `cloudsync_stop` never run**
+  (minimax seat Finding 1). `take()` *returns* the owned
+  `Option<SyncLifecycle>` — `lifecycle.as_ref()` borrows what `take()`
+  returned, and step 4 moves it into `stop_agent`. The seat read `take()` as
+  "discard". Nevertheless pinned with a regression test
+  (`runtime_teardown_runs_every_step_and_fallbacks_answer_without_lifecycle`)
+  because the #101-critical step deserves a direct guard, and that test also
+  covers the no-lifecycle fallbacks on `sync_this_device`/`sync_list_peers`.
+- **"start_sync idempotency vs bare-db fallback is undocumented"** (Finding
+  5, LOW). Deliberate contract: before `start_sync`, status reports the
+  honest bare-db state; the desktop always calls `start_sync` at setup.
+  No change.
+- Finding 7 was the seat itself saying "no action needed" (test-drop
+  ordering). Agreed.
+
+**Operational note:** the audit lane's roster names `kimi-k3`, but the gateway
+has no `audit-kimi-k3` group — preflight correctly refused it, and the second
+seat ran on `audit-qwen3.5:397b` via `--models` instead. The roster probe
+records what the provider advertises, not what the gateway can route; when a
+seat is refused, re-run the missing seats with an explicit routable model
+before treating the audit as done.
+
+### 16.5 Desktop-area audit (the audit's biggest catch)
+
+The desktop-area run (`--only apps/desktop`, both seats) found the defect
+every other check had missed:
+
+**Confirmed and fixed (qwen Finding 1, verified with `cargo tree`):** the
+target-gated `tauri-plugin-db = { features = ["sync"] }` entry in the
+desktop crate was non-optional, so on linux/x86_64 cargo unified it with the
+plain dep in `[dependencies]` and pushed `sync` into EVERY desktop build —
+`cargo check -p desktop` "default" was silently the sync-on config, and
+`--features sync` was a no-op. The spec's default-OFF invariant was broken on
+exactly the machine the checks ran on, which is why the earlier verification
+looked green while proving nothing. Fix: the target-gated dep is now
+`optional = true` and the `sync` feature activates it via
+`sync = ["dep:tauri-plugin-db", "tauri-plugin-db/sync"]`. Verified after:
+default resolves `tauri-plugin-db` with no `sync` feature;
+`--features sync` resolves the full stack. The `cargo tree -p desktop -e
+features -i tauri-plugin-db` inversion is the honest way to check this —
+`cargo check` cannot see it.
+
+**Confirmed and fixed (both seats agreed — high confidence):** my
+`cc1b450e9` had accidentally duplicated the
+`ctx.mark_exiting(); ctx.stop();` supervisor-stop block in `RunEvent::Exit`.
+Copy-paste from the insertion; removed.
+
+**Confirmed and applied (qwen Findings 2/3):** `start_sync` and
+`shutdown_sync` used `app.state::<ManagedState>()`, which panics when the
+state is absent — contradicting the "best-effort, keep running" contract on
+start and the "must exit, never panic on the way out" contract on Exit. Both
+now use `try_state()` with graceful degradation.
+
+**Confirmed and applied (qwen Finding 6):** the desktop/plugin source gates
+said `target_os = "linux"` while the `sync-p2p` dep only exists on
+`linux/x86_64`. Aligned every `cfg(all(feature = "sync", target_os =
+"linux"))` to include `target_arch = "x86_64"` (desktop lib.rs, plugin
+lib.rs/runtime.rs/commands.rs, the lifecycle test). On aarch64-linux +
+`--features sync` the failure is now "feature exists but gates nothing",
+not a compile error in the plugin.
+
+**Rejected / no change (with reasons):**
+
+- qwen Findings 2/3 from the cloudsync area ("fetch_optional silently
+  swallows init errors") — false positive, proven from the vendored C:
+  every failure path in `cloudsync_network_init_internal` (and
+  `set_token`/`set_apikey`) signals via `sqlite3_result_error*`, which makes
+  the whole SQL statement fail; sqlx propagates that as `Err` and
+  `.await?` surfaces it. The C layer has no out-band "logical error inside
+  a success row" channel to swallow.
+- minimax's "pre-existing SQL syntax error in query_sync_json" — the four
+  arms are `SELECT fn(...) AS it`, all well-formed; the seat showed the
+  "corrected" text as identical to what's there. Also the mainline path of
+  the green drain regression test.
+- minimax's `CLOUDSYNC_MANAGED_DB_ID` cross-deployment collision note —
+  real observation, out of scope by design: the fixed id matches the proofs'
+  DB_ID so the same hub recognises every device of the app; per-deployment
+  ids are a SYNC-8 (relay/rendezvous) design decision.
+- qwen Finding 4 + minimax's shutdown-thread notes (double timeout,
+  join/catch_unwind, 5s vs 6s bounds) — design suggestions on correct,
+  bounded behavior. The outer `recv_timeout(SHUTDOWN_TIMEOUT + 1s)` is a
+  deliberate belt-and-suspenders bound in case the inner timeout itself
+  never fires. A panicking teardown thread is indistinguishable from a
+  wedged one by design: both log a warning and the process exits anyway.
+- minimax's "best-effort start_sync failures are invisible to the user" —
+  true and accepted for SYNC-5; surfacing sync status to the UI is SYNC-6
+  (the `sync_status` command exists precisely for that).
+
+**db-app area:** clean (0 findings; single seat on a one-constant diff).
+
+**Remaining lead from §15 carried forward, not re-found:** the §15 note about
+per-node env-var switching in the examples remains the standing constraint:
+one agent per process. SYNC-5 did not widen it — `SyncLifecycle` is the single
+publisher, and the audit confirmed the contract now states it.

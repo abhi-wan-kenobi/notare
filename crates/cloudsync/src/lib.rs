@@ -23,6 +23,12 @@ pub use network::{
 
 pub const CLOUDSYNC_VERSION: &str = "1.0.12";
 
+/// SYNC-5: the `managedDatabaseId` passed to `cloudsync_network_init_custom`.
+/// Namespaces this app's blob URLs on the sync hub — every notare device uses
+/// the same id so the hub recognises blobs from the same database. Matches
+/// the convergence proofs (`crates/sync-p2p/examples/sync_two_nodes.rs`).
+pub const CLOUDSYNC_MANAGED_DB_ID: &str = "notare-v06";
+
 pub fn apply(options: SqliteConnectOptions) -> Result<(SqliteConnectOptions, PathBuf), Error> {
     let extension_path = bundled_extension_path()?;
 

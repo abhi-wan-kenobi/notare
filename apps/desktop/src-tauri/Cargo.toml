@@ -114,6 +114,10 @@ tracing = { workspace = true }
 [features]
 default = []
 dev = ["dep:hypr-audio-mock"]
+# SYNC-5 passthrough: turns on tauri-plugin-db's sync lifecycle (linux/x86_64
+# only — on any other target `dep:tauri-plugin-db` selects nothing and this
+# feature gates no code on, keeping the build unchanged).
+sync = ["dep:tauri-plugin-db", "tauri-plugin-db/sync"]
 devtools = ["tauri/devtools", "dep:hypr-audio-mock"]
 automation = ["tauri-plugin-automation"]
 # Vulkan GPU offload for whisper.cpp (covers NVIDIA/AMD/Intel on Windows+Linux).
@@ -147,6 +151,23 @@ directml = ["tauri-plugin-local-stt/directml"]
 # plugins/local-stt/Cargo.toml; never bundled into the default release MSI).
 [target.'cfg(any(target_os = "linux", target_os = "windows"))'.dependencies]
 tauri-plugin-local-stt = { workspace = true, features = ["whisper-cpp", "parakeet-onnx", "voxtral-llama"] }
+
+# SYNC-5: P2P sync on linux/x86_64 only — the from-source cloudsync build the
+# `sync` feature enables panics on any other target (see plugins/db
+# Cargo.toml). Cargo target tables cannot see target_arch for feature
+# selection, so the crate dep is target-gated here and the `sync` feature
+# above turns it on; on every other target/feature combination the build is
+# unchanged (no agent, no extension, no env vars).
+#
+# The dep MUST be optional. A non-optional target-gated entry unifies with the
+# plain `tauri-plugin-db` dep in [dependencies] and pushes `features =
+# ["sync"]` into EVERY desktop build on this target — "default" stopped meaning
+# "sync off" (caught by the 2026-08-30 audit; the earlier `cargo check -p
+# desktop` was run on linux/x86_64, where default already resolved sync on,
+# so it could not see this). Optional + `dep:` keeps the feature the only
+# switch.
+[target.'cfg(all(target_os = "linux", target_arch = "x86_64"))'.dependencies]
+tauri-plugin-db = { workspace = true, features = ["sync"], optional = true }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 tauri-plugin-automation = { version = "0.1", optional = true }

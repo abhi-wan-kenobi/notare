@@ -97,6 +97,24 @@ static bool resolve_agent_addr(char *host_out, size_t host_cap, int *port_out) {
     return true;
 }
 
+// SYNC-5: the bearer token for the C↔agent socket, read from the
+// NOTARE_SYNC_TOKEN env var on every network call (same process-local,
+// read-per-call model as NOTARE_SYNC_AGENT_ADDR above). The agent mints the
+// token at start and rejects any frame whose token does not match, closing the
+// §14 audit finding (any local process that can reach the port could otherwise
+// read/write sync data). The token is process-local — it is NOT sent to the
+// remote peer over iroh; the inbound iroh path is gated by the Ed25519-
+// authenticated EndpointId + allowlist, not by this token.
+static bool resolve_agent_token(char *out, size_t cap) {
+    const char *tok = getenv("NOTARE_SYNC_TOKEN");
+    if (!tok || !*tok) return false;
+    size_t len = strlen(tok);
+    if (len == 0 || len >= cap) return false;
+    memcpy(out, tok, len);
+    out[len] = '\0';
+    return true;
+}
+
 // ------------------------------------------------------------------
 // framed TCP framing (4-byte big-endian length + JSON payload)
 // ------------------------------------------------------------------
@@ -233,8 +251,11 @@ static char *base64_encode(const void *data, size_t len) {
 // Build a Request frame for network_receive_buffer. Returns a malloc'd frame
 // string (cloudsync allocator) and its length. Caller frees. The `body` is
 // base64-encoded so the broker's `Option<Vec<u8>>` (base64) field decodes it.
+// `token` is the SYNC-5 bearer token carried in every frame; it is process-local
+// and never sent over the iroh peer link.
 static char *build_request_frame(const char *endpoint, bool is_post,
-                                 const char *json_payload, size_t *out_len) {
+                                 const char *json_payload, const char *token,
+                                 size_t *out_len) {
     char *ep_esc = json_escape(endpoint);
     if (!ep_esc) return NULL;
 
@@ -247,39 +268,49 @@ static char *build_request_frame(const char *endpoint, bool is_post,
         if (!body_b64) { cloudsync_memory_free(ep_esc); return NULL; }
     }
 
+    char *tok_esc = json_escape(token ? token : "");
+    if (!tok_esc) { cloudsync_memory_free(ep_esc); cloudsync_memory_free(body_b64); return NULL; }
+
     const char *body_json = body_b64 ? body_b64 : "null";
     const char *body_quoted = body_b64 ? "\"" : "";
     const char *body_close = body_b64 ? "\"" : "";
-    size_t cap = strlen(ep_esc) + strlen(body_json) + 64;
+    size_t cap = strlen(ep_esc) + strlen(body_json) + strlen(tok_esc) + 64;
     char *frame = (char *)cloudsync_memory_zeroalloc(cap);
-    if (!frame) { cloudsync_memory_free(ep_esc); cloudsync_memory_free(body_b64); return NULL; }
+    if (!frame) { cloudsync_memory_free(ep_esc); cloudsync_memory_free(body_b64); cloudsync_memory_free(tok_esc); return NULL; }
 
     int n = snprintf(frame, cap,
-        "{\"endpoint\":\"%s\",\"is_post\":%s,\"body\":%s%s%s}",
-        ep_esc, is_post ? "true" : "false", body_quoted, body_json, body_close);
+        "{\"token\":\"%s\",\"endpoint\":\"%s\",\"is_post\":%s,\"body\":%s%s%s}",
+        tok_esc, ep_esc, is_post ? "true" : "false", body_quoted, body_json, body_close);
     cloudsync_memory_free(ep_esc);
     cloudsync_memory_free(body_b64);
+    cloudsync_memory_free(tok_esc);
     if (n < 0 || (size_t)n >= cap) { cloudsync_memory_free(frame); return NULL; }
     if (out_len) *out_len = (size_t)n;
     return frame;
 }
 
 // Build a PutRequest frame for network_send_buffer:
-//   {"url":"<escaped endpoint>","blob":"<base64 blob>"}
-static char *build_put_frame(const char *endpoint, const void *blob, int blob_size, size_t *out_len) {
+//   {"token":"<token>","url":"<escaped endpoint>","blob":"<base64 blob>"}
+static char *build_put_frame(const char *endpoint, const void *blob, int blob_size,
+                             const char *token, size_t *out_len) {
     char *ep_esc = json_escape(endpoint);
     if (!ep_esc) return NULL;
 
     char *b64buf = base64_encode(blob, (size_t)blob_size);
     if (!b64buf) { cloudsync_memory_free(ep_esc); return NULL; }
 
-    size_t cap = strlen(ep_esc) + strlen(b64buf) + 32;
-    char *frame = (char *)cloudsync_memory_zeroalloc(cap);
-    if (!frame) { cloudsync_memory_free(ep_esc); cloudsync_memory_free(b64buf); return NULL; }
+    char *tok_esc = json_escape(token ? token : "");
+    if (!tok_esc) { cloudsync_memory_free(ep_esc); cloudsync_memory_free(b64buf); return NULL; }
 
-    int n = snprintf(frame, cap, "{\"url\":\"%s\",\"blob\":\"%s\"}", ep_esc, b64buf);
+    size_t cap = strlen(ep_esc) + strlen(b64buf) + strlen(tok_esc) + 48;
+    char *frame = (char *)cloudsync_memory_zeroalloc(cap);
+    if (!frame) { cloudsync_memory_free(ep_esc); cloudsync_memory_free(b64buf); cloudsync_memory_free(tok_esc); return NULL; }
+
+    int n = snprintf(frame, cap, "{\"token\":\"%s\",\"url\":\"%s\",\"blob\":\"%s\"}",
+                      tok_esc, ep_esc, b64buf);
     cloudsync_memory_free(ep_esc);
     cloudsync_memory_free(b64buf);
+    cloudsync_memory_free(tok_esc);
     if (n < 0 || (size_t)n >= cap) { cloudsync_memory_free(frame); return NULL; }
     if (out_len) *out_len = (size_t)n;
     return frame;
@@ -312,6 +343,16 @@ NETWORK_RESULT network_receive_buffer(network_data *data, const char *endpoint,
         return (NETWORK_RESULT){CLOUDSYNC_NETWORK_ERROR, msg, 1, NULL, NULL};
     }
 
+    // SYNC-5: the bearer token for the C↔agent socket. Without it the agent
+    // rejects the frame with a 401, so a missing token fails the call with a
+    // clear error — same style as the addr-not-set path above.
+    char token[256];
+    if (!resolve_agent_token(token, sizeof(token))) {
+        char *msg = cloudsync_string_dup(
+            "network_receive_buffer: NOTARE_SYNC_TOKEN not set");
+        return (NETWORK_RESULT){CLOUDSYNC_NETWORK_ERROR, msg, 1, NULL, NULL};
+    }
+
     int fd = connect_tcp(host, port);
     if (fd < 0) {
         char *msg = cloudsync_string_dup("network_receive_buffer: connect failed");
@@ -319,7 +360,7 @@ NETWORK_RESULT network_receive_buffer(network_data *data, const char *endpoint,
     }
 
     size_t frame_len = 0;
-    char *frame = build_request_frame(endpoint, is_post_request, json_payload, &frame_len);
+    char *frame = build_request_frame(endpoint, is_post_request, json_payload, token, &frame_len);
     if (!frame) {
         close(fd);
         char *msg = cloudsync_string_dup("network_receive_buffer: oom building frame");
@@ -481,11 +522,17 @@ bool network_send_buffer(network_data *data, const char *endpoint,
         return false;
     }
 
+    // SYNC-5: bearer token for the C↔agent socket (same as receive_buffer).
+    char token[256];
+    if (!resolve_agent_token(token, sizeof(token))) {
+        return false;
+    }
+
     int fd = connect_tcp(host, port);
     if (fd < 0) return false;
 
     size_t frame_len = 0;
-    char *frame = build_put_frame(endpoint, blob, blob_size, &frame_len);
+    char *frame = build_put_frame(endpoint, blob, blob_size, token, &frame_len);
     if (!frame) { close(fd); return false; }
 
     bool ok = write_frame(fd, frame, frame_len);

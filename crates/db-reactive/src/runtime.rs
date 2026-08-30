@@ -137,6 +137,20 @@ impl<S: QueryEventSink> LiveQueryRuntime<S> {
             .await
     }
 
+    /// Stop the dispatcher now, without dropping the runtime (SYNC-5 teardown).
+    ///
+    /// The [`Drop`] impl does the same two steps, but a `PluginDbRuntime` is
+    /// shared behind an `Arc` — its state-map clones outlive any one caller —
+    /// so `Drop` only fires when the *last* holder goes away. The #101
+    /// teardown needs the dispatcher stopped **between** `cloudsync_stop` and
+    /// `pool().close()`, which `&self` (not `self`) makes possible.
+    pub fn shutdown(&self) {
+        let _ = self.shutdown_tx.send(true);
+        if let Some(dispatcher) = self.dispatcher.lock().unwrap().take() {
+            dispatcher.abort();
+        }
+    }
+
     pub fn db(&self) -> &Db {
         self.db.as_ref()
     }
