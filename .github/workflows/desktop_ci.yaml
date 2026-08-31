@@ -448,6 +448,24 @@ jobs:
       # cl.exe is already on PATH for every later step, including
       # rust_install's embedded trusted-signing-cli install.
       - uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
+      # Run 33411261329 (after the fix above) got past cc-rs's tool lookup and
+      # hit a second, different bug: rustc's own call to `link.exe` resolved
+      # to Git for Windows' `/usr/bin/link.exe` (a POSIX hardlink utility, not
+      # a linker) instead of MSVC's, because this job's `shell: bash` steps
+      # run under Git Bash, whose own MSYS2 launcher re-prepends its `usr/bin`
+      # ahead of whatever msvc-dev-cmd added to PATH — a documented
+      # ilammy/msvc-dev-cmd + Git-Bash interaction, not something GITHUB_PATH
+      # ordering can fix. Confirmed from the log's literal error text
+      # (`"/usr/bin/link: extra operand '...cgu.0.rcgu.o'"` — Git's `link`
+      # tool treats the linker's own arguments as file operands). The release
+      # workflow's actually-proven Windows build (`release.yaml:build-windows`,
+      # which `windows_stt`'s header comment claims to be modeled on but is
+      # not, in this respect) never hits this because it does not set
+      # `shell: bash` at all and does not use `rust_install`. Removing Git's
+      # own `link.exe` before anything that needs MSVC's is the standard fix
+      # for this exact, well-known interaction.
+      - name: Remove Git's link.exe (shadows MSVC's link.exe under Git Bash)
+        run: rm -f /usr/bin/link.exe
       - uses: ./.github/actions/rust_install
         with:
           platform: windows
