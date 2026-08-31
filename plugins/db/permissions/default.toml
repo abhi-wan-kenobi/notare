@@ -12,4 +12,10 @@ permissions = [
   "allow-cleanup-legacy-files",
   "allow-subscribe",
   "allow-unsubscribe",
+  "allow-sync-status",
+  "allow-sync-trigger",
+  "allow-sync-list-peers",
+  "allow-sync-this-device",
+  "allow-sync-add-peer",
+  "allow-sync-remove-peer",
 ]

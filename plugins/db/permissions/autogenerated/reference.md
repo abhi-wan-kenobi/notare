@@ -15,6 +15,12 @@ Default permissions for the plugin
 - `allow-cleanup-legacy-files`
 - `allow-subscribe`
 - `allow-unsubscribe`
+- `allow-sync-status`
+- `allow-sync-trigger`
+- `allow-sync-list-peers`
+- `allow-sync-this-device`
+- `allow-sync-add-peer`
+- `allow-sync-remove-peer`
 
 ## Permission Table
 
@@ -333,6 +339,162 @@ Enables the subscribe command without any pre-configured scope.
 <td>
 
 Denies the subscribe command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`db:allow-sync-add-peer`
+
+</td>
+<td>
+
+Enables the sync_add_peer command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`db:deny-sync-add-peer`
+
+</td>
+<td>
+
+Denies the sync_add_peer command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`db:allow-sync-list-peers`
+
+</td>
+<td>
+
+Enables the sync_list_peers command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`db:deny-sync-list-peers`
+
+</td>
+<td>
+
+Denies the sync_list_peers command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`db:allow-sync-remove-peer`
+
+</td>
+<td>
+
+Enables the sync_remove_peer command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`db:deny-sync-remove-peer`
+
+</td>
+<td>
+
+Denies the sync_remove_peer command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`db:allow-sync-status`
+
+</td>
+<td>
+
+Enables the sync_status command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`db:deny-sync-status`
+
+</td>
+<td>
+
+Denies the sync_status command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`db:allow-sync-this-device`
+
+</td>
+<td>
+
+Enables the sync_this_device command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`db:deny-sync-this-device`
+
+</td>
+<td>
+
+Denies the sync_this_device command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`db:allow-sync-trigger`
+
+</td>
+<td>
+
+Enables the sync_trigger command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`db:deny-sync-trigger`
+
+</td>
+<td>
+
+Denies the sync_trigger command without any pre-configured scope.
 
 </td>
 </tr>
