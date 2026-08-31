@@ -498,14 +498,28 @@ jobs:
       # later step's fresh shell.
       - name: Pin cargo to MSVC's link.exe by absolute path (bypasses PATH search)
         run: |
-          for dir in $(echo "$PATH" | tr ':' '\n'); do
-            if [ -f "$dir/link.exe" ] && [[ "$dir" != *"/Git/"* ]]; then
+          # Audit finding (auditor, coder=claude-sonnet-5, gpt-oss seat,
+          # confirmed real): `for dir in $(...)` word-splits on ALL of IFS
+          # (space/tab/newline), not just the `\n` `tr` produced — so a PATH
+          # entry with a space (e.g. `C:\Program Files\Microsoft Visual
+          # Studio\...`, which is exactly where MSVC's link.exe lives) would
+          # silently split into two bogus entries and never match. `IFS=$'\n'
+          # read -d ''` splits on newline only, leaving each entry's spaces
+          # intact.
+          IFS=$'\n' read -d '' -ra path_dirs < <(echo "$PATH" | tr ':' '\n') || true
+          for dir in "${path_dirs[@]}"; do
+            # Audit finding (minimax seat): also require the directory to
+            # look like an actual MSVC/Windows SDK toolchain path, not just
+            # "not Git" — defensive in case some other non-Git, non-MSVC
+            # `link.exe` ever ends up on PATH ahead of the real one.
+            if [ -f "$dir/link.exe" ] && [[ "$dir" != *"/Git/"* ]] \
+              && [[ "$dir" == *"Microsoft Visual Studio"* || "$dir" == *"Windows Kits"* ]]; then
               echo "found MSVC link.exe: $dir/link.exe"
               echo "CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER=$dir/link.exe" >> "$GITHUB_ENV"
               exit 0
             fi
           done
-          echo "::error::no non-Git link.exe found on PATH after msvc-dev-cmd" >&2
+          echo "::error::no MSVC link.exe found on PATH after msvc-dev-cmd" >&2
           exit 1
       - uses: ./.github/actions/rust_install
         with:
