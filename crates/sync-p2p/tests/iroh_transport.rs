@@ -17,7 +17,7 @@
 use std::time::Duration;
 
 use sync_p2p::protocol::{PutRequest, Request, Response};
-use sync_p2p::{Identity, P2pAgent, PeerStore, register_direct_addr};
+use sync_p2p::{AgentTransport, Identity, P2pAgent, PeerStore, register_direct_addr};
 
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
@@ -686,4 +686,136 @@ async fn dial_to_offline_peer_fails_bounded_then_reconnects_after_peer_returns()
 
     agent_a.stop().await;
     agent_b2.stop().await;
+}
+
+/// SYNC-8 end-to-end proof: two agents in **`AgentTransport::Discovered`**
+/// find each other by node id alone, over iroh's real relay/DNS-pkarr
+/// address-lookup service against n0's live infrastructure. This is the
+/// actual capability SYNC-8 exists to deliver, and every other test in this
+/// crate proves it only indirectly (`Loopback` mode's `register_direct_addr`
+/// registry stands in for discovery everywhere else). `register_direct_addr`
+/// is deliberately never called here.
+///
+/// **Needs real network egress and a live n0.computer.** Not run by default —
+/// `cargo test -p sync-p2p` must stay fully offline and deterministic, and
+/// n0's infrastructure and DNS/pkarr propagation delay are neither. Run it
+/// explicitly:
+///
+/// ```text
+/// cargo test -p sync-p2p -- --ignored discovered_mode_dials_by_node_id_alone_over_real_network
+/// ```
+#[ignore = "needs real network egress + n0's live DNS/pkarr infrastructure — see doc comment"]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn discovered_mode_dials_by_node_id_alone_over_real_network() {
+    let dir_a = tempfile::tempdir().unwrap();
+    let dir_b = tempfile::tempdir().unwrap();
+
+    let id_a = Identity::load_or_create_in(dir_a.path()).unwrap();
+    let id_b = Identity::load_or_create_in(dir_b.path()).unwrap();
+
+    let peers_a = PeerStore::load_or_create_in(dir_a.path()).unwrap();
+    let peers_b = PeerStore::load_or_create_in(dir_b.path()).unwrap();
+    peers_a.add_peer(id_b.id(), "B").unwrap();
+    peers_b.add_peer(id_a.id(), "A").unwrap();
+
+    let agent_a = P2pAgent::start_with_transport(id_a, peers_a, AgentTransport::Discovered)
+        .await
+        .unwrap();
+    let agent_b = P2pAgent::start_with_transport(id_b, peers_b, AgentTransport::Discovered)
+        .await
+        .unwrap();
+
+    // Deliberately NO register_direct_addr call anywhere in this test: A must
+    // find B purely through iroh's address-lookup service (pkarr publish by
+    // B, resolved by A via n0's DNS/pkarr relay), not the Loopback-only
+    // process-local registry every other test in this file relies on.
+
+    // Give B's PkarrPublisher time to push its initial address record and let
+    // that propagate through n0's relay before A tries to resolve it.
+    tokio::time::sleep(Duration::from_secs(3)).await;
+
+    let db = "discovered-e2e-db";
+    let site = "site-a";
+    let upload_ep = format!(
+        "{}/v2/cloudsync/databases/{db}/{site}/upload",
+        agent_b.address()
+    );
+
+    // Outer bound so a genuine failure (DNS blocked, egress blocked, n0 down)
+    // reports as a clear timeout rather than hanging the run.
+    let resp = tokio::time::timeout(
+        Duration::from_secs(30),
+        agent_roundtrip(
+            &agent_a.local_addr,
+            &Request {
+                token: agent_a.token().to_string(),
+                endpoint: upload_ep,
+                is_post: false,
+                body: None,
+            },
+        ),
+    )
+    .await
+    .expect("dial over real discovery must not hang past the outer bound")
+    .unwrap();
+
+    assert_eq!(
+        resp.status, 200,
+        "A must reach B by node id alone via real relay/DNS discovery, got: {resp:?}"
+    );
+    let body = String::from_utf8(resp.body.unwrap()).unwrap();
+    let v: serde_json::Value = serde_json::from_str(&body).unwrap();
+    let url = v["url"].as_str().unwrap().to_string();
+    assert!(
+        url.starts_with("mem://"),
+        "minted object url is mem://, got {url}"
+    );
+
+    // Round-trip an actual payload through the discovered connection: PUT the
+    // blob, then GET it back.
+    let blob = b"sync-8-real-discovery-payload".to_vec();
+    let put = PutRequest {
+        token: agent_a.token().to_string(),
+        url: url.clone(),
+        blob: blob.clone(),
+    };
+    let mut stream = TcpStream::connect(&agent_a.local_addr).await.unwrap();
+    let json = serde_json::to_vec(&put).unwrap();
+    stream
+        .write_all(&(json.len() as u32).to_be_bytes())
+        .await
+        .unwrap();
+    stream.write_all(&json).await.unwrap();
+    stream.flush().await.unwrap();
+    let mut len_buf = [0u8; 4];
+    stream.read_exact(&mut len_buf).await.unwrap();
+    let len = u32::from_be_bytes(len_buf) as usize;
+    let mut buf = vec![0u8; len];
+    stream.read_exact(&mut buf).await.unwrap();
+    let put_resp: serde_json::Value = serde_json::from_slice(&buf).unwrap();
+    assert_eq!(
+        put_resp["ok"], true,
+        "PUT over a real-discovery connection must succeed: {put_resp:?}"
+    );
+
+    let resp = agent_roundtrip(
+        &agent_a.local_addr,
+        &Request {
+            token: agent_a.token().to_string(),
+            endpoint: url,
+            is_post: false,
+            body: None,
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(resp.status, 200);
+    assert_eq!(
+        resp.body.unwrap(),
+        blob,
+        "payload round-trips over the discovered connection"
+    );
+
+    agent_a.stop().await;
+    agent_b.stop().await;
 }
