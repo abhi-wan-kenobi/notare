@@ -2253,3 +2253,47 @@ if this is the last missing import lib, the next run should reach an
 actual link success and produce `cloudsync.dll`, at which point
 `network_p2p.c`'s Winsock2 code will have been built (not yet run/tested,
 only compiled+linked) for the first time ever.
+
+### 21.17 CI run 7 (2026-08-31) — `cloudsync_from_source_windows` GREEN
+
+Pushed §21.16's `bcrypt.lib` fix, run 33423198769.
+
+**`cloudsync_from_source_macos` — GREEN a sixth consecutive time.** No
+regression at any point across this lane's five pushes (§21.13–§21.17).
+
+**`cloudsync_from_source_windows` — GREEN, for the first time ever.** Job
+`99590359350`'s only substantive step, `cargo check -p cloudsync --features
+from-source`, completed with conclusion `success`; the job log ends `
+Finished \`dev\` profile [unoptimized + debuginfo] target(s) in 2m 45s`
+after zero compiler or linker errors. Confirmed directly in the log (not
+inferred from the green checkmark alone):
+```
+warning: cloudsync@0.1.0: cloudsync from-source: using sqlite3.h from DEP_SQLITE3_INCLUDE=\
+  C:\Users\runneradmin\.cargo\registry\src\index.crates.io-.../libsqlite3-sys-0.35.0/sqlite3
+```
+— the same `DEP_SQLITE3_INCLUDE` mechanism verified locally on Linux in
+§21.14 resolves correctly on the actual Windows runner, to the Windows
+runner's own `libsqlite3-sys` registry checkout (not a shared/cached path
+from another OS), pointing at the bundled header rather than any system
+one (Windows has none to fall back to regardless, which is exactly why
+this had to work).
+
+**What this closes out:** every vendored `.c` file — including
+`network_p2p.c`, the Winsock2 network layer this entire SYNC-9 lane exists
+to get in front of a compiler — has now been compiled and linked by MSVC.
+This is a **compile+link** proof only: `cloudsync_from_source_windows` is a
+`cargo check`, it does not execute the extension or exercise
+`network_p2p.c`'s Winsock2 code paths at runtime. That remains open per
+§21.7/§21.8 ("what's verified vs. not") — this lane closes the CI-plumbing
+and cross-platform-compile gap, not the "does the P2P sync protocol
+actually work on Windows at runtime" question, which needs a real
+integration/runtime test this lane did not add.
+
+**Total Windows-only fixes applied across this lane, for reference:**
+§21.10–§21.12 (CI plumbing: PATH word-splitting, MSVC linker pin, `rm -f`
+robustness), §21.14 (`sqlite3.h` via `DEP_SQLITE3_INCLUDE`), §21.15
+(`sqlite3_cloudsync_init` declared/defined linkage), §21.16 (`bcrypt.lib`
+for `BCryptGenRandom`). None touched `crates/sync-p2p/src/agent.rs`; none
+weakened `from-source`'s default-OFF/opt-in status (`cargo check -p
+cloudsync` default resolve stays `features=[]`, reverified after every
+change in this lane).
