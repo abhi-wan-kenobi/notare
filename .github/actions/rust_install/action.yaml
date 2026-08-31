@@ -45,7 +45,7 @@ runs:
         components: ${{ steps.toolchain.outputs.components }}
     - if: inputs.platform == 'windows'
       run: cargo install trusted-signing-cli
-      shell: bash
+      shell: pwsh
       env:
         GITHUB_TOKEN: ${{ github.token }}
     - if: inputs.platform == 'linux'
