@@ -321,6 +321,15 @@ jobs:
       # Visual Studio generator; Ninja inside an MSVC dev environment is the
       # proven fix (see release.yaml + docs/BUILDING.md).
       - uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
+      # This job's `shell: bash` default routes every `run:` step through Git
+      # Bash, whose MSYS2 launcher re-prepends its own `usr/bin` ahead of
+      # whatever msvc-dev-cmd just added to PATH — so rustc's calls to
+      # `link.exe` resolve to Git's POSIX hardlink utility instead of MSVC's
+      # linker. Same interaction, same fix, as `cloudsync_from_source_windows`
+      # (see docs/internal/sync-p2p.md §21.11/§21.12): delete Git's own
+      # `link.exe` before any step that needs MSVC's.
+      - name: Remove Git's link.exe (shadows MSVC's link.exe under Git Bash)
+        run: rm -f /usr/bin/link.exe
       # Compile the STT/dictation pure-logic crates on Windows. `vad` is
       # check-only here: its dev-dependencies pull ONNX Runtime (hypr-onnx),
       # so `cargo test -p vad` would drag the ort runtime download into the
@@ -369,11 +378,161 @@ jobs:
         run: |
           cargo check --locked --features parakeet-onnx,directml -p tauri-plugin-local-stt
 
+  # SYNC-9: prove `cloudsync --features from-source` actually compiles on the
+  # platforms `crates/cloudsync/build.rs`'s `supported()` now claims, beyond
+  # linux/x86_64. `from-source` is default-OFF (deliberately — see
+  # docs/internal/sync-p2p.md §15.2b), so no existing job has ever built this
+  # C code anywhere but Linux; widening `supported()` without this coverage
+  # would just move an untested claim into the docs. Deliberately NOT a full
+  # app build — `cargo check -p cloudsync --features from-source` alone drives
+  # build.rs through the real compile-and-link of the vendored C sources plus
+  # build/network_p2p.c (cargo runs build scripts for `check`, not just
+  # `build`), so this is a genuine compile+link proof, not a Rust-only
+  # typecheck. The feature is NOT enabled for any other job in this file.
+  #
+  # macOS: builds natively for aarch64 (macos-15 runners are Apple Silicon)
+  # and cross-compiles the x86_64 check via `--target`, using the same clang
+  # driver — both targets `supported()` now admits.
+  cloudsync_from_source_macos:
+    if: ${{ !startsWith(github.head_ref || '', 'blog/') }}
+    runs-on: macos-15
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - uses: ./.github/actions/rust_install
+        with:
+          platform: macos
+      - run: echo "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)" >> $GITHUB_ENV
+      - name: cargo check -p cloudsync --features from-source (aarch64-apple-darwin, native)
+        run: cargo check --locked -p cloudsync --features from-source --target aarch64-apple-darwin
+      - name: cargo check -p cloudsync --features from-source (x86_64-apple-darwin, cross)
+        run: cargo check --locked -p cloudsync --features from-source --target x86_64-apple-darwin
+
+  # SYNC-9: same proof for Windows — the platform where `build/network_p2p.c`
+  # needed real Winsock2 changes (SOCKET/closesocket/WSAStartup, not just a
+  # `supported()` toggle), and where `build.rs`'s link step must drive
+  # `cl.exe /LD` instead of `-shared` (this runner uses the MSVC toolchain,
+  # per rust_install's `x86_64-pc-windows-msvc` target — matches windows_stt's
+  # proven setup below).
+  #
+  # PROVISIONAL / NON-BLOCKING, same reasoning as `windows_stt`: this exact
+  # code path has never run on a real Windows runner, so it cannot be proven
+  # green from a Linux dev box (see docs/internal/sync-p2p.md §21 for exactly
+  # what is and is not locally verified). It must be OBSERVED green on
+  # windows-latest across a few PRs before being promoted to a required check.
+  # Promotion checklist: add `cloudsync_from_source_windows` (and
+  # `cloudsync_from_source_macos`, once likewise observed) to the `ci` job's
+  # `needs:` array below.
+  cloudsync_from_source_windows:
+    if: ${{ !startsWith(github.head_ref || '', 'blog/') }}
+    runs-on: windows-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          submodules: recursive
+          persist-credentials: false
+      # msvc-dev-cmd runs BEFORE rust_install, and this job no longer sets
+      # CC/CXX: cl. Run 33410001375 showed rust_install's own embedded
+      # `cargo install trusted-signing-cli` step (unconditional on
+      # platform == 'windows', unrelated to this job) failing with cc-rs's
+      # `ToolNotFound: failed to find tool "cl"` — and windows_stt hit the
+      # identical failure at the identical step in the same run. Confirmed
+      # from both jobs' logs, not a transient runner/network wobble: both
+      # jobs set `CC`/`CXX: cl` at the job level, which overrides cc-rs's own
+      # MSVC-registry auto-detection and forces a bare `cl` lookup on PATH —
+      # and PATH has no cl.exe until msvc-dev-cmd runs, which in both jobs
+      # came AFTER rust_install. Dropping the CC/CXX override restores
+      # cc-rs's normal auto-detection (which does not need PATH pre-seeded);
+      # moving msvc-dev-cmd first is a second, independent guarantee that
+      # cl.exe is already on PATH for every later step, including
+      # rust_install's embedded trusted-signing-cli install.
+      - uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
+      # Run 33411261329 (after the fix above) got past cc-rs's tool lookup and
+      # hit a second, different bug: rustc's own call to `link.exe` resolved
+      # to Git for Windows' `/usr/bin/link.exe` (a POSIX hardlink utility, not
+      # a linker) instead of MSVC's, because this job's `shell: bash` steps
+      # run under Git Bash, whose own MSYS2 launcher re-prepends its `usr/bin`
+      # ahead of whatever msvc-dev-cmd added to PATH — a documented
+      # ilammy/msvc-dev-cmd + Git-Bash interaction, not something GITHUB_PATH
+      # ordering can fix. Confirmed from the log's literal error text
+      # (`"/usr/bin/link: extra operand '...cgu.0.rcgu.o'"` — Git's `link`
+      # tool treats the linker's own arguments as file operands). The release
+      # workflow's actually-proven Windows build (`release.yaml:build-windows`,
+      # which `windows_stt`'s header comment claims to be modeled on but is
+      # not, in this respect) never hits this because it does not set
+      # `shell: bash` at all and does not use `rust_install`.
+      #
+      # First attempt (run 33411261329): `rm -f /usr/bin/link.exe` before
+      # `rust_install`. This looked like it worked — `rust_install`'s own
+      # embedded step went green — but run 33415114684 proved it was not a
+      # real fix: this job's OWN `cargo check -p cloudsync` step, later in
+      # the SAME job, hit the identical `"C:\Program Files\Git\usr\bin\link.exe"`
+      # error again, for the exact same crates (quote/proc-macro2/typenum). A
+      # deleted file cannot reappear mid-job on the same filesystem, so
+      # `rm -f` most likely never actually removed it — `Program Files`
+      # permissions plus `-f` silently swallowing the failure is the leading
+      # explanation — and `rust_install`'s step probably only "passed" that
+      # run because Swatinem/rust-cache happened to restore already-linked
+      # artifacts for `trusted-signing-cli`'s shared deps, sidestepping a
+      # fresh link rather than proving the underlying PATH problem gone.
+      #
+      # Real fix: stop trying to make PATH resolve to the right `link.exe`
+      # under Git Bash at all. Point cargo at it by absolute path instead,
+      # via the standard `CARGO_TARGET_<TRIPLE>_LINKER` env var, which every
+      # `cargo`/`rustc` invocation in this job honors regardless of which
+      # shell launched it or what PATH that shell computed — including
+      # `rust_install`'s embedded `cargo install trusted-signing-cli` step,
+      # since it's exported to the whole job via `$GITHUB_ENV` right here,
+      # immediately after `msvc-dev-cmd` populates PATH with the real MSVC
+      # toolchain and before Git Bash gets a chance to re-derive PATH for a
+      # later step's fresh shell.
+      - name: Pin cargo to MSVC's link.exe by absolute path (bypasses PATH search)
+        run: |
+          # Audit finding (auditor, coder=claude-sonnet-5, gpt-oss seat,
+          # confirmed real): `for dir in $(...)` word-splits on ALL of IFS
+          # (space/tab/newline), not just the `\n` `tr` produced — so a PATH
+          # entry with a space (e.g. `C:\Program Files\Microsoft Visual
+          # Studio\...`, which is exactly where MSVC's link.exe lives) would
+          # silently split into two bogus entries and never match. `IFS=$'\n'
+          # read -d ''` splits on newline only, leaving each entry's spaces
+          # intact.
+          IFS=$'\n' read -d '' -ra path_dirs < <(echo "$PATH" | tr ':' '\n') || true
+          for dir in "${path_dirs[@]}"; do
+            # Audit finding (minimax seat): also require the directory to
+            # look like an actual MSVC/Windows SDK toolchain path, not just
+            # "not Git" — defensive in case some other non-Git, non-MSVC
+            # `link.exe` ever ends up on PATH ahead of the real one.
+            if [ -f "$dir/link.exe" ] && [[ "$dir" != *"/Git/"* ]] \
+              && [[ "$dir" == *"Microsoft Visual Studio"* || "$dir" == *"Windows Kits"* ]]; then
+              echo "found MSVC link.exe: $dir/link.exe"
+              echo "CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER=$dir/link.exe" >> "$GITHUB_ENV"
+              exit 0
+            fi
+          done
+          echo "::error::no MSVC link.exe found on PATH after msvc-dev-cmd" >&2
+          exit 1
+      - uses: ./.github/actions/rust_install
+        with:
+          platform: windows
+      - name: cargo check -p cloudsync --features from-source
+        run: cargo check --locked -p cloudsync --features from-source
+
   ci:
     if: always()
-    # NOTE: `windows_stt` is intentionally NOT listed here yet — it is a
-    # provisional, non-blocking signal (see the comment on that job). Add it
-    # once it has been observed green on windows-latest across a few PRs.
+    # NOTE: `windows_stt` and the two `cloudsync_from_source_*` jobs are
+    # intentionally NOT listed here yet — they are provisional, non-blocking
+    # signals (see the comments on those jobs). Add each once it has been
+    # observed green on its real runner across a few PRs.
     needs: [desktop_ci, desktop_i18n, desktop_swift, linux_crate_check]
     runs-on: ubuntu-latest
     steps:

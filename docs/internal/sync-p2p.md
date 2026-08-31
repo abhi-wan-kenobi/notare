@@ -237,16 +237,16 @@ call.
   `cargo:rustc-env=CLOUDSYNC_FROM_SOURCE_SO=<OUT_DIR>/cloudsync.so`, and
   `bundle.rs` reads it at runtime under `#[cfg(feature = "from-source")]`.
 
-### Per-platform build outputs (only linux/x86_64 proven in S0b)
+### Per-platform build outputs (linux/x86_64 proven in S0b; see §21 for SYNC-9)
 
 | Target | Output | Status |
 |---|---|---|
 | linux/gnu/x86_64 | `cloudsync.so` | ✅ Proven (S0b): builds, loads, `cloudsync_version() == "1.0.12"` |
-| linux/musl/x86_64 | `cloudsync.so` | Not built (build.rs panics under `from-source`; falls through to prebuilt) |
-| linux/aarch64 | `cloudsync.so` | Not built — SYNC-9 |
-| macos (aarch64/x86_64) | `cloudsync.dylib` | Not built — uses upstream `network.m` (NSURLSession), SYNC-9 |
-| android (arm*/x86_64) | `cloudsync.so` | Not built — needs `cacert.h`, SYNC-9 |
-| windows/x86_64 | `cloudsync.dll` | Not built — SYNC-9 |
+| linux/musl/x86_64 | `cloudsync.so` | `supported()` admits it (checks os+arch only, pre-dates SYNC-9) but it is untested; see §21 |
+| linux/aarch64 | `cloudsync.so` | `supported()` admits it (SYNC-9) but **not locally verified** — no aarch64 toolchain on the dev box, no CI job either; see §21 |
+| macos (aarch64/x86_64) | `cloudsync.dylib` | ✅ **Proven (SYNC-9, §21.11, CI run 33411261329):** `cargo check --features from-source` builds and links both `aarch64-apple-darwin` (native) and `x86_64-apple-darwin` (cross) on `macos-15`. Job still provisional/non-blocking pending a few more observed-green runs. |
+| android (arm*/x86_64) | `cloudsync.so` | Still not built — needs `cacert.h`; out of scope, see §21 |
+| windows/x86_64 | `cloudsync.dll` | 🚫 **Blocked, not proven (§21.13, CI run 33419275613):** the Winsock2 port in `network_p2p.c` has never been reached by a Windows compiler — the build fails one file earlier, on the pre-existing (not-SYNC-9) `vendor/src/sqlite/sqlite3ext.h`'s `#include "sqlite3.h"`, which is not vendored anywhere and has always relied on an ambient system header present by accident on linux/macOS, absent on Windows. Three separate Windows CI-plumbing bugs (cc-rs tool lookup, Git Bash's `link.exe` shadowing, twice) were found and fixed first; this is the blocker underneath all of them. |
 
 ## 8. Feature gating
 
@@ -1376,3 +1376,924 @@ pairing commands land in the plugin's single flat `default` permission set is
 accurate but not a regression — every command in this plugin, including raw
 `execute`, has always done so; splitting the permission model is its own piece
 of work.
+
+## 21. SYNC-9 — cross-platform `from-source` builds
+
+S0b through SYNC-6 proved the sync stack end-to-end, but `crates/cloudsync`'s
+`from-source` build only ever compiled on linux/x86_64 — `build.rs` panicked
+on every other target. SYNC-9 widens that, and ports the custom C transport
+(`build/network_p2p.c`) off POSIX-only sockets so Windows can build it. It
+does **not** touch the protocol, the agent, or the peer allowlist — this
+section is entirely about "does the C code compile and link," not "does sync
+work" (that was already proven on linux/x86_64 in §12/§13/§15).
+
+### 21.1 `supported()` — what's admitted now
+
+`crates/cloudsync/build.rs`'s `supported()` went from a single `os ==
+"linux" && arch == "x86_64"` check to a `matches!` over five target pairs:
+
+```rust
+matches!(
+    (os.as_str(), arch.as_str()),
+    ("linux", "x86_64")
+        | ("linux", "aarch64")
+        | ("macos", "aarch64")
+        | ("macos", "x86_64")
+        | ("windows", "x86_64")
+)
+```
+
+Android stays out of `supported()` — it needs
+`vendor/src/network/cacert.h` (an Android-only PEM bundle wired up
+separately), unrelated to this lane. The panic message on an unsupported
+target names it explicitly. **The feature stays default-OFF and opt-in** — no
+line in this change enables `from-source` anywhere by default (§15.2b's
+constraint); a default `cargo check -p cloudsync -v` still shows no
+`--cfg feature="..."` line for the crate, i.e. `features=[]`.
+
+One pre-existing wrinkle, not introduced by this change: `supported()` checks
+`target_os`/`target_arch` only, not `target_env`, so `x86_64-unknown-linux-musl`
+also satisfies `("linux", "x86_64")` — it did before SYNC-9 too, since the
+original check had the same shape. Nothing here makes that better or worse;
+it is untested either way (no musl target on the dev box, no CI job for it).
+
+### 21.2 The link step is now genuinely platform-specific
+
+Compiling the vendored C sources to objects was already portable (`cc::Build`
+translates `.define()`/`.opt_level()`/`.warnings()` per compiler); the two
+places that were NOT portable:
+
+- `-fPIC`: meaningless on Windows and rejected outright by `cl.exe`. Now
+  added only when `target_os != "windows"`.
+- The final manual link (`cc::Build::compile()` is deliberately not used here
+  — see the existing comment — because it would emit `cargo:rustc-link-lib`
+  and wrongly link the extension into the host binary). This now branches
+  three ways:
+  - **linux**: unchanged, `-shared -o cloudsync.so <objects> -lm`.
+  - **macOS**: `-dynamiclib` instead of `-shared` — chosen explicitly to
+    produce a real `.dylib` (matching the `.dylib` extension the prebuilt
+    `vendor/cloudsync/macos/` artifacts already use) rather than relying on
+    clang's Darwin driver to alias `-shared`. This part was right the first
+    time — **but the link still failed on real CI** (§21.10) for an unrelated
+    reason: `-framework Security` was missing. `vendor/src/utils.c` calls
+    `SecRandomCopyBytes`/`kSecRandomDefault` (`<Security/Security.h>`) for
+    UUID generation on Apple targets, and neither `-dynamiclib` nor anything
+    else in the link command pulled that framework in, so `arm64` came back
+    `Undefined symbols ... ld: symbol(s) not found`. Fixed by adding
+    `-framework Security` on the macOS branch only (linux/Windows untouched).
+    `-framework CoreFoundation` was considered and **not** added — nothing in
+    `vendor/src` or `build/network_p2p.c` calls a CF*/CoreFoundation symbol
+    (checked by `grep`), and Security.framework resolves its own internal
+    CoreFoundation dependency without our object files needing to reference
+    it directly. This is inference, not an observed link — the next CI run
+    is the actual proof (§21.10).
+  - **Windows (MSVC, `compiler.is_like_msvc()`)**: `cl.exe` does not
+    understand `-shared`/`-o`. `cl /LD /Fe:<path> <objects> ws2_32.lib` tells
+    `cl` to produce a DLL and invoke `link.exe` itself; the `.o` object files
+    `cc::Build::compile_intermediates()` produces are passed straight to
+    `link.exe` by `cl`'s documented "unrecognized extension → passed to the
+    linker" behavior. **Still entirely unverified** — the first real CI run
+    never reached this code at all; it died inside a shared setup action
+    before `cargo` ever ran (§21.10). This remains documented behavior, not
+    observed behavior.
+  - Windows/GNU (mingw-w64) falls through to the `-shared` branch plus
+    `-lws2_32`, kept working for anyone building outside this repo's CI, but
+    not what the CI job below uses (it targets `x86_64-pc-windows-msvc`, same
+    as the rest of this repo's Windows builds).
+
+The output filename also now varies: `cloudsync.so` / `cloudsync.dylib` /
+`cloudsync.dll`, matching what `bundle.rs`'s prebuilt path already names them
+(the from-source path doesn't care about the extension at runtime — it loads
+whatever path `cargo:rustc-env=CLOUDSYNC_FROM_SOURCE_SO` points at — but
+matching the convention avoids a confusing `.so` on Windows in a debugger).
+
+### 21.3 `network_p2p.c` — Winsock2 port
+
+Ported behind a single `#ifdef _WIN32` block near the top of the file (protocol
+logic — framing, JSON building, base64 — is untouched):
+
+- `sock_t` (typedef `SOCKET` on Windows, `int` elsewhere), `SOCK_INVALID`
+  (`INVALID_SOCKET` vs `-1`), `CLOSESOCK()` (`closesocket` vs `close`) replace
+  every raw `int fd` / `close(fd)` in the file.
+- `IS_RETRYABLE_SEND_RECV_ERROR()` — `errno == EINTR` on POSIX, `false` on
+  Windows (Winsock blocking sockets have no EINTR-equivalent retry case).
+- One-time `WSAStartup`/`WSACleanup`: a static `bool` guard calls
+  `WSAStartup` on first use and registers `WSACleanup` via `atexit`. Not
+  thread-safe against a concurrent first call from two threads — same
+  simplicity tradeoff as the rest of this file (contract §6: the core calls
+  these functions synchronously, one at a time).
+- `send`/`recv` calls now cast `len` to `int` and the return to `int`
+  uniformly on both platforms (Windows' signatures require `int`; every call
+  site is bounded well under `INT_MAX` by the 64 MiB frame cap in
+  `read_frame`, so the cast is exact, not lossy, on POSIX too).
+- `connect()`'s `addrlen` argument is cast to `int` rather than `socklen_t`,
+  since Winsock's `connect()` takes a plain `int` and some Windows SDKs don't
+  define `socklen_t` at all; POSIX's `socklen_t` parameter accepts an `int`
+  argument without complaint.
+- `build.rs` links `ws2_32.lib`/`-lws2_32` on Windows (§21.2).
+
+**macOS** needed none of *this* — BSD sockets, and every header
+`network_p2p.c` itself includes (`<sys/socket.h>`, `<netinet/in.h>`,
+`<arpa/inet.h>`, `<netdb.h>`, `<unistd.h>`) ships with Xcode's SDK; that part
+held up on real CI. What did **not** hold up was the assumption that macOS
+needed nothing *at all* to link successfully — the real failure was one
+directory over, in the pre-existing vendored `utils.c` (§21.2, §21.10), which
+this lane did not audit because it isn't `network_p2p.c`. The lesson: "this
+file's headers are all fine" is not the same claim as "the whole from-source
+build links," and only the second one is what CI actually tests.
+
+### 21.4 The `strstr` JSON parsing — still open, untouched here
+
+Per the spec for this lane, the `strstr`-based response field lookup in
+`network_receive_buffer`/`network_send_buffer` (`"status"`/`"body"`/`"ok"`,
+carried since §12/§13.9) was **not** touched. It is orthogonal to
+cross-platform support — the same tolerant parsing runs on every target — and
+mixing it into this change would blur two unrelated diffs. Still open, still
+tracked as production hardening for a typed codec / hostile-broker fixture.
+
+### 21.5 IPv6 bracket fix (closes the §12/§13.9 carried finding)
+
+`resolve_agent_addr` splits `NOTARE_SYNC_AGENT_ADDR` at the last `:`, so a
+bracketed IPv6 literal like `[::1]:1234` produced host `"[::1]"` — brackets
+included — which `getaddrinfo()` rejects (they're a URI/host:port display
+convention, not part of a valid numeric host argument). Fixed by stripping a
+matching leading `[` / trailing `]` from the host substring immediately after
+the split, before it's used anywhere. The `host_cap` bounds check (fails
+closed on an oversized host) and the "`NOTARE_SYNC_AGENT_ADDR` not set"
+failure path are both unchanged in shape and behavior.
+
+The fix also became the occasion to extract `resolve_agent_addr` (and the new
+`resolve_agent_addr_from`, the pure version that takes the address as a
+parameter instead of reading the env var) into `crates/cloudsync/build/agent_addr.h`
+— a small, dependency-free header (`getenv`/`memcpy`/`strtol` only, no
+cloudsync allocator, no sockets) shared by `network_p2p.c` and by a new test,
+`crates/cloudsync/tests/ipv6_bracket_host_split.rs`. That test compiles a
+tiny, self-contained C harness against `agent_addr.h` and runs it as a
+subprocess (five cases: bracketed IPv6, plain IPv4 unaffected, "not set"/"no
+colon" fail closed, an empty bracketed host `"[]:port"` fails closed (§21.9),
+and the `host_cap` bounds check still fails closed on an oversized bracketed
+host) — gated `#[cfg(feature = "from-source")]`, run by `cargo test -p
+cloudsync --features from-source`.
+
+### 21.6 CI coverage (Requirement 4)
+
+`from-source` is default-OFF, so before this change **no CI job had ever
+compiled this C code anywhere but linux/x86_64** — widening `supported()`
+without CI coverage would only have moved an untested claim from the panic
+message into the docs. `.github/workflows/desktop_ci.yaml` gained two new
+jobs, both scoped to `cargo check -p cloudsync --features from-source` only
+(no other job in the file enables the feature, and neither job does a full
+app build — `cargo check` alone is enough because Cargo runs build scripts
+for `check`, not just `build`, so it still drives the real C compile-and-link):
+
+- **`cloudsync_from_source_macos`** (`macos-15`, Apple Silicon): checks both
+  macOS targets `supported()` now admits — native `aarch64-apple-darwin`, and
+  a `--target x86_64-apple-darwin` cross-check using the same clang/Xcode SDK.
+- **`cloudsync_from_source_windows`** (`windows-latest`, MSVC toolchain via
+  `rust_install(platform: windows)` + `ilammy/msvc-dev-cmd`, mirroring the
+  proven `windows_stt` job's setup): `cargo check -p cloudsync --features
+  from-source` on `x86_64-pc-windows-msvc`.
+
+Both are marked **PROVISIONAL / NON-BLOCKING** — not in the `ci` gate's
+`needs:` list — for the same reason `windows_stt` is: this exact code path
+has never run on a real macOS or Windows runner, so it cannot be proven green
+from this Linux dev box, and a required check that's broken on day one is
+worse than a provisional one. Promotion checklist: once each job has been
+observed green across a few PRs, add it to `ci`'s `needs:` array.
+
+YAML validated with `python3 -c "import yaml; yaml.safe_load(open(...))"` —
+parses, both jobs present, `ci.needs` unchanged (neither new job added yet,
+by design). It cannot be exercised further until the branch is pushed and a
+workflow run actually happens on `macos-15`/`windows-latest`.
+
+### 21.7 What's verified vs. not
+
+**Verified on this (linux/x86_64) dev box:**
+- `cargo check -p cloudsync` (default) — green, and a default `cargo check -p
+  cloudsync -v` shows no `--cfg feature=...` for the crate (`features=[]`).
+- `cargo check -p cloudsync --features from-source` — green; still links
+  `cloudsync.so` and passes the existing `loads_bundled_cloudsync` test.
+- `cargo test -p cloudsync --features from-source` — 6/6 (1 existing +
+  5 new IPv6/agent_addr tests, after the round-2 audit fix in §21.9).
+- `cargo test -p sync-p2p` — 25/25 across `agent`/`crypto`/`identity`/`peers`
+  unit tests, `broker_protocol`, `iroh_transport` (unaffected by this lane —
+  `crates/sync-p2p/src/agent.rs` was not touched).
+- `cargo check -p desktop` (default) and `cargo check -p desktop --features
+  sync` — both green.
+- `supported()`'s logic for every target pair it now admits, indirectly via
+  `cargo check -v`'s panic/no-panic behavior on this host's own
+  `linux`/`x86_64` pair, and by code review of the `matches!` arms (an
+  in-process `#[test]` for `supported()` itself was not added — it reads
+  `CARGO_CFG_*` build-script env vars, which are only meaningfully set inside
+  an actual build-script invocation for the target being built, so testing
+  the other four pairs from a Rust unit test on this host would require
+  faking those env vars rather than genuinely exercising the function against
+  a real build).
+
+**Updated after the first real CI run (run 33410001375, §21.10) — this
+section originally said "not pushed yet"; it has now been pushed and run
+once, and the result was exactly what Requirement 4 exists to catch: the
+macOS reasoning above was wrong (missing `-framework Security`), caught by
+the job, not by review.**
+
+**NOT verified — genuinely still unknown:**
+- **macOS**: unverified again after the §21.10 fix — the corrected link
+  command (`-dynamiclib` + `-framework Security`) has not yet been run on a
+  real macOS CI job. The first run proved the *previous* command wrong; it
+  did not prove the new one right.
+- **Windows**: completely unverified, unchanged since the original writeup —
+  the first CI run never reached `cargo` at all (§21.10), so the `cl /LD` +
+  `ws2_32.lib` link step remains exactly what it was before: documented
+  `cl.exe`/`link.exe` behavior, not observed behavior. The job definition bug
+  that caused this is fixed (§21.10), but that fix is *also* unverified until
+  the next run.
+- `linux/aarch64` — `supported()` admits it, but there is no aarch64
+  toolchain on this dev box and no CI job for it either (unlike macOS/Windows,
+  this repo has no existing aarch64-linux runner shape to reuse cheaply). Risk
+  is lower than Windows/macOS (identical POSIX code path, same compiler
+  family as the proven x86_64 build), but it is unverified, not "should be
+  fine" — a claim this section already got burned on once for macOS.
+- `linux/musl/x86_64` (§21.1) — pre-existing gap, not newly introduced.
+
+**Do not read any of the above as "should work now."** Nothing in §21.2's
+macOS fix or §21.10's Windows job fix has been observed green. The only
+honest status for both platforms, as of this writing, is: fixed against a
+real, specific, logged failure, and unverified again pending the next run.
+
+### 21.8 Still open (unchanged by this lane)
+
+- **⚠️ `plugins/db/Cargo.toml:52` still gates `sync-p2p`/`hypr-cloudsync` to
+  `cfg(all(target_os = "linux", target_arch = "x86_64"))`.** This is the
+  **next required step**, not a minor footnote: even once `crates/cloudsync`
+  itself builds everywhere (and, as of §21.10, it does not yet — verified —
+  anywhere but linux/x86_64), the desktop app's `sync` feature will not pull
+  in `sync-p2p`/`hypr-cloudsync` on macOS, Windows, or linux/aarch64 at all,
+  because this `[target.'cfg(...)'.dependencies]` table only lists
+  `linux`+`x86_64`. Widening `crates/cloudsync/build.rs`'s `supported()`
+  (§21.1) does nothing for the shipped app until this gate is widened to
+  match — deliberately not done in this lane (SYNC-9 is scoped to "does the C
+  code compile", not "is the app allowed to try it"), but it is the concrete,
+  named next step, not a vague follow-up.
+- **`strstr`-based JSON field lookup** (§12/§13.9, §21.4) — production
+  hardening for a typed codec, deliberately not touched here.
+- **No hostile-broker test fixture** (§12) — same reasoning.
+- **Android** — needs `vendor/src/network/cacert.h`; out of scope for this
+  lane, stays out of `supported()`.
+- **Hub failover, blob-log GC, enabling more synced tables** — unrelated to
+  this lane, not attempted.
+
+### 21.9 Audit outcome (2026-08-31) — SYNC-9
+
+`auditor` skill, `--coder claude-sonnet-5`, per-commit/per-file panels
+(seats: `audit-minimax-m2.7`, `audit-gpt-oss:120b`; roster-selected, coder's
+family excluded). Every finding was checked against the real code.
+
+**Fixed (confirmed):**
+
+- `agent_addr.h`'s bracket-stripping accepted `"[]:port"` (an empty
+  bracketed host): `host_len` for `"[]"` is 2, which passes the `host_len >=
+  2` guard, and stripping it yields an empty string with `ok=true` — a value
+  `getaddrinfo()` may treat as "any address" rather than a failure. Caught by
+  the gpt-oss seat; minimax's own walkthrough of the same input asserted
+  `host_len == 1` for `"[]"` and read it as already excluded, which is
+  arithmetically wrong (verified by hand: `"[]"` is 2 characters). Fixed by
+  rejecting a `stripped_len` of 0; covered by
+  `resolve_agent_addr_empty_brackets_fail_closed`.
+- The `cloudsync_from_source_windows` CI job had no `timeout-minutes`, unlike
+  the `windows_stt` job 12 lines above it (minimax). A hung MSVC link would
+  otherwise run for up to the 6-hour GitHub Actions default. Added
+  `timeout-minutes: 60`, then added the same to `cloudsync_from_source_macos`
+  for consistency (minimax, second pass) — both are provisional jobs meant to
+  be observed for a clean signal, not left to hang silently.
+- The IPv6 test harness's scratch temp directories were never cleaned up
+  (2-seat agreement: gpt-oss + minimax) — fixed, cleaned up on the normal
+  completion path (a compile failure still panics before cleanup, leaving the
+  harness source for debugging). gpt-oss separately flagged that the scratch
+  dir name relied on the caller-supplied test `name` being unique, which
+  cargo's same-process multi-threaded test execution does not enforce; added
+  a monotonic counter so every call gets a unique directory regardless of
+  `name`.
+
+**Rejected as false positives (verified against the code):**
+
+- **gpt-oss, `build.rs`:** "`.warnings(false)` hides genuine C compile
+  issues." Pre-existing (not introduced by this diff — see §7 of this doc,
+  "Warnings are off in build.rs [because] upstream code is not
+  warning-clean"); not actioned.
+- **minimax, `build.rs`:** "MSVC `/LD` link step is missing `kernel32.lib`."
+  False — `cl.exe /LD` without `/NODEFAULTLIB` links the CRT's default
+  library set (which pulls in `kernel32.lib`) automatically via
+  `/DEFAULTLIB` directives embedded in the compiled objects; explicitly
+  listing it is never required for a normal `cl.exe` invocation.
+- **minimax, `network_p2p.c` base64 decoder:** claimed a heap overread for
+  `b64_len % 4 == 1`. False — the arithmetic in the finding is wrong (`9 % 4
+  = 1`, not `0`), and the decoder is only reached after an earlier check
+  rejects any `b64_len` that is not a multiple of 4. Also pre-existing code
+  from the §12 audit, untouched by this lane.
+- **minimax, `agent_addr.h`:** "`host_len >= host_cap` should be `host_len >=
+  host_cap - 1`, off-by-one buffer overflow." False — for `host_cap = N`, the
+  check allows `host_len` up to `N - 1`; `memcpy` writes indices `0..N-2` and
+  the NUL terminator lands at index `N - 1`, exactly filling an `N`-byte
+  buffer. Standard, correct sizing, not an overflow.
+- **gpt-oss, `agent_addr.h`:** "the `host_cap` bounds check runs before
+  bracket-stripping, so a buffer sized to fit only the stripped host is
+  rejected." True in the abstract, not actioned: the check is deliberately
+  conservative (checked against the bracketed superset, not the eventual
+  stripped length) per the explicit §12 instruction to keep this bounds
+  check failing closed, and the only real caller (`network_p2p.c`) always
+  passes a fixed 256-byte buffer — orders of magnitude larger than any real
+  IPv6 literal (max 45 chars + 2 brackets), so the scenario is unreachable in
+  practice.
+- **gpt-oss, `agent_addr.h`:** "`strtol` accepts a leading-whitespace port
+  string." True of `strtol` in isolation, not actioned: the port substring
+  only ever originates from `NOTARE_SYNC_AGENT_ADDR`, whose only producer is
+  Rust's `SocketAddr::to_string()` (`crates/sync-p2p/src/agent.rs:191`),
+  which never emits whitespace — same "theoretically true, practically
+  unreachable given the trusted single producer" shape as several §12
+  findings already on record.
+- **gpt-oss, `agent_addr.h`:** "unbracketed IPv6 literals with a trailing
+  port are accepted as a valid host containing a colon." True of the
+  last-colon-split design (pre-existing, not introduced here — bracketing is
+  what makes IPv6:port unambiguous in the first place), and unreachable for
+  the same reason: the only producer always brackets IPv6 via
+  `SocketAddr::to_string()`.
+- **gpt-oss, CI:** "60-minute timeout on `cloudsync_from_source_windows` is
+  too short and will produce false-negative timeouts." Not actioned — the
+  far heavier `windows_stt` job (Vulkan SDK, whisper.cpp, ONNX/DirectML)
+  already runs reliably within the same 60-minute budget, and this job does
+  only two `cargo check` invocations of one small crate.
+- **minimax, `ipv6_bracket_host_split.rs`:** "the IPv4 test doesn't verify
+  the returned port." False — it does (`if (port != 9999) { ... }`).
+
+**Not usefully auditable:** the §21 documentation commit itself (this
+section's own file, ~105k chars inlined — the doc is the single largest file
+in the repo and a modified file's full text is always inlined). Both seats
+returned 0 findings in under 15s each, well outside this tool's validated
+size range (the largest payload that has ever produced a real finding in
+this lane is under 37k chars) and far faster than either seat took on the
+smaller `network_p2p.c` payload earlier in this same run. Per the auditor
+skill's own documented failure mode, a fast 0-finding response on an
+oversized payload reads as clean but is not distinguishable from a seat that
+silently skipped deep reading — recorded here as an inconclusive audit, not
+a clean one. `--only` cannot narrow a single-file audit further; no code
+review substitute was applied beyond a manual re-read of the diff.
+
+### 21.10 CI run 1 (2026-08-31) — the point of Requirement 4, proven
+
+The branch was pushed and `desktop_ci.yaml` triggered via `workflow_dispatch`
+(run `33410001375`). This is what Requirement 4 was for: both new jobs, and
+this section's §21.2/§21.3/§21.7 "not locally verified" hedging, existed
+specifically because reasoning about an unavailable platform is not the same
+as observing it. The run confirmed that directly — the macOS reasoning was
+wrong, and would have shipped wrong without this job.
+
+**`cloudsync_from_source_macos` (job `99546898143`) — FAILED, a real bug,
+now fixed (unverified again):**
+
+```
+error: failed to run custom build command for `cloudsync v0.1.0 (...)`
+Undefined symbols for architecture arm64:
+  "_SecRandomCopyBytes", referenced from: _cloudsync_uuid_v7 in ...utils.o
+  "_kSecRandomDefault", referenced from: _cloudsync_uuid_v7 in ...utils.o
+ld: symbol(s) not found for architecture arm64
+clang: error: linker command failed with exit code 1
+thread 'main' panicked at crates/cloudsync/build.rs:177:5:
+failed to link cloudsync shared object from source
+```
+
+Root cause and fix recorded in §21.2. The bug was not in `network_p2p.c` (the
+file this lane actually rewrote) — it was in the pre-existing vendored
+`utils.c`'s `SecRandomCopyBytes` call, which needs `Security.framework` and
+was never going to link with a bare `-dynamiclib`. §21.3's "macOS needed none
+of this" claim was correct about `network_p2p.c` specifically and misleading
+about the build as a whole; corrected there.
+
+**`cloudsync_from_source_windows` (job `99546898295`) — FAILED, but not at
+any code this lane wrote, and not a transient runner problem either.** The
+job died inside `./.github/actions/rust_install`, specifically at that
+action's own unconditional `cargo install trusted-signing-cli` step (for
+`platform == 'windows'`, unrelated to what this job does) — **before**
+`ilammy/msvc-dev-cmd` ran, so **before** `cargo` ever attempted the
+`cloudsync` check. The Winsock2 port (§21.3) told this run nothing, one way
+or the other.
+
+The coordinator flagged that `windows_stt` failed identically in the same
+run, and that three other jobs failed at `pnpm_install`, raising the
+possibility of a run-wide infrastructure wobble. Checked directly against
+both jobs' logs rather than assumed:
+
+- `windows_stt`'s failure is **the identical error at the identical step**:
+  `error occurred in cc-rs: failed to find tool "cl": program not found`,
+  raised while `cargo install trusted-signing-cli` tries to compile
+  `aws-lc-sys`'s `stdalign_check.c`.
+- Both jobs set `CC: cl` / `CXX: cl` as **job-level env vars**, and both call
+  `./.github/actions/rust_install` (which runs `cargo install
+  trusted-signing-cli` unconditionally for `platform: windows`) **before**
+  `ilammy/msvc-dev-cmd` (which is what puts `cl.exe` on `PATH` and sets
+  `INCLUDE`/`LIB`). Setting `CC=cl` overrides `cc-rs`'s own MSVC-registry
+  auto-detection (which does not need `cl.exe` on `PATH` — it locates MSVC
+  directly via `vswhere`/the registry) and forces a bare-name `PATH` lookup
+  for `cl` instead. At the point `rust_install`'s embedded step runs, `PATH`
+  has no `cl.exe` yet in either job, so the lookup fails.
+
+This is **not** the `pnpm_install`/transient-infra explanation — it is a
+deterministic ordering bug, reproducible from the log alone, caused by a
+specific env-var + step-order combination that this job copied from
+`windows_stt` (which was described, incorrectly, as this job's "proven"
+setup — it turned out not to have been proven at all, at least not in this
+exact form, in this run). Fixed here, in this job only: dropped the `CC`/
+`CXX: cl` override (`cc-rs`'s default auto-detection needs no override), and
+moved `ilammy/msvc-dev-cmd` before `rust_install` as a second, independent
+guarantee. **`windows_stt` was deliberately left untouched** — it is a
+different lane's job, out of scope for this one, and the coordinator has not
+asked for it to be fixed here; this section records the shared root cause so
+whoever does fix it does not have to re-diagnose it.
+
+**Status after this round: still zero observed-green platforms beyond
+linux/x86_64.** The macOS fix and the Windows job-ordering fix are both
+untested against a real runner as of this writing — say so explicitly rather
+than letting the fixes read as "now it works." The next `desktop_ci` run
+against this branch is the actual proof, not this section.
+
+### 21.11 CI run 2 (2026-08-31) — macOS confirmed GO; a second, distinct Windows bug
+
+Pushed and re-triggered (`gh workflow run desktop_ci.yaml --ref
+feat/sync-9-crossplatform`, run `33411261329`).
+
+**`cloudsync_from_source_macos` (job `99551111477`) — GREEN.** Both steps
+passed: `cargo check -p cloudsync --features from-source` for
+`aarch64-apple-darwin` (native) and `x86_64-apple-darwin` (cross), 3m41s
+total. This is the first real observed proof that `crates/cloudsync`'s
+`from-source` build compiles and links on macOS, on both admitted
+architectures. §21.2/§21.7's "not locally verified" macOS hedging is
+resolved: the `-dynamiclib` + `-framework Security` link command is now
+**confirmed correct**, not just reasoned-through.
+
+**`cloudsync_from_source_windows` (job `99551111594`) — FAILED again, but
+past the first bug, at a second and different one.** `cl.exe` was found this
+time (the §21.10 fix worked for that part — `getrandom`, `quote`,
+`proc-macro2` all reached the compile stage while `cargo install
+trusted-signing-cli` built), but the **link** step then failed:
+
+```
+error: linking with `link.exe` failed: exit code: 1
+  = note: "C:\Program Files\Git\usr\bin\link.exe" "/NOLOGO" ...
+  = note: /usr/bin/link: extra operand '...build_script_build...cgu.0.rcgu.o'
+          Try '/usr/bin/link --help' for more information.
+note: `link.exe` returned an unexpected error
+note: the Visual Studio build tools may need to be repaired using the Visual Studio installer
+error: could not compile `getrandom` (build script) due to 1 previous error
+```
+
+`rustc` resolved `link.exe` to **Git for Windows' own `/usr/bin/link.exe`**
+— a POSIX hardlink utility, not a linker — instead of MSVC's, because this
+job's `shell: bash` steps run through Git Bash, whose MSYS2 launcher
+re-prepends its own `usr/bin` ahead of whatever `ilammy/msvc-dev-cmd` added
+to `PATH`. This is a known interaction between `ilammy/msvc-dev-cmd` and
+Git-Bash-shell steps on Windows GitHub Actions runners, not something
+`GITHUB_PATH` ordering between steps can fix (Git Bash's own path
+translation happens inside `bash.exe`'s own startup, on every invocation,
+independent of accumulated `GITHUB_PATH` order).
+
+Checked against this repo's own precedent to make sure the fix direction was
+right rather than guessed: `release.yaml`'s `build-windows` job — the job
+`windows_stt`'s header comment claims to model this whole setup on — does
+**not** set `shell: bash` anywhere (its `CC`/`CXX: cl` are scoped to one
+`pnpm -F desktop tauri build` step, after `msvc-dev-cmd`, running under the
+default `pwsh`) and does **not** use `./.github/actions/rust_install` at all.
+`windows_stt` (and this job, copied from it per the original task) diverged
+from the actually-proven shape in exactly the two ways that caused both
+rounds of failure: a job-level `shell: bash` default, and the shared
+`rust_install` action's unrelated `trusted-signing-cli` install.
+
+Fixed with the standard remedy for this exact interaction: a step that
+deletes Git's own `link.exe` (`rm -f /usr/bin/link.exe`, harmless on an
+ephemeral runner) before anything that needs MSVC's linker. Added between
+`msvc-dev-cmd` and `rust_install`, so it protects both `rust_install`'s
+embedded `trusted-signing-cli` build and this job's own `cargo check` step.
+**`windows_stt` was not touched** (different lane's job, out of scope here);
+it has not yet been observed reaching this second bug itself, since it still
+fails at the first one (§21.10) every time — but it uses the identical
+`shell: bash` + `msvc-dev-cmd` combination and would very likely hit the
+identical `link.exe` shadowing once/if its `CC`/`CXX: cl` issue is fixed.
+Recorded here so whoever fixes that job does not have to rediscover this.
+
+**Status after this round: macOS is GO (observed, not reasoned). Windows
+remains unverified** — the link.exe fix above has itself not yet been
+observed against a real run. Do not read this section as "Windows now
+works"; it is "Windows failed at a new, later point, with a specific fix
+applied and not yet confirmed." The next `desktop_ci` run is still the
+actual proof.
+
+### 21.12 CI run 3 (2026-08-31) — the `rm -f` fix did not actually work; a more robust fix applied
+
+A run auto-triggered by the push (`33415114684`) landed before this lane
+manually re-triggered one, so the manual duplicate (`33415444234`) was
+cancelled and the auto-triggered run was used instead — same commit either
+way.
+
+**`cloudsync_from_source_macos` — GREEN again** (second confirmation, same
+as §21.11).
+
+**`cloudsync_from_source_windows` — FAILED again, past `rust_install` this
+time, at this job's own `cargo check -p cloudsync --features from-source`
+step:**
+
+```
+error: linking with `link.exe` failed: exit code: 1
+  = note: "C:\Program Files\Git\usr\bin\link.exe" "/NOLOGO" ...quote...
+  = note: /usr/bin/link: extra operand '...build_script_build...cgu.0.rcgu.o'
+error: could not compile `quote` (build script) due to 1 previous error
+... (same for proc-macro2, typenum)
+```
+
+This is important, not just another failure: `./.github/actions/rust_install`
+**succeeded this run**, including its embedded `cargo install
+trusted-signing-cli` step — meaning the §21.11 `rm -f /usr/bin/link.exe` fix
+*looked* like it worked. It had not. This job's own next step, a few seconds
+later in the same job, hit the **identical** `C:\Program Files\Git\usr\bin\link.exe`
+error for the identical class of crates (`quote`, `proc-macro2`, `typenum` —
+`getrandom` was the one that failed under `trusted-signing-cli` in §21.11).
+A file that was genuinely deleted cannot reappear mid-job on the same
+runner's filesystem, so `rm -f` almost certainly never removed the real
+file — `C:\Program Files\...` permissions plus `-f` silently swallowing a
+failed `unlink()` is the leading explanation, and `rust_install`'s step most
+likely only went green because `Swatinem/rust-cache` restored already-linked
+build-script artifacts for `trusted-signing-cli`'s shared deps, skipping a
+fresh link rather than proving the PATH problem was gone. This job's own
+`cargo check -p cloudsync` builds a dependency graph `cloudsync` has never
+had cached anywhere, so it needed a genuinely fresh link and hit the
+still-live bug.
+
+**Lesson recorded plainly: a job going green is not proof a fix worked
+unless the specific thing the fix targets was actually exercised.**
+`rust_install` going green in §21.11 was treated as confirmation; it should
+have been treated as "consistent with, but not proof of" the fix, precisely
+the distinction this whole §21 has otherwise been careful about for
+macOS/Windows generally.
+
+**Fixed with a different approach: stop relying on PATH resolution picking
+the right `link.exe` under Git Bash at all.** A new step immediately after
+`msvc-dev-cmd` scans `$PATH` for the first `link.exe` NOT under a `.../Git/...`
+directory and pins `CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER` to its
+absolute path via `$GITHUB_ENV`. Cargo/rustc read that env var directly for
+every invocation regardless of which shell launched them or what PATH that
+shell independently derived, so it protects both `rust_install`'s embedded
+`trusted-signing-cli` build and this job's own check step without depending
+on PATH ordering surviving a fresh Git Bash shell. The step fails loudly
+(`exit 1`) if no non-Git `link.exe` is found, rather than silently
+proceeding into the same failure mode again.
+
+**Status after this round: still zero observed-green Windows runs.** Three
+rounds, three distinct Windows CI-plumbing bugs (`ToolNotFound: cl`, PATH
+resolving to Git's `link.exe`, and that "fix" not actually taking effect),
+and in every round the failure was in shared setup machinery
+(`rust_install`, `msvc-dev-cmd`/Git-Bash interaction) — **not once has this
+job reached a point where it evaluated the Winsock2 port in
+`network_p2p.c`.** That code remains exactly as unverified as it was before
+any of these three rounds. If the next run also fails before reaching the
+`cargo check` step's actual compilation of `cloudsync`, that is the signal
+to stop iterating on this job's plumbing and report it blocked rather than
+attempt a fourth fix.
+
+### 21.13 CI run 4 (2026-08-31) — past all plumbing; a real, root-caused
+blocker, not fixed here
+
+Same push, a second `workflow_dispatch` triggered directly against the
+commit with the round-3 audit fixes (word-splitting, MSVC-path validation)
+since the auto-triggered run had picked up an older commit.
+
+**`cloudsync_from_source_macos` — GREEN a third time.**
+
+**`cloudsync_from_source_windows` — past every plumbing step for the first
+time.** `msvc-dev-cmd`, the linker pin, and `rust_install` (with its
+embedded `trusted-signing-cli` install) all succeeded. `cargo check -p
+cloudsync --features from-source` then actually ran cl.exe against the
+vendored C sources — real progress, and confirmation the three plumbing
+fixes (§21.10–§21.12) hold up together — and failed on a real, substantive
+issue:
+
+```
+D:\a\notare\notare\crates\cloudsync\vendor\src\sqlite\sqlite3ext.h(20):
+fatal error C1083: Cannot open include file: 'sqlite3.h': No such file or directory
+error occurred in cc-rs: command did not execute successfully (status code
+exit code: 2): "...cl.exe" ... "-I" "...\vendor\src" "-I" "...\vendor\src\network"
+"-I" "...\vendor\src\sqlite" "-I" "...\vendor\src\modules/fractional-indexing"
+... "-c" "...\vendor\src\network/network.c"
+```
+
+**Root cause, confirmed by inspection, not guessed:**
+`crates/cloudsync/vendor/src/sqlite/sqlite3ext.h:20` does `#include
+"sqlite3.h"`, and **`sqlite3.h` is not vendored anywhere under
+`crates/cloudsync/vendor/`** (`find ... -iname sqlite3.h` returns nothing).
+`build.rs`'s four include dirs (vendor root, `network/`, `sqlite/`,
+`modules/fractional-indexing/`) never contained it either. The from-source
+build has always resolved this header through the **compiler's implicit
+default system include path** — `/usr/include/sqlite3.h`, confirmed present
+on this dev box via the `libsqlite3-dev` apt package (`dpkg -l | grep
+sqlite3`) — which is why linux/x86_64 (S0b, proven since before SYNC-9) and
+now macOS (§21.11–§21.13, both proven via CI) never showed this: both
+platforms' default toolchains (`gcc`/`clang`) search `/usr/include`
+automatically, and both ship or commonly have SQLite dev headers there
+(macOS via the system SDK, linux via the CI image's preinstalled package).
+**`cl.exe` has no equivalent implicit system header path, and Windows does
+not ship SQLite headers at all.** This was never exercised before this CI
+job existed — `plugins/db/Cargo.toml`'s `linux`+`x86_64`-only dependency
+gate (§21.8) meant `from-source` had never compiled on Windows anywhere in
+this repo's history until this run.
+
+Checked and ruled out before writing this up: `libsqlite3-sys` (pulled in
+transitively via `sqlx`'s `sqlite-unbundled` feature, `cargo tree -p
+cloudsync -i libsqlite3-sys` confirms the path) does **not** help here —
+"unbundled" means it links the system `libsqlite3` dynamically using
+pregenerated Rust FFI bindings, with no C header and no `DEP_*`
+include-path metadata for a dependent build script to consume. The gap is
+isolated to `crates/cloudsync/vendor/`'s own C sources; nothing else in the
+dependency graph already carries a usable `sqlite3.h` this build could be
+pointed at.
+
+**Not fixed in this lane.** The fix is realistically: vendor `sqlite3.h`
+(and whatever `sqlite3ext.h` transitively needs) into
+`crates/cloudsync/vendor/` and add that directory to `build.rs`'s
+`include_dirs` on every platform, so the build stops depending on an
+ambient system header that happened to exist on two of three target OSes by
+accident. That is a real, bounded fix, but it is a **version-matching
+decision, not a plumbing one**: the vendored cloudsync C sources
+(`cloudsync_sqlite.c`, `database_sqlite.c`, etc.) were written against a
+specific SQLite ABI, and vendoring the wrong `sqlite3.h` version risks a
+silent mismatch that a Windows-only CI job would not catch (it only checks,
+never runs, the extension). Picking the right version — and confirming
+vendoring a header doesn't shadow-and-diverge from whatever `sqlite3.h`
+linux/macOS currently resolve to system-side — needs care this lane did not
+have license to rush. Per this lane's own instructions ("if you conclude it
+can't be done without restructuring CI, STOP and report rather than
+skipping it"), the equivalent judgment applies here: **blocked on picking
+and vendoring a correctly-versioned `sqlite3.h`, because doing it wrong
+risks a silent ABI mismatch invisible to a check-only CI job.** Reported,
+not guessed at.
+
+**Status: Windows `from-source` compilation is now blocked on one specific,
+well-understood, non-plumbing issue — not on CI configuration.** This is
+real progress relative to §21.10–§21.12 (three rounds of pure Windows CI
+plumbing, zero code-level information) and should not be read as "still
+broadly unverified" — the Winsock2 port in `network_p2p.c` itself has still
+never been reached by a compiler on Windows, because the build fails one
+file earlier, on a pre-existing vendored file this lane did not touch.
+`cloudsync_from_source_windows` stays provisional/non-blocking; do not
+promote it until this is resolved and a run reaches (and passes or fails
+on) `network_p2p.c` itself.
+
+### 21.14 The `sqlite3.h` fix — reuse `libsqlite3-sys`'s bundled header,
+don't vendor a copy
+
+§21.13 left this **not fixed**, flagged as a version-matching decision that
+needed care. It turned out not to need a new decision at all: the workspace
+already has an authoritative, correctly-versioned `sqlite3.h` sitting one
+`links` hop away, via `crates/db-core`'s existing `libsqlite3-sys = "0.35"`
+dependency (used *bundled*, confirmed via `cargo tree -p db-core -e features
+-i libsqlite3-sys`: `sqlx-sqlite`'s default `bundled` feature is active
+workspace-wide even though every crate's own `sqlx` dependency asks for
+`sqlite-unbundled` — feature unification pulls both in). `libsqlite3-sys`
+declares `links = "sqlite3"`, which is exactly the Cargo mechanism for one
+build script to hand a resolved include path to another's.
+
+**The fix:** `crates/cloudsync` now depends on `libsqlite3-sys = "0.35"`
+(same version already used elsewhere in the workspace — no new SQLite
+version introduced), `optional = true`, `features = ["bundled"]`, gated into
+the `from-source` feature via `dep:libsqlite3-sys` so a default
+(`from-source` off) resolve never touches it. `build.rs` reads
+`DEP_SQLITE3_INCLUDE` (the `cargo:include=...` libsqlite3-sys's own build
+script emits) and appends it to the include dirs used to compile every
+vendored `.c` file, instead of relying on whatever the compiler's implicit
+system include path happens to contain. If the var is absent, `build.rs`
+`panic!`s with an explicit message rather than silently falling back to a
+system header — the fallback was the bug.
+
+**Two things had to be verified empirically, not assumed, and one of them
+overturned the first draft of this fix:**
+
+1. **`links` metadata does not cross a `[build-dependencies]` edge.** The
+   first attempt put `libsqlite3-sys` under `[build-dependencies]` (it's only
+   ever used from `build.rs`, never from cloudsync's own Rust code, so that
+   looked right). It compiled, and even correctly built libsqlite3-sys in
+   `bundled` mode with `cargo:include` present in its own `output` file — but
+   `DEP_SQLITE3_INCLUDE` never reached cloudsync's build script. Confirmed by
+   instrumenting `build.rs` to dump every `DEP_*`/`*SQLITE*` env var it
+   received: zero, out of 98 total vars in the process env (`cargo build -p
+   cloudsync --features from-source -vv` also confirms `-vv`'s own dump of the
+   `build-script-build` invocation env has no `DEP_SQLITE3_*` entry, even
+   though the same command line correctly links
+   `--extern libsqlite3_sys=...rlib -L native=.../libsqlite3-sys-<hash>/out`).
+   Moving the dependency to a normal `[dependencies]` entry (still
+   `optional = true`, still gated behind `from-source`, never used from Rust
+   code) fixed it immediately — `DEP_SQLITE3_INCLUDE` showed up on the next
+   build. Cargo's `links`/`DEP_*` forwarding is scoped to the normal/target
+   dependency graph, not the host-only build-dependency graph, regardless of
+   host == target. This is a correction to this lane's own initial premise,
+   not a deviation from the diagnosed root cause.
+
+2. **The `bundled` feature has to be requested explicitly on this new edge,
+   not inherited.** The first `[dependencies]` attempt (before adding
+   `features = ["bundled"]`) also failed to produce `DEP_SQLITE3_INCLUDE`,
+   because without an explicit feature request cargo unified this edge with
+   whatever the *lowest common denominator* across the workspace happened to
+   be at the time it resolved a fresh build unit and picked the
+   `pkg-config`/system-`sqlite3` path (`output` file full of
+   `PKG_CONFIG_*`/`SQLITE3_INCLUDE_DIR` rerun-if-env-changed lines, no
+   `cargo:include` anywhere). Adding `features = ["bundled"]` directly on
+   cloudsync's dependency forces that edge to actually compile the vendored
+   SQLite amalgamation and emit `cargo:include`. Because it's the exact same
+   crate name+version as db-core's existing dependency, Cargo unifies the two
+   into one build with the union of features — no second/duplicate SQLite
+   gets linked into the app; confirmed no new `libsqlite3-sys-*` build
+   directory appears once both edges request `bundled` (only one edge
+   resolves in the manifest per platform's default-vs-`from-source` split, so
+   this couldn't be checked as two-simultaneously-active edges on this box,
+   but the "only one `links = "sqlite3"` package in the graph" rule is a hard
+   Cargo resolver constraint, not a convention, so this cannot silently
+   diverge into two SQLite copies).
+
+**Confirmed working, end to end, on Linux:**
+```
+warning: cloudsync@0.1.0: cloudsync from-source: using sqlite3.h from DEP_SQLITE3_INCLUDE=/home/.../\
+  .cargo/registry/src/index.crates.io-.../libsqlite3-sys-0.35.0/sqlite3
+```
+`cargo check -p cloudsync` (default): `cloudsync: features=[]` in the
+workspace resolve, confirmed via `cargo metadata` — no `libsqlite3-sys` edge
+activated. `cargo check -p cloudsync --features from-source`, `cargo test -p
+cloudsync --features from-source` (compiles and links the real vendored
+extension, `tests::loads_bundled_cloudsync` passes), `cargo check -p desktop`
+(default) and `--features sync`: all green, no warnings beyond pre-existing
+ones unrelated to this change.
+
+**The latent Linux/macOS ABI-mismatch bug (§ "This also fixes a latent bug"
+in this lane's brief) — verified fixed, not just asserted.** Before this
+change, the from-source build's implicit include path was the *system*
+`sqlite3.h` (`/usr/include/sqlite3.h` on this box, confirmed present via
+`libsqlite3-dev`, version 3.45.1 — a different SQLite than whatever
+libsqlite3-sys 0.35 bundles), while the app links libsqlite3-sys's *bundled*
+SQLite at runtime — two potentially-different SQLite versions, header vs.
+linked library. After this change, `DEP_SQLITE3_INCLUDE` resolves to
+`~/.cargo/registry/.../libsqlite3-sys-0.35.0/sqlite3` — the **same**
+libsqlite3-sys copy the app actually links, on every platform, not the
+system path. The include path genuinely changed, confirmed by direct
+inspection of the resolved env var (not inferred from the diff alone).
+
+**Not yet done, deliberately, next in this lane:** none of this has been
+pushed or exercised by `cloudsync_from_source_windows` yet — Linux
+`cargo check`/`cargo test` only proves the wiring and the include-path
+mechanics, not that `cl.exe` accepts the vendored sources once `sqlite3.h`
+resolves. §21.13 already predicted more POSIX-assumption failures once
+`sqlite3ext.h` stops being the first wall; the CI push after this section is
+where that gets found out.
+
+### 21.15 CI run 5 (2026-08-31) — `sqlite3.h` resolved; a second, unrelated
+Windows-only compile error found and fixed
+
+Pushed §21.14's commits, `gh workflow run desktop_ci.yaml --ref
+feat/sync-9-crossplatform`, run 33421679164.
+
+**`cloudsync_from_source_macos` — GREEN a fourth time.** No regression from
+the `libsqlite3-sys` dependency change (§21.14 only touches the `from-source`
+feature's own include-path resolution; nothing about the macOS link step
+changed).
+
+**`cloudsync_from_source_windows` — past `sqlite3ext.h`/`sqlite3.h` for the
+first time; failed one file later on an unrelated, real MSVC strictness
+issue:**
+```
+D:\a\notare\notare\crates\cloudsync\vendor\src\sqlite\cloudsync_sqlite.c(1492):
+error C2375: 'sqlite3_cloudsync_init': redefinition; different linkage
+D:\a\notare\notare\crates\cloudsync\vendor\src\sqlite\cloudsync_sqlite.h(17):
+note: see declaration of 'sqlite3_cloudsync_init'
+```
+The compile command in the log confirms §21.14 worked exactly as intended:
+`-I ...\libsqlite3-sys-0.35.0/sqlite3` is present, `sqlite3.h` resolved, and
+the compiler got 8+ vendored `.c` files further than any previous Windows CI
+run (`dbutils.c`, `cloudsync_sqlite.c`, etc. — confirmed by the log showing
+each file name streamed as `cc` compiled it, stopping only at
+`cloudsync_sqlite.c`).
+
+**Root cause:** `cloudsync_sqlite.c:1492` defines
+`APIEXPORT int sqlite3_cloudsync_init(...)`, where `APIEXPORT` expands (line
+28-31 of that file) to `__declspec(dllexport)` on `_WIN32` and to nothing
+elsewhere. `cloudsync_sqlite.h:17` forward-declares the same function with no
+linkage specifier at all. GCC/clang never enforce declaration/definition
+linkage agreement this strictly, so this mismatch was invisible on
+linux/macOS; MSVC does enforce it and treats it as a hard error (C2375), not
+a warning — this is a real, pre-existing inconsistency in the vendored
+source, unrelated to the `sqlite3.h` fix, that no compiler had ever been
+strict enough to catch until now.
+
+**Fix (minimal, matches the file's own existing pattern, no `#ifdef`
+restructuring):** added the identical conditional `APIEXPORT` macro
+definition to `cloudsync_sqlite.h` (right before the declaration, inside its
+own include guard) and applied it to the declaration, so declaration and
+definition now agree on both platforms. `cloudsync_sqlite.h` is only
+`#include`d by `cloudsync_sqlite.c` (confirmed via grep — no other
+translation unit is affected), and that file's own later
+`#define APIEXPORT ...` block is a legal C macro redefinition (identical
+token sequence), so nothing else changes. Verified with `cargo test -p
+cloudsync --features from-source` on Linux (unaffected, `APIEXPORT` still
+expands to nothing there) and `cargo check -p cloudsync`/`-p desktop`
+default (unaffected, feature-gated code path only).
+
+**Not yet done:** this fix has not yet been exercised by CI — next step is
+push, re-trigger, and read the actual next Windows error (if any). Per
+§21.13's prediction, more POSIX/MSVC-strictness mismatches in the vendored C
+are plausible; each one gets the same treatment (minimal, targeted,
+non-restructuring fix) unless a genuine design decision is required, in
+which case this lane stops and reports rather than guessing.
+
+### 21.16 CI run 6 (2026-08-31) — every vendored `.c` file compiles; a
+missing Windows import lib, same shape as the macOS one
+
+Pushed §21.15's linkage fix, run 33422610638.
+
+**`cloudsync_from_source_macos` — GREEN a fifth time.**
+
+**`cloudsync_from_source_windows` — compilation of every vendored source
+file succeeded for the first time, including `network_p2p.c` (the Winsock2
+port this whole lane exists to reach).** The log streams every file name as
+`cc` compiles it — `block.c`, `cloudsync.c`, `dbutils.c`, `lz4.c`, `pk.c`,
+`utils.c`, `network.c`, all four `sqlite/*.c` files,
+`fractional_indexing.c`, and finally `network_p2p.c` — with zero compiler
+errors. It failed one step later, at link:
+```
+80d23e1392036d63-utils.o : error LNK2019: unresolved external symbol
+BCryptGenRandom referenced in function cloudsync_uuid_v7
+...cloudsync.dll : fatal error LNK1120: 1 unresolved externals
+```
+
+**Root cause:** `vendor/src/utils.c` already has a correct `#ifdef _WIN32`
+branch (parallel to its macOS `SecRandomCopyBytes` branch) calling
+`BCryptGenRandom` for UUID generation, and already `#include <bcrypt.h>` —
+the vendored *source* was Windows-ready. What was missing was
+`build.rs`'s link step: `bcrypt.lib` (MSVC) / `-lbcrypt` (GNU) was never
+added alongside `ws2_32.lib`/`-lws2_32`, so the import lib for
+`BCryptGenRandom` was never supplied to the linker. Exactly the same shape
+of bug as the macOS `Security.framework`/`SecRandomCopyBytes` fix already in
+this file (§21 CI run 1) — a platform API the vendored C correctly calls,
+whose import library the link step didn't yet know to pull in — just
+surfaced one CI round later because compilation itself was still failing
+until §21.14/§21.15 landed.
+
+**Fix:** added `bcrypt.lib` to the MSVC link `cmd` (next to `ws2_32.lib`)
+and `-lbcrypt` to the non-MSVC-Windows (mingw) branch (next to `-lws2_32`)
+in `build.rs`. No vendored source changed — this is a build.rs-only fix, no
+`#ifdef` shim was needed since the C side was already correct. Verified
+with `cargo test -p cloudsync --features from-source`, `cargo check -p
+cloudsync` (default), `cargo check -p desktop` (default) on Linux — all
+green; the change is Windows-only (`is_windows` branches), so it cannot
+affect linux/macOS behavior.
+
+**Not yet done:** not yet exercised by CI. This is the first Windows
+failure in this lane that is a *link* error rather than a *compile* error —
+if this is the last missing import lib, the next run should reach an
+actual link success and produce `cloudsync.dll`, at which point
+`network_p2p.c`'s Winsock2 code will have been built (not yet run/tested,
+only compiled+linked) for the first time ever.
+
+### 21.17 CI run 7 (2026-08-31) — `cloudsync_from_source_windows` GREEN
+
+Pushed §21.16's `bcrypt.lib` fix, run 33423198769.
+
+**`cloudsync_from_source_macos` — GREEN a sixth consecutive time.** No
+regression at any point across this lane's five pushes (§21.13–§21.17).
+
+**`cloudsync_from_source_windows` — GREEN, for the first time ever.** Job
+`99590359350`'s only substantive step, `cargo check -p cloudsync --features
+from-source`, completed with conclusion `success`; the job log ends `
+Finished \`dev\` profile [unoptimized + debuginfo] target(s) in 2m 45s`
+after zero compiler or linker errors. Confirmed directly in the log (not
+inferred from the green checkmark alone):
+```
+warning: cloudsync@0.1.0: cloudsync from-source: using sqlite3.h from DEP_SQLITE3_INCLUDE=\
+  C:\Users\runneradmin\.cargo\registry\src\index.crates.io-.../libsqlite3-sys-0.35.0/sqlite3
+```
+— the same `DEP_SQLITE3_INCLUDE` mechanism verified locally on Linux in
+§21.14 resolves correctly on the actual Windows runner, to the Windows
+runner's own `libsqlite3-sys` registry checkout (not a shared/cached path
+from another OS), pointing at the bundled header rather than any system
+one (Windows has none to fall back to regardless, which is exactly why
+this had to work).
+
+**What this closes out:** every vendored `.c` file — including
+`network_p2p.c`, the Winsock2 network layer this entire SYNC-9 lane exists
+to get in front of a compiler — has now been compiled and linked by MSVC.
+This is a **compile+link** proof only: `cloudsync_from_source_windows` is a
+`cargo check`, it does not execute the extension or exercise
+`network_p2p.c`'s Winsock2 code paths at runtime. That remains open per
+§21.7/§21.8 ("what's verified vs. not") — this lane closes the CI-plumbing
+and cross-platform-compile gap, not the "does the P2P sync protocol
+actually work on Windows at runtime" question, which needs a real
+integration/runtime test this lane did not add.
+
+**Total Windows-only fixes applied across this lane, for reference:**
+§21.10–§21.12 (CI plumbing: PATH word-splitting, MSVC linker pin, `rm -f`
+robustness), §21.14 (`sqlite3.h` via `DEP_SQLITE3_INCLUDE`), §21.15
+(`sqlite3_cloudsync_init` declared/defined linkage), §21.16 (`bcrypt.lib`
+for `BCryptGenRandom`). None touched `crates/sync-p2p/src/agent.rs`; none
+weakened `from-source`'s default-OFF/opt-in status (`cargo check -p
+cloudsync` default resolve stays `features=[]`, reverified after every
+change in this lane).

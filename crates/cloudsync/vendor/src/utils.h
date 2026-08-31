@@ -12,8 +12,16 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include <strings.h>
 #include <string.h>
+// NOTARE VENDOR PATCH (SYNC-9, docs/internal/sync-p2p.md §21.12): MSVC has no
+// <strings.h>; strcasecmp/strncasecmp live in <string.h> as _stricmp/_strnicmp
+// instead. Re-apply this patch after any upstream cloudsync bump.
+#ifdef _WIN32
+    #define strcasecmp _stricmp
+    #define strncasecmp _strnicmp
+#else
+    #include <strings.h>
+#endif
 #include "database.h"
 
 // CLOUDSYNC_DESKTOP_OS = 1 if compiling for macOS, Linux (desktop), or Windows
