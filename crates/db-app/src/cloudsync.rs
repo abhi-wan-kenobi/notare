@@ -2,19 +2,12 @@ use std::sync::LazyLock;
 
 use hypr_db_core::CloudsyncTableSpec;
 
-/// SYNC-5: the tables actually enabled for CRDT sync. Enabling a table here
-/// mutates its data semantics across every paired device, so this list must
-/// only ever contain tables a convergence proof has covered.
-///
-/// **It is empty on purpose.** The SYNC-4 proofs
-/// (`crates/sync-p2p/examples/sync_three_nodes.rs`, `sync_two_nodes.rs`,
-/// `drain_regression.rs`) converged a synthetic `notes (id INTEGER PRIMARY
-/// KEY, body TEXT)` table — not one notare app table. The transport
-/// (iroh, hub, drain, token) is proven; no app table's row shape has been
-/// through a convergence proof (sessions carries tombstone `deleted_at`,
-/// STRICT typing and JSON columns whose CRDT behavior is unproven). SYNC-6
-/// extends this list table-by-table, proof first.
-const SYNCED_TABLES: &[&str] = &[];
+/// SYNC-6: the tables actually enabled for CRDT sync. Enabling a table here
+/// mutates its data semantics across every paired device, so each table must
+/// have a convergence proof (§17-style) before it is added. SYNC-6 part A
+/// proved convergence for the real `sessions` + `session_documents` schema
+/// (TEXT-PK, STRICT, FK, `deleted_at` tombstones, no resurrect).
+const SYNCED_TABLES: &[&str] = &["sessions", "session_documents"];
 
 static CLOUDSYNC_TABLE_REGISTRY: LazyLock<Vec<CloudsyncTableSpec>> = LazyLock::new(|| {
     [
