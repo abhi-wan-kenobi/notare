@@ -2,6 +2,15 @@ inputs:
   platform:
     required: false
     default: ""
+  windows-code-signing:
+    description: >-
+      Install trusted-signing-cli for Windows Trusted Signing. Only jobs
+      that actually sign Windows binaries need this; leave it off for
+      compile/test-only Windows jobs. Requires an MSVC dev environment
+      (e.g. ilammy/msvc-dev-cmd) to already be on PATH before this action
+      runs, since the crate's build script needs cl.exe.
+    required: false
+    default: "false"
 runs:
   using: "composite"
   steps:
@@ -43,7 +52,7 @@ runs:
         toolchain: ${{ steps.toolchain.outputs.channel }}
         targets: x86_64-pc-windows-msvc
         components: ${{ steps.toolchain.outputs.components }}
-    - if: inputs.platform == 'windows'
+    - if: inputs.platform == 'windows' && inputs.windows-code-signing == 'true'
       run: cargo install trusted-signing-cli
       shell: pwsh
       env:
