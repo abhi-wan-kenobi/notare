@@ -11,6 +11,7 @@ import { TabContentSnippets } from "~/snippets";
 import { type Tab } from "~/store/zustand/tabs";
 import { TabContentTask } from "~/task";
 import { TabContentTemplate } from "~/templates";
+import { TabContentTrash } from "~/trash";
 
 export function MainTabContent({ tab }: { tab: Tab }) {
   if (tab.type === "sessions") {
@@ -30,6 +31,9 @@ export function MainTabContent({ tab }: { tab: Tab }) {
   }
   if (tab.type === "snippets") {
     return <TabContentSnippets />;
+  }
+  if (tab.type === "trash") {
+    return <TabContentTrash />;
   }
   if (tab.type === "changelog") {
     return <TabContentChangelog tab={tab} />;

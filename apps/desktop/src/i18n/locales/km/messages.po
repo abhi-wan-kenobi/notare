@@ -13,8 +13,18 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
+#. placeholder {0}: pendingDelete.title || t`Untitled`
+#: src/trash/index.tsx
+msgid "\"{0}\" will be permanently deleted. This cannot be undone."
+msgstr ""
+
 #: src/settings/general/notification.tsx
 msgid "(default)"
+msgstr ""
+
+#. placeholder {0}: sessions.length
+#: src/trash/index.tsx
+msgid "{0} item(s)"
 msgstr ""
 
 #. placeholder {0}: issue.user?.login
@@ -233,6 +243,11 @@ msgstr ""
 msgid "AI-generated summary of all interactions and notes with this contact will appear here. This will synthesize key discussion points, action items, and relationship context across all meetings and notes."
 msgstr ""
 
+#. placeholder {0}: sessions.length
+#: src/trash/index.tsx
+msgid "All {0} trashed items will be permanently deleted. This cannot be undone."
+msgstr ""
+
 #: src/shared/open-note-dialog.tsx
 msgid "All Notes"
 msgstr ""
@@ -416,6 +431,7 @@ msgstr ""
 #: src/settings/personalization/dictionary-settings.tsx
 #: src/settings/todo/github.tsx
 #: src/snippets/entry-row.tsx
+#: src/trash/confirm-dialog.tsx
 msgid "Cancel"
 msgstr ""
 
@@ -782,6 +798,10 @@ msgstr ""
 msgid "Delete Event"
 msgstr ""
 
+#: src/trash/index.tsx
+msgid "Delete forever"
+msgstr ""
+
 #: src/settings/dictation/index.tsx
 msgid "Delete history entry"
 msgstr ""
@@ -806,7 +826,17 @@ msgstr ""
 msgid "Delete This Event"
 msgstr ""
 
+#: src/trash/index.tsx
+msgid "Delete this note forever?"
+msgstr ""
+
+#. placeholder {0}: format(deletedDate, "PPP p")
+#: src/trash/index.tsx
+msgid "Deleted {0}"
+msgstr ""
+
 #: src/session/components/outer-header/overflow/delete.tsx
+#: src/trash/confirm-dialog.tsx
 msgid "Deleting..."
 msgstr ""
 
@@ -963,6 +993,14 @@ msgstr ""
 
 #: src/templates/template-icon-picker.tsx
 msgid "Emojis"
+msgstr ""
+
+#: src/trash/index.tsx
+msgid "Empty trash"
+msgstr ""
+
+#: src/trash/index.tsx
+msgid "Empty trash?"
 msgstr ""
 
 #. placeholder {0}: permissionName.toLowerCase()
@@ -1896,6 +1934,10 @@ msgstr ""
 msgid "Notes folder"
 msgstr ""
 
+#: src/trash/index.tsx
+msgid "Notes you delete land here first and stay until you empty the trash."
+msgstr ""
+
 #: src/settings/dictation/index.tsx
 msgid "Nothing here yet - finished dictations appear here so you can copy them again."
 msgstr ""
@@ -2310,6 +2352,10 @@ msgstr ""
 #: src/main/update-banner.tsx
 #: src/settings/general/app-settings.tsx
 msgid "Restart to update"
+msgstr ""
+
+#: src/trash/index.tsx
+msgid "Restore"
 msgstr ""
 
 #: src/session/components/outer-header/index.tsx
@@ -3014,6 +3060,15 @@ msgstr ""
 msgid "Translation target language"
 msgstr ""
 
+#: src/sidebar/surface-nav.tsx
+#: src/trash/index.tsx
+msgid "Trash"
+msgstr ""
+
+#: src/trash/index.tsx
+msgid "Trash is empty"
+msgstr ""
+
 #: src/templates/template-icon-picker.tsx
 msgid "Travel & Places"
 msgstr ""
@@ -3060,6 +3115,7 @@ msgstr ""
 #: src/sidebar/timeline/item.tsx
 #: src/templates/details.tsx
 #: src/templates/sections-editor.tsx
+#: src/trash/index.tsx
 msgid "Untitled"
 msgstr ""
 
