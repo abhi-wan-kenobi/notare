@@ -2146,3 +2146,61 @@ mechanics, not that `cl.exe` accepts the vendored sources once `sqlite3.h`
 resolves. §21.13 already predicted more POSIX-assumption failures once
 `sqlite3ext.h` stops being the first wall; the CI push after this section is
 where that gets found out.
+
+### 21.15 CI run 5 (2026-08-31) — `sqlite3.h` resolved; a second, unrelated
+Windows-only compile error found and fixed
+
+Pushed §21.14's commits, `gh workflow run desktop_ci.yaml --ref
+feat/sync-9-crossplatform`, run 33421679164.
+
+**`cloudsync_from_source_macos` — GREEN a fourth time.** No regression from
+the `libsqlite3-sys` dependency change (§21.14 only touches the `from-source`
+feature's own include-path resolution; nothing about the macOS link step
+changed).
+
+**`cloudsync_from_source_windows` — past `sqlite3ext.h`/`sqlite3.h` for the
+first time; failed one file later on an unrelated, real MSVC strictness
+issue:**
+```
+D:\a\notare\notare\crates\cloudsync\vendor\src\sqlite\cloudsync_sqlite.c(1492):
+error C2375: 'sqlite3_cloudsync_init': redefinition; different linkage
+D:\a\notare\notare\crates\cloudsync\vendor\src\sqlite\cloudsync_sqlite.h(17):
+note: see declaration of 'sqlite3_cloudsync_init'
+```
+The compile command in the log confirms §21.14 worked exactly as intended:
+`-I ...\libsqlite3-sys-0.35.0/sqlite3` is present, `sqlite3.h` resolved, and
+the compiler got 8+ vendored `.c` files further than any previous Windows CI
+run (`dbutils.c`, `cloudsync_sqlite.c`, etc. — confirmed by the log showing
+each file name streamed as `cc` compiled it, stopping only at
+`cloudsync_sqlite.c`).
+
+**Root cause:** `cloudsync_sqlite.c:1492` defines
+`APIEXPORT int sqlite3_cloudsync_init(...)`, where `APIEXPORT` expands (line
+28-31 of that file) to `__declspec(dllexport)` on `_WIN32` and to nothing
+elsewhere. `cloudsync_sqlite.h:17` forward-declares the same function with no
+linkage specifier at all. GCC/clang never enforce declaration/definition
+linkage agreement this strictly, so this mismatch was invisible on
+linux/macOS; MSVC does enforce it and treats it as a hard error (C2375), not
+a warning — this is a real, pre-existing inconsistency in the vendored
+source, unrelated to the `sqlite3.h` fix, that no compiler had ever been
+strict enough to catch until now.
+
+**Fix (minimal, matches the file's own existing pattern, no `#ifdef`
+restructuring):** added the identical conditional `APIEXPORT` macro
+definition to `cloudsync_sqlite.h` (right before the declaration, inside its
+own include guard) and applied it to the declaration, so declaration and
+definition now agree on both platforms. `cloudsync_sqlite.h` is only
+`#include`d by `cloudsync_sqlite.c` (confirmed via grep — no other
+translation unit is affected), and that file's own later
+`#define APIEXPORT ...` block is a legal C macro redefinition (identical
+token sequence), so nothing else changes. Verified with `cargo test -p
+cloudsync --features from-source` on Linux (unaffected, `APIEXPORT` still
+expands to nothing there) and `cargo check -p cloudsync`/`-p desktop`
+default (unaffected, feature-gated code path only).
+
+**Not yet done:** this fix has not yet been exercised by CI — next step is
+push, re-trigger, and read the actual next Windows error (if any). Per
+§21.13's prediction, more POSIX/MSVC-strictness mismatches in the vendored C
+are plausible; each one gets the same treatment (minimal, targeted,
+non-restructuring fix) unless a genuine design decision is required, in
+which case this lane stops and reports rather than guessing.
