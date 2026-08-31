@@ -57,6 +57,7 @@ use tokio::io::AsyncReadExt;
 use tokio::net::TcpListener;
 
 use crate::broker::BrokerState;
+use crate::crypto::{self};
 use crate::identity::{Fingerprint, Identity};
 use crate::peers::PeerStore;
 use crate::protocol::{PutRequest, PutResponse, Request, Response, read_frame, write_frame};
@@ -115,6 +116,8 @@ pub enum AgentError {
     Identity(#[from] crate::identity::IdentityError),
     #[error(transparent)]
     Peers(#[from] crate::peers::PeersError),
+    #[error(transparent)]
+    Crypto(#[from] crate::crypto::CryptoError),
 }
 
 /// A running P2P agent: the in-process iroh endpoint + local broker + the
@@ -195,6 +198,7 @@ impl P2pAgent {
         let tcp_state = Arc::clone(&broker);
         let tcp_peers = peers.clone();
         let tcp_endpoint = endpoint.clone();
+        let tcp_identity = identity.clone();
         let tcp_self_label = self_label.clone();
         let tcp_token = token.clone();
         let tcp_handle = tokio::spawn(async move {
@@ -203,6 +207,7 @@ impl P2pAgent {
                 tcp_state,
                 tcp_peers,
                 tcp_endpoint,
+                tcp_identity,
                 tcp_self_label,
                 tcp_token,
             )
@@ -213,8 +218,9 @@ impl P2pAgent {
         let iroh_state = Arc::clone(&broker);
         let iroh_peers = peers.clone();
         let iroh_endpoint = endpoint.clone();
+        let iroh_identity = identity.clone();
         let iroh_handle = tokio::spawn(async move {
-            accept_iroh(iroh_endpoint, iroh_state, iroh_peers).await;
+            accept_iroh(iroh_endpoint, iroh_state, iroh_peers, iroh_identity).await;
         });
 
         Ok(Self {
@@ -279,6 +285,7 @@ async fn accept_c_tcp(
     broker: Arc<BrokerState>,
     peers: PeerStore,
     endpoint: Endpoint,
+    identity: Identity,
     self_label: String,
     token: String,
 ) {
@@ -299,6 +306,7 @@ async fn accept_c_tcp(
             broker: Arc::clone(&broker),
             peers: peers.clone(),
             endpoint: endpoint.clone(),
+            identity: identity.clone(),
             self_label: self_label.clone(),
             token: token.clone(),
         };
@@ -314,6 +322,7 @@ struct Ctx {
     broker: Arc<BrokerState>,
     peers: PeerStore,
     endpoint: Endpoint,
+    identity: Identity,
     self_label: String,
     token: String,
 }
@@ -521,7 +530,12 @@ async fn relay_request_to_peer(req: &Request, node_id: &PublicKey, ctx: &Ctx) ->
             };
         }
     };
-    if let Err(e) = write_frame(&mut send, req).await {
+    // SYNC-7: the local C↔agent hop is token-gated and stays plaintext. The
+    // body that actually crosses to a remote peer is encrypted here with an
+    // X25519 key derived from both devices' Ed25519 identity keys. Only the
+    // `body` field carries a blob, so a non-blob Request is relayed unchanged.
+    let outbound = encrypt_request_if_needed(ctx.identity.secret_key(), node_id, req);
+    if let Err(e) = write_frame(&mut send, &outbound).await {
         return Response {
             status: 502,
             body: None,
@@ -534,7 +548,8 @@ async fn relay_request_to_peer(req: &Request, node_id: &PublicKey, ctx: &Ctx) ->
     match read_frame::<_, Response>(&mut recv).await {
         Ok(resp) => {
             ctx.peers.touch_last_seen(node_id);
-            resp
+            // The peer has encrypted the returned blob (if any) for us.
+            decrypt_response_if_needed(ctx.identity.secret_key(), node_id, resp)
         }
         Err(e) => Response {
             status: 502,
@@ -571,7 +586,18 @@ async fn relay_put_to_peer(put: &PutRequest, node_id: &PublicKey, ctx: &Ctx) -> 
             };
         }
     };
-    if let Err(e) = write_frame(&mut send, put).await {
+    // SYNC-7: encrypt the blob before it leaves this device. The framed
+    // envelope is unchanged; the `blob` field is replaced with `[nonce||ciphertext].
+    let outbound = match encrypt_put(ctx.identity.secret_key(), node_id, put) {
+        Ok(p) => p,
+        Err(e) => {
+            return PutResponse {
+                ok: false,
+                error: Some(format!("encrypt PUT blob: {e}")),
+            };
+        }
+    };
+    if let Err(e) = write_frame(&mut send, &outbound).await {
         return PutResponse {
             ok: false,
             error: Some(format!("write to peer: {e}")),
@@ -631,7 +657,12 @@ async fn dial_peer(node_id: &PublicKey, ctx: &Ctx) -> Result<iroh::endpoint::Con
 /// `EndpointId` is checked against the allowlist; non-allowlisted peers are
 /// refused. This is the inbound half of the §12 SSRF fix. Allowed peers'
 /// bi-streams are served from the local broker.
-async fn accept_iroh(endpoint: Endpoint, broker: Arc<BrokerState>, peers: PeerStore) {
+async fn accept_iroh(
+    endpoint: Endpoint,
+    broker: Arc<BrokerState>,
+    peers: PeerStore,
+    identity: Identity,
+) {
     loop {
         // `endpoint.accept().await` yields `Option<Incoming>` — None once the
         // endpoint is closed.
@@ -649,6 +680,7 @@ async fn accept_iroh(endpoint: Endpoint, broker: Arc<BrokerState>, peers: PeerSt
         // not the node id, so the id check is post-handshake by necessity.)
         let broker = Arc::clone(&broker);
         let peers = peers.clone();
+        let identity = identity.clone();
         tokio::spawn(async move {
             // Awaiting `Incoming` completes the handshake and yields the
             // authenticated `Connection`.
@@ -678,8 +710,11 @@ async fn accept_iroh(endpoint: Endpoint, broker: Arc<BrokerState>, peers: PeerSt
                     break;
                 }
                 let broker = Arc::clone(&broker);
+                let identity = identity.clone();
+                let remote = remote;
                 tokio::spawn(async move {
-                    let _ = serve_peer_stream(&mut send, &mut recv, &broker).await;
+                    let _ =
+                        serve_peer_stream(&mut send, &mut recv, &broker, &identity, remote).await;
                 });
             }
         });
@@ -687,20 +722,51 @@ async fn accept_iroh(endpoint: Endpoint, broker: Arc<BrokerState>, peers: PeerSt
 }
 
 /// Read one framed request from a peer's bi-stream and write one framed reply.
+///
+/// SYNC-7: inbound frames from a remote peer are decrypted (where a payload is
+/// present) before the broker sees them. A decryption failure is a hard error
+/// returned as a framed 5xx / `ok:false` response; the broker never processes
+/// the plaintext.
 async fn serve_peer_stream(
     send: &mut SendStream,
     recv: &mut RecvStream,
     broker: &BrokerState,
+    identity: &Identity,
+    remote: iroh::PublicKey,
 ) -> std::io::Result<()> {
     let mut buf = Vec::new();
     read_raw_frame(recv, &mut buf).await?;
 
     if let Ok(req) = serde_json::from_slice::<Request>(&buf) {
+        let req = match decrypt_request_if_needed(identity.secret_key(), &remote, req) {
+            Ok(r) => r,
+            Err(e) => {
+                let resp = Response {
+                    status: 500,
+                    body: None,
+                    error: Some(format!("decrypt peer request: {e}")),
+                };
+                write_frame(send, &resp).await?;
+                return Ok(());
+            }
+        };
         let resp = broker.handle_request(req).await;
+        let resp = encrypt_response_if_needed(identity.secret_key(), &remote, resp);
         write_frame(send, &resp).await?;
         return Ok(());
     }
     if let Ok(put) = serde_json::from_slice::<PutRequest>(&buf) {
+        let put = match decrypt_put(identity.secret_key(), &remote, put) {
+            Ok(p) => p,
+            Err(e) => {
+                let resp = PutResponse {
+                    ok: false,
+                    error: Some(format!("decrypt peer PUT: {e}")),
+                };
+                write_frame(send, &resp).await?;
+                return Ok(());
+            }
+        };
         let resp = broker.handle_put(put).await;
         write_frame(send, &resp).await?;
         return Ok(());
@@ -711,6 +777,128 @@ async fn serve_peer_stream(
     };
     write_frame(send, &resp).await?;
     Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// SYNC-7 payload encryption helpers (peer boundary only)
+// ---------------------------------------------------------------------------
+
+/// Base64-encode a byte slice, returning `None` for an empty input so we can
+/// distinguish "no payload" from "empty payload".
+fn b64_encode(bytes: &[u8]) -> Option<Vec<u8>> {
+    use base64::{Engine as _, engine::general_purpose::STANDARD};
+    if bytes.is_empty() {
+        None
+    } else {
+        Some(STANDARD.encode(bytes).into_bytes())
+    }
+}
+
+/// Base64-decode a byte slice that was produced by `b64_encode`.
+fn b64_decode(bytes: &[u8]) -> Result<Vec<u8>, std::io::Error> {
+    use base64::{Engine as _, engine::general_purpose::STANDARD};
+    let s = std::str::from_utf8(bytes)
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+    STANDARD
+        .decode(s)
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))
+}
+
+/// A control Request (upload/apply/check/status) carries no blob, so it crosses
+/// the wire unchanged. A POST body (e.g. the apply/check JSON) is encrypted.
+fn encrypt_request_if_needed(secret: &iroh::SecretKey, peer: &PublicKey, req: &Request) -> Request {
+    match req.body.as_ref() {
+        Some(body) => {
+            let sealed = crypto::encrypt(secret, peer, body).unwrap_or_default();
+            let mut out = req.clone();
+            out.body = b64_encode(&sealed);
+            out
+        }
+        None => req.clone(),
+    }
+}
+
+/// Inverse of [`encrypt_request_if_needed`].
+fn decrypt_request_if_needed(
+    secret: &iroh::SecretKey,
+    peer: &PublicKey,
+    mut req: Request,
+) -> Result<Request, std::io::Error> {
+    if let Some(body_b64) = req.body.take() {
+        let sealed = b64_decode(&body_b64)?;
+        let plain = crypto::decrypt(secret, peer, &sealed)
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+        req.body = Some(plain);
+    }
+    Ok(req)
+}
+
+/// GET responses that carry a blob body (the download path) are encrypted.
+fn encrypt_response_if_needed(
+    secret: &iroh::SecretKey,
+    peer: &PublicKey,
+    resp: Response,
+) -> Response {
+    match resp.body.as_ref() {
+        Some(body) => {
+            let sealed = crypto::encrypt(secret, peer, body).unwrap_or_default();
+            Response {
+                status: resp.status,
+                body: b64_encode(&sealed),
+                error: resp.error,
+            }
+        }
+        None => resp,
+    }
+}
+
+/// Inverse of [`encrypt_response_if_needed`].
+fn decrypt_response_if_needed(
+    secret: &iroh::SecretKey,
+    peer: &PublicKey,
+    mut resp: Response,
+) -> Response {
+    if let Some(body_b64) = resp.body.take() {
+        match b64_decode(&body_b64) {
+            Ok(sealed) => match crypto::decrypt(secret, peer, &sealed) {
+                Ok(plain) => resp.body = Some(plain),
+                Err(e) => {
+                    resp.status = 500;
+                    resp.error = Some(format!("decrypt peer response: {e}"));
+                }
+            },
+            Err(e) => {
+                resp.status = 500;
+                resp.error = Some(format!("decode peer response: {e}"));
+            }
+        }
+    }
+    resp
+}
+
+/// PUT blob encryption. The `blob` field becomes `[nonce || ciphertext+tag].
+fn encrypt_put(
+    secret: &iroh::SecretKey,
+    peer: &PublicKey,
+    put: &PutRequest,
+) -> Result<PutRequest, crate::crypto::CryptoError> {
+    let sealed = crypto::encrypt(secret, peer, &put.blob)?;
+    Ok(PutRequest {
+        token: put.token.clone(),
+        url: put.url.clone(),
+        blob: sealed,
+    })
+}
+
+/// PUT blob decryption.
+fn decrypt_put(
+    secret: &iroh::SecretKey,
+    peer: &PublicKey,
+    mut put: PutRequest,
+) -> Result<PutRequest, std::io::Error> {
+    put.blob = crypto::decrypt(secret, peer, &put.blob)
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+    Ok(put)
 }
 
 // ---------------------------------------------------------------------------
