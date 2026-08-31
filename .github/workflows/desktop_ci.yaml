@@ -321,6 +321,15 @@ jobs:
       # Visual Studio generator; Ninja inside an MSVC dev environment is the
       # proven fix (see release.yaml + docs/BUILDING.md).
       - uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
+      # This job's `shell: bash` default routes every `run:` step through Git
+      # Bash, whose MSYS2 launcher re-prepends its own `usr/bin` ahead of
+      # whatever msvc-dev-cmd just added to PATH — so rustc's calls to
+      # `link.exe` resolve to Git's POSIX hardlink utility instead of MSVC's
+      # linker. Same interaction, same fix, as `cloudsync_from_source_windows`
+      # (see docs/internal/sync-p2p.md §21.11/§21.12): delete Git's own
+      # `link.exe` before any step that needs MSVC's.
+      - name: Remove Git's link.exe (shadows MSVC's link.exe under Git Bash)
+        run: rm -f /usr/bin/link.exe
       # Compile the STT/dictation pure-logic crates on Windows. `vad` is
       # check-only here: its dev-dependencies pull ONNX Runtime (hypr-onnx),
       # so `cargo test -p vad` would drag the ort runtime download into the
