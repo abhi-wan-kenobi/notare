@@ -1433,16 +1433,29 @@ places that were NOT portable:
   - **macOS**: `-dynamiclib` instead of `-shared` — chosen explicitly to
     produce a real `.dylib` (matching the `.dylib` extension the prebuilt
     `vendor/cloudsync/macos/` artifacts already use) rather than relying on
-    clang's Darwin driver to alias `-shared`. **Not locally verified** — no
-    macOS toolchain on the dev box; the §21.4 CI job is the proof.
+    clang's Darwin driver to alias `-shared`. This part was right the first
+    time — **but the link still failed on real CI** (§21.10) for an unrelated
+    reason: `-framework Security` was missing. `vendor/src/utils.c` calls
+    `SecRandomCopyBytes`/`kSecRandomDefault` (`<Security/Security.h>`) for
+    UUID generation on Apple targets, and neither `-dynamiclib` nor anything
+    else in the link command pulled that framework in, so `arm64` came back
+    `Undefined symbols ... ld: symbol(s) not found`. Fixed by adding
+    `-framework Security` on the macOS branch only (linux/Windows untouched).
+    `-framework CoreFoundation` was considered and **not** added — nothing in
+    `vendor/src` or `build/network_p2p.c` calls a CF*/CoreFoundation symbol
+    (checked by `grep`), and Security.framework resolves its own internal
+    CoreFoundation dependency without our object files needing to reference
+    it directly. This is inference, not an observed link — the next CI run
+    is the actual proof (§21.10).
   - **Windows (MSVC, `compiler.is_like_msvc()`)**: `cl.exe` does not
     understand `-shared`/`-o`. `cl /LD /Fe:<path> <objects> ws2_32.lib` tells
     `cl` to produce a DLL and invoke `link.exe` itself; the `.o` object files
     `cc::Build::compile_intermediates()` produces are passed straight to
     `link.exe` by `cl`'s documented "unrecognized extension → passed to the
-    linker" behavior. **Not locally verified** — the §21.4 CI job is the
-    proof, and this is the one path this lane could not exercise at all
-    before pushing.
+    linker" behavior. **Still entirely unverified** — the first real CI run
+    never reached this code at all; it died inside a shared setup action
+    before `cargo` ever ran (§21.10). This remains documented behavior, not
+    observed behavior.
   - Windows/GNU (mingw-w64) falls through to the `-shared` branch plus
     `-lws2_32`, kept working for anyone building outside this repo's CI, but
     not what the CI job below uses (it targets `x86_64-pc-windows-msvc`, same
@@ -1479,12 +1492,15 @@ logic — framing, JSON building, base64 — is untouched):
   argument without complaint.
 - `build.rs` links `ws2_32.lib`/`-lws2_32` on Windows (§21.2).
 
-**macOS** needed none of this — BSD sockets, and every header
-`network_p2p.c` already included (`<sys/socket.h>`, `<netinet/in.h>`,
-`<arpa/inet.h>`, `<netdb.h>`, `<unistd.h>`) ships with Xcode's SDK. This was
-*verified* by inspection (all five are stable Apple SDK headers, not Linux
-extensions) rather than assumed, per this lane's own instruction not to skip
-that step — but it is still not compiled proof; see §21.5.
+**macOS** needed none of *this* — BSD sockets, and every header
+`network_p2p.c` itself includes (`<sys/socket.h>`, `<netinet/in.h>`,
+`<arpa/inet.h>`, `<netdb.h>`, `<unistd.h>`) ships with Xcode's SDK; that part
+held up on real CI. What did **not** hold up was the assumption that macOS
+needed nothing *at all* to link successfully — the real failure was one
+directory over, in the pre-existing vendored `utils.c` (§21.2, §21.10), which
+this lane did not audit because it isn't `network_p2p.c`. The lesson: "this
+file's headers are all fine" is not the same claim as "the whole from-source
+build links," and only the second one is what CI actually tests.
 
 ### 21.4 The `strstr` JSON parsing — still open, untouched here
 
@@ -1574,22 +1590,50 @@ workflow run actually happens on `macos-15`/`windows-latest`.
   faking those env vars rather than genuinely exercising the function against
   a real build).
 
-**NOT verified locally — genuinely unknown until CI runs:**
-- Whether `cloudsync --features from-source` actually **compiles and links**
-  on macOS (either architecture) or Windows. The §21.6 CI jobs are the only
-  proof; they have not run yet (not pushed).
-- Whether the `cl /LD` + `ws2_32.lib` link step is exactly right — reasoned
-  through from documented `cl.exe`/`link.exe` behavior, not observed.
+**Updated after the first real CI run (run 33410001375, §21.10) — this
+section originally said "not pushed yet"; it has now been pushed and run
+once, and the result was exactly what Requirement 4 exists to catch: the
+macOS reasoning above was wrong (missing `-framework Security`), caught by
+the job, not by review.**
+
+**NOT verified — genuinely still unknown:**
+- **macOS**: unverified again after the §21.10 fix — the corrected link
+  command (`-dynamiclib` + `-framework Security`) has not yet been run on a
+  real macOS CI job. The first run proved the *previous* command wrong; it
+  did not prove the new one right.
+- **Windows**: completely unverified, unchanged since the original writeup —
+  the first CI run never reached `cargo` at all (§21.10), so the `cl /LD` +
+  `ws2_32.lib` link step remains exactly what it was before: documented
+  `cl.exe`/`link.exe` behavior, not observed behavior. The job definition bug
+  that caused this is fixed (§21.10), but that fix is *also* unverified until
+  the next run.
 - `linux/aarch64` — `supported()` admits it, but there is no aarch64
   toolchain on this dev box and no CI job for it either (unlike macOS/Windows,
   this repo has no existing aarch64-linux runner shape to reuse cheaply). Risk
   is lower than Windows/macOS (identical POSIX code path, same compiler
   family as the proven x86_64 build), but it is unverified, not "should be
-  fine."
+  fine" — a claim this section already got burned on once for macOS.
 - `linux/musl/x86_64` (§21.1) — pre-existing gap, not newly introduced.
+
+**Do not read any of the above as "should work now."** Nothing in §21.2's
+macOS fix or §21.10's Windows job fix has been observed green. The only
+honest status for both platforms, as of this writing, is: fixed against a
+real, specific, logged failure, and unverified again pending the next run.
 
 ### 21.8 Still open (unchanged by this lane)
 
+- **⚠️ `plugins/db/Cargo.toml:52` still gates `sync-p2p`/`hypr-cloudsync` to
+  `cfg(all(target_os = "linux", target_arch = "x86_64"))`.** This is the
+  **next required step**, not a minor footnote: even once `crates/cloudsync`
+  itself builds everywhere (and, as of §21.10, it does not yet — verified —
+  anywhere but linux/x86_64), the desktop app's `sync` feature will not pull
+  in `sync-p2p`/`hypr-cloudsync` on macOS, Windows, or linux/aarch64 at all,
+  because this `[target.'cfg(...)'.dependencies]` table only lists
+  `linux`+`x86_64`. Widening `crates/cloudsync/build.rs`'s `supported()`
+  (§21.1) does nothing for the shipped app until this gate is widened to
+  match — deliberately not done in this lane (SYNC-9 is scoped to "does the C
+  code compile", not "is the app allowed to try it"), but it is the concrete,
+  named next step, not a vague follow-up.
 - **`strstr`-based JSON field lookup** (§12/§13.9, §21.4) — production
   hardening for a typed codec, deliberately not touched here.
 - **No hostile-broker test fixture** (§12) — same reasoning.
@@ -1693,3 +1737,80 @@ oversized payload reads as clean but is not distinguishable from a seat that
 silently skipped deep reading — recorded here as an inconclusive audit, not
 a clean one. `--only` cannot narrow a single-file audit further; no code
 review substitute was applied beyond a manual re-read of the diff.
+
+### 21.10 CI run 1 (2026-08-31) — the point of Requirement 4, proven
+
+The branch was pushed and `desktop_ci.yaml` triggered via `workflow_dispatch`
+(run `33410001375`). This is what Requirement 4 was for: both new jobs, and
+this section's §21.2/§21.3/§21.7 "not locally verified" hedging, existed
+specifically because reasoning about an unavailable platform is not the same
+as observing it. The run confirmed that directly — the macOS reasoning was
+wrong, and would have shipped wrong without this job.
+
+**`cloudsync_from_source_macos` (job `99546898143`) — FAILED, a real bug,
+now fixed (unverified again):**
+
+```
+error: failed to run custom build command for `cloudsync v0.1.0 (...)`
+Undefined symbols for architecture arm64:
+  "_SecRandomCopyBytes", referenced from: _cloudsync_uuid_v7 in ...utils.o
+  "_kSecRandomDefault", referenced from: _cloudsync_uuid_v7 in ...utils.o
+ld: symbol(s) not found for architecture arm64
+clang: error: linker command failed with exit code 1
+thread 'main' panicked at crates/cloudsync/build.rs:177:5:
+failed to link cloudsync shared object from source
+```
+
+Root cause and fix recorded in §21.2. The bug was not in `network_p2p.c` (the
+file this lane actually rewrote) — it was in the pre-existing vendored
+`utils.c`'s `SecRandomCopyBytes` call, which needs `Security.framework` and
+was never going to link with a bare `-dynamiclib`. §21.3's "macOS needed none
+of this" claim was correct about `network_p2p.c` specifically and misleading
+about the build as a whole; corrected there.
+
+**`cloudsync_from_source_windows` (job `99546898295`) — FAILED, but not at
+any code this lane wrote, and not a transient runner problem either.** The
+job died inside `./.github/actions/rust_install`, specifically at that
+action's own unconditional `cargo install trusted-signing-cli` step (for
+`platform == 'windows'`, unrelated to what this job does) — **before**
+`ilammy/msvc-dev-cmd` ran, so **before** `cargo` ever attempted the
+`cloudsync` check. The Winsock2 port (§21.3) told this run nothing, one way
+or the other.
+
+The coordinator flagged that `windows_stt` failed identically in the same
+run, and that three other jobs failed at `pnpm_install`, raising the
+possibility of a run-wide infrastructure wobble. Checked directly against
+both jobs' logs rather than assumed:
+
+- `windows_stt`'s failure is **the identical error at the identical step**:
+  `error occurred in cc-rs: failed to find tool "cl": program not found`,
+  raised while `cargo install trusted-signing-cli` tries to compile
+  `aws-lc-sys`'s `stdalign_check.c`.
+- Both jobs set `CC: cl` / `CXX: cl` as **job-level env vars**, and both call
+  `./.github/actions/rust_install` (which runs `cargo install
+  trusted-signing-cli` unconditionally for `platform: windows`) **before**
+  `ilammy/msvc-dev-cmd` (which is what puts `cl.exe` on `PATH` and sets
+  `INCLUDE`/`LIB`). Setting `CC=cl` overrides `cc-rs`'s own MSVC-registry
+  auto-detection (which does not need `cl.exe` on `PATH` — it locates MSVC
+  directly via `vswhere`/the registry) and forces a bare-name `PATH` lookup
+  for `cl` instead. At the point `rust_install`'s embedded step runs, `PATH`
+  has no `cl.exe` yet in either job, so the lookup fails.
+
+This is **not** the `pnpm_install`/transient-infra explanation — it is a
+deterministic ordering bug, reproducible from the log alone, caused by a
+specific env-var + step-order combination that this job copied from
+`windows_stt` (which was described, incorrectly, as this job's "proven"
+setup — it turned out not to have been proven at all, at least not in this
+exact form, in this run). Fixed here, in this job only: dropped the `CC`/
+`CXX: cl` override (`cc-rs`'s default auto-detection needs no override), and
+moved `ilammy/msvc-dev-cmd` before `rust_install` as a second, independent
+guarantee. **`windows_stt` was deliberately left untouched** — it is a
+different lane's job, out of scope for this one, and the coordinator has not
+asked for it to be fixed here; this section records the shared root cause so
+whoever does fix it does not have to re-diagnose it.
+
+**Status after this round: still zero observed-green platforms beyond
+linux/x86_64.** The macOS fix and the Windows job-ordering fix are both
+untested against a real runner as of this writing — say so explicitly rather
+than letting the fixes read as "now it works." The next `desktop_ci` run
+against this branch is the actual proof, not this section.
