@@ -1313,3 +1313,14 @@ encrypted payloads; `cargo test -p sync-p2p` green; clippy clean.
 > no mixed/old-peer fallback by design — this branch builds on merged main where
 > every node is SYNC-7. SYNC-8's relay Worker inherits this: it will only ever see
 > ciphertext.
+
+**Audit (2026-08-31, 2 seats, coder kimi-k2.7-code):** `--coder kimi-k2.7-code`, crypto.rs and
+agent.rs audited separately (the combined payload overflowed the seat argv limit — the auditor
+warns and you must split with `--only <path>`). crypto.rs: gpt-oss found nothing; minimax's one
+finding is real-but-low — `rand::fill` panics if the OS CSPRNG read fails instead of returning
+`CryptoError::Encrypt`. Not fixed this round: the workspace is pinned to rand 0.7 (iroh pulls it)
+which has no `try_fill`, and the failure only occurs under an OS entropy outage; carried forward
+to the next rand/iroh bump. agent.rs: gpt-oss's "critical duplicate helper definitions" and
+minimax's "non-compiling intermediate" are FALSE POSITIVES — both read a two-hunk diff as if the
+intermediate state were shippable. Verified against the committed tree: each helper is defined
+exactly once and `cargo check -p sync-p2p --all-targets --features from-source` compiles clean.
