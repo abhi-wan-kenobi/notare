@@ -10,7 +10,7 @@ import {
   PlusIcon,
   Trash2Icon,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   syncAddPeer,
@@ -209,6 +209,15 @@ function ThisDeviceSection({
 }) {
   const { t } = useLingui();
   const [copied, setCopied] = useState(false);
+  const copyResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (copyResetRef.current) {
+        clearTimeout(copyResetRef.current);
+      }
+    };
+  }, []);
 
   const handleCopy = async () => {
     if (!fingerprint) {
@@ -222,7 +231,10 @@ function ThisDeviceSection({
     }
     setCopied(true);
     sonnerToast.success(t`Copied to clipboard`);
-    setTimeout(() => setCopied(false), 1500);
+    if (copyResetRef.current) {
+      clearTimeout(copyResetRef.current);
+    }
+    copyResetRef.current = setTimeout(() => setCopied(false), 1500);
   };
 
   return (
@@ -293,8 +305,11 @@ function AddDeviceForm({ onAdded }: { onAdded: () => void }) {
       },
     },
     onSubmit: async ({ value }) => {
+      // Submit the same normalized form the validator checked — sending the
+      // raw (dashed / possibly mixed-case) input risks a mismatch with what
+      // was actually validated as a 52-char z-base-32 fingerprint.
       await addPeer.mutateAsync({
-        fingerprint: value.fingerprint.trim(),
+        fingerprint: normalizeFingerprintInput(value.fingerprint),
         label: value.label.trim(),
       });
     },

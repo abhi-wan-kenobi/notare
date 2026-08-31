@@ -158,8 +158,12 @@ describe("SettingsSync", () => {
       expect(screen.getByText("No devices paired yet.")).toBeTruthy(),
     );
 
+    // Grouped + mixed-case input: the component must normalize this to the
+    // compact lowercase form before calling sync_add_peer, not forward it
+    // as-is (the validator checks the normalized form; submission must match).
+    const groupedMixedCase = `${VALID_FINGERPRINT.slice(0, 4).toUpperCase()}-${VALID_FINGERPRINT.slice(4)}`;
     fireEvent.change(screen.getByLabelText("Peer fingerprint"), {
-      target: { value: VALID_FINGERPRINT },
+      target: { value: groupedMixedCase },
     });
     fireEvent.change(screen.getByLabelText("Device label"), {
       target: { value: "Work laptop" },
@@ -183,18 +187,21 @@ describe("SettingsSync", () => {
     await waitFor(() => expect(screen.getByText("Work laptop")).toBeTruthy());
   });
 
-  it("requires confirmation before removing a paired device", async () => {
+  it("requires confirmation before removing a paired device, then drops it from the list", async () => {
     mocks.syncStatus.mockResolvedValue({ kind: "live", running: false });
     mocks.syncThisDevice.mockResolvedValue(VALID_FINGERPRINT_GROUPED);
-    mocks.syncListPeers.mockResolvedValue([
-      {
-        nodeId: VALID_FINGERPRINT,
-        fingerprint: VALID_FINGERPRINT_GROUPED,
-        label: "Work laptop",
-        addedAt: 1000,
-        lastSeen: 0,
-      },
-    ]);
+    mocks.syncListPeers
+      .mockResolvedValueOnce([
+        {
+          nodeId: VALID_FINGERPRINT,
+          fingerprint: VALID_FINGERPRINT_GROUPED,
+          label: "Work laptop",
+          addedAt: 1000,
+          lastSeen: 0,
+        },
+      ])
+      .mockResolvedValueOnce([]);
+    mocks.syncRemovePeer.mockResolvedValue(true);
 
     renderPage();
 
@@ -214,6 +221,10 @@ describe("SettingsSync", () => {
 
     await waitFor(() =>
       expect(mocks.syncRemovePeer).toHaveBeenCalledWith(VALID_FINGERPRINT),
+    );
+    await waitFor(() => expect(screen.queryByText("Work laptop")).toBeNull());
+    await waitFor(() =>
+      expect(screen.getByText("No devices paired yet.")).toBeTruthy(),
     );
   });
 });
