@@ -1301,59 +1301,13 @@ All verification items green:
 - `cargo run -p sync-p2p --example sync_three_nodes --features from-source` — converges.
 - `pnpm exec dprint fmt` — touched files formatted (Swift formatter missing on
   this Linux box is pre-existing and unrelated).
-
-
-## 18. SYNC-7 — E2E payload encryption (2026-08-31)
-
-Encrypts the changeset **payload** end-to-end at the agent's peer boundary, so a
-relay or any on-path observer sees only ciphertext. The iroh/QUIC transport is
-already mutually-authenticated Ed25519 (§13); SYNC-7 adds payload confidentiality
-under it. The trusted local C↔agent hop is NOT encrypted (it's already gated by
-SYNC-5's `NOTARE_SYNC_TOKEN`); only frames that cross to a remote peer are.
-
-**Key derivation (`crates/sync-p2p/src/crypto::derive_peer_key`):**
-- Each device's Ed25519 identity key becomes an X25519 static via the standard
-  conversion — Ed25519 secret → sha512 expand → clamp (`to_scalar_bytes`), and the
-  peer's Ed25519 public (`PublicKey`) → Montgomery u (`to_montgomery`). Same recipe
-  as libsodium's `crypto_sign_*_to_curve25519_*` / WireGuard.
-- shared = `peer_montgomery.mul_clamped(my_scalar)` (X25519 DH).
-- Per-peer key = HKDF-SHA-256 expand of the shared secret, with `info` =
-  domain-separation salt over both node ids (sorted) — so the key is bound to the
-  peer *pair*: A's A→B key ≠ A's A→C key, and a C holding only public keys cannot
-  open A→B traffic.
-- AEAD = XChaCha20-Poly1305. Nonce = 24 random bytes per message (fresh CSPRNG each
-  call), prepended to the ciphertext before the framed write.
-
-**Enforcement points (`agent.rs`):** encrypt the outbound blob `blob` (PUT) and the
-blob-bearing GET response body before writing to the peer's iroh stream; decrypt
-every inbound peer frame **before** the broker sees it. An AEAD/decryption failure
-(wrong key, tampered, malformed) is a hard error and is dropped — never passed to
-the broker. URL routing (`mem://`/`p2p://`), the framed envelope, and the allowlist
-are all unchanged.
-
-**New deps:** only `chacha20poly1305` + `hkdf` (and `rand`). `curve25519-dalek` and
-`ed25519-dalek` were already in the tree via iroh — no second rustls/crypto stack.
-
-**Tests (each named for what it guards):** `crypto::tests` round-trip,
-wrong-sender-public-key fails, tampered-ciphertext fails (AEAD rejects), and
-key-is-bound-to-peer-pair (C cannot derive A→B's key). Plus the convergence proofs
-still pass with encryption on — §18's real check.
-
-**Verified:** `sync_two_nodes` and `sync_three_nodes` both GO end-to-end over
-encrypted payloads; `cargo test -p sync-p2p` green; clippy clean.
-
-> NOTE: peer-key DH assumes both ends run SYNC-7 (uniform encrypt-always). There is
-> no mixed/old-peer fallback by design — this branch builds on merged main where
-> every node is SYNC-7. SYNC-8's relay Worker inherits this: it will only ever see
-> ciphertext.
-
-**Audit (2026-08-31, 2 seats, coder kimi-k2.7-code):** `--coder kimi-k2.7-code`, crypto.rs and
-agent.rs audited separately (the combined payload overflowed the seat argv limit — the auditor
-warns and you must split with `--only <path>`). crypto.rs: gpt-oss found nothing; minimax's one
-finding is real-but-low — `rand::fill` panics if the OS CSPRNG read fails instead of returning
-`CryptoError::Encrypt`. Not fixed this round: the workspace is pinned to rand 0.7 (iroh pulls it)
-which has no `try_fill`, and the failure only occurs under an OS entropy outage; carried forward
-to the next rand/iroh bump. agent.rs: gpt-oss's "critical duplicate helper definitions" and
-minimax's "non-compiling intermediate" are FALSE POSITIVES — both read a two-hunk diff as if the
-intermediate state were shippable. Verified against the committed tree: each helper is defined
-exactly once and `cargo check -p sync-p2p --all-targets --features from-source` compiles clean.
+**Audit (2026-08-31, 2 seats, coder kimi-k2.7-code):** crypto.rs and agent.rs audited separately
+(the combined payload overflowed the seat argv limit — the auditor warns and you must split with
+`--only <path>`). crypto.rs: gpt-oss found nothing; minimax's one finding is real-but-low —
+`rand::fill` panics if the OS CSPRNG read fails instead of returning `CryptoError::Encrypt`. Not
+fixed this round: the workspace is pinned to rand 0.7 (via iroh) which has no `try_fill`, and the
+failure only occurs under an OS entropy outage; carried forward to the next rand/iroh bump.
+agent.rs: gpt-oss's "critical duplicate helper definitions" and minimax's "non-compiling
+intermediate" are FALSE POSITIVES — both read a two-hunk diff as if the intermediate state were
+shippable. Verified against the committed tree: each helper is defined exactly once and
+`cargo check -p sync-p2p --all-targets --features from-source` compiles clean.
