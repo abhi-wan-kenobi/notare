@@ -23,12 +23,16 @@ use thiserror::Error;
 pub const NONCE_LEN: usize = 24;
 
 /// Errors from the encryption layer.
-#[derive(Debug, Error)]
+#[derive(Debug, Error, PartialEq)]
 pub enum CryptoError {
     #[error("AEAD encryption failed")]
     Encrypt,
     #[error("AEAD decryption failed")]
     Decrypt,
+    #[error("invalid peer public key")]
+    InvalidPeerKey,
+    #[error("invalid local secret key")]
+    InvalidSecretKey,
 }
 
 /// Derive a per-peer symmetric key from an X25519 DH over the devices' Ed25519
@@ -37,11 +41,19 @@ pub enum CryptoError {
 /// `my_secret` and `peer_public` are the iroh `SecretKey`/`PublicKey` (which
 /// are Ed25519 keys). The derived key binds to both node ids so traffic from A→B
 /// cannot be replayed or decrypted by C that knows only one public key.
-pub fn derive_peer_key(my_secret: &SecretKey, peer_public: &PublicKey) -> [u8; 32] {
+pub fn derive_peer_key(
+    my_secret: &SecretKey,
+    peer_public: &PublicKey,
+) -> Result<[u8; 32], CryptoError> {
     let my_signing = iroh_secret_to_signing(my_secret);
-    let peer_verifying = iroh_public_to_verifying(peer_public);
+    let peer_verifying =
+        iroh_public_to_verifying(peer_public).map_err(|_| CryptoError::InvalidPeerKey)?;
 
     let my_scalar = my_signing.to_scalar_bytes();
+    if my_scalar == [0u8; 32] {
+        return Err(CryptoError::InvalidSecretKey);
+    }
+
     let peer_montgomery = peer_verifying.to_montgomery();
     let shared = peer_montgomery.mul_clamped(my_scalar);
 
@@ -51,7 +63,7 @@ pub fn derive_peer_key(my_secret: &SecretKey, peer_public: &PublicKey) -> [u8; 3
     let mut okm = [0u8; 32];
     hkdf.expand(&info, &mut okm)
         .expect("hkdf expand to 32 bytes is infallible for this prf");
-    okm
+    Ok(okm)
 }
 
 /// Encrypt `plaintext` for `peer_public` using our identity key.
@@ -64,7 +76,7 @@ pub fn encrypt(
     peer_public: &PublicKey,
     plaintext: &[u8],
 ) -> Result<Vec<u8>, CryptoError> {
-    let key = derive_peer_key(my_secret, peer_public);
+    let key = derive_peer_key(my_secret, peer_public)?;
     let cipher = XChaCha20Poly1305::new_from_slice(&key).map_err(|_| CryptoError::Encrypt)?;
 
     let mut nonce_bytes = [0u8; NONCE_LEN];
@@ -92,7 +104,7 @@ pub fn decrypt(
     if ciphertext.len() < NONCE_LEN {
         return Err(CryptoError::Decrypt);
     }
-    let key = derive_peer_key(my_secret, peer_public);
+    let key = derive_peer_key(my_secret, peer_public)?;
     let cipher = XChaCha20Poly1305::new_from_slice(&key).map_err(|_| CryptoError::Decrypt)?;
 
     let nonce = XNonce::try_from(&ciphertext[..NONCE_LEN]).map_err(|_| CryptoError::Decrypt)?;
@@ -110,9 +122,11 @@ fn iroh_secret_to_signing(secret: &SecretKey) -> SigningKey {
 }
 
 /// Convert an iroh `PublicKey` to the underlying `ed25519_dalek::VerifyingKey`.
-fn iroh_public_to_verifying(public: &PublicKey) -> VerifyingKey {
+fn iroh_public_to_verifying(
+    public: &PublicKey,
+) -> Result<VerifyingKey, ed25519_dalek::SignatureError> {
     let bytes = public.as_bytes();
-    VerifyingKey::from_bytes(bytes).expect("iroh PublicKey is a valid Ed25519 point")
+    VerifyingKey::from_bytes(bytes)
 }
 
 /// Build an HKDF info string that binds the derived key to both node ids.
@@ -165,9 +179,9 @@ mod tests {
         let b = iroh::SecretKey::generate();
         let c = iroh::SecretKey::generate();
 
-        let key_ab = derive_peer_key(&a, &b.public());
-        let key_ac = derive_peer_key(&a, &c.public());
-        let key_ba = derive_peer_key(&b, &a.public());
+        let key_ab = derive_peer_key(&a, &b.public()).unwrap();
+        let key_ac = derive_peer_key(&a, &c.public()).unwrap();
+        let key_ba = derive_peer_key(&b, &a.public()).unwrap();
 
         assert_ne!(key_ab, key_ac, "key for B must differ from key for C");
         assert_eq!(key_ab, key_ba, "DH is symmetric: A↔B == B↔A");

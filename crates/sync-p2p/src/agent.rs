@@ -534,7 +534,16 @@ async fn relay_request_to_peer(req: &Request, node_id: &PublicKey, ctx: &Ctx) ->
     // body that actually crosses to a remote peer is encrypted here with an
     // X25519 key derived from both devices' Ed25519 identity keys. Only the
     // `body` field carries a blob, so a non-blob Request is relayed unchanged.
-    let outbound = encrypt_request_if_needed(ctx.identity.secret_key(), node_id, req);
+    let outbound = match encrypt_request_if_needed(ctx.identity.secret_key(), node_id, req) {
+        Ok(r) => r,
+        Err(e) => {
+            return Response {
+                status: 500,
+                body: None,
+                error: Some(format!("encrypt request body: {e}")),
+            };
+        }
+    };
     if let Err(e) = write_frame(&mut send, &outbound).await {
         return Response {
             status: 502,
@@ -549,7 +558,14 @@ async fn relay_request_to_peer(req: &Request, node_id: &PublicKey, ctx: &Ctx) ->
         Ok(resp) => {
             ctx.peers.touch_last_seen(node_id);
             // The peer has encrypted the returned blob (if any) for us.
-            decrypt_response_if_needed(ctx.identity.secret_key(), node_id, resp)
+            match decrypt_response_if_needed(ctx.identity.secret_key(), node_id, resp) {
+                Ok(r) => r,
+                Err(e) => Response {
+                    status: 500,
+                    body: None,
+                    error: Some(format!("decrypt peer response: {e}")),
+                },
+            }
         }
         Err(e) => Response {
             status: 502,
@@ -711,7 +727,6 @@ async fn accept_iroh(
                 }
                 let broker = Arc::clone(&broker);
                 let identity = identity.clone();
-                let remote = remote;
                 tokio::spawn(async move {
                     let _ =
                         serve_peer_stream(&mut send, &mut recv, &broker, &identity, remote).await;
@@ -751,7 +766,18 @@ async fn serve_peer_stream(
             }
         };
         let resp = broker.handle_request(req).await;
-        let resp = encrypt_response_if_needed(identity.secret_key(), &remote, resp);
+        let resp = match encrypt_response_if_needed(identity.secret_key(), &remote, resp) {
+            Ok(r) => r,
+            Err(e) => {
+                let resp = Response {
+                    status: 500,
+                    body: None,
+                    error: Some(format!("encrypt peer response: {e}")),
+                };
+                write_frame(send, &resp).await?;
+                return Ok(());
+            }
+        };
         write_frame(send, &resp).await?;
         return Ok(());
     }
@@ -804,33 +830,70 @@ fn b64_decode(bytes: &[u8]) -> Result<Vec<u8>, std::io::Error> {
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))
 }
 
+/// Encrypt a `body` (request or response) if present. On crypto failure the
+/// error is propagated as a hard error so no unencrypted payload leaves the
+/// device.
+fn encrypt_body(
+    secret: &iroh::SecretKey,
+    peer: &PublicKey,
+    body: &Option<Vec<u8>>,
+) -> Result<Option<Vec<u8>>, crate::crypto::CryptoError> {
+    match body.as_ref() {
+        Some(bytes) => {
+            let sealed = crypto::encrypt(secret, peer, bytes)?;
+            Ok(b64_encode(&sealed))
+        }
+        None => Ok(None),
+    }
+}
+
+/// Decrypt a `body` that was encrypted by the peer. A failure here is a hard
+/// error: the broker must not see the plaintext.
+fn decrypt_body(
+    secret: &iroh::SecretKey,
+    peer: &PublicKey,
+    body: Option<Vec<u8>>,
+) -> Result<Option<Vec<u8>>, std::io::Error> {
+    match body {
+        Some(body_b64) => {
+            let sealed = b64_decode(&body_b64)?;
+            let plain = crypto::decrypt(secret, peer, &sealed)
+                .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+            Ok(Some(plain))
+        }
+        None => Ok(None),
+    }
+}
+
 /// A control Request (upload/apply/check/status) carries no blob, so it crosses
 /// the wire unchanged. A POST body (e.g. the apply/check JSON) is encrypted.
-fn encrypt_request_if_needed(secret: &iroh::SecretKey, peer: &PublicKey, req: &Request) -> Request {
-    match req.body.as_ref() {
-        Some(body) => {
-            let sealed = crypto::encrypt(secret, peer, body).unwrap_or_default();
-            let mut out = req.clone();
-            out.body = b64_encode(&sealed);
-            out
-        }
-        None => req.clone(),
-    }
+fn encrypt_request_if_needed(
+    secret: &iroh::SecretKey,
+    peer: &PublicKey,
+    req: &Request,
+) -> Result<Request, crate::crypto::CryptoError> {
+    let body = encrypt_body(secret, peer, &req.body)?;
+    Ok(Request {
+        token: req.token.clone(),
+        endpoint: req.endpoint.clone(),
+        is_post: req.is_post,
+        body,
+    })
 }
 
 /// Inverse of [`encrypt_request_if_needed`].
 fn decrypt_request_if_needed(
     secret: &iroh::SecretKey,
     peer: &PublicKey,
-    mut req: Request,
+    req: Request,
 ) -> Result<Request, std::io::Error> {
-    if let Some(body_b64) = req.body.take() {
-        let sealed = b64_decode(&body_b64)?;
-        let plain = crypto::decrypt(secret, peer, &sealed)
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
-        req.body = Some(plain);
-    }
-    Ok(req)
+    let body = decrypt_body(secret, peer, req.body)?;
+    Ok(Request {
+        token: req.token,
+        endpoint: req.endpoint,
+        is_post: req.is_post,
+        body,
+    })
 }
 
 /// GET responses that carry a blob body (the download path) are encrypted.
@@ -838,42 +901,27 @@ fn encrypt_response_if_needed(
     secret: &iroh::SecretKey,
     peer: &PublicKey,
     resp: Response,
-) -> Response {
-    match resp.body.as_ref() {
-        Some(body) => {
-            let sealed = crypto::encrypt(secret, peer, body).unwrap_or_default();
-            Response {
-                status: resp.status,
-                body: b64_encode(&sealed),
-                error: resp.error,
-            }
-        }
-        None => resp,
-    }
+) -> Result<Response, crate::crypto::CryptoError> {
+    let body = encrypt_body(secret, peer, &resp.body)?;
+    Ok(Response {
+        status: resp.status,
+        body,
+        error: resp.error,
+    })
 }
 
 /// Inverse of [`encrypt_response_if_needed`].
 fn decrypt_response_if_needed(
     secret: &iroh::SecretKey,
     peer: &PublicKey,
-    mut resp: Response,
-) -> Response {
-    if let Some(body_b64) = resp.body.take() {
-        match b64_decode(&body_b64) {
-            Ok(sealed) => match crypto::decrypt(secret, peer, &sealed) {
-                Ok(plain) => resp.body = Some(plain),
-                Err(e) => {
-                    resp.status = 500;
-                    resp.error = Some(format!("decrypt peer response: {e}"));
-                }
-            },
-            Err(e) => {
-                resp.status = 500;
-                resp.error = Some(format!("decode peer response: {e}"));
-            }
-        }
-    }
-    resp
+    resp: Response,
+) -> Result<Response, std::io::Error> {
+    let body = decrypt_body(secret, peer, resp.body)?;
+    Ok(Response {
+        status: resp.status,
+        body,
+        error: resp.error,
+    })
 }
 
 /// PUT blob encryption. The `blob` field becomes `[nonce || ciphertext+tag].
