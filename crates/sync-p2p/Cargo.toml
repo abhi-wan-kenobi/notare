@@ -39,7 +39,7 @@ sqlx = { workspace = true, features = ["runtime-tokio", "sqlite", "sqlite-unbund
 tempfile = { workspace = true }
 tokio = { workspace = true, features = ["rt", "rt-multi-thread", "macros", "time"] }
 
-# Both proofs drive the real cloudsync core through the custom P2P network
+# The proofs below drive the real cloudsync core through the custom P2P network
 # layer, which only exists in the from-source build — so they are gated on that
 # feature rather than compiled on every platform during `cargo test --workspace`.
 #
@@ -59,4 +59,11 @@ required-features = ["from-source"]
 [[test]]
 name = "drain_regression"
 path = "tests/drain_regression.rs"
+required-features = ["from-source"]
+
+# SYNC-6: same harness, but the schema under test is the real app schema
+# (sessions + session_documents — TEXT-PK, STRICT, deleted_at, FK).
+[[example]]
+name = "sync_sessions_schema"
+path = "examples/sync_sessions_schema.rs"
 required-features = ["from-source"]
