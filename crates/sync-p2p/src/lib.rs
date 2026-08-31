@@ -28,6 +28,7 @@
 
 pub mod agent;
 pub mod broker;
+pub mod crypto;
 pub mod identity;
 pub mod peers;
 pub mod protocol;
