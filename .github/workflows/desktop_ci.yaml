@@ -422,6 +422,7 @@ jobs:
   cloudsync_from_source_windows:
     if: ${{ !startsWith(github.head_ref || '', 'blog/') }}
     runs-on: windows-latest
+    timeout-minutes: 60
     defaults:
       run:
         shell: bash
