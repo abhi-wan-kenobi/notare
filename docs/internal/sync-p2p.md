@@ -244,7 +244,7 @@ call.
 | linux/gnu/x86_64 | `cloudsync.so` | ✅ Proven (S0b): builds, loads, `cloudsync_version() == "1.0.12"` |
 | linux/musl/x86_64 | `cloudsync.so` | `supported()` admits it (checks os+arch only, pre-dates SYNC-9) but it is untested; see §21 |
 | linux/aarch64 | `cloudsync.so` | `supported()` admits it (SYNC-9) but **not locally verified** — no aarch64 toolchain on the dev box, no CI job either; see §21 |
-| macos (aarch64/x86_64) | `cloudsync.dylib` | `supported()` admits both (SYNC-9); **not locally verified** — CI-only proof (§21, provisional job) |
+| macos (aarch64/x86_64) | `cloudsync.dylib` | ✅ **Proven (SYNC-9, §21.11, CI run 33411261329):** `cargo check --features from-source` builds and links both `aarch64-apple-darwin` (native) and `x86_64-apple-darwin` (cross) on `macos-15`. Job still provisional/non-blocking pending a few more observed-green runs. |
 | android (arm*/x86_64) | `cloudsync.so` | Still not built — needs `cacert.h`; out of scope, see §21 |
 | windows/x86_64 | `cloudsync.dll` | `supported()` admits it (SYNC-9); Winsock2 port done in `network_p2p.c`; **not locally verified** — CI-only proof (§21, provisional job) |
 
@@ -1814,3 +1814,73 @@ linux/x86_64.** The macOS fix and the Windows job-ordering fix are both
 untested against a real runner as of this writing — say so explicitly rather
 than letting the fixes read as "now it works." The next `desktop_ci` run
 against this branch is the actual proof, not this section.
+
+### 21.11 CI run 2 (2026-08-31) — macOS confirmed GO; a second, distinct Windows bug
+
+Pushed and re-triggered (`gh workflow run desktop_ci.yaml --ref
+feat/sync-9-crossplatform`, run `33411261329`).
+
+**`cloudsync_from_source_macos` (job `99551111477`) — GREEN.** Both steps
+passed: `cargo check -p cloudsync --features from-source` for
+`aarch64-apple-darwin` (native) and `x86_64-apple-darwin` (cross), 3m41s
+total. This is the first real observed proof that `crates/cloudsync`'s
+`from-source` build compiles and links on macOS, on both admitted
+architectures. §21.2/§21.7's "not locally verified" macOS hedging is
+resolved: the `-dynamiclib` + `-framework Security` link command is now
+**confirmed correct**, not just reasoned-through.
+
+**`cloudsync_from_source_windows` (job `99551111594`) — FAILED again, but
+past the first bug, at a second and different one.** `cl.exe` was found this
+time (the §21.10 fix worked for that part — `getrandom`, `quote`,
+`proc-macro2` all reached the compile stage while `cargo install
+trusted-signing-cli` built), but the **link** step then failed:
+
+```
+error: linking with `link.exe` failed: exit code: 1
+  = note: "C:\Program Files\Git\usr\bin\link.exe" "/NOLOGO" ...
+  = note: /usr/bin/link: extra operand '...build_script_build...cgu.0.rcgu.o'
+          Try '/usr/bin/link --help' for more information.
+note: `link.exe` returned an unexpected error
+note: the Visual Studio build tools may need to be repaired using the Visual Studio installer
+error: could not compile `getrandom` (build script) due to 1 previous error
+```
+
+`rustc` resolved `link.exe` to **Git for Windows' own `/usr/bin/link.exe`**
+— a POSIX hardlink utility, not a linker — instead of MSVC's, because this
+job's `shell: bash` steps run through Git Bash, whose MSYS2 launcher
+re-prepends its own `usr/bin` ahead of whatever `ilammy/msvc-dev-cmd` added
+to `PATH`. This is a known interaction between `ilammy/msvc-dev-cmd` and
+Git-Bash-shell steps on Windows GitHub Actions runners, not something
+`GITHUB_PATH` ordering between steps can fix (Git Bash's own path
+translation happens inside `bash.exe`'s own startup, on every invocation,
+independent of accumulated `GITHUB_PATH` order).
+
+Checked against this repo's own precedent to make sure the fix direction was
+right rather than guessed: `release.yaml`'s `build-windows` job — the job
+`windows_stt`'s header comment claims to model this whole setup on — does
+**not** set `shell: bash` anywhere (its `CC`/`CXX: cl` are scoped to one
+`pnpm -F desktop tauri build` step, after `msvc-dev-cmd`, running under the
+default `pwsh`) and does **not** use `./.github/actions/rust_install` at all.
+`windows_stt` (and this job, copied from it per the original task) diverged
+from the actually-proven shape in exactly the two ways that caused both
+rounds of failure: a job-level `shell: bash` default, and the shared
+`rust_install` action's unrelated `trusted-signing-cli` install.
+
+Fixed with the standard remedy for this exact interaction: a step that
+deletes Git's own `link.exe` (`rm -f /usr/bin/link.exe`, harmless on an
+ephemeral runner) before anything that needs MSVC's linker. Added between
+`msvc-dev-cmd` and `rust_install`, so it protects both `rust_install`'s
+embedded `trusted-signing-cli` build and this job's own `cargo check` step.
+**`windows_stt` was not touched** (different lane's job, out of scope here);
+it has not yet been observed reaching this second bug itself, since it still
+fails at the first one (§21.10) every time — but it uses the identical
+`shell: bash` + `msvc-dev-cmd` combination and would very likely hit the
+identical `link.exe` shadowing once/if its `CC`/`CXX: cl` issue is fixed.
+Recorded here so whoever fixes that job does not have to rediscover this.
+
+**Status after this round: macOS is GO (observed, not reasoned). Windows
+remains unverified** — the link.exe fix above has itself not yet been
+observed against a real run. Do not read this section as "Windows now
+works"; it is "Windows failed at a new, later point, with a specific fix
+applied and not yet confirmed." The next `desktop_ci` run is still the
+actual proof.
