@@ -1233,10 +1233,92 @@ close due to unfinalized statements" panic — the same benign teardown ordering
 §13.7/§16 recorded. SYNC-5's app teardown orders cloudsync_stop before pool
 close, so this is example-lifecycle noise, not an app defect.
 
+## 18. SYNC-7 — E2E payload encryption (2026-08-31)
+
+### 18.1 What was built
+
+Added per-peer payload encryption in `crates/sync-p2p` at the iroh/QUIC peer
+boundary only. The local C↔agent TCP hop (gated by SYNC-5's bearer token) stays
+plaintext; the frames that leave the device over iroh are now encrypted.
+
+Files changed:
+- `crates/sync-p2p/src/crypto.rs` — new module with key derivation, XChaCha20-Poly1305
+  encrypt/decrypt, and unit tests.
+- `crates/sync-p2p/src/agent.rs` — wired encryption into outbound relay
+  (`relay_request_to_peer`, `relay_put_to_peer`) and inbound `serve_peer_stream`.
+- `crates/sync-p2p/Cargo.toml` — added `chacha20poly1305`, `hkdf`, `sha2`, `rand`,
+  `ed25519-dalek` (direct, was already a transitive dep via iroh).
+- `crates/sync-p2p/src/lib.rs` — exported the `crypto` module.
+- `Cargo.lock` — resolved new crates; no duplicate rustls/crypto stacks.
+
+### 18.2 Key-derivation recipe
+
+1. Ed25519 identity reuse: each device already has an iroh `SecretKey` / `PublicKey`
+   (Ed25519). Convert to X25519 static keys using `ed25519-dalek` helpers:
+   - secret scalar: `SigningKey::to_scalar_bytes()`
+   - public Montgomery u: `VerifyingKey::to_montgomery().0`
+2. X25519 DH: `MontgomeryPoint(peer_montgomery_u).mul_clamped(my_scalar_bytes)`
+   via `curve25519-dalek`.
+3. HKDF-SHA256 over the raw 32-byte shared secret, info string:
+   `b"notare-sync-p2p-v1:" || sorted(id_a, id_b)` (lexicographic, raw 32-byte
+   public keys). Output is a 32-byte symmetric key.
+4. XChaCha20-Poly1305: random 24-byte nonce per message, prepended to the
+   AEAD ciphertext (`[nonce || ciphertext+tag]`). The nonce comes from `rand::fill`
+   (the same CSPRNG source already used for the SYNC-5 token).
+
+### 18.3 Invariants verified by tests
+
+- `crypto::tests::round_trip_encrypt_decrypt` — A encrypts for B, B decrypts,
+  plaintext identical.
+- `crypto::tests::tampered_ciphertext_fails` — bit flip in ciphertext is rejected.
+- `crypto::tests::key_is_bound_to_peer_pair` — A↔B key ≠ A↔C key, and C cannot
+  open an A→B message.
+- `crypto::tests::wrong_sender_public_key_fails` — receiver using the wrong
+  sender public key fails to decrypt.
+- The existing integration tests (`iroh_transport.rs`, `broker_protocol.rs`) and
+  convergence examples (`sync_two_nodes`, `sync_three_nodes`) pass with encryption
+  enabled unconditionally.
+
+### 18.4 Audit outcome (2026-08-31)
+
+Ran the repo `auditor` skill on the SYNC-7 commits with `--coder kimi-k2.7-code`
+(the model that wrote the code). Findings:
+
+- **No confirmed crypto defects.** Key derivation uses the crate-provided
+  Ed25519→X25519 conversion, HKDF domain separation binds both sorted node ids,
+  nonces are 24 random bytes per message, and AEAD failures return hard framed
+  errors before the broker sees data.
+- **No new warnings** from `cargo check -p sync-p2p --all-targets`.
+- **No duplicate rustls/crypto stacks** introduced: `cargo tree -p sync-p2p`
+  shows the only new standalone crypto crates are `chacha20poly1305`, `hkdf`,
+  and `sha2` (direct), plus `ed25519-dalek` made direct (it was already pulled
+  by iroh). `curve25519-dalek` remains a transitive dep of iroh/ed25519-dalek.
+
+All verification items green:
+- `cargo check -p sync-p2p --all-targets` — clean.
+- `cargo test -p sync-p2p` — all 25 tests pass.
+- `cargo test -p cloudsync --features from-source` — passes.
+- `cargo run -p sync-p2p --example sync_two_nodes --features from-source` — converges.
+- `cargo run -p sync-p2p --example sync_three_nodes --features from-source` — converges.
+- `pnpm exec dprint fmt` — touched files formatted (Swift formatter missing on
+  this Linux box is pre-existing and unrelated).
+**Audit (2026-08-31, 2 seats, coder kimi-k2.7-code):** crypto.rs and agent.rs audited separately
+(the combined payload overflowed the seat argv limit — the auditor warns and you must split with
+`--only <path>`). crypto.rs: gpt-oss found nothing; minimax's one finding is real-but-low —
+`rand::fill` panics if the OS CSPRNG read fails instead of returning `CryptoError::Encrypt`. Not
+fixed this round: the workspace is pinned to rand 0.7 (via iroh) which has no `try_fill`, and the
+failure only occurs under an OS entropy outage; carried forward to the next rand/iroh bump.
+agent.rs: gpt-oss's "critical duplicate helper definitions" and minimax's "non-compiling
+intermediate" are FALSE POSITIVES — both read a two-hunk diff as if the intermediate state were
+shippable. Verified against the committed tree: each helper is defined exactly once and
+`cargo check -p sync-p2p --all-targets --features from-source` compiles clean.
+
 ## 19. SYNC-6 part B — enable-set + device pairing (2026-08-31)
 
-§18 is reserved for SYNC-7 (E2E payload encryption), which lands from its own
-branch; this section is numbered around it to keep the two merges conflict-free.
+This section was numbered around §18 (SYNC-7, E2E payload encryption), which
+landed from its own branch in parallel. The numbering avoids a semantic
+collision, not a textual one — both branches appended at end-of-file, so the
+merge did conflict here and was resolved by keeping both sections in order.
 
 **Enable-set.** `SYNCED_TABLES` in `crates/db-app/src/cloudsync.rs` goes from
 `[]` to exactly `["sessions", "session_documents"]` — the two tables §17 proved
