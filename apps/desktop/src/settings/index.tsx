@@ -7,6 +7,7 @@ import {
   SettingsNotifications,
   SettingsPermissions,
 } from "./general";
+import { SettingsSync } from "./sync";
 import { SettingsTodo } from "./todo";
 import { SettingsWebhook } from "./webhook";
 
@@ -54,6 +55,8 @@ function SettingsView({ tab }: { tab: Extract<Tab, { type: "settings" }> }) {
         return <SettingsTodo />;
       case "webhook":
         return <SettingsWebhook />;
+      case "sync":
+        return <SettingsSync />;
       default:
         return <SettingsApp />;
     }
