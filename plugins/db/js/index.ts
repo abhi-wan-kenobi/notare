@@ -11,6 +11,8 @@ import type {
   Meeting,
   MeetingPage,
   SubscriptionRegistration,
+  SyncPeer,
+  SyncStatusResult,
   TranscriptPage,
 } from "./bindings.gen";
 
@@ -21,6 +23,8 @@ export type {
   LegacyImportReport,
   Meeting,
   MeetingPage,
+  SyncPeer,
+  SyncStatusResult,
   TranscriptPage,
 } from "./bindings.gen";
 
@@ -105,6 +109,33 @@ export async function cleanupLegacyFiles(): Promise<LegacyCleanupResult> {
 
 export async function runLegacyImport(dryRun = false): Promise<string> {
   return invoke("plugin:db|run_legacy_import", { dryRun });
+}
+
+export async function syncStatus(): Promise<SyncStatusResult> {
+  return invoke("plugin:db|sync_status");
+}
+
+export async function syncTrigger(): Promise<number> {
+  return invoke("plugin:db|sync_trigger");
+}
+
+export async function syncListPeers(): Promise<SyncPeer[]> {
+  return invoke("plugin:db|sync_list_peers");
+}
+
+export async function syncThisDevice(): Promise<string> {
+  return invoke("plugin:db|sync_this_device");
+}
+
+export async function syncAddPeer(
+  fingerprint: string,
+  label: string,
+): Promise<string> {
+  return invoke("plugin:db|sync_add_peer", { fingerprint, label });
+}
+
+export async function syncRemovePeer(fingerprint: string): Promise<boolean> {
+  return invoke("plugin:db|sync_remove_peer", { fingerprint });
 }
 
 export async function subscribe<T = Record<string, unknown>>(
