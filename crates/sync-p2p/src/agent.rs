@@ -788,14 +788,19 @@ fn dial_backoff(transport: AgentTransport, attempt: u32) -> std::time::Duration 
 /// tens of seconds — with no per-attempt bound to fail fast on instead.
 ///
 /// `Loopback`: 500ms is generous for a same-machine handshake (normally single
-/// digit ms) while still bounding a dead-port dial. `Discovered`: 5s allows
+/// digit ms) while still bounding a dead-port dial. `Discovered`: 8s allows
 /// room for a real DNS/pkarr address-lookup round trip plus a relay-assisted
-/// QUIC handshake, which can legitimately take a couple of seconds on a
-/// healthy WAN path.
+/// QUIC handshake on a path that is merely slow (elevated latency, a loaded
+/// relay), not offline — a genuinely dead peer still fails within that same
+/// 8s rather than lingering on iroh's own multi-ten-second internal timeout.
+/// AUDIT (auditor, minimax, 2026-08-31): an earlier 5s cap was tight enough
+/// that a *reachable but slow* WAN path (elevated DNS/relay latency) could be
+/// misread as offline and get a spurious failure on every attempt; widened to
+/// 8s so slow-but-alive is more reliably distinguished from actually-dead.
 fn dial_attempt_timeout(transport: AgentTransport) -> std::time::Duration {
     match transport {
         AgentTransport::Loopback => std::time::Duration::from_millis(500),
-        AgentTransport::Discovered => std::time::Duration::from_secs(5),
+        AgentTransport::Discovered => std::time::Duration::from_secs(8),
     }
 }
 
