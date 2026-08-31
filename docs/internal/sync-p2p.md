@@ -1884,3 +1884,74 @@ observed against a real run. Do not read this section as "Windows now
 works"; it is "Windows failed at a new, later point, with a specific fix
 applied and not yet confirmed." The next `desktop_ci` run is still the
 actual proof.
+
+### 21.12 CI run 3 (2026-08-31) — the `rm -f` fix did not actually work; a more robust fix applied
+
+A run auto-triggered by the push (`33415114684`) landed before this lane
+manually re-triggered one, so the manual duplicate (`33415444234`) was
+cancelled and the auto-triggered run was used instead — same commit either
+way.
+
+**`cloudsync_from_source_macos` — GREEN again** (second confirmation, same
+as §21.11).
+
+**`cloudsync_from_source_windows` — FAILED again, past `rust_install` this
+time, at this job's own `cargo check -p cloudsync --features from-source`
+step:**
+
+```
+error: linking with `link.exe` failed: exit code: 1
+  = note: "C:\Program Files\Git\usr\bin\link.exe" "/NOLOGO" ...quote...
+  = note: /usr/bin/link: extra operand '...build_script_build...cgu.0.rcgu.o'
+error: could not compile `quote` (build script) due to 1 previous error
+... (same for proc-macro2, typenum)
+```
+
+This is important, not just another failure: `./.github/actions/rust_install`
+**succeeded this run**, including its embedded `cargo install
+trusted-signing-cli` step — meaning the §21.11 `rm -f /usr/bin/link.exe` fix
+*looked* like it worked. It had not. This job's own next step, a few seconds
+later in the same job, hit the **identical** `C:\Program Files\Git\usr\bin\link.exe`
+error for the identical class of crates (`quote`, `proc-macro2`, `typenum` —
+`getrandom` was the one that failed under `trusted-signing-cli` in §21.11).
+A file that was genuinely deleted cannot reappear mid-job on the same
+runner's filesystem, so `rm -f` almost certainly never removed the real
+file — `C:\Program Files\...` permissions plus `-f` silently swallowing a
+failed `unlink()` is the leading explanation, and `rust_install`'s step most
+likely only went green because `Swatinem/rust-cache` restored already-linked
+build-script artifacts for `trusted-signing-cli`'s shared deps, skipping a
+fresh link rather than proving the PATH problem was gone. This job's own
+`cargo check -p cloudsync` builds a dependency graph `cloudsync` has never
+had cached anywhere, so it needed a genuinely fresh link and hit the
+still-live bug.
+
+**Lesson recorded plainly: a job going green is not proof a fix worked
+unless the specific thing the fix targets was actually exercised.**
+`rust_install` going green in §21.11 was treated as confirmation; it should
+have been treated as "consistent with, but not proof of" the fix, precisely
+the distinction this whole §21 has otherwise been careful about for
+macOS/Windows generally.
+
+**Fixed with a different approach: stop relying on PATH resolution picking
+the right `link.exe` under Git Bash at all.** A new step immediately after
+`msvc-dev-cmd` scans `$PATH` for the first `link.exe` NOT under a `.../Git/...`
+directory and pins `CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER` to its
+absolute path via `$GITHUB_ENV`. Cargo/rustc read that env var directly for
+every invocation regardless of which shell launched them or what PATH that
+shell independently derived, so it protects both `rust_install`'s embedded
+`trusted-signing-cli` build and this job's own check step without depending
+on PATH ordering surviving a fresh Git Bash shell. The step fails loudly
+(`exit 1`) if no non-Git `link.exe` is found, rather than silently
+proceeding into the same failure mode again.
+
+**Status after this round: still zero observed-green Windows runs.** Three
+rounds, three distinct Windows CI-plumbing bugs (`ToolNotFound: cl`, PATH
+resolving to Git's `link.exe`, and that "fix" not actually taking effect),
+and in every round the failure was in shared setup machinery
+(`rust_install`, `msvc-dev-cmd`/Git-Bash interaction) — **not once has this
+job reached a point where it evaluated the Winsock2 port in
+`network_p2p.c`.** That code remains exactly as unverified as it was before
+any of these three rounds. If the next run also fails before reaching the
+`cargo check` step's actual compilation of `cloudsync`, that is the signal
+to stop iterating on this job's plumbing and report it blocked rather than
+attempt a fourth fix.
