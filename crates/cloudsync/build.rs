@@ -185,10 +185,19 @@ fn main() {
     //   assumed).
     // - windows/MSVC (`cc::Build`'s compiler `is_like_msvc()`): `cl.exe` does
     //   not understand `-shared`/`-o`; `/LD` tells cl to produce a DLL and
-    //   invoke `link.exe` itself, `/Fe:` sets the output path, and `ws2_32.lib`
-    //   supplies the Winsock2 symbols `network_p2p.c` now calls.
+    //   invoke `link.exe` itself, `/Fe:` sets the output path, `ws2_32.lib`
+    //   supplies the Winsock2 symbols `network_p2p.c` now calls, and
+    //   `bcrypt.lib` supplies `BCryptGenRandom` — `vendor/src/utils.c`
+    //   already has a `#ifdef _WIN32` branch calling it (parallel to the
+    //   macOS `SecRandomCopyBytes` branch below) for UUID generation, but
+    //   nothing linked the import lib for it: "error LNK2019: unresolved
+    //   external symbol BCryptGenRandom referenced in function
+    //   cloudsync_uuid_v7" (SYNC-9 CI run 33422610638, §21.16) — same shape
+    //   of bug as the macOS Security.framework one, just one step later once
+    //   compilation itself started succeeding.
     // - windows/GNU (mingw-w64, not used by this repo's CI but kept working
-    //   for anyone building outside it): behaves like linux, plus `-lws2_32`.
+    //   for anyone building outside it): behaves like linux, plus `-lws2_32`
+    //   and `-lbcrypt`.
     let compiler = cc::Build::new().get_compiler();
     let so_file_name = match target_os.as_str() {
         "macos" => "cloudsync.dylib",
@@ -202,7 +211,8 @@ fn main() {
         cmd.arg("/LD")
             .arg(format!("/Fe:{}", so_path.display()))
             .args(&objects)
-            .arg("ws2_32.lib");
+            .arg("ws2_32.lib")
+            .arg("bcrypt.lib");
     } else {
         cmd.arg(if target_os == "macos" {
             "-dynamiclib"
@@ -228,7 +238,7 @@ fn main() {
             cmd.arg("-framework").arg("Security");
         }
         if is_windows {
-            cmd.arg("-lws2_32");
+            cmd.arg("-lws2_32").arg("-lbcrypt");
         } else {
             cmd.arg("-lm");
         }
