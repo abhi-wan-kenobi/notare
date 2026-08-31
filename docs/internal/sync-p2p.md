@@ -2042,3 +2042,107 @@ file earlier, on a pre-existing vendored file this lane did not touch.
 `cloudsync_from_source_windows` stays provisional/non-blocking; do not
 promote it until this is resolved and a run reaches (and passes or fails
 on) `network_p2p.c` itself.
+
+### 21.14 The `sqlite3.h` fix — reuse `libsqlite3-sys`'s bundled header,
+don't vendor a copy
+
+§21.13 left this **not fixed**, flagged as a version-matching decision that
+needed care. It turned out not to need a new decision at all: the workspace
+already has an authoritative, correctly-versioned `sqlite3.h` sitting one
+`links` hop away, via `crates/db-core`'s existing `libsqlite3-sys = "0.35"`
+dependency (used *bundled*, confirmed via `cargo tree -p db-core -e features
+-i libsqlite3-sys`: `sqlx-sqlite`'s default `bundled` feature is active
+workspace-wide even though every crate's own `sqlx` dependency asks for
+`sqlite-unbundled` — feature unification pulls both in). `libsqlite3-sys`
+declares `links = "sqlite3"`, which is exactly the Cargo mechanism for one
+build script to hand a resolved include path to another's.
+
+**The fix:** `crates/cloudsync` now depends on `libsqlite3-sys = "0.35"`
+(same version already used elsewhere in the workspace — no new SQLite
+version introduced), `optional = true`, `features = ["bundled"]`, gated into
+the `from-source` feature via `dep:libsqlite3-sys` so a default
+(`from-source` off) resolve never touches it. `build.rs` reads
+`DEP_SQLITE3_INCLUDE` (the `cargo:include=...` libsqlite3-sys's own build
+script emits) and appends it to the include dirs used to compile every
+vendored `.c` file, instead of relying on whatever the compiler's implicit
+system include path happens to contain. If the var is absent, `build.rs`
+`panic!`s with an explicit message rather than silently falling back to a
+system header — the fallback was the bug.
+
+**Two things had to be verified empirically, not assumed, and one of them
+overturned the first draft of this fix:**
+
+1. **`links` metadata does not cross a `[build-dependencies]` edge.** The
+   first attempt put `libsqlite3-sys` under `[build-dependencies]` (it's only
+   ever used from `build.rs`, never from cloudsync's own Rust code, so that
+   looked right). It compiled, and even correctly built libsqlite3-sys in
+   `bundled` mode with `cargo:include` present in its own `output` file — but
+   `DEP_SQLITE3_INCLUDE` never reached cloudsync's build script. Confirmed by
+   instrumenting `build.rs` to dump every `DEP_*`/`*SQLITE*` env var it
+   received: zero, out of 98 total vars in the process env (`cargo build -p
+   cloudsync --features from-source -vv` also confirms `-vv`'s own dump of the
+   `build-script-build` invocation env has no `DEP_SQLITE3_*` entry, even
+   though the same command line correctly links
+   `--extern libsqlite3_sys=...rlib -L native=.../libsqlite3-sys-<hash>/out`).
+   Moving the dependency to a normal `[dependencies]` entry (still
+   `optional = true`, still gated behind `from-source`, never used from Rust
+   code) fixed it immediately — `DEP_SQLITE3_INCLUDE` showed up on the next
+   build. Cargo's `links`/`DEP_*` forwarding is scoped to the normal/target
+   dependency graph, not the host-only build-dependency graph, regardless of
+   host == target. This is a correction to this lane's own initial premise,
+   not a deviation from the diagnosed root cause.
+
+2. **The `bundled` feature has to be requested explicitly on this new edge,
+   not inherited.** The first `[dependencies]` attempt (before adding
+   `features = ["bundled"]`) also failed to produce `DEP_SQLITE3_INCLUDE`,
+   because without an explicit feature request cargo unified this edge with
+   whatever the *lowest common denominator* across the workspace happened to
+   be at the time it resolved a fresh build unit and picked the
+   `pkg-config`/system-`sqlite3` path (`output` file full of
+   `PKG_CONFIG_*`/`SQLITE3_INCLUDE_DIR` rerun-if-env-changed lines, no
+   `cargo:include` anywhere). Adding `features = ["bundled"]` directly on
+   cloudsync's dependency forces that edge to actually compile the vendored
+   SQLite amalgamation and emit `cargo:include`. Because it's the exact same
+   crate name+version as db-core's existing dependency, Cargo unifies the two
+   into one build with the union of features — no second/duplicate SQLite
+   gets linked into the app; confirmed no new `libsqlite3-sys-*` build
+   directory appears once both edges request `bundled` (only one edge
+   resolves in the manifest per platform's default-vs-`from-source` split, so
+   this couldn't be checked as two-simultaneously-active edges on this box,
+   but the "only one `links = "sqlite3"` package in the graph" rule is a hard
+   Cargo resolver constraint, not a convention, so this cannot silently
+   diverge into two SQLite copies).
+
+**Confirmed working, end to end, on Linux:**
+```
+warning: cloudsync@0.1.0: cloudsync from-source: using sqlite3.h from DEP_SQLITE3_INCLUDE=/home/.../\
+  .cargo/registry/src/index.crates.io-.../libsqlite3-sys-0.35.0/sqlite3
+```
+`cargo check -p cloudsync` (default): `cloudsync: features=[]` in the
+workspace resolve, confirmed via `cargo metadata` — no `libsqlite3-sys` edge
+activated. `cargo check -p cloudsync --features from-source`, `cargo test -p
+cloudsync --features from-source` (compiles and links the real vendored
+extension, `tests::loads_bundled_cloudsync` passes), `cargo check -p desktop`
+(default) and `--features sync`: all green, no warnings beyond pre-existing
+ones unrelated to this change.
+
+**The latent Linux/macOS ABI-mismatch bug (§ "This also fixes a latent bug"
+in this lane's brief) — verified fixed, not just asserted.** Before this
+change, the from-source build's implicit include path was the *system*
+`sqlite3.h` (`/usr/include/sqlite3.h` on this box, confirmed present via
+`libsqlite3-dev`, version 3.45.1 — a different SQLite than whatever
+libsqlite3-sys 0.35 bundles), while the app links libsqlite3-sys's *bundled*
+SQLite at runtime — two potentially-different SQLite versions, header vs.
+linked library. After this change, `DEP_SQLITE3_INCLUDE` resolves to
+`~/.cargo/registry/.../libsqlite3-sys-0.35.0/sqlite3` — the **same**
+libsqlite3-sys copy the app actually links, on every platform, not the
+system path. The include path genuinely changed, confirmed by direct
+inspection of the resolved env var (not inferred from the diff alone).
+
+**Not yet done, deliberately, next in this lane:** none of this has been
+pushed or exercised by `cloudsync_from_source_windows` yet — Linux
+`cargo check`/`cargo test` only proves the wiring and the include-path
+mechanics, not that `cl.exe` accepts the vendored sources once `sqlite3.h`
+resolves. §21.13 already predicted more POSIX-assumption failures once
+`sqlite3ext.h` stops being the first wall; the CI push after this section is
+where that gets found out.
