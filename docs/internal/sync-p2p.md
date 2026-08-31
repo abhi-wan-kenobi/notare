@@ -237,16 +237,16 @@ call.
   `cargo:rustc-env=CLOUDSYNC_FROM_SOURCE_SO=<OUT_DIR>/cloudsync.so`, and
   `bundle.rs` reads it at runtime under `#[cfg(feature = "from-source")]`.
 
-### Per-platform build outputs (only linux/x86_64 proven in S0b)
+### Per-platform build outputs (linux/x86_64 proven in S0b; see §21 for SYNC-9)
 
 | Target | Output | Status |
 |---|---|---|
 | linux/gnu/x86_64 | `cloudsync.so` | ✅ Proven (S0b): builds, loads, `cloudsync_version() == "1.0.12"` |
-| linux/musl/x86_64 | `cloudsync.so` | Not built (build.rs panics under `from-source`; falls through to prebuilt) |
-| linux/aarch64 | `cloudsync.so` | Not built — SYNC-9 |
-| macos (aarch64/x86_64) | `cloudsync.dylib` | Not built — uses upstream `network.m` (NSURLSession), SYNC-9 |
-| android (arm*/x86_64) | `cloudsync.so` | Not built — needs `cacert.h`, SYNC-9 |
-| windows/x86_64 | `cloudsync.dll` | Not built — SYNC-9 |
+| linux/musl/x86_64 | `cloudsync.so` | `supported()` admits it (checks os+arch only, pre-dates SYNC-9) but it is untested; see §21 |
+| linux/aarch64 | `cloudsync.so` | `supported()` admits it (SYNC-9) but **not locally verified** — no aarch64 toolchain on the dev box, no CI job either; see §21 |
+| macos (aarch64/x86_64) | `cloudsync.dylib` | `supported()` admits both (SYNC-9); **not locally verified** — CI-only proof (§21, provisional job) |
+| android (arm*/x86_64) | `cloudsync.so` | Still not built — needs `cacert.h`; out of scope, see §21 |
+| windows/x86_64 | `cloudsync.dll` | `supported()` admits it (SYNC-9); Winsock2 port done in `network_p2p.c`; **not locally verified** — CI-only proof (§21, provisional job) |
 
 ## 8. Feature gating
 
@@ -1376,3 +1376,223 @@ pairing commands land in the plugin's single flat `default` permission set is
 accurate but not a regression — every command in this plugin, including raw
 `execute`, has always done so; splitting the permission model is its own piece
 of work.
+
+## 21. SYNC-9 — cross-platform `from-source` builds
+
+S0b through SYNC-6 proved the sync stack end-to-end, but `crates/cloudsync`'s
+`from-source` build only ever compiled on linux/x86_64 — `build.rs` panicked
+on every other target. SYNC-9 widens that, and ports the custom C transport
+(`build/network_p2p.c`) off POSIX-only sockets so Windows can build it. It
+does **not** touch the protocol, the agent, or the peer allowlist — this
+section is entirely about "does the C code compile and link," not "does sync
+work" (that was already proven on linux/x86_64 in §12/§13/§15).
+
+### 21.1 `supported()` — what's admitted now
+
+`crates/cloudsync/build.rs`'s `supported()` went from a single `os ==
+"linux" && arch == "x86_64"` check to a `matches!` over five target pairs:
+
+```rust
+matches!(
+    (os.as_str(), arch.as_str()),
+    ("linux", "x86_64")
+        | ("linux", "aarch64")
+        | ("macos", "aarch64")
+        | ("macos", "x86_64")
+        | ("windows", "x86_64")
+)
+```
+
+Android stays out of `supported()` — it needs
+`vendor/src/network/cacert.h` (an Android-only PEM bundle wired up
+separately), unrelated to this lane. The panic message on an unsupported
+target names it explicitly. **The feature stays default-OFF and opt-in** — no
+line in this change enables `from-source` anywhere by default (§15.2b's
+constraint); a default `cargo check -p cloudsync -v` still shows no
+`--cfg feature="..."` line for the crate, i.e. `features=[]`.
+
+One pre-existing wrinkle, not introduced by this change: `supported()` checks
+`target_os`/`target_arch` only, not `target_env`, so `x86_64-unknown-linux-musl`
+also satisfies `("linux", "x86_64")` — it did before SYNC-9 too, since the
+original check had the same shape. Nothing here makes that better or worse;
+it is untested either way (no musl target on the dev box, no CI job for it).
+
+### 21.2 The link step is now genuinely platform-specific
+
+Compiling the vendored C sources to objects was already portable (`cc::Build`
+translates `.define()`/`.opt_level()`/`.warnings()` per compiler); the two
+places that were NOT portable:
+
+- `-fPIC`: meaningless on Windows and rejected outright by `cl.exe`. Now
+  added only when `target_os != "windows"`.
+- The final manual link (`cc::Build::compile()` is deliberately not used here
+  — see the existing comment — because it would emit `cargo:rustc-link-lib`
+  and wrongly link the extension into the host binary). This now branches
+  three ways:
+  - **linux**: unchanged, `-shared -o cloudsync.so <objects> -lm`.
+  - **macOS**: `-dynamiclib` instead of `-shared` — chosen explicitly to
+    produce a real `.dylib` (matching the `.dylib` extension the prebuilt
+    `vendor/cloudsync/macos/` artifacts already use) rather than relying on
+    clang's Darwin driver to alias `-shared`. **Not locally verified** — no
+    macOS toolchain on the dev box; the §21.4 CI job is the proof.
+  - **Windows (MSVC, `compiler.is_like_msvc()`)**: `cl.exe` does not
+    understand `-shared`/`-o`. `cl /LD /Fe:<path> <objects> ws2_32.lib` tells
+    `cl` to produce a DLL and invoke `link.exe` itself; the `.o` object files
+    `cc::Build::compile_intermediates()` produces are passed straight to
+    `link.exe` by `cl`'s documented "unrecognized extension → passed to the
+    linker" behavior. **Not locally verified** — the §21.4 CI job is the
+    proof, and this is the one path this lane could not exercise at all
+    before pushing.
+  - Windows/GNU (mingw-w64) falls through to the `-shared` branch plus
+    `-lws2_32`, kept working for anyone building outside this repo's CI, but
+    not what the CI job below uses (it targets `x86_64-pc-windows-msvc`, same
+    as the rest of this repo's Windows builds).
+
+The output filename also now varies: `cloudsync.so` / `cloudsync.dylib` /
+`cloudsync.dll`, matching what `bundle.rs`'s prebuilt path already names them
+(the from-source path doesn't care about the extension at runtime — it loads
+whatever path `cargo:rustc-env=CLOUDSYNC_FROM_SOURCE_SO` points at — but
+matching the convention avoids a confusing `.so` on Windows in a debugger).
+
+### 21.3 `network_p2p.c` — Winsock2 port
+
+Ported behind a single `#ifdef _WIN32` block near the top of the file (protocol
+logic — framing, JSON building, base64 — is untouched):
+
+- `sock_t` (typedef `SOCKET` on Windows, `int` elsewhere), `SOCK_INVALID`
+  (`INVALID_SOCKET` vs `-1`), `CLOSESOCK()` (`closesocket` vs `close`) replace
+  every raw `int fd` / `close(fd)` in the file.
+- `IS_RETRYABLE_SEND_RECV_ERROR()` — `errno == EINTR` on POSIX, `false` on
+  Windows (Winsock blocking sockets have no EINTR-equivalent retry case).
+- One-time `WSAStartup`/`WSACleanup`: a static `bool` guard calls
+  `WSAStartup` on first use and registers `WSACleanup` via `atexit`. Not
+  thread-safe against a concurrent first call from two threads — same
+  simplicity tradeoff as the rest of this file (contract §6: the core calls
+  these functions synchronously, one at a time).
+- `send`/`recv` calls now cast `len` to `int` and the return to `int`
+  uniformly on both platforms (Windows' signatures require `int`; every call
+  site is bounded well under `INT_MAX` by the 64 MiB frame cap in
+  `read_frame`, so the cast is exact, not lossy, on POSIX too).
+- `connect()`'s `addrlen` argument is cast to `int` rather than `socklen_t`,
+  since Winsock's `connect()` takes a plain `int` and some Windows SDKs don't
+  define `socklen_t` at all; POSIX's `socklen_t` parameter accepts an `int`
+  argument without complaint.
+- `build.rs` links `ws2_32.lib`/`-lws2_32` on Windows (§21.2).
+
+**macOS** needed none of this — BSD sockets, and every header
+`network_p2p.c` already included (`<sys/socket.h>`, `<netinet/in.h>`,
+`<arpa/inet.h>`, `<netdb.h>`, `<unistd.h>`) ships with Xcode's SDK. This was
+*verified* by inspection (all five are stable Apple SDK headers, not Linux
+extensions) rather than assumed, per this lane's own instruction not to skip
+that step — but it is still not compiled proof; see §21.5.
+
+### 21.4 The `strstr` JSON parsing — still open, untouched here
+
+Per the spec for this lane, the `strstr`-based response field lookup in
+`network_receive_buffer`/`network_send_buffer` (`"status"`/`"body"`/`"ok"`,
+carried since §12/§13.9) was **not** touched. It is orthogonal to
+cross-platform support — the same tolerant parsing runs on every target — and
+mixing it into this change would blur two unrelated diffs. Still open, still
+tracked as production hardening for a typed codec / hostile-broker fixture.
+
+### 21.5 IPv6 bracket fix (closes the §12/§13.9 carried finding)
+
+`resolve_agent_addr` splits `NOTARE_SYNC_AGENT_ADDR` at the last `:`, so a
+bracketed IPv6 literal like `[::1]:1234` produced host `"[::1]"` — brackets
+included — which `getaddrinfo()` rejects (they're a URI/host:port display
+convention, not part of a valid numeric host argument). Fixed by stripping a
+matching leading `[` / trailing `]` from the host substring immediately after
+the split, before it's used anywhere. The `host_cap` bounds check (fails
+closed on an oversized host) and the "`NOTARE_SYNC_AGENT_ADDR` not set"
+failure path are both unchanged in shape and behavior.
+
+The fix also became the occasion to extract `resolve_agent_addr` (and the new
+`resolve_agent_addr_from`, the pure version that takes the address as a
+parameter instead of reading the env var) into `crates/cloudsync/build/agent_addr.h`
+— a small, dependency-free header (`getenv`/`memcpy`/`strtol` only, no
+cloudsync allocator, no sockets) shared by `network_p2p.c` and by a new test,
+`crates/cloudsync/tests/ipv6_bracket_host_split.rs`. That test compiles a
+tiny, self-contained C harness against `agent_addr.h` and runs it as a
+subprocess (four cases: bracketed IPv6, plain IPv4 unaffected, "not set"/"no
+colon" fail closed, and the `host_cap` bounds check still fails closed on an
+oversized bracketed host) — gated `#[cfg(feature = "from-source")]`, run by
+`cargo test -p cloudsync --features from-source`.
+
+### 21.6 CI coverage (Requirement 4)
+
+`from-source` is default-OFF, so before this change **no CI job had ever
+compiled this C code anywhere but linux/x86_64** — widening `supported()`
+without CI coverage would only have moved an untested claim from the panic
+message into the docs. `.github/workflows/desktop_ci.yaml` gained two new
+jobs, both scoped to `cargo check -p cloudsync --features from-source` only
+(no other job in the file enables the feature, and neither job does a full
+app build — `cargo check` alone is enough because Cargo runs build scripts
+for `check`, not just `build`, so it still drives the real C compile-and-link):
+
+- **`cloudsync_from_source_macos`** (`macos-15`, Apple Silicon): checks both
+  macOS targets `supported()` now admits — native `aarch64-apple-darwin`, and
+  a `--target x86_64-apple-darwin` cross-check using the same clang/Xcode SDK.
+- **`cloudsync_from_source_windows`** (`windows-latest`, MSVC toolchain via
+  `rust_install(platform: windows)` + `ilammy/msvc-dev-cmd`, mirroring the
+  proven `windows_stt` job's setup): `cargo check -p cloudsync --features
+  from-source` on `x86_64-pc-windows-msvc`.
+
+Both are marked **PROVISIONAL / NON-BLOCKING** — not in the `ci` gate's
+`needs:` list — for the same reason `windows_stt` is: this exact code path
+has never run on a real macOS or Windows runner, so it cannot be proven green
+from this Linux dev box, and a required check that's broken on day one is
+worse than a provisional one. Promotion checklist: once each job has been
+observed green across a few PRs, add it to `ci`'s `needs:` array.
+
+YAML validated with `python3 -c "import yaml; yaml.safe_load(open(...))"` —
+parses, both jobs present, `ci.needs` unchanged (neither new job added yet,
+by design). It cannot be exercised further until the branch is pushed and a
+workflow run actually happens on `macos-15`/`windows-latest`.
+
+### 21.7 What's verified vs. not
+
+**Verified on this (linux/x86_64) dev box:**
+- `cargo check -p cloudsync` (default) — green, and a default `cargo check -p
+  cloudsync -v` shows no `--cfg feature=...` for the crate (`features=[]`).
+- `cargo check -p cloudsync --features from-source` — green; still links
+  `cloudsync.so` and passes the existing `loads_bundled_cloudsync` test.
+- `cargo test -p cloudsync --features from-source` — 5/5 (1 existing +
+  4 new IPv6 tests).
+- `cargo test -p sync-p2p` — 25/25 across `agent`/`crypto`/`identity`/`peers`
+  unit tests, `broker_protocol`, `iroh_transport` (unaffected by this lane —
+  `crates/sync-p2p/src/agent.rs` was not touched).
+- `cargo check -p desktop` (default) and `cargo check -p desktop --features
+  sync` — both green.
+- `supported()`'s logic for every target pair it now admits, indirectly via
+  `cargo check -v`'s panic/no-panic behavior on this host's own
+  `linux`/`x86_64` pair, and by code review of the `matches!` arms (an
+  in-process `#[test]` for `supported()` itself was not added — it reads
+  `CARGO_CFG_*` build-script env vars, which are only meaningfully set inside
+  an actual build-script invocation for the target being built, so testing
+  the other four pairs from a Rust unit test on this host would require
+  faking those env vars rather than genuinely exercising the function against
+  a real build).
+
+**NOT verified locally — genuinely unknown until CI runs:**
+- Whether `cloudsync --features from-source` actually **compiles and links**
+  on macOS (either architecture) or Windows. The §21.6 CI jobs are the only
+  proof; they have not run yet (not pushed).
+- Whether the `cl /LD` + `ws2_32.lib` link step is exactly right — reasoned
+  through from documented `cl.exe`/`link.exe` behavior, not observed.
+- `linux/aarch64` — `supported()` admits it, but there is no aarch64
+  toolchain on this dev box and no CI job for it either (unlike macOS/Windows,
+  this repo has no existing aarch64-linux runner shape to reuse cheaply). Risk
+  is lower than Windows/macOS (identical POSIX code path, same compiler
+  family as the proven x86_64 build), but it is unverified, not "should be
+  fine."
+- `linux/musl/x86_64` (§21.1) — pre-existing gap, not newly introduced.
+
+### 21.8 Still open (unchanged by this lane)
+
+- **`strstr`-based JSON field lookup** (§12/§13.9, §21.4) — production
+  hardening for a typed codec, deliberately not touched here.
+- **No hostile-broker test fixture** (§12) — same reasoning.
+- **Android** — needs `vendor/src/network/cacert.h`; out of scope for this
+  lane, stays out of `supported()`.
+- **Hub failover, blob-log GC, enabling more synced tables** — unrelated to
+  this lane, not attempted.
