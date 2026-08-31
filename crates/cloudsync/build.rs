@@ -166,6 +166,21 @@ fn main() {
         .arg("-o")
         .arg(&so_path)
         .args(&objects);
+        if target_os == "macos" {
+            // vendor/src/utils.c calls SecRandomCopyBytes/kSecRandomDefault
+            // (<Security/Security.h>) for UUID generation on Apple targets.
+            // Observed as a real link failure on macos-15/arm64 CI (SYNC-9
+            // first push, run 33410001375): "Undefined symbols ...
+            // _SecRandomCopyBytes / _kSecRandomDefault ... ld: symbol(s) not
+            // found for architecture arm64" — `-dynamiclib` alone does not
+            // pull in the framework. `-framework CoreFoundation` was
+            // considered and NOT added: nothing in vendor/src or
+            // build/network_p2p.c calls any CF*/CoreFoundation symbol
+            // (checked by grep), and Security.framework resolves its own
+            // internal dependency on CoreFoundation without our object files
+            // needing to reference it directly.
+            cmd.arg("-framework").arg("Security");
+        }
         if is_windows {
             cmd.arg("-lws2_32");
         } else {
