@@ -58,6 +58,51 @@ fn main() {
     let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
     let vendor = manifest_dir.join("vendor").join("src");
 
+    // SYNC-9 §21.14: `vendor/src/sqlite/sqlite3ext.h` does `#include
+    // "sqlite3.h"`, and `sqlite3.h` itself is NOT vendored anywhere under
+    // `vendor/` (only `sqlite3ext.h` is) — see docs/internal/sync-p2p.md
+    // §21.13. Without an explicit include path this resolved through the
+    // compiler's *implicit* system include path — `/usr/include` on linux,
+    // the macOS SDK on Mac — which happened to exist on both, so it never
+    // surfaced there. MSVC has no implicit system include path and Windows
+    // does not ship SQLite headers at all, which is why this only broke on
+    // Windows CI (run 33419275613): "fatal error C1083: Cannot open include
+    // file: 'sqlite3.h'". Relying on an ambient system header is also a
+    // latent ABI risk even where it "works": it could resolve to a different
+    // SQLite version than the one actually linked into the app.
+    //
+    // Fix: `libsqlite3-sys` is a dependency of this crate (gated by this same
+    // `from-source` feature — see Cargo.toml) and declares `links =
+    // "sqlite3"`, so cargo forwards its build script's `cargo:include=...`
+    // output to *this* build script as `DEP_SQLITE3_INCLUDE`. It must be a
+    // normal [dependencies] entry, not [build-dependencies]: verified
+    // empirically that Cargo does not forward DEP_<links>_<key> vars across a
+    // build-dependency edge, only a normal/target-dependency one (see
+    // Cargo.toml). That path belongs to the exact SQLite libsqlite3-sys
+    // bundles/links for the rest of the app, so pointing cloudsync's own
+    // compile at it — instead of an ambient system header — makes the header
+    // and the linked library the same SQLite on every platform, not just by
+    // accident on two of three.
+    //
+    // Fail loudly instead of silently falling back to a system header if the
+    // var is absent: that fallback is exactly the bug this fixes.
+    let sqlite_include = env::var("DEP_SQLITE3_INCLUDE").unwrap_or_else(|_| {
+        panic!(
+            "cloudsync `from-source` build failed: DEP_SQLITE3_INCLUDE is not set. This \
+             variable is expected to come from libsqlite3-sys's build script (it declares \
+             `links = \"sqlite3\"`, and libsqlite3-sys is a dependency of this crate gated \
+             by the `from-source` feature — see Cargo.toml). Its absence means either \
+             libsqlite3-sys's build script did not run before this one, or the dependency \
+             is missing/misconfigured. Refusing to silently fall back to an ambient system \
+             sqlite3.h: that header may not match the SQLite version actually linked into \
+             the app (the ABI-mismatch risk this check exists to prevent). See \
+             docs/internal/sync-p2p.md §21.14."
+        )
+    });
+    println!(
+        "cargo:warning=cloudsync from-source: using sqlite3.h from DEP_SQLITE3_INCLUDE={sqlite_include}"
+    );
+
     let sources = [
         "block.c",
         "cloudsync.c",
@@ -78,6 +123,7 @@ fn main() {
         vendor.join("network"),
         vendor.join("sqlite"),
         vendor.join("modules/fractional-indexing"),
+        PathBuf::from(sqlite_include),
     ];
 
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
