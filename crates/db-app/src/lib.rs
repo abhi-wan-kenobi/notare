@@ -577,23 +577,29 @@ mod tests {
     }
 
     #[test]
-    fn cloudsync_registry_declares_domain_tables_disabled_until_sync_rollout() {
+    fn cloudsync_registry_enables_only_the_proven_tables() {
         let registry = cloudsync_table_registry();
 
         assert_eq!(registry.len(), 17);
-        assert!(registry.iter().all(|table| !table.enabled));
-        assert!(registry.iter().any(|table| table.table_name == "sessions"));
-        assert!(
-            registry
-                .iter()
-                .any(|table| table.table_name == "session_documents")
+
+        let enabled: std::collections::BTreeSet<&str> = registry
+            .iter()
+            .filter(|table| table.enabled)
+            .map(|table| table.table_name.as_str())
+            .collect();
+        assert_eq!(
+            enabled,
+            std::collections::BTreeSet::from(["sessions", "session_documents"])
         );
+
         assert!(
             !registry
                 .iter()
                 .any(|table| table.table_name == "migration_import_runs")
         );
-        assert!(!cloudsync_alter_guard_required("sessions"));
+        assert!(cloudsync_alter_guard_required("sessions"));
+        assert!(cloudsync_alter_guard_required("session_documents"));
+        assert!(!cloudsync_alter_guard_required("transcripts"));
     }
 
     #[tokio::test]

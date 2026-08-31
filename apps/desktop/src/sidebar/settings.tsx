@@ -9,6 +9,7 @@ import {
   CogIcon,
   LockIcon,
   MicIcon,
+  MonitorSmartphoneIcon,
   SlidersHorizontalIcon,
   SparklesIcon,
   type LucideIcon,
@@ -107,7 +108,10 @@ export function SettingsNav() {
     },
     {
       label: t`Integrations`,
-      items: [{ id: "webhook", label: t`Webhooks`, icon: WebhookIcon }],
+      items: [
+        { id: "webhook", label: t`Webhooks`, icon: WebhookIcon },
+        { id: "sync", label: t`Devices`, icon: MonitorSmartphoneIcon },
+      ],
     },
   ];
   const isMacos = platform() === "macos";

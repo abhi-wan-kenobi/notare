@@ -12,6 +12,12 @@ const COMMANDS: &[&str] = &[
     "run_legacy_import",
     "subscribe",
     "unsubscribe",
+    "sync_status",
+    "sync_trigger",
+    "sync_list_peers",
+    "sync_this_device",
+    "sync_add_peer",
+    "sync_remove_peer",
 ];
 
 fn main() {

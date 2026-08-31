@@ -161,3 +161,105 @@ async fn runtime_teardown_runs_every_step_and_fallbacks_answer_without_lifecycle
     drop(agent_dir);
     drop(db_dir);
 }
+
+/// SYNC-6: `SyncLifecycle::add_peer` must reject garbage input, must refuse
+/// to pair a device with itself (the allowlist gates real peers, not a
+/// self-loop), and must accept a fingerprint in either the grouped (dashed,
+/// display) or compact (ungrouped) form — the UI shows grouped, but
+/// `Fingerprint::parse` round-trips both, and `add_peer` must not narrow that.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn add_peer_rejects_invalid_fingerprint_and_self_but_accepts_grouped_or_compact() {
+    let _env = lifecycle_env_lock().lock().await;
+
+    let (agent_dir, agent) = test_agent().await;
+    let own_fingerprint = sync_p2p::Fingerprint::from_pubkey(&agent.node_id())
+        .as_str()
+        .to_string();
+    let db_dir = tempfile::tempdir().unwrap();
+    let db = test_db(&db_dir).await;
+    let lifecycle = SyncLifecycle::start_with(Arc::clone(&db), agent)
+        .await
+        .unwrap();
+
+    assert!(
+        lifecycle
+            .add_peer("not-a-real-fingerprint!!", "bad")
+            .is_err(),
+        "garbage input must be rejected"
+    );
+
+    assert!(
+        lifecycle.add_peer(&own_fingerprint, "myself").is_err(),
+        "a device must not be able to add itself as its own peer"
+    );
+
+    // Two distinct peer identities: one added via the grouped (dashed) form,
+    // one via the compact (ungrouped) form.
+    let peer_a_dir = tempfile::tempdir().unwrap();
+    let peer_a = Identity::load_or_create_in(peer_a_dir.path()).unwrap();
+    let peer_b_dir = tempfile::tempdir().unwrap();
+    let peer_b = Identity::load_or_create_in(peer_b_dir.path()).unwrap();
+
+    let grouped = peer_a.fingerprint().as_str().to_string();
+    assert!(grouped.contains('-'), "sanity: grouped form is dashed");
+    let resolved = lifecycle.add_peer(&grouped, "Peer A").unwrap();
+    assert_eq!(
+        resolved,
+        peer_a.fingerprint().as_str(),
+        "add_peer returns the resolved grouped fingerprint"
+    );
+
+    let compact = peer_b.fingerprint().compact();
+    assert!(!compact.contains('-'), "sanity: compact form is ungrouped");
+    lifecycle.add_peer(&compact, "Peer B").unwrap();
+
+    let peers = lifecycle.list_peers();
+    assert_eq!(peers.len(), 2, "both grouped- and compact-form adds landed");
+    assert!(peers.iter().any(|p| p.node_id == peer_a.id()));
+    assert!(peers.iter().any(|p| p.node_id == peer_b.id()));
+
+    drop(agent_dir);
+    drop(db_dir);
+}
+
+/// SYNC-6: `SyncLifecycle::remove_peer` reports whether the peer actually
+/// existed — `false` for an unknown fingerprint, `true` (once) for a peer
+/// that was paired, and `false` again on a second removal of the same peer.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn remove_peer_reports_existence_and_is_idempotent() {
+    let _env = lifecycle_env_lock().lock().await;
+
+    let (agent_dir, agent) = test_agent().await;
+    let db_dir = tempfile::tempdir().unwrap();
+    let db = test_db(&db_dir).await;
+    let lifecycle = SyncLifecycle::start_with(Arc::clone(&db), agent)
+        .await
+        .unwrap();
+
+    let unknown_dir = tempfile::tempdir().unwrap();
+    let unknown = Identity::load_or_create_in(unknown_dir.path()).unwrap();
+    assert!(
+        !lifecycle
+            .remove_peer(unknown.fingerprint().as_str())
+            .unwrap(),
+        "removing a peer that was never added reports false"
+    );
+
+    let peer_dir = tempfile::tempdir().unwrap();
+    let peer = Identity::load_or_create_in(peer_dir.path()).unwrap();
+    lifecycle
+        .add_peer(peer.fingerprint().as_str(), "Peer")
+        .unwrap();
+
+    assert!(
+        lifecycle.remove_peer(peer.fingerprint().as_str()).unwrap(),
+        "removing a known peer reports true"
+    );
+    assert!(
+        !lifecycle.remove_peer(peer.fingerprint().as_str()).unwrap(),
+        "removing the same peer twice is a no-op the second time"
+    );
+
+    drop(agent_dir);
+    drop(db_dir);
+}

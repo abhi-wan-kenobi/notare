@@ -103,6 +103,12 @@ vi.mock("@hypr/plugin-db", () => ({
   getRecurringMeetingHistory: vi.fn(),
   listMeetings: vi.fn(),
   subscribe: vi.fn().mockResolvedValue(() => Promise.resolve()),
+  syncStatus: vi.fn().mockResolvedValue({ kind: "unavailable" }),
+  syncTrigger: vi.fn(),
+  syncListPeers: vi.fn().mockResolvedValue([]),
+  syncThisDevice: vi.fn(),
+  syncAddPeer: vi.fn(),
+  syncRemovePeer: vi.fn(),
 }));
 
 function translate(

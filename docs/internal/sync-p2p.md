@@ -1232,6 +1232,7 @@ different PK shape or a self/multi-level FK.
 close due to unfinalized statements" panic — the same benign teardown ordering
 §13.7/§16 recorded. SYNC-5's app teardown orders cloudsync_stop before pool
 close, so this is example-lifecycle noise, not an app defect.
+
 ## 18. SYNC-7 — E2E payload encryption (2026-08-31)
 
 ### 18.1 What was built
@@ -1311,3 +1312,67 @@ agent.rs: gpt-oss's "critical duplicate helper definitions" and minimax's "non-c
 intermediate" are FALSE POSITIVES — both read a two-hunk diff as if the intermediate state were
 shippable. Verified against the committed tree: each helper is defined exactly once and
 `cargo check -p sync-p2p --all-targets --features from-source` compiles clean.
+
+## 19. SYNC-6 part B — enable-set + device pairing (2026-08-31)
+
+This section was numbered around §18 (SYNC-7, E2E payload encryption), which
+landed from its own branch in parallel. The numbering avoids a semantic
+collision, not a textual one — both branches appended at end-of-file, so the
+merge did conflict here and was resolved by keeping both sections in order.
+
+**Enable-set.** `SYNCED_TABLES` in `crates/db-app/src/cloudsync.rs` goes from
+`[]` to exactly `["sessions", "session_documents"]` — the two tables §17 proved
+converge. The other 15 registered tables stay `enabled: false`; each needs its
+own §17-style proof before it is added.
+
+**Pairing surface.** `SyncLifecycle::add_peer` / `remove_peer`
+(`plugins/db/src/sync.rs`) back two new specta commands, `sync_add_peer` and
+`sync_remove_peer`. Both are reachable whether or not the lifecycle is running:
+the allowlist is a local JSON file, so `PluginDbRuntime` opens the `PeerStore`
+directly on the not-started path (`runtime.rs`), holding the `sync` mutex across
+the whole call so concurrent pairing serializes. The allowlist stays local and
+un-synced — that invariant is unchanged.
+
+**Fingerprint shape.** `this_device()` returned compact z-base-32 from the
+lifecycle path and the grouped/dashed form from the not-started fallback. Both
+now return the grouped form, since it is what the UI displays and
+`Fingerprint::parse` round-trips either. `SyncPeer` gained a `fingerprint`
+field (grouped, for display) alongside `node_id` (compact, canonical — still
+what `sync_remove_peer` takes).
+
+**Defect found and fixed: the SYNC-5 sync commands were unreachable.** §16
+registered `sync_status` / `sync_trigger` / `sync_list_peers` /
+`sync_this_device` with specta but never added them to `plugins/db/build.rs`
+`COMMANDS` or `permissions/default.toml`. The desktop app grants only
+`db:default`, so every one of them would have been denied by Tauri's capability
+layer the first time the frontend called it — invisible until a UI existed. All
+six commands (the four above plus the two new ones) are now registered and
+permitted. This is a SYNC-5 omission, not a SYNC-6 regression.
+
+**Discrepancy in the §17 proof, recorded not fixed.** The proof example
+`sync_sessions_schema.rs:72` declares `FOREIGN KEY (session_id) REFERENCES
+sessions (id)` on its `session_documents` replica, and §17 describes the real
+schema as carrying that FK. The actual migration
+(`crates/db-app/migrations/20260710223922_canonical_data_model.sql:59`) declares
+**no** foreign key on `session_documents` — nor does any table in the registry.
+The proof therefore ran against a *stricter* schema than production. That is the
+safe direction (convergence under an enforced FK implies convergence without
+one), so the enable decision stands, but §17's "FK intact" wording overstates
+what production enforces. A later proof should either drop the FK to match the
+migration, or the migration should gain one deliberately.
+
+**Audit outcome** (`--coder claude-sonnet-5`, per-commit panels plus a
+consolidated pass over the fix commit). Confirmed and fixed: the add-device form
+validated the normalized fingerprint but submitted the raw one, so a grouped or
+mixed-case paste could pass client validation and then fail the z-base-32 decode
+in `Fingerprint::parse`; the copy-to-clipboard `setTimeout` was cleared neither
+on unmount nor on repeat clicks. Refuted against the real code: a claimed
+dangling-FK / cascade hazard from enabling `session_documents` (no FK exists —
+see above); a claimed race in the not-started `add_peer` path (the mutex guard
+covers the whole body); a claimed `PublicKey`/`&str` type mismatch in
+`PeerStore::add_peer` (it takes `PublicKey`); a claimed cfg-gate asymmetry
+between the two new commands (the gates are identical). The observation that the
+pairing commands land in the plugin's single flat `default` permission set is
+accurate but not a regression — every command in this plugin, including raw
+`execute`, has always done so; splitting the permission model is its own piece
+of work.

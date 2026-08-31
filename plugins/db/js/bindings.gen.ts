@@ -141,6 +141,22 @@ async syncThisDevice() : Promise<Result<string, string>> {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
+},
+async syncAddPeer(fingerprint: string, label: string) : Promise<Result<string, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:db|sync_add_peer", { fingerprint, label }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async syncRemovePeer(fingerprint: string) : Promise<Result<boolean, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:db|sync_remove_peer", { fingerprint }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 }
 }
 
@@ -180,8 +196,12 @@ export type StorageMigrationState = { phase: string; latestRunId: string; parity
 export type SubscriptionRegistration = { id: string; analysis: DependencyAnalysis }
 /**
  * Wire shape of a paired peer from the allowlist.
+ * 
+ * `node_id` stays the compact z32 form (the canonical id — pass it back to
+ * `sync_remove_peer`); `fingerprint` is the grouped, dashed display form (the
+ * same shape `sync_this_device` / `sync_add_peer` use) for the UI to render.
  */
-export type SyncPeer = { nodeId: string; label: string; addedAt: number; lastSeen: number }
+export type SyncPeer = { nodeId: string; fingerprint: string; label: string; addedAt: number; lastSeen: number }
 /**
  * Wire shape of [`hypr_db_core::CloudsyncStatus`] for the specta surface —
  * db-core's own type is serde-only and stays that way (it predates specta

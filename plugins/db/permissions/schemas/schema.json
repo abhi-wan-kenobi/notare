@@ -439,6 +439,78 @@
           "markdownDescription": "Denies the subscribe command without any pre-configured scope."
         },
         {
+          "description": "Enables the sync_add_peer command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-sync-add-peer",
+          "markdownDescription": "Enables the sync_add_peer command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the sync_add_peer command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-sync-add-peer",
+          "markdownDescription": "Denies the sync_add_peer command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the sync_list_peers command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-sync-list-peers",
+          "markdownDescription": "Enables the sync_list_peers command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the sync_list_peers command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-sync-list-peers",
+          "markdownDescription": "Denies the sync_list_peers command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the sync_remove_peer command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-sync-remove-peer",
+          "markdownDescription": "Enables the sync_remove_peer command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the sync_remove_peer command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-sync-remove-peer",
+          "markdownDescription": "Denies the sync_remove_peer command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the sync_status command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-sync-status",
+          "markdownDescription": "Enables the sync_status command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the sync_status command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-sync-status",
+          "markdownDescription": "Denies the sync_status command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the sync_this_device command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-sync-this-device",
+          "markdownDescription": "Enables the sync_this_device command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the sync_this_device command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-sync-this-device",
+          "markdownDescription": "Denies the sync_this_device command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the sync_trigger command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-sync-trigger",
+          "markdownDescription": "Enables the sync_trigger command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the sync_trigger command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-sync-trigger",
+          "markdownDescription": "Denies the sync_trigger command without any pre-configured scope."
+        },
+        {
           "description": "Enables the unsubscribe command without any pre-configured scope.",
           "type": "string",
           "const": "allow-unsubscribe",
@@ -451,10 +523,10 @@
           "markdownDescription": "Denies the unsubscribe command without any pre-configured scope."
         },
         {
-          "description": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-execute`\n- `allow-execute-proxy`\n- `allow-execute-transaction`\n- `allow-list-meetings`\n- `allow-get-meeting`\n- `allow-get-meeting-transcript`\n- `allow-get-recurring-meeting-history`\n- `allow-get-legacy-cleanup-status`\n- `allow-cleanup-legacy-files`\n- `allow-subscribe`\n- `allow-unsubscribe`",
+          "description": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-execute`\n- `allow-execute-proxy`\n- `allow-execute-transaction`\n- `allow-list-meetings`\n- `allow-get-meeting`\n- `allow-get-meeting-transcript`\n- `allow-get-recurring-meeting-history`\n- `allow-get-legacy-cleanup-status`\n- `allow-cleanup-legacy-files`\n- `allow-subscribe`\n- `allow-unsubscribe`\n- `allow-sync-status`\n- `allow-sync-trigger`\n- `allow-sync-list-peers`\n- `allow-sync-this-device`\n- `allow-sync-add-peer`\n- `allow-sync-remove-peer`",
           "type": "string",
           "const": "default",
-          "markdownDescription": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-execute`\n- `allow-execute-proxy`\n- `allow-execute-transaction`\n- `allow-list-meetings`\n- `allow-get-meeting`\n- `allow-get-meeting-transcript`\n- `allow-get-recurring-meeting-history`\n- `allow-get-legacy-cleanup-status`\n- `allow-cleanup-legacy-files`\n- `allow-subscribe`\n- `allow-unsubscribe`"
+          "markdownDescription": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-execute`\n- `allow-execute-proxy`\n- `allow-execute-transaction`\n- `allow-list-meetings`\n- `allow-get-meeting`\n- `allow-get-meeting-transcript`\n- `allow-get-recurring-meeting-history`\n- `allow-get-legacy-cleanup-status`\n- `allow-cleanup-legacy-files`\n- `allow-subscribe`\n- `allow-unsubscribe`\n- `allow-sync-status`\n- `allow-sync-trigger`\n- `allow-sync-list-peers`\n- `allow-sync-this-device`\n- `allow-sync-add-peer`\n- `allow-sync-remove-peer`"
         }
       ]
     }
