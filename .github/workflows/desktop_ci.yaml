@@ -387,6 +387,7 @@ jobs:
   cloudsync_from_source_macos:
     if: ${{ !startsWith(github.head_ref || '', 'blog/') }}
     runs-on: macos-15
+    timeout-minutes: 60
     defaults:
       run:
         shell: bash
