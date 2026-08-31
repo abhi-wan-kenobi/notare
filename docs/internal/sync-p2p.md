@@ -246,7 +246,7 @@ call.
 | linux/aarch64 | `cloudsync.so` | `supported()` admits it (SYNC-9) but **not locally verified** — no aarch64 toolchain on the dev box, no CI job either; see §21 |
 | macos (aarch64/x86_64) | `cloudsync.dylib` | ✅ **Proven (SYNC-9, §21.11, CI run 33411261329):** `cargo check --features from-source` builds and links both `aarch64-apple-darwin` (native) and `x86_64-apple-darwin` (cross) on `macos-15`. Job still provisional/non-blocking pending a few more observed-green runs. |
 | android (arm*/x86_64) | `cloudsync.so` | Still not built — needs `cacert.h`; out of scope, see §21 |
-| windows/x86_64 | `cloudsync.dll` | `supported()` admits it (SYNC-9); Winsock2 port done in `network_p2p.c`; **not locally verified** — CI-only proof (§21, provisional job) |
+| windows/x86_64 | `cloudsync.dll` | 🚫 **Blocked, not proven (§21.13, CI run 33419275613):** the Winsock2 port in `network_p2p.c` has never been reached by a Windows compiler — the build fails one file earlier, on the pre-existing (not-SYNC-9) `vendor/src/sqlite/sqlite3ext.h`'s `#include "sqlite3.h"`, which is not vendored anywhere and has always relied on an ambient system header present by accident on linux/macOS, absent on Windows. Three separate Windows CI-plumbing bugs (cc-rs tool lookup, Git Bash's `link.exe` shadowing, twice) were found and fixed first; this is the blocker underneath all of them. |
 
 ## 8. Feature gating
 
@@ -1955,3 +1955,90 @@ any of these three rounds. If the next run also fails before reaching the
 `cargo check` step's actual compilation of `cloudsync`, that is the signal
 to stop iterating on this job's plumbing and report it blocked rather than
 attempt a fourth fix.
+
+### 21.13 CI run 4 (2026-08-31) — past all plumbing; a real, root-caused
+blocker, not fixed here
+
+Same push, a second `workflow_dispatch` triggered directly against the
+commit with the round-3 audit fixes (word-splitting, MSVC-path validation)
+since the auto-triggered run had picked up an older commit.
+
+**`cloudsync_from_source_macos` — GREEN a third time.**
+
+**`cloudsync_from_source_windows` — past every plumbing step for the first
+time.** `msvc-dev-cmd`, the linker pin, and `rust_install` (with its
+embedded `trusted-signing-cli` install) all succeeded. `cargo check -p
+cloudsync --features from-source` then actually ran cl.exe against the
+vendored C sources — real progress, and confirmation the three plumbing
+fixes (§21.10–§21.12) hold up together — and failed on a real, substantive
+issue:
+
+```
+D:\a\notare\notare\crates\cloudsync\vendor\src\sqlite\sqlite3ext.h(20):
+fatal error C1083: Cannot open include file: 'sqlite3.h': No such file or directory
+error occurred in cc-rs: command did not execute successfully (status code
+exit code: 2): "...cl.exe" ... "-I" "...\vendor\src" "-I" "...\vendor\src\network"
+"-I" "...\vendor\src\sqlite" "-I" "...\vendor\src\modules/fractional-indexing"
+... "-c" "...\vendor\src\network/network.c"
+```
+
+**Root cause, confirmed by inspection, not guessed:**
+`crates/cloudsync/vendor/src/sqlite/sqlite3ext.h:20` does `#include
+"sqlite3.h"`, and **`sqlite3.h` is not vendored anywhere under
+`crates/cloudsync/vendor/`** (`find ... -iname sqlite3.h` returns nothing).
+`build.rs`'s four include dirs (vendor root, `network/`, `sqlite/`,
+`modules/fractional-indexing/`) never contained it either. The from-source
+build has always resolved this header through the **compiler's implicit
+default system include path** — `/usr/include/sqlite3.h`, confirmed present
+on this dev box via the `libsqlite3-dev` apt package (`dpkg -l | grep
+sqlite3`) — which is why linux/x86_64 (S0b, proven since before SYNC-9) and
+now macOS (§21.11–§21.13, both proven via CI) never showed this: both
+platforms' default toolchains (`gcc`/`clang`) search `/usr/include`
+automatically, and both ship or commonly have SQLite dev headers there
+(macOS via the system SDK, linux via the CI image's preinstalled package).
+**`cl.exe` has no equivalent implicit system header path, and Windows does
+not ship SQLite headers at all.** This was never exercised before this CI
+job existed — `plugins/db/Cargo.toml`'s `linux`+`x86_64`-only dependency
+gate (§21.8) meant `from-source` had never compiled on Windows anywhere in
+this repo's history until this run.
+
+Checked and ruled out before writing this up: `libsqlite3-sys` (pulled in
+transitively via `sqlx`'s `sqlite-unbundled` feature, `cargo tree -p
+cloudsync -i libsqlite3-sys` confirms the path) does **not** help here —
+"unbundled" means it links the system `libsqlite3` dynamically using
+pregenerated Rust FFI bindings, with no C header and no `DEP_*`
+include-path metadata for a dependent build script to consume. The gap is
+isolated to `crates/cloudsync/vendor/`'s own C sources; nothing else in the
+dependency graph already carries a usable `sqlite3.h` this build could be
+pointed at.
+
+**Not fixed in this lane.** The fix is realistically: vendor `sqlite3.h`
+(and whatever `sqlite3ext.h` transitively needs) into
+`crates/cloudsync/vendor/` and add that directory to `build.rs`'s
+`include_dirs` on every platform, so the build stops depending on an
+ambient system header that happened to exist on two of three target OSes by
+accident. That is a real, bounded fix, but it is a **version-matching
+decision, not a plumbing one**: the vendored cloudsync C sources
+(`cloudsync_sqlite.c`, `database_sqlite.c`, etc.) were written against a
+specific SQLite ABI, and vendoring the wrong `sqlite3.h` version risks a
+silent mismatch that a Windows-only CI job would not catch (it only checks,
+never runs, the extension). Picking the right version — and confirming
+vendoring a header doesn't shadow-and-diverge from whatever `sqlite3.h`
+linux/macOS currently resolve to system-side — needs care this lane did not
+have license to rush. Per this lane's own instructions ("if you conclude it
+can't be done without restructuring CI, STOP and report rather than
+skipping it"), the equivalent judgment applies here: **blocked on picking
+and vendoring a correctly-versioned `sqlite3.h`, because doing it wrong
+risks a silent ABI mismatch invisible to a check-only CI job.** Reported,
+not guessed at.
+
+**Status: Windows `from-source` compilation is now blocked on one specific,
+well-understood, non-plumbing issue — not on CI configuration.** This is
+real progress relative to §21.10–§21.12 (three rounds of pure Windows CI
+plumbing, zero code-level information) and should not be read as "still
+broadly unverified" — the Winsock2 port in `network_p2p.c` itself has still
+never been reached by a compiler on Windows, because the build fails one
+file earlier, on a pre-existing vendored file this lane did not touch.
+`cloudsync_from_source_windows` stays provisional/non-blocking; do not
+promote it until this is resolved and a run reaches (and passes or fails
+on) `network_p2p.c` itself.
