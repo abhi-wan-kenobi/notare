@@ -573,3 +573,117 @@ async fn token_is_not_required_on_the_iroh_peer_path() {
     agent_a.stop().await;
     agent_b.stop().await;
 }
+
+/// Requirement 4 / §15.2 "offline reconnect" gate item: a peer that goes
+/// offline mid-session must fail a dial **bounded and cleanly** — a clear
+/// error, no hang, no panic — and the failure must not poison later attempts.
+/// When the peer comes back (same identity, same node id — a real device
+/// returning, not a re-pairing), the next sync tick reconnects and converges.
+/// Driven entirely in `Loopback` mode so it is deterministic and needs no
+/// network; the offline-ness is real (B's iroh endpoint and TCP listener are
+/// actually stopped), only the transport is loopback.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn dial_to_offline_peer_fails_bounded_then_reconnects_after_peer_returns() {
+    let dir_a = tempfile::tempdir().unwrap();
+    let dir_b = tempfile::tempdir().unwrap();
+
+    let id_a = Identity::load_or_create_in(dir_a.path()).unwrap();
+    let id_b = Identity::load_or_create_in(dir_b.path()).unwrap();
+
+    let peers_a = PeerStore::load_or_create_in(dir_a.path()).unwrap();
+    let peers_b = PeerStore::load_or_create_in(dir_b.path()).unwrap();
+    peers_a.add_peer(id_b.id(), "B").unwrap();
+    peers_b.add_peer(id_a.id(), "A").unwrap();
+
+    let agent_a = P2pAgent::start_with(id_a, peers_a).await.unwrap();
+    let agent_b = P2pAgent::start_with(id_b.clone(), peers_b.clone())
+        .await
+        .unwrap();
+    register_direct_addr(agent_a.node_id(), agent_a.direct_addresses()).await;
+    register_direct_addr(agent_b.node_id(), agent_b.direct_addresses()).await;
+    tokio::time::sleep(Duration::from_millis(100)).await;
+
+    let db = "reconnect-db";
+    let site = "site-a";
+    // B's address is a function of its node id, which does not change across
+    // the stop/restart below, so this endpoint URL stays valid throughout.
+    let upload_ep = format!(
+        "{}/v2/cloudsync/databases/{db}/{site}/upload",
+        agent_b.address()
+    );
+
+    // 1. B is up: the first request reaches it.
+    let resp = agent_roundtrip(
+        &agent_a.local_addr,
+        &Request {
+            token: agent_a.token().to_string(),
+            endpoint: upload_ep.clone(),
+            is_post: false,
+            body: None,
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(resp.status, 200, "B initially reachable");
+
+    // 2. B goes offline: stop its agent (closes its iroh endpoint and TCP
+    //    listener). The stale direct address stays registered — exactly what
+    //    a real disconnect looks like, since nothing tells A's side to clear
+    //    the entry when a peer drops.
+    agent_b.stop().await;
+
+    // 3. The next request must fail bounded and cleanly: no hang, no panic, a
+    //    clear error status. The generous outer timeout is a safety valve so
+    //    a regression that reintroduces an unbounded retry fails this test
+    //    instead of hanging the whole suite.
+    let offline_resp = tokio::time::timeout(
+        Duration::from_secs(10),
+        agent_roundtrip(
+            &agent_a.local_addr,
+            &Request {
+                token: agent_a.token().to_string(),
+                endpoint: upload_ep.clone(),
+                is_post: false,
+                body: None,
+            },
+        ),
+    )
+    .await
+    .expect("dial to an offline peer must not hang")
+    .unwrap();
+    assert_eq!(
+        offline_resp.status, 502,
+        "dial to an offline peer fails cleanly with a clear error, not silently"
+    );
+    assert!(offline_resp.error.is_some());
+
+    // 4. B returns: a fresh agent on the SAME identity (same node id — this
+    //    is the device coming back, not a new pairing). Its new direct
+    //    address is (re-)registered, exactly as real discovery would
+    //    republish an updated address record.
+    let agent_b2 = P2pAgent::start_with(id_b, peers_b).await.unwrap();
+    register_direct_addr(agent_b2.node_id(), agent_b2.direct_addresses()).await;
+    tokio::time::sleep(Duration::from_millis(100)).await;
+
+    // 5. The next sync tick reconnects and converges — same request as step
+    //    1, succeeding again. This also proves step 3's failure did not
+    //    poison later attempts (no negative caching, no stuck error state).
+    let resp = agent_roundtrip(
+        &agent_a.local_addr,
+        &Request {
+            token: agent_a.token().to_string(),
+            endpoint: upload_ep,
+            is_post: false,
+            body: None,
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(
+        resp.status, 200,
+        "reconnect after peer returns must succeed"
+    );
+
+    agent_a.stop().await;
+    agent_b2.stop().await;
+}
