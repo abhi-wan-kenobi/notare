@@ -54,6 +54,8 @@ pub enum SyncError {
     Agent(#[from] sync_p2p::AgentError),
     #[error("cloudsync runtime error: {0}")]
     Runtime(#[from] hypr_db_core::CloudsyncRuntimeError),
+    #[error("peer operation failed: {0}")]
+    Peer(String),
 }
 
 impl SyncLifecycle {
@@ -115,9 +117,51 @@ impl SyncLifecycle {
         self.agent.peers().list_peers()
     }
 
-    /// This device's fingerprint string (for display / manual pairing, SYNC-6).
+    /// This device's fingerprint string (for display / manual pairing,
+    /// SYNC-6): the grouped, dashed display form — matches the not-started
+    /// fallback in `PluginDbRuntime::sync_this_device` so the UI sees one
+    /// consistent shape regardless of whether the lifecycle is running.
     pub fn this_device(&self) -> String {
-        self.agent.node_id().to_z32()
+        sync_p2p::Fingerprint::from_pubkey(&self.agent.node_id())
+            .as_str()
+            .to_string()
+    }
+
+    /// Add a peer to this device's allowlist. Returns the peer's node-id
+    /// fingerprint string.
+    pub fn add_peer(
+        &self,
+        fingerprint: &str,
+        label: &str,
+    ) -> Result<String, crate::sync::SyncError> {
+        let node_id = sync_p2p::Fingerprint::parse(fingerprint)
+            .map_err(|e| crate::sync::SyncError::Peer(format!("invalid fingerprint: {e}")))?;
+
+        if node_id == self.agent.node_id() {
+            return Err(crate::sync::SyncError::Peer(
+                "cannot add this device as its own peer".to_string(),
+            ));
+        }
+
+        self.agent
+            .peers()
+            .add_peer(node_id, label)
+            .map_err(|e| crate::sync::SyncError::Peer(format!("failed to add peer: {e}")))?;
+
+        Ok(sync_p2p::Fingerprint::from_pubkey(&node_id)
+            .as_str()
+            .to_string())
+    }
+
+    /// Remove a peer from this device's allowlist. Returns whether it existed.
+    pub fn remove_peer(&self, fingerprint: &str) -> Result<bool, crate::sync::SyncError> {
+        let node_id = sync_p2p::Fingerprint::parse(fingerprint)
+            .map_err(|e| crate::sync::SyncError::Peer(format!("invalid fingerprint: {e}")))?;
+
+        self.agent
+            .peers()
+            .remove_peer(&node_id)
+            .map_err(|e| crate::sync::SyncError::Peer(format!("failed to remove peer: {e}")))
     }
 
     /// Step 1 of the #101 teardown: finalize extension statements before

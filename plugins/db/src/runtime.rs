@@ -203,8 +203,68 @@ impl PluginDbRuntime {
         match guard.as_ref() {
             Some(lifecycle) => Ok(lifecycle.this_device()),
             None => sync_p2p::Identity::load_or_create()
-                .map(|identity| identity.id().to_z32())
+                .map(|identity| identity.fingerprint().as_str().to_string())
                 .map_err(|e| crate::sync::SyncError::Agent(e.into())),
+        }
+    }
+
+    /// Add a peer to this device's allowlist. Works whether the sync lifecycle
+    /// is currently running or not: the allowlist is a local file, so the
+    /// PeerStore can be opened directly. This keeps the SYNC-5 "sync is
+    /// best-effort" behavior (a not-started agent does not block pairing).
+    #[cfg(all(feature = "sync", target_os = "linux", target_arch = "x86_64"))]
+    pub async fn sync_add_peer(
+        &self,
+        fingerprint: String,
+        label: String,
+    ) -> std::result::Result<String, crate::sync::SyncError> {
+        let guard = self.sync.lock().await;
+        match guard.as_ref() {
+            Some(lifecycle) => lifecycle.add_peer(&fingerprint, &label),
+            None => {
+                let store = sync_p2p::PeerStore::load_or_create()
+                    .map_err(|e| crate::sync::SyncError::Agent(e.into()))?;
+                let node_id = sync_p2p::Fingerprint::parse(&fingerprint).map_err(|e| {
+                    crate::sync::SyncError::Peer(format!("invalid fingerprint: {e}"))
+                })?;
+                let identity = sync_p2p::Identity::load_or_create()
+                    .map_err(|e| crate::sync::SyncError::Agent(e.into()))?;
+                if node_id == identity.id() {
+                    return Err(crate::sync::SyncError::Peer(
+                        "cannot add this device as its own peer".to_string(),
+                    ));
+                }
+                store.add_peer(node_id, &label).map_err(|e| {
+                    crate::sync::SyncError::Peer(format!("failed to add peer: {e}"))
+                })?;
+                Ok(sync_p2p::Fingerprint::from_pubkey(&node_id)
+                    .as_str()
+                    .to_string())
+            }
+        }
+    }
+
+    /// Remove a peer from this device's allowlist. Like `sync_add_peer`, this
+    /// works whether the lifecycle is running or not because the allowlist is
+    /// a local file.
+    #[cfg(all(feature = "sync", target_os = "linux", target_arch = "x86_64"))]
+    pub async fn sync_remove_peer(
+        &self,
+        fingerprint: String,
+    ) -> std::result::Result<bool, crate::sync::SyncError> {
+        let guard = self.sync.lock().await;
+        match guard.as_ref() {
+            Some(lifecycle) => lifecycle.remove_peer(&fingerprint),
+            None => {
+                let store = sync_p2p::PeerStore::load_or_create()
+                    .map_err(|e| crate::sync::SyncError::Agent(e.into()))?;
+                let node_id = sync_p2p::Fingerprint::parse(&fingerprint).map_err(|e| {
+                    crate::sync::SyncError::Peer(format!("invalid fingerprint: {e}"))
+                })?;
+                store.remove_peer(&node_id).map_err(|e| {
+                    crate::sync::SyncError::Peer(format!("failed to remove peer: {e}"))
+                })
+            }
         }
     }
 
