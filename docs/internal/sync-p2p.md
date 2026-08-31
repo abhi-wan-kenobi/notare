@@ -1513,10 +1513,11 @@ parameter instead of reading the env var) into `crates/cloudsync/build/agent_add
 cloudsync allocator, no sockets) shared by `network_p2p.c` and by a new test,
 `crates/cloudsync/tests/ipv6_bracket_host_split.rs`. That test compiles a
 tiny, self-contained C harness against `agent_addr.h` and runs it as a
-subprocess (four cases: bracketed IPv6, plain IPv4 unaffected, "not set"/"no
-colon" fail closed, and the `host_cap` bounds check still fails closed on an
-oversized bracketed host) — gated `#[cfg(feature = "from-source")]`, run by
-`cargo test -p cloudsync --features from-source`.
+subprocess (five cases: bracketed IPv6, plain IPv4 unaffected, "not set"/"no
+colon" fail closed, an empty bracketed host `"[]:port"` fails closed (§21.9),
+and the `host_cap` bounds check still fails closed on an oversized bracketed
+host) — gated `#[cfg(feature = "from-source")]`, run by `cargo test -p
+cloudsync --features from-source`.
 
 ### 21.6 CI coverage (Requirement 4)
 
@@ -1556,8 +1557,8 @@ workflow run actually happens on `macos-15`/`windows-latest`.
   cloudsync -v` shows no `--cfg feature=...` for the crate (`features=[]`).
 - `cargo check -p cloudsync --features from-source` — green; still links
   `cloudsync.so` and passes the existing `loads_bundled_cloudsync` test.
-- `cargo test -p cloudsync --features from-source` — 5/5 (1 existing +
-  4 new IPv6 tests).
+- `cargo test -p cloudsync --features from-source` — 6/6 (1 existing +
+  5 new IPv6/agent_addr tests, after the round-2 audit fix in §21.9).
 - `cargo test -p sync-p2p` — 25/25 across `agent`/`crypto`/`identity`/`peers`
   unit tests, `broker_protocol`, `iroh_transport` (unaffected by this lane —
   `crates/sync-p2p/src/agent.rs` was not touched).
@@ -1596,3 +1597,99 @@ workflow run actually happens on `macos-15`/`windows-latest`.
   lane, stays out of `supported()`.
 - **Hub failover, blob-log GC, enabling more synced tables** — unrelated to
   this lane, not attempted.
+
+### 21.9 Audit outcome (2026-08-31) — SYNC-9
+
+`auditor` skill, `--coder claude-sonnet-5`, per-commit/per-file panels
+(seats: `audit-minimax-m2.7`, `audit-gpt-oss:120b`; roster-selected, coder's
+family excluded). Every finding was checked against the real code.
+
+**Fixed (confirmed):**
+
+- `agent_addr.h`'s bracket-stripping accepted `"[]:port"` (an empty
+  bracketed host): `host_len` for `"[]"` is 2, which passes the `host_len >=
+  2` guard, and stripping it yields an empty string with `ok=true` — a value
+  `getaddrinfo()` may treat as "any address" rather than a failure. Caught by
+  the gpt-oss seat; minimax's own walkthrough of the same input asserted
+  `host_len == 1` for `"[]"` and read it as already excluded, which is
+  arithmetically wrong (verified by hand: `"[]"` is 2 characters). Fixed by
+  rejecting a `stripped_len` of 0; covered by
+  `resolve_agent_addr_empty_brackets_fail_closed`.
+- The `cloudsync_from_source_windows` CI job had no `timeout-minutes`, unlike
+  the `windows_stt` job 12 lines above it (minimax). A hung MSVC link would
+  otherwise run for up to the 6-hour GitHub Actions default. Added
+  `timeout-minutes: 60`, then added the same to `cloudsync_from_source_macos`
+  for consistency (minimax, second pass) — both are provisional jobs meant to
+  be observed for a clean signal, not left to hang silently.
+- The IPv6 test harness's scratch temp directories were never cleaned up
+  (2-seat agreement: gpt-oss + minimax) — fixed, cleaned up on the normal
+  completion path (a compile failure still panics before cleanup, leaving the
+  harness source for debugging). gpt-oss separately flagged that the scratch
+  dir name relied on the caller-supplied test `name` being unique, which
+  cargo's same-process multi-threaded test execution does not enforce; added
+  a monotonic counter so every call gets a unique directory regardless of
+  `name`.
+
+**Rejected as false positives (verified against the code):**
+
+- **gpt-oss, `build.rs`:** "`.warnings(false)` hides genuine C compile
+  issues." Pre-existing (not introduced by this diff — see §7 of this doc,
+  "Warnings are off in build.rs [because] upstream code is not
+  warning-clean"); not actioned.
+- **minimax, `build.rs`:** "MSVC `/LD` link step is missing `kernel32.lib`."
+  False — `cl.exe /LD` without `/NODEFAULTLIB` links the CRT's default
+  library set (which pulls in `kernel32.lib`) automatically via
+  `/DEFAULTLIB` directives embedded in the compiled objects; explicitly
+  listing it is never required for a normal `cl.exe` invocation.
+- **minimax, `network_p2p.c` base64 decoder:** claimed a heap overread for
+  `b64_len % 4 == 1`. False — the arithmetic in the finding is wrong (`9 % 4
+  = 1`, not `0`), and the decoder is only reached after an earlier check
+  rejects any `b64_len` that is not a multiple of 4. Also pre-existing code
+  from the §12 audit, untouched by this lane.
+- **minimax, `agent_addr.h`:** "`host_len >= host_cap` should be `host_len >=
+  host_cap - 1`, off-by-one buffer overflow." False — for `host_cap = N`, the
+  check allows `host_len` up to `N - 1`; `memcpy` writes indices `0..N-2` and
+  the NUL terminator lands at index `N - 1`, exactly filling an `N`-byte
+  buffer. Standard, correct sizing, not an overflow.
+- **gpt-oss, `agent_addr.h`:** "the `host_cap` bounds check runs before
+  bracket-stripping, so a buffer sized to fit only the stripped host is
+  rejected." True in the abstract, not actioned: the check is deliberately
+  conservative (checked against the bracketed superset, not the eventual
+  stripped length) per the explicit §12 instruction to keep this bounds
+  check failing closed, and the only real caller (`network_p2p.c`) always
+  passes a fixed 256-byte buffer — orders of magnitude larger than any real
+  IPv6 literal (max 45 chars + 2 brackets), so the scenario is unreachable in
+  practice.
+- **gpt-oss, `agent_addr.h`:** "`strtol` accepts a leading-whitespace port
+  string." True of `strtol` in isolation, not actioned: the port substring
+  only ever originates from `NOTARE_SYNC_AGENT_ADDR`, whose only producer is
+  Rust's `SocketAddr::to_string()` (`crates/sync-p2p/src/agent.rs:191`),
+  which never emits whitespace — same "theoretically true, practically
+  unreachable given the trusted single producer" shape as several §12
+  findings already on record.
+- **gpt-oss, `agent_addr.h`:** "unbracketed IPv6 literals with a trailing
+  port are accepted as a valid host containing a colon." True of the
+  last-colon-split design (pre-existing, not introduced here — bracketing is
+  what makes IPv6:port unambiguous in the first place), and unreachable for
+  the same reason: the only producer always brackets IPv6 via
+  `SocketAddr::to_string()`.
+- **gpt-oss, CI:** "60-minute timeout on `cloudsync_from_source_windows` is
+  too short and will produce false-negative timeouts." Not actioned — the
+  far heavier `windows_stt` job (Vulkan SDK, whisper.cpp, ONNX/DirectML)
+  already runs reliably within the same 60-minute budget, and this job does
+  only two `cargo check` invocations of one small crate.
+- **minimax, `ipv6_bracket_host_split.rs`:** "the IPv4 test doesn't verify
+  the returned port." False — it does (`if (port != 9999) { ... }`).
+
+**Not usefully auditable:** the §21 documentation commit itself (this
+section's own file, ~105k chars inlined — the doc is the single largest file
+in the repo and a modified file's full text is always inlined). Both seats
+returned 0 findings in under 15s each, well outside this tool's validated
+size range (the largest payload that has ever produced a real finding in
+this lane is under 37k chars) and far faster than either seat took on the
+smaller `network_p2p.c` payload earlier in this same run. Per the auditor
+skill's own documented failure mode, a fast 0-finding response on an
+oversized payload reads as clean but is not distinguishable from a seat that
+silently skipped deep reading — recorded here as an inconclusive audit, not
+a clean one. `--only` cannot narrow a single-file audit further; no code
+review substitute was applied beyond a manual re-read of the diff.
