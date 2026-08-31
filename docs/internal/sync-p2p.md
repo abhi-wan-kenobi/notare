@@ -1376,3 +1376,269 @@ pairing commands land in the plugin's single flat `default` permission set is
 accurate but not a regression — every command in this plugin, including raw
 `execute`, has always done so; splitting the permission model is its own piece
 of work.
+
+## 20. SYNC-8 — real discovery: iroh relay + DNS/pkarr address lookup (2026-08-31)
+
+§13.8 described the gap precisely: the SYNC-3 proof dials peers through
+`register_direct_addr`, a process-local node-id → socket-addr map that only
+works because both agents share one process. `RelayMode::Disabled` plus that
+map means two genuine desktops on different networks have no way to find each
+other at all. SYNC-8 replaces the map (for production) with iroh's real
+relay/DNS discovery, while keeping every test and the three `examples/`
+exactly as deterministic and offline as before.
+
+### 20.1 `AgentTransport` — an explicit config, not a bool
+
+`crates/sync-p2p/src/agent.rs` gains `pub enum AgentTransport { Loopback,
+Discovered }`, plus `P2pAgent::start_with_transport(identity, peers,
+transport)`. The existing constructors are now thin wrappers over it:
+
+- `P2pAgent::start()` — the app entry point, the only thing
+  `plugins/db/src/sync.rs` calls — now passes `AgentTransport::Discovered`.
+- `P2pAgent::start_with(identity, peers)` — every test, every example, and
+  `plugins/db`'s own lifecycle tests — is unchanged in signature and passes
+  `AgentTransport::Loopback`, i.e. exactly today's behavior.
+
+A bool was deliberately rejected. `Loopback` and `Discovered` differ on three
+axes at once (relay mode, bind address, address-lookup wiring), and a bool
+invites someone later to thread only one of those through a new code path —
+producing a hybrid that is neither the deterministic offline proof nor a real
+discoverable endpoint. The enum makes every call site say which one it means.
+
+`Ctx` (the per-request routing context in `accept_c_tcp`) carries the
+transport too, because it is the only thing `dial_peer` actually needs to
+branch on — everything else (allowlist enforcement, SYNC-7 payload
+encryption, the SYNC-5 token gate) is unconditional and transport-agnostic by
+construction, and stays that way.
+
+### 20.2 What each mode actually configures, and where that was confirmed
+
+`Loopback` is byte-for-byte what SYNC-3 already did: `presets::Minimal`
+(nothing but the TLS crypto provider), `RelayMode::Disabled`,
+`bind_addr("127.0.0.1:0")`, addresses resolved from the `DIRECT_ADDRS`
+registry populated by `register_direct_addr`.
+
+`Discovered` uses `presets::N0`, then explicitly overrides `relay_mode` to
+`RelayMode::Default` (see below), and does **not** call `bind_addr` at all —
+no other changes needed.
+
+This was checked against the actual vendored source, not assumed, because the
+spec was explicit that `presets::Minimal` might not include discovery — it
+doesn't. iroh 1.1.0 (pinned in `Cargo.lock`, source at
+`~/.cargo/registry/src/.../iroh-1.1.0/`) renamed the "discovery" concept to
+**"address lookup"** (`iroh::address_lookup`, `Builder::address_lookup`).
+`endpoint/presets.rs` shows three presets:
+
+- `Empty` — nothing.
+- `Minimal` — only sets the TLS crypto provider. **No address lookup, no
+  relay.** This is what `Loopback` already used, correctly, for exactly that
+  reason.
+- `N0` — `Minimal` plus `builder.address_lookup(PkarrPublisher::n0_dns())`,
+  `builder.address_lookup(PkarrResolver::n0_dns())`,
+  `builder.address_lookup(DnsAddressLookup::n0_dns())`, and
+  `relay_mode(default_relay_mode())`. Its doc comment states plainly: "The
+  default address lookup service publishes to and resolves from the n0.computer
+  dns server `iroh.link`."
+
+`default_relay_mode()` returns `RelayMode::Default` unless the
+`IROH_FORCE_STAGING_RELAYS` env var is set, in which case it returns
+`RelayMode::Staging` (`endpoint.rs`, `force_staging_infra`). Rather than trust
+that env-var-gated indirection, `Discovered` calls `.relay_mode(RelayMode::Default)`
+explicitly after applying the `N0` preset, so the desktop app's endpoint is
+`RelayMode::Default` regardless of what is set in its environment — this
+matches the spec's literal instruction and removes one variable from
+reasoning about what the app actually does in production.
+
+No `bind_addr` call is needed for "dual-stack, all interfaces, do not
+hardcode IPv4": `Builder::empty()` (what every preset starts from) already
+pre-configures an IPv4 socket on `0.0.0.0` and an IPv6 socket on `[::]`
+("This is the equivalent of using `INADDR_ANY`... and results in a socket
+listening on *all* interfaces available" — `endpoint.rs`, `bind_addr` doc
+comment). Calling `bind_addr` at all is what *narrows* that to one address
+family and one interface, which is exactly what `Loopback` does on purpose.
+
+`tls-ring` (needed for `presets::N0`/`Minimal`, which are `cfg(with_crypto_provider)`)
+is a default feature of the `iroh` crate itself, and `sync-p2p`'s `Cargo.toml`
+declares `iroh = "1.1"` with default features on — no feature-flag changes
+were needed in any `Cargo.toml`.
+
+### 20.3 What `Discovered` mode publishes, and to whom — read this before assuming discovery is free
+
+This is a real privacy characteristic of a notes-sync app and belongs in the
+open, not buried in a doc comment:
+
+**In `Discovered` mode, every running instance of the app publishes its iroh
+node id and its known reachable addresses (direct socket addresses and/or a
+relay URL) to Number 0's (n0.computer's) DNS/pkarr infrastructure — by
+default, in production, unconditionally, as long as the P2P sync agent is
+running.** This happens via `PkarrPublisher::n0_dns()`, which pushes signed
+address records to n0's pkarr relay, and those records are also resolvable
+through n0's DNS server (`iroh.link`). Any other iroh endpoint that knows
+this device's node id can resolve where to reach it, using n0 as the
+lookup service — that is the entire point of the address-lookup call, and
+also its privacy cost.
+
+What is **not** published: no notes content, no database contents, no
+`sessions`/`session_documents` data, no fingerprints or labels from
+`peers.json`. The address-lookup record is node id + reachability
+information only — the same shape of information a DHT or a public relay
+directory holds for any other iroh-based application. The allowlist (§13.5,
+unchanged by this PR — see §20.4) is what stands between "this device is
+reachable" and "this device will sync with you"; discoverability and
+authorization are two different gates, and SYNC-8 only touches the first one.
+
+Concretely, this means: a device running notare with sync enabled is
+node-id-fingerprintable by n0 (and by anyone who queries `iroh.link` for that
+node id) for as long as the app runs, independent of whether it has any
+peers paired at all. That is the trade a relay/DNS discovery design makes to
+get "two real desktops on different networks can find each other" without a
+self-hosted rendezvous service — which the spec explicitly ruled out
+building here (self-hosting a relay is "an infra decision that is not yours
+to make here"). If that trade is later judged unacceptable for some users,
+the options are: opt-out of `Discovered` (stay `Loopback`/manual-pairing
+only, i.e. no WAN sync), self-host a relay + address-lookup service and swap
+the preset, or wait for n0 to offer end-to-end-encrypted address records —
+none of which this PR builds.
+
+### 20.4 The allowlist is unchanged, and still gates independently of discoverability
+
+Nothing about SYNC-8 touches `PeerStore::is_allowed` or its two call sites
+(`relay_request_to_peer`/`relay_put_to_peer` before `dial_peer`, and
+`accept_iroh` after the QUIC handshake). Discovery only changes how an
+`EndpointAddr` is resolved; the allowlist check happens *before* that
+resolution is ever attempted, in both directions, unconditionally.
+
+`discovered_mode_still_refuses_an_unpaired_but_reachable_peer`
+(`crates/sync-p2p/src/agent.rs`, unit test) pins this for the code path that
+actually changed: it builds a `Ctx` tagged `AgentTransport::Discovered` and
+calls `relay_request_to_peer`/`relay_put_to_peer` with a node id that is not
+on the allowlist, asserting a 403/`ok:false` refusal that never reaches
+`dial_peer`. It deliberately does not stand up a real `N0`-preset endpoint —
+doing so would publish to n0's infrastructure and block on a live DNS/pkarr
+round trip, which is exactly what default `cargo test` must never do (§20.6).
+What matters for the invariant is that the allowlist gate is unconditional
+code *before* the dial, which this test exercises directly; the existing
+`non_allowlisted_peer_refused_on_dial` / `_on_accept` (`tests/iroh_transport.rs`,
+predates this PR) already cover the same gate for `Loopback`, including the
+case where the peer's address is fully known (registered) yet still refused
+— i.e. "reachable" and "allowed" already were, and remain, orthogonal.
+
+### 20.5 The `try_lock` defect (doc §854) — fixed
+
+`lookup_direct_addrs` used `DIRECT_ADDRS.try_lock()` and silently fell back to
+an **empty address list** whenever the lock was contended, producing a
+spurious dial failure that had nothing to do with whether the peer was
+actually reachable. `dial_peer` — its only caller — was already `async`, so
+there was no reason to avoid `.await`ing the lock; `lookup_direct_addrs` is
+now `async fn` and does exactly that. Regression test:
+`lookup_direct_addrs_awaits_the_lock_instead_of_dropping_addrs_under_contention`
+(`crates/sync-p2p/src/agent.rs`) holds the lock on a background task and
+proves the lookup waits for it and returns the registered address, rather
+than observing contention and giving up.
+
+### 20.6 Dial: node-id-only in `Discovered` mode, retuned backoff, and a second defect found while testing reconnect
+
+`dial_peer` now branches on `ctx.transport`: `Loopback` still builds the
+`EndpointAddr` from the `DIRECT_ADDRS` registry exactly as before; `Discovered`
+builds `EndpointAddr::new(node_id)` with **no** injected socket addresses and
+lets iroh's address-lookup service (wired up in `start_with_transport`)
+resolve it, as the spec requires.
+
+The retry ladder's per-attempt backoff is now transport-dependent
+(`dial_backoff`): `Loopback` keeps the original 1, 2, 4, …, 128ms schedule
+(~255ms worst case across 8 attempts) — that ladder only ever needs to ride
+out a same-process peer endpoint that is still finishing its own `bind()`
+under concurrent test load, and a WAN-scale ladder there would just make
+every offline-peer test slower for no benefit. `Discovered` uses 250ms, 500ms,
+1s, 2s, 4s, 8s (~15.75s worst case across 6 attempts) — a real relayed dial
+may need to complete a DNS/pkarr address-lookup round trip and/or a relay
+handshake before the QUIC handshake can even begin, which routinely costs
+hundreds of ms to low seconds even on a healthy path; the original ~128ms
+ceiling assumed a peer already reachable on localhost.
+
+**A second, previously-undiscovered defect surfaced while writing the
+Requirement 4 (offline/reconnect) test below:** `Endpoint::connect()` has no
+timeout of its own. When a peer is offline in the way that matters for this
+test — bound to a now-dead address, not merely slow to answer — there is no
+QUIC packet coming back at all, so there is nothing for iroh to fail fast on;
+it waits up to its own internal handshake/idle timeout, which is on the order
+of tens of seconds. Retried across the whole ladder, that turned "dial an
+offline peer" into a hang well past the test's original 10-second timeout —
+caught only because the test asserted a bound and then failed against it, not
+because the failure mode was anticipated. Fixed by wrapping each `connect()`
+attempt in its own `tokio::time::timeout` (`dial_attempt_timeout`: 500ms for
+`Loopback`, 5s for `Discovered`), so a non-responding peer fails on this
+ladder's own schedule instead of iroh's. This is exactly the class of bug the
+Requirement 4 test exists to catch, and it would not have been caught by
+reading the code — only by running the scenario and holding it to the
+"bounded, no hang" bar in the spec.
+
+### 20.7 Offline / reconnect semantics
+
+§15.2 listed "offline reconnect" as an open v0.6 gate item. SYNC-8 closes the
+transport-level half of it:
+
+- A dial to an offline peer fails bounded and cleanly: a `502` with a clear
+  error string (`"dial peer: <last error>"`), never a hang, never a panic,
+  never an unbounded retry — bounded by `dial_attempts` ×
+  (`dial_attempt_timeout` + `dial_backoff`) per transport.
+- The failure does not poison later attempts: there is no negative cache, no
+  circuit-breaker state anywhere in `dial_peer` or `Ctx`. The very next
+  request after a failed dial tries again from scratch.
+- When the peer comes back — same identity, hence same node id, a device
+  returning rather than a re-pairing — the next request reconnects and
+  converges, with no app restart.
+
+`dial_to_offline_peer_fails_bounded_then_reconnects_after_peer_returns`
+(`tests/iroh_transport.rs`) pins all three: it stops one agent mid-session
+(closing its real iroh endpoint and TCP listener — genuinely offline, not
+simulated), asserts the next request fails within a generous outer bound
+(`tokio::time::timeout`, 10s) with a `502`, restarts a fresh agent on the same
+identity, and asserts the same request now succeeds. Driven entirely in
+`Loopback` mode, so it is deterministic and needs no network — the
+offline-ness is real, only the transport is loopback.
+
+What this does **not** establish: reconnection through a live `Discovered`
+transport over a real relay (that would need genuine network access — see
+§20.8), and anything above the transport layer — a sync *tick* noticing a
+peer came back and re-triggering a check/drain is `plugins/db`'s sync loop's
+concern (§16), not `sync-p2p`'s; this PR only guarantees the transport call
+itself behaves correctly when retried.
+
+### 20.8 Tests stay offline by default; the from-source examples are unchanged
+
+`cargo test -p sync-p2p` (default features) never constructs an
+`AgentTransport::Discovered` agent — every test uses `P2pAgent::start_with`
+(`Loopback`), confirmed by grepping every test and example for
+`P2pAgent::start(`, `P2pAgent::start_with(`. The three `examples/` and
+`tests/drain_regression.rs` are unaffected (`from-source`-gated, `Loopback`,
+unchanged). No new `#[ignore]`-gated or feature-gated networked test was
+added for `Discovered` mode's *real* address-lookup path (only the
+allowlist-gate unit test in §20.4, which deliberately does not touch the
+network) — genuinely exercising n0's DNS/pkarr infrastructure end to end
+(two real `Discovered` agents, real publish, real resolve, real relay-assisted
+dial) is real integration coverage this PR does not add, and is recorded here
+as open rather than silently skipped.
+
+### 20.9 Audit outcome
+
+`auditor` skill, `--coder claude-sonnet-5`, run per-commit. <!-- filled in after the audit run -->
+
+### 20.10 Still open after SYNC-8 (do NOT read this PR as having closed these)
+
+- **Hub failover / election** (§15.2) — the hub is still a single point of
+  failure with a static identity; unbuilt.
+- **Blob-log GC** (§15.2) — the hub still retains every blob forever;
+  unbuilt.
+- **The remaining 15 unproven tables** in `SYNCED_TABLES` (§19) — only
+  `sessions`/`session_documents` are enabled; each additional table needs its
+  own §17-style convergence proof before it is turned on.
+- **Real end-to-end `Discovered`-mode integration coverage** (§20.8) — the
+  allowlist invariant is proven without touching the network; the address
+  lookup mechanism itself (publish → n0 → resolve → relay-assisted dial,
+  device-to-device) has not been exercised against n0's real infrastructure
+  as part of this PR's automated verification.
+- **IPv6 bracketing in the C layer's `resolve_agent_addr`** (§13.9) — still
+  unaddressed; `Discovered` mode's dual-stack bind makes this more reachable
+  in practice than it was under `Loopback`-only, so it is worth prioritizing
+  soon, not indefinitely.
