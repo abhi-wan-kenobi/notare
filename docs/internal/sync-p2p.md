@@ -1567,11 +1567,13 @@ offline peer" into a hang well past the test's original 10-second timeout —
 caught only because the test asserted a bound and then failed against it, not
 because the failure mode was anticipated. Fixed by wrapping each `connect()`
 attempt in its own `tokio::time::timeout` (`dial_attempt_timeout`: 500ms for
-`Loopback`, 5s for `Discovered`), so a non-responding peer fails on this
-ladder's own schedule instead of iroh's. This is exactly the class of bug the
-Requirement 4 test exists to catch, and it would not have been caught by
-reading the code — only by running the scenario and holding it to the
-"bounded, no hang" bar in the spec.
+`Loopback`, 8s for `Discovered` — see §20.9, the auditor flagged an initial
+5s cap as tight enough to misread a slow-but-reachable WAN path as offline),
+so a non-responding peer fails on this ladder's own schedule instead of
+iroh's. This is exactly the class of bug the Requirement 4 test exists to
+catch, and it would not have been caught by reading the code — only by
+running the scenario and holding it to the "bounded, no hang" bar in the
+spec.
 
 ### 20.7 Offline / reconnect semantics
 
@@ -1622,7 +1624,86 @@ as open rather than silently skipped.
 
 ### 20.9 Audit outcome
 
-`auditor` skill, `--coder claude-sonnet-5`, run per-commit. <!-- filled in after the audit run -->
+`auditor` skill, `--coder claude-sonnet-5`, run per-commit (panel:
+`audit-minimax-m2.7` + `audit-gpt-oss:120b`, `roster.json` ollama-mailpro).
+
+**Confirmed and fixed** — `agent.rs` (feat commit), minimax: the initial 5s
+`dial_attempt_timeout` for `Discovered` mode was tight enough that a
+reachable-but-slow WAN path (elevated DNS/pkarr or relay latency) could be
+misread as offline and fail every retry attempt. Widened to 8s in a follow-up
+commit; see §20.6.
+
+**Rejected as false positives, verified against the real code:**
+
+- minimax, `agent.rs` — "`dial_peer`'s final error string is always `'dial
+  failed'`, swallowing the specific timeout error." Re-read: `last_err` is
+  reassigned on every loop iteration to that attempt's actual outcome; the
+  `"dial failed"` initial value is an unreachable sentinel (the loop always
+  runs at least once). The returned error correctly reflects the *last*
+  attempt, which is the standard shape for a retry-loop error and not a
+  defect.
+- minimax, `agent.rs` — "the explicit `.relay_mode(RelayMode::Default)` after
+  `presets::N0` might not override `IROH_FORCE_STAGING_RELAYS` if iroh reads
+  the env var at builder construction." Checked against the vendored source
+  (`iroh-1.1.0/src/endpoint.rs`, `Builder::relay_mode`): it is a plain
+  synchronous setter that mutates `self.transports` on each call with no
+  deferred evaluation — the last call always wins. The doc's claim in §20.2
+  stands as written.
+- minimax, `tests/iroh_transport.rs` (test commit) — "the endpoint URL goes
+  stale on restart because `agent_b2` binds a new port and `upload_ep` was
+  built from the old one." False: `P2pAgent::address()` returns
+  `p2p://<node-id-fingerprint>` only — iroh addresses peers by node id, never
+  by host:port (this is the transport's whole design, stated in the module
+  doc comment at the top of `agent.rs`), and `agent_b2` reuses `id_b`'s
+  identity, so its fingerprint — and therefore `agent_b2.address()` — is
+  byte-identical to `agent_b.address()`. There is no port anywhere in the
+  string this finding is about. `audit-gpt-oss:120b`'s independent run on the
+  same commit returned 0 findings, corroborating this.
+- minimax, `tests/iroh_transport.rs` — "the offline-dial timeout could fire
+  while a background retry is still pending, corrupting agent state."
+  `dial_peer`'s retry loop is a single `await`ed call chain inside the TCP
+  connection's own task (`handle_c_connection` → `route_request` →
+  `relay_request_to_peer` → `dial_peer`) — there is no spawned background
+  task that outlives the call, and the whole loop is bounded well under the
+  test's 10s safety timeout (worst case ~4.26s in `Loopback` mode: 8 × 500ms
+  + ~255ms backoff).
+- minimax, `tests/iroh_transport.rs` — "no negative-cache invalidation test."
+  There is no cache of any kind in `dial_peer`/`lookup_direct_addrs` to
+  invalidate — `DIRECT_ADDRS` is a plain overwrite-on-register map, never
+  written to on a *failed* dial. The seat's own completion line self-flagged
+  this as "discarded as speculative."
+
+**Clean** — the follow-up fix commit (`94060ce7f`, the 5s→8s timeout change
+above) audited genuinely clean: minimax engaged for 65.9s and reasoned
+through the backoff arithmetic explicitly (confirming the ~15.75s total and
+the `u64` shift has no overflow risk) rather than bailing early, so this one
+reads as a real pass, not a blind one.
+
+**Uninformative, not "clean" — recorded honestly rather than claimed as a
+pass:** the docs commit (`ee49e2532`) produced a 110,141-character payload
+(§20 plus the full pre-existing text of a ~1,600-line file, inlined per the
+skill's own file-inclusion policy) — far past every size this tool has ever
+been measured to produce real findings at. Both seats returned in under 15
+seconds with no findings and minimal engagement (`gpt-oss` gave no reasoning
+at all; `minimax` gave a one-paragraph "docs can't have runtime defects"
+dismissal without engaging the doc's specific factual claims). This is
+recorded as **not meaningfully audited**, not as a clean pass — the payload
+was too large for the panel to have actually read it. The mitigating factor:
+every factual claim in §20.1–§20.4 about the vendored iroh API was
+cross-checked directly against `~/.cargo/registry/src/.../iroh-1.1.0/src/`
+while drafting (quoted inline: `presets.rs`, `endpoint.rs`,
+`address_lookup.rs`), not merely asserted.
+
+**⚠️ Payload size, once more:** three of the four commits in this PR produced
+payloads (31k, 74k, 110k chars) well past the 4,490-char range the skill's
+own measurements say is where it reliably finds real defects, and past the
+20,000-char soft-warning threshold. `agent.rs`'s two audits (74k and, via the
+fix commit, a smaller follow-up) still surfaced one real, actionable finding
+and several checkable false positives — so this run was not silently blind —
+but the docs-commit result above should not be read as "the doc was
+verified clean by two independent models." It was verified by re-reading the
+vendored source directly, which is the stronger check anyway for factual
+claims about a third-party API.
 
 ### 20.10 Still open after SYNC-8 (do NOT read this PR as having closed these)
 
