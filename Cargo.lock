@@ -3585,6 +3585,7 @@ version = "0.1.0"
 dependencies = [
  "cc",
  "dirs 6.0.0",
+ "libsqlite3-sys",
  "serde_json",
  "sqlx",
  "thiserror 2.0.18",

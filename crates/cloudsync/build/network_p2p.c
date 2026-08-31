@@ -11,8 +11,9 @@
 //                                     const char *custom_header);
 //
 // Transport: the C layer is deliberately dumb and LOCAL. It does NOT speak
-// QUIC/iroh and does NOT dial peers by node id. It opens a plain POSIX TCP
-// socket to the in-process Rust P2pAgent (crates/sync-p2p/src/agent.rs) on
+// QUIC/iroh and does NOT dial peers by node id. It opens a plain TCP socket
+// (BSD sockets on linux/macOS, Winsock2 on Windows — see the #ifdef _WIN32
+// block below) to the in-process Rust P2pAgent (crates/sync-p2p/src/agent.rs) on
 // 127.0.0.1:<port> and sends the SAME framed length-prefixed JSON the TCP
 // spike used — the full endpoint URL (p2p://<node-id-fingerprint>/... or
 // mem://<node-id-fingerprint>/...) travels inside the frame. The agent owns
@@ -36,15 +37,55 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <errno.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <netdb.h>
+
+// SYNC-9: Windows (Winsock2) vs POSIX sockets. Kept to an #ifdef at this one
+// boundary — the socket type, the "invalid socket" sentinel, close(), and
+// one-time Winsock init/cleanup all differ; the protocol logic below (framing,
+// JSON building, base64) does not change per platform and stays untouched.
+#ifdef _WIN32
+    #include <winsock2.h>
+    #include <ws2tcpip.h>
+
+    typedef SOCKET sock_t;
+    #define SOCK_INVALID INVALID_SOCKET
+    #define CLOSESOCK(s) closesocket(s)
+    // Winsock has no EINTR-style "interrupted, retry" errno for blocking
+    // sockets, so the retry branch in write_all/read_all is simply never taken.
+    #define IS_RETRYABLE_SEND_RECV_ERROR() (false)
+
+    // One-time WSAStartup, paired with WSACleanup at process exit via atexit.
+    // Not thread-safe against a concurrent first call from two threads, same
+    // as the rest of this file's per-call, no-locking design (contract §6:
+    // the core calls these functions synchronously, one at a time).
+    static bool g_wsa_started = false;
+    static void wsa_cleanup_atexit(void) {
+        WSACleanup();
+    }
+    static bool ensure_wsa_started(void) {
+        if (g_wsa_started) return true;
+        WSADATA wsa_data;
+        if (WSAStartup(MAKEWORD(2, 2), &wsa_data) != 0) return false;
+        g_wsa_started = true;
+        atexit(wsa_cleanup_atexit);
+        return true;
+    }
+#else
+    #include <unistd.h>
+    #include <sys/types.h>
+    #include <sys/socket.h>
+    #include <netinet/in.h>
+    #include <arpa/inet.h>
+    #include <netdb.h>
+
+    typedef int sock_t;
+    #define SOCK_INVALID (-1)
+    #define CLOSESOCK(s) close(s)
+    #define IS_RETRYABLE_SEND_RECV_ERROR() (errno == EINTR)
+#endif
 
 #include "network_private.h"
+#include "agent_addr.h"
 
 // Use the CloudSync SQLite allocator so returned buffers are freed by the
 // core's network_result_cleanup() via cloudsync_memory_free() (= sqlite3_free).
@@ -70,32 +111,8 @@
 // starts). Reading it once per call is cheap and avoids a global init
 // ordering dependency on the extension load path.
 
-static bool resolve_agent_addr(char *host_out, size_t host_cap, int *port_out) {
-    const char *addr = getenv("NOTARE_SYNC_AGENT_ADDR");
-    if (!addr || !*addr) return false;
-    // Parse "host:port". Split at the last ':' (the host is 127.0.0.1 / ::1).
-    const char *colon = NULL;
-    for (const char *p = addr; *p; p++) {
-        if (*p == ':') colon = p;
-    }
-    if (!colon) return false;
-    size_t host_len = (size_t)(colon - addr);
-    if (host_len == 0 || host_len >= host_cap) return false;
-    memcpy(host_out, addr, host_len);
-    host_out[host_len] = '\0';
-
-    char port_buf[16];
-    size_t port_len = strlen(colon + 1);
-    if (port_len == 0 || port_len >= sizeof(port_buf)) return false;
-    memcpy(port_buf, colon + 1, port_len);
-    port_buf[port_len] = '\0';
-
-    char *end = NULL;
-    long port = strtol(port_buf, &end, 10);
-    if (end == port_buf || *end != '\0' || port < 1 || port > 65535) return false;
-    *port_out = (int)port;
-    return true;
-}
+// resolve_agent_addr() itself now lives in agent_addr.h (SYNC-9: extracted
+// for unit testing and to fix the bracketed-IPv6 split — see that header).
 
 // SYNC-5: the bearer token for the C↔agent socket, read from the
 // NOTARE_SYNC_TOKEN env var on every network call (same process-local,
@@ -119,12 +136,17 @@ static bool resolve_agent_token(char *out, size_t cap) {
 // framed TCP framing (4-byte big-endian length + JSON payload)
 // ------------------------------------------------------------------
 
-static bool write_all(int fd, const void *buf, size_t len) {
+// send()/recv() take `int` lengths and return `int` on Windows vs `size_t`/
+// `ssize_t` on POSIX. Every call here is bounded well under INT_MAX (frames
+// cap at 64 MiB, see read_frame below), so casting `len` down to `int` and the
+// return value to a plain `int` is exact on both platforms — no behavior
+// change, just a type that compiles on both.
+static bool write_all(sock_t fd, const void *buf, size_t len) {
     const char *p = (const char *)buf;
     while (len > 0) {
-        ssize_t n = send(fd, p, len, 0);
+        int n = (int)send(fd, p, (int)len, 0);
         if (n <= 0) {
-            if (n < 0 && errno == EINTR) continue;
+            if (IS_RETRYABLE_SEND_RECV_ERROR()) continue;
             return false;
         }
         p += n;
@@ -133,12 +155,12 @@ static bool write_all(int fd, const void *buf, size_t len) {
     return true;
 }
 
-static bool read_all(int fd, void *buf, size_t len) {
+static bool read_all(sock_t fd, void *buf, size_t len) {
     char *p = (char *)buf;
     while (len > 0) {
-        ssize_t n = recv(fd, p, len, 0);
+        int n = (int)recv(fd, p, (int)len, 0);
         if (n <= 0) {
-            if (n < 0 && errno == EINTR) continue;
+            if (IS_RETRYABLE_SEND_RECV_ERROR()) continue;
             return false;
         }
         p += n;
@@ -147,7 +169,7 @@ static bool read_all(int fd, void *buf, size_t len) {
     return true;
 }
 
-static bool write_frame(int fd, const void *json, size_t len) {
+static bool write_frame(sock_t fd, const void *json, size_t len) {
     uint8_t hdr[4];
     hdr[0] = (uint8_t)((len >> 24) & 0xff);
     hdr[1] = (uint8_t)((len >> 16) & 0xff);
@@ -158,7 +180,7 @@ static bool write_frame(int fd, const void *json, size_t len) {
 
 // Read one frame into a cloudsync_memory_zeroalloc'd buffer (NUL-terminated).
 // Returns the buffer (caller owns via cloudsync_memory_free) or NULL.
-static char *read_frame(int fd, size_t *out_len) {
+static char *read_frame(sock_t fd, size_t *out_len) {
     uint8_t hdr[4];
     if (!read_all(fd, hdr, 4)) return NULL;
     size_t len = ((size_t)hdr[0] << 24) | ((size_t)hdr[1] << 16) |
@@ -175,7 +197,11 @@ static char *read_frame(int fd, size_t *out_len) {
     return buf;
 }
 
-static int connect_tcp(const char *host, int port) {
+static sock_t connect_tcp(const char *host, int port) {
+#ifdef _WIN32
+    if (!ensure_wsa_started()) return SOCK_INVALID;
+#endif
+
     char port_str[16];
     snprintf(port_str, sizeof(port_str), "%d", port);
 
@@ -183,15 +209,18 @@ static int connect_tcp(const char *host, int port) {
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
-    if (getaddrinfo(host, port_str, &hints, &res) != 0 || !res) return -1;
+    if (getaddrinfo(host, port_str, &hints, &res) != 0 || !res) return SOCK_INVALID;
 
-    int fd = -1;
+    sock_t fd = SOCK_INVALID;
     for (rp = res; rp; rp = rp->ai_next) {
         fd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
-        if (fd < 0) continue;
-        if (connect(fd, rp->ai_addr, rp->ai_addrlen) == 0) break;
-        close(fd);
-        fd = -1;
+        if (fd == SOCK_INVALID) continue;
+        // Winsock's connect() wants a plain `int` addrlen (not `socklen_t`,
+        // which some Windows SDKs don't define); POSIX connect() happily
+        // accepts an `int` argument for its `socklen_t` parameter too.
+        if (connect(fd, rp->ai_addr, (int)rp->ai_addrlen) == 0) break;
+        CLOSESOCK(fd);
+        fd = SOCK_INVALID;
     }
     freeaddrinfo(res);
     return fd;
@@ -353,8 +382,8 @@ NETWORK_RESULT network_receive_buffer(network_data *data, const char *endpoint,
         return (NETWORK_RESULT){CLOUDSYNC_NETWORK_ERROR, msg, 1, NULL, NULL};
     }
 
-    int fd = connect_tcp(host, port);
-    if (fd < 0) {
+    sock_t fd = connect_tcp(host, port);
+    if (fd == SOCK_INVALID) {
         char *msg = cloudsync_string_dup("network_receive_buffer: connect failed");
         return (NETWORK_RESULT){CLOUDSYNC_NETWORK_ERROR, msg, 1, NULL, NULL};
     }
@@ -362,7 +391,7 @@ NETWORK_RESULT network_receive_buffer(network_data *data, const char *endpoint,
     size_t frame_len = 0;
     char *frame = build_request_frame(endpoint, is_post_request, json_payload, token, &frame_len);
     if (!frame) {
-        close(fd);
+        CLOSESOCK(fd);
         char *msg = cloudsync_string_dup("network_receive_buffer: oom building frame");
         return (NETWORK_RESULT){CLOUDSYNC_NETWORK_ERROR, msg, 1, NULL, NULL};
     }
@@ -370,14 +399,14 @@ NETWORK_RESULT network_receive_buffer(network_data *data, const char *endpoint,
     bool ok = write_frame(fd, frame, frame_len);
     cloudsync_memory_free(frame);
     if (!ok) {
-        close(fd);
+        CLOSESOCK(fd);
         char *msg = cloudsync_string_dup("network_receive_buffer: write failed");
         return (NETWORK_RESULT){CLOUDSYNC_NETWORK_ERROR, msg, 1, NULL, NULL};
     }
 
     size_t resp_len = 0;
     char *resp = read_frame(fd, &resp_len);
-    close(fd);
+    CLOSESOCK(fd);
     if (!resp) {
         char *msg = cloudsync_string_dup("network_receive_buffer: read failed");
         return (NETWORK_RESULT){CLOUDSYNC_NETWORK_ERROR, msg, 1, NULL, NULL};
@@ -528,21 +557,21 @@ bool network_send_buffer(network_data *data, const char *endpoint,
         return false;
     }
 
-    int fd = connect_tcp(host, port);
-    if (fd < 0) return false;
+    sock_t fd = connect_tcp(host, port);
+    if (fd == SOCK_INVALID) return false;
 
     size_t frame_len = 0;
     char *frame = build_put_frame(endpoint, blob, blob_size, token, &frame_len);
-    if (!frame) { close(fd); return false; }
+    if (!frame) { CLOSESOCK(fd); return false; }
 
     bool ok = write_frame(fd, frame, frame_len);
     cloudsync_memory_free(frame);
-    if (!ok) { close(fd); return false; }
+    if (!ok) { CLOSESOCK(fd); return false; }
 
     // Read the PutResponse frame: {"ok":true,...}. Just need a frame back.
     size_t resp_len = 0;
     char *resp = read_frame(fd, &resp_len);
-    close(fd);
+    CLOSESOCK(fd);
     if (!resp) return false;
 
     bool ok_flag = strstr(resp, "\"ok\":true") != NULL;

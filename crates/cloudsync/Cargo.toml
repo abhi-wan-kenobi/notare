@@ -7,13 +7,40 @@ edition = "2024"
 # Build the sqlite-sync extension from vendored source (linux/x86_64) with a
 # custom network layer instead of using the prebuilt `include_bytes!` artifact.
 # Default OFF keeps the existing prebuilt path byte-identical.
-from-source = []
+#
+# SYNC-9 §21.14: also pulls in `libsqlite3-sys` as a dependency, purely so its
+# `links = "sqlite3"` build-script metadata (DEP_SQLITE3_INCLUDE) is available
+# to this crate's own build.rs — see build.rs for why. It is `dep:`-gated so a
+# default (`from-source` off) resolve of this crate never depends on it.
+#
+# Deliberately a *normal* [dependencies] entry, not [build-dependencies]:
+# verified empirically (by dumping the actual env passed to
+# cloudsync's build-script-build process) that Cargo does NOT forward
+# DEP_<links>_<key> vars across a build-dependency edge — only across normal/
+# target-dependency edges. As a build-dependency this silently never receives
+# DEP_SQLITE3_INCLUDE at all (confirmed: zero DEP_* vars present). As a normal
+# dependency it does (confirmed below and in build.rs's own failure-if-absent
+# check). The crate is never otherwise used from cloudsync's Rust code — it's
+# depended on solely for this build-script side channel.
+from-source = ["dep:libsqlite3-sys"]
 
 [build-dependencies]
 cc = "1.2"
 
 [dependencies]
 dirs = { workspace = true }
+# Same crate version as crates/db-core's runtime dependency (0.35) — not a new
+# SQLite version. `features = ["bundled"]` is required and deliberate, not
+# just copied from db-core: it forces this edge to actually compile its
+# vendored sqlite3 amalgamation (rather than resolve to a system/pkg-config
+# copy that never emits `cargo:include`). Because this is the exact same
+# crate name+version as db-core's `libsqlite3-sys = "0.35"` dependency, Cargo
+# unifies the two into a single build with the union of both edges' features
+# (already includes "bundled" via sqlx-sqlite's default feature — see
+# docs/internal/sync-p2p.md §21.14) — no duplicate/second copy of the sqlite3
+# library gets linked into the app. Optional: never reaches a default
+# (`from-source` off) build. See build.rs.
+libsqlite3-sys = { version = "0.35", optional = true, features = ["bundled"] }
 serde_json = { workspace = true }
 sqlx = { workspace = true, features = ["runtime-tokio", "sqlite", "sqlite-unbundled"] }
 thiserror = { workspace = true }
