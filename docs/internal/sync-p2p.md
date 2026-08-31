@@ -1523,6 +1523,18 @@ predates this PR) already cover the same gate for `Loopback`, including the
 case where the peer's address is fully known (registered) yet still refused
 — i.e. "reachable" and "allowed" already were, and remain, orthogonal.
 
+This gap is now also closed on the *positive* side, over genuinely real
+discovery rather than a stand-in: `discovered_mode_dials_by_node_id_alone_over_real_network`
+(`tests/iroh_transport.rs`, `#[ignore]`d — see §20.8) starts two agents in
+real `Discovered` mode, *allowlists* each other, and dials by node id alone
+against n0's live infrastructure with no `register_direct_addr` call
+anywhere. It passed on both manual runs (~3.7s each, 2026-08-31). It does not
+retest the allowlist-refusal invariant (that is the unit test above's job,
+deliberately offline); it proves the other half — that the allowlist,
+correctly configured, does not additionally get in the way of a real
+discovered connection actually working end to end, including an encrypted
+payload round trip (PUT + GET) over it.
+
 ### 20.5 The `try_lock` defect (doc §854) — fixed
 
 `lookup_direct_addrs` used `DIRECT_ADDRS.try_lock()` and silently fell back to
@@ -1607,20 +1619,38 @@ peer came back and re-triggering a check/drain is `plugins/db`'s sync loop's
 concern (§16), not `sync-p2p`'s; this PR only guarantees the transport call
 itself behaves correctly when retried.
 
-### 20.8 Tests stay offline by default; the from-source examples are unchanged
+### 20.8 Tests stay offline by default; one genuinely networked test is `#[ignore]`d
 
 `cargo test -p sync-p2p` (default features) never constructs an
-`AgentTransport::Discovered` agent — every test uses `P2pAgent::start_with`
-(`Loopback`), confirmed by grepping every test and example for
-`P2pAgent::start(`, `P2pAgent::start_with(`. The three `examples/` and
-`tests/drain_regression.rs` are unaffected (`from-source`-gated, `Loopback`,
-unchanged). No new `#[ignore]`-gated or feature-gated networked test was
-added for `Discovered` mode's *real* address-lookup path (only the
-allowlist-gate unit test in §20.4, which deliberately does not touch the
-network) — genuinely exercising n0's DNS/pkarr infrastructure end to end
-(two real `Discovered` agents, real publish, real resolve, real relay-assisted
-dial) is real integration coverage this PR does not add, and is recorded here
-as open rather than silently skipped.
+`AgentTransport::Discovered` agent in any test that runs by default — every
+non-ignored test uses `P2pAgent::start_with` (`Loopback`), confirmed by
+grepping every test and example for `P2pAgent::start(`,
+`P2pAgent::start_with(`. The three `examples/` and `tests/drain_regression.rs`
+are unaffected (`from-source`-gated, `Loopback`, unchanged).
+
+`discovered_mode_dials_by_node_id_alone_over_real_network`
+(`tests/iroh_transport.rs`) is the one exception, and it is `#[ignore]`d for
+exactly that reason: it starts two agents in real `AgentTransport::Discovered`,
+allowlists each other, and dials **by node id alone** — no
+`register_direct_addr` call anywhere in the test — against n0's live
+DNS/pkarr infrastructure, then round-trips a payload (PUT + GET) over the
+resulting connection. This is the one piece of direct evidence in the crate
+that the actual capability SYNC-8 exists to deliver — two devices finding
+each other with nothing but a node id — really works, rather than every
+other test proving it only indirectly through `Loopback`'s `DIRECT_ADDRS`
+stand-in. Run it explicitly:
+
+```
+cargo test -p sync-p2p -- --ignored discovered_mode_dials_by_node_id_alone_over_real_network
+```
+
+Run manually twice (2026-08-31, this environment has real network egress):
+both runs passed, ~3.7s each — `test discovered_mode_dials_by_node_id_alone_over_real_network ... ok`.
+It needs real network egress and a live n0.computer, so it is neither run in
+CI nor part of the default local loop; a machine with no route to n0 (or with
+DNS/HTTPS egress blocked) will time out on this test rather than pass, which
+is the correct behavior for a test whose entire point is proving reachability
+against real infrastructure.
 
 ### 20.9 Audit outcome
 
@@ -1679,6 +1709,32 @@ through the backoff arithmetic explicitly (confirming the ~15.75s total and
 the `u64` shift has no overflow risk) rather than bailing early, so this one
 reads as a real pass, not a blind one.
 
+**Rejected as a false positive, `b1f59d379`** (the real-discovery e2e test +
+`AgentTransport` re-export) — minimax: "`AgentTransport` may have additional
+variants not exercised by this test, and a non-exhaustive `match` elsewhere
+in the crate would panic on an unknown variant." The seat's payload for this
+commit did not include `agent.rs` (where the enum is defined, in an earlier
+commit), so it could not see that `AgentTransport` has exactly two variants
+and is not `#[non_exhaustive]` — every `match` on it in the crate
+(`start_with_transport`, `dial_attempts`, `dial_backoff`,
+`dial_attempt_timeout`) is compiler-enforced exhaustive; Rust will not compile
+a non-exhaustive match on a closed enum, so "panic on an unknown variant" is
+not a reachable failure mode here. `audit-gpt-oss:120b`'s independent 0-findings
+run on the same commit corroborates this.
+
+**Noted but not actioned, same commit** — minimax's second (low-severity)
+finding, that `Discovered` mode has no *offline* smoke test verifying agent
+construction succeeds without a real network round trip, is a reasonable
+suggestion but was not added: confirming `Endpoint::builder(presets::N0)....bind()`
+never touches the network during `bind()` itself (address-lookup publishing
+is documented as fire-and-forget, but bind-time DNS resolution of relay/pkarr
+hostnames or a net_report probe are plausible enough that this needs to be
+checked, not assumed) is exactly the kind of claim this PR insists on
+verifying before writing, and there wasn't time to do that verification
+properly. Recorded here rather than added speculatively — adding a test that
+turns out to touch the network by accident would violate the "default suite
+stays offline" invariant this PR is built around.
+
 **Uninformative, not "clean" — recorded honestly rather than claimed as a
 pass:** the docs commit (`ee49e2532`) produced a 110,141-character payload
 (§20 plus the full pre-existing text of a ~1,600-line file, inlined per the
@@ -1714,11 +1770,13 @@ claims about a third-party API.
 - **The remaining 15 unproven tables** in `SYNCED_TABLES` (§19) — only
   `sessions`/`session_documents` are enabled; each additional table needs its
   own §17-style convergence proof before it is turned on.
-- **Real end-to-end `Discovered`-mode integration coverage** (§20.8) — the
-  allowlist invariant is proven without touching the network; the address
-  lookup mechanism itself (publish → n0 → resolve → relay-assisted dial,
-  device-to-device) has not been exercised against n0's real infrastructure
-  as part of this PR's automated verification.
+- **CI coverage for real `Discovered`-mode discovery** — closed for manual
+  verification (§20.8: `discovered_mode_dials_by_node_id_alone_over_real_network`,
+  run twice, both green), but it is `#[ignore]`d by necessity (needs real
+  network + n0) and therefore does not run in CI. Nothing currently re-runs
+  it on a schedule to catch a future regression or an n0-side change; that is
+  a process gap, not a code gap, and is worth a periodic manual or
+  cron-gated re-run rather than leaving it to be run once and forgotten.
 - **IPv6 bracketing in the C layer's `resolve_agent_addr`** (§13.9) — still
   unaddressed; `Discovered` mode's dual-stack bind makes this more reachable
   in practice than it was under `Loopback`-only, so it is worth prioritizing
