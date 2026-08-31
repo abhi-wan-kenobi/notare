@@ -20,11 +20,16 @@ from-source = ["cloudsync/from-source"]
 
 [dependencies]
 base64 = { workspace = true }
+chacha20poly1305 = { version = "0.11", default-features = false, features = ["alloc"] }
 data-encoding = "2.10"
 dirs = { workspace = true }
+ed25519-dalek = { version = "3.0", default-features = false }
+hkdf = "0.13"
 iroh = "1.1"
+rand = "0.10"
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
+sha2 = "0.11"
 subtle = "2"
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["rt", "rt-multi-thread", "net", "io-util", "sync", "macros", "time"] }
