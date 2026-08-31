@@ -40,9 +40,15 @@ static bool resolve_agent_addr_from(const char *addr, char *host_out, size_t hos
     memcpy(host_out, addr, host_len);
     host_out[host_len] = '\0';
 
-    // Bracketed IPv6 literal, e.g. "[::1]" -> "::1".
+    // Bracketed IPv6 literal, e.g. "[::1]" -> "::1". Reject "[]" (an empty
+    // host) rather than stripping it down to an empty string that would
+    // otherwise sail through to getaddrinfo() as a "valid" address (audit
+    // finding, SYNC-9: gpt-oss caught the off-by-one edge minimax's own
+    // walkthrough got wrong — host_len for "[]" is 2, not 1, so the
+    // `host_len >= 2` guard alone does not exclude it).
     if (host_len >= 2 && host_out[0] == '[' && host_out[host_len - 1] == ']') {
         size_t stripped_len = host_len - 2;
+        if (stripped_len == 0) return false;
         memmove(host_out, host_out + 1, stripped_len);
         host_out[stripped_len] = '\0';
     }
