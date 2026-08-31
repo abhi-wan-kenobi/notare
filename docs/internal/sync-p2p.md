@@ -2204,3 +2204,52 @@ push, re-trigger, and read the actual next Windows error (if any). Per
 are plausible; each one gets the same treatment (minimal, targeted,
 non-restructuring fix) unless a genuine design decision is required, in
 which case this lane stops and reports rather than guessing.
+
+### 21.16 CI run 6 (2026-08-31) — every vendored `.c` file compiles; a
+missing Windows import lib, same shape as the macOS one
+
+Pushed §21.15's linkage fix, run 33422610638.
+
+**`cloudsync_from_source_macos` — GREEN a fifth time.**
+
+**`cloudsync_from_source_windows` — compilation of every vendored source
+file succeeded for the first time, including `network_p2p.c` (the Winsock2
+port this whole lane exists to reach).** The log streams every file name as
+`cc` compiles it — `block.c`, `cloudsync.c`, `dbutils.c`, `lz4.c`, `pk.c`,
+`utils.c`, `network.c`, all four `sqlite/*.c` files,
+`fractional_indexing.c`, and finally `network_p2p.c` — with zero compiler
+errors. It failed one step later, at link:
+```
+80d23e1392036d63-utils.o : error LNK2019: unresolved external symbol
+BCryptGenRandom referenced in function cloudsync_uuid_v7
+...cloudsync.dll : fatal error LNK1120: 1 unresolved externals
+```
+
+**Root cause:** `vendor/src/utils.c` already has a correct `#ifdef _WIN32`
+branch (parallel to its macOS `SecRandomCopyBytes` branch) calling
+`BCryptGenRandom` for UUID generation, and already `#include <bcrypt.h>` —
+the vendored *source* was Windows-ready. What was missing was
+`build.rs`'s link step: `bcrypt.lib` (MSVC) / `-lbcrypt` (GNU) was never
+added alongside `ws2_32.lib`/`-lws2_32`, so the import lib for
+`BCryptGenRandom` was never supplied to the linker. Exactly the same shape
+of bug as the macOS `Security.framework`/`SecRandomCopyBytes` fix already in
+this file (§21 CI run 1) — a platform API the vendored C correctly calls,
+whose import library the link step didn't yet know to pull in — just
+surfaced one CI round later because compilation itself was still failing
+until §21.14/§21.15 landed.
+
+**Fix:** added `bcrypt.lib` to the MSVC link `cmd` (next to `ws2_32.lib`)
+and `-lbcrypt` to the non-MSVC-Windows (mingw) branch (next to `-lws2_32`)
+in `build.rs`. No vendored source changed — this is a build.rs-only fix, no
+`#ifdef` shim was needed since the C side was already correct. Verified
+with `cargo test -p cloudsync --features from-source`, `cargo check -p
+cloudsync` (default), `cargo check -p desktop` (default) on Linux — all
+green; the change is Windows-only (`is_windows` branches), so it cannot
+affect linux/macOS behavior.
+
+**Not yet done:** not yet exercised by CI. This is the first Windows
+failure in this lane that is a *link* error rather than a *compile* error —
+if this is the last missing import lib, the next run should reach an
+actual link success and produce `cloudsync.dll`, at which point
+`network_p2p.c`'s Winsock2 code will have been built (not yet run/tested,
+only compiled+linked) for the first time ever.
