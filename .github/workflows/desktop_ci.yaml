@@ -369,11 +369,83 @@ jobs:
         run: |
           cargo check --locked --features parakeet-onnx,directml -p tauri-plugin-local-stt
 
+  # SYNC-9: prove `cloudsync --features from-source` actually compiles on the
+  # platforms `crates/cloudsync/build.rs`'s `supported()` now claims, beyond
+  # linux/x86_64. `from-source` is default-OFF (deliberately — see
+  # docs/internal/sync-p2p.md §15.2b), so no existing job has ever built this
+  # C code anywhere but Linux; widening `supported()` without this coverage
+  # would just move an untested claim into the docs. Deliberately NOT a full
+  # app build — `cargo check -p cloudsync --features from-source` alone drives
+  # build.rs through the real compile-and-link of the vendored C sources plus
+  # build/network_p2p.c (cargo runs build scripts for `check`, not just
+  # `build`), so this is a genuine compile+link proof, not a Rust-only
+  # typecheck. The feature is NOT enabled for any other job in this file.
+  #
+  # macOS: builds natively for aarch64 (macos-15 runners are Apple Silicon)
+  # and cross-compiles the x86_64 check via `--target`, using the same clang
+  # driver — both targets `supported()` now admits.
+  cloudsync_from_source_macos:
+    if: ${{ !startsWith(github.head_ref || '', 'blog/') }}
+    runs-on: macos-15
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - uses: ./.github/actions/rust_install
+        with:
+          platform: macos
+      - run: echo "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)" >> $GITHUB_ENV
+      - name: cargo check -p cloudsync --features from-source (aarch64-apple-darwin, native)
+        run: cargo check --locked -p cloudsync --features from-source --target aarch64-apple-darwin
+      - name: cargo check -p cloudsync --features from-source (x86_64-apple-darwin, cross)
+        run: cargo check --locked -p cloudsync --features from-source --target x86_64-apple-darwin
+
+  # SYNC-9: same proof for Windows — the platform where `build/network_p2p.c`
+  # needed real Winsock2 changes (SOCKET/closesocket/WSAStartup, not just a
+  # `supported()` toggle), and where `build.rs`'s link step must drive
+  # `cl.exe /LD` instead of `-shared` (this runner uses the MSVC toolchain,
+  # per rust_install's `x86_64-pc-windows-msvc` target — matches windows_stt's
+  # proven setup below).
+  #
+  # PROVISIONAL / NON-BLOCKING, same reasoning as `windows_stt`: this exact
+  # code path has never run on a real Windows runner, so it cannot be proven
+  # green from a Linux dev box (see docs/internal/sync-p2p.md §21 for exactly
+  # what is and is not locally verified). It must be OBSERVED green on
+  # windows-latest across a few PRs before being promoted to a required check.
+  # Promotion checklist: add `cloudsync_from_source_windows` (and
+  # `cloudsync_from_source_macos`, once likewise observed) to the `ci` job's
+  # `needs:` array below.
+  cloudsync_from_source_windows:
+    if: ${{ !startsWith(github.head_ref || '', 'blog/') }}
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    env:
+      CC: cl
+      CXX: cl
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - uses: ./.github/actions/rust_install
+        with:
+          platform: windows
+      - uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
+      - name: cargo check -p cloudsync --features from-source
+        run: cargo check --locked -p cloudsync --features from-source
+
   ci:
     if: always()
-    # NOTE: `windows_stt` is intentionally NOT listed here yet — it is a
-    # provisional, non-blocking signal (see the comment on that job). Add it
-    # once it has been observed green on windows-latest across a few PRs.
+    # NOTE: `windows_stt` and the two `cloudsync_from_source_*` jobs are
+    # intentionally NOT listed here yet — they are provisional, non-blocking
+    # signals (see the comments on those jobs). Add each once it has been
+    # observed green on its real runner across a few PRs.
     needs: [desktop_ci, desktop_i18n, desktop_swift, linux_crate_check]
     runs-on: ubuntu-latest
     steps:
