@@ -470,11 +470,43 @@ jobs:
       # workflow's actually-proven Windows build (`release.yaml:build-windows`,
       # which `windows_stt`'s header comment claims to be modeled on but is
       # not, in this respect) never hits this because it does not set
-      # `shell: bash` at all and does not use `rust_install`. Removing Git's
-      # own `link.exe` before anything that needs MSVC's is the standard fix
-      # for this exact, well-known interaction.
-      - name: Remove Git's link.exe (shadows MSVC's link.exe under Git Bash)
-        run: rm -f /usr/bin/link.exe
+      # `shell: bash` at all and does not use `rust_install`.
+      #
+      # First attempt (run 33411261329): `rm -f /usr/bin/link.exe` before
+      # `rust_install`. This looked like it worked — `rust_install`'s own
+      # embedded step went green — but run 33415114684 proved it was not a
+      # real fix: this job's OWN `cargo check -p cloudsync` step, later in
+      # the SAME job, hit the identical `"C:\Program Files\Git\usr\bin\link.exe"`
+      # error again, for the exact same crates (quote/proc-macro2/typenum). A
+      # deleted file cannot reappear mid-job on the same filesystem, so
+      # `rm -f` most likely never actually removed it — `Program Files`
+      # permissions plus `-f` silently swallowing the failure is the leading
+      # explanation — and `rust_install`'s step probably only "passed" that
+      # run because Swatinem/rust-cache happened to restore already-linked
+      # artifacts for `trusted-signing-cli`'s shared deps, sidestepping a
+      # fresh link rather than proving the underlying PATH problem gone.
+      #
+      # Real fix: stop trying to make PATH resolve to the right `link.exe`
+      # under Git Bash at all. Point cargo at it by absolute path instead,
+      # via the standard `CARGO_TARGET_<TRIPLE>_LINKER` env var, which every
+      # `cargo`/`rustc` invocation in this job honors regardless of which
+      # shell launched it or what PATH that shell computed — including
+      # `rust_install`'s embedded `cargo install trusted-signing-cli` step,
+      # since it's exported to the whole job via `$GITHUB_ENV` right here,
+      # immediately after `msvc-dev-cmd` populates PATH with the real MSVC
+      # toolchain and before Git Bash gets a chance to re-derive PATH for a
+      # later step's fresh shell.
+      - name: Pin cargo to MSVC's link.exe by absolute path (bypasses PATH search)
+        run: |
+          for dir in $(echo "$PATH" | tr ':' '\n'); do
+            if [ -f "$dir/link.exe" ] && [[ "$dir" != *"/Git/"* ]]; then
+              echo "found MSVC link.exe: $dir/link.exe"
+              echo "CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER=$dir/link.exe" >> "$GITHUB_ENV"
+              exit 0
+            fi
+          done
+          echo "::error::no non-Git link.exe found on PATH after msvc-dev-cmd" >&2
+          exit 1
       - uses: ./.github/actions/rust_install
         with:
           platform: windows
