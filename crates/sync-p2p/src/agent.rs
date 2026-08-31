@@ -157,32 +157,94 @@ pub fn self_address(identity: &Identity) -> String {
     format!("p2p://{}", identity.fingerprint().compact())
 }
 
+/// How the agent's iroh endpoint finds and is found by peers. See
+/// `docs/internal/sync-p2p.md` §20 for the full rationale.
+///
+/// This is deliberately an explicit enum rather than a bool: the two modes
+/// differ in more than one axis (relay, bind address, address-lookup
+/// publishing) and a bool would invite someone to thread only one of those
+/// through later and silently produce a hybrid that is neither offline-safe
+/// nor really discoverable.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AgentTransport {
+    /// Same-machine proof / test behavior: `RelayMode::Disabled`, bound to
+    /// `127.0.0.1` only, peer addresses resolved from the process-local
+    /// `DIRECT_ADDRS` registry populated by [`register_direct_addr`].
+    /// Deterministic and fully offline — what every test and the three
+    /// `examples/` use.
+    Loopback,
+    /// Production: `RelayMode::Default`, bound on all interfaces (dual-stack —
+    /// the default when no explicit `bind_addr` is set), and iroh's DNS/pkarr
+    /// address-lookup service enabled so the endpoint both publishes its own
+    /// address record and resolves peers by node id alone. Reaches n0's
+    /// infrastructure on the open internet — see §20 before assuming this is
+    /// free of privacy characteristics worth documenting.
+    Discovered,
+}
+
 impl P2pAgent {
     /// Start an agent using the persisted identity + allowlist from the app
-    /// data dir (`<data_dir>/notare/sync/`), binding the iroh endpoint to
-    /// localhost. Suitable for the same-machine convergence proof; production
-    /// would bind a real interface and use `RelayMode::Default`.
+    /// data dir (`<data_dir>/notare/sync/`), with real relay/DNS discovery
+    /// enabled (`AgentTransport::Discovered`). This is the app entry point —
+    /// `plugins/db/src/sync.rs` calls this, never `start_with`.
     pub async fn start() -> Result<Self, AgentError> {
         let identity = Identity::load_or_create()?;
         let peers = PeerStore::load_or_create()?;
-        Self::start_with(identity, peers).await
+        Self::start_with_transport(identity, peers, AgentTransport::Discovered).await
     }
 
-    /// Start with an explicit identity + peer store (for tests).
+    /// Start with an explicit identity + peer store, on `AgentTransport::Loopback`
+    /// (today's same-machine, deterministic, offline behavior). Existing
+    /// callers — every test and the three `examples/` — use this unchanged;
+    /// production discovery is opted into via [`Self::start_with_transport`].
     pub async fn start_with(identity: Identity, peers: PeerStore) -> Result<Self, AgentError> {
+        Self::start_with_transport(identity, peers, AgentTransport::Loopback).await
+    }
+
+    /// Start with an explicit identity, peer store, and transport config.
+    pub async fn start_with_transport(
+        identity: Identity,
+        peers: PeerStore,
+        transport: AgentTransport,
+    ) -> Result<Self, AgentError> {
         let self_label = identity.fingerprint().compact();
 
-        // iroh endpoint: disable relay for the same-machine proof (deterministic,
-        // no external network), bind localhost, set our ALPN. The secret key IS
-        // the device identity key — iroh's NodeId/EndpointId derives from it.
-        let endpoint = Endpoint::builder(iroh::endpoint::presets::Minimal)
-            .secret_key(identity.secret_key().clone())
-            .alpns(vec![SYNC_ALPN.to_vec()])
-            .relay_mode(RelayMode::Disabled)
-            .bind_addr("127.0.0.1:0")
-            .map_err(|_| AgentError::BadBindAddr)?
-            .bind()
-            .await?;
+        // The secret key IS the device identity key — iroh's NodeId/EndpointId
+        // derives from it — in both modes.
+        let endpoint = match transport {
+            // Disable relay for the same-machine proof (deterministic, no
+            // external network), bind localhost only.
+            AgentTransport::Loopback => {
+                Endpoint::builder(iroh::endpoint::presets::Minimal)
+                    .secret_key(identity.secret_key().clone())
+                    .alpns(vec![SYNC_ALPN.to_vec()])
+                    .relay_mode(RelayMode::Disabled)
+                    .bind_addr("127.0.0.1:0")
+                    .map_err(|_| AgentError::BadBindAddr)?
+                    .bind()
+                    .await?
+            }
+            // `presets::N0` wires up the n0 DNS/pkarr address-lookup service
+            // (publish + resolve) and n0's relay servers — confirmed against
+            // the vendored iroh 1.1.0 source
+            // (`iroh-1.1.0/src/endpoint/presets.rs`; discovery was renamed
+            // `address_lookup` in this version, so `presets::Minimal` — which
+            // sets nothing but the TLS crypto provider — does NOT include it).
+            // `relay_mode` is set explicitly afterward rather than trusting
+            // the preset's `default_relay_mode()`, so this endpoint is
+            // `RelayMode::Default` even if `IROH_FORCE_STAGING_RELAYS` is set
+            // in the environment. No `bind_addr` call: the builder's
+            // unspecified defaults (`0.0.0.0` + `[::]`) bind dual-stack on
+            // every interface, which is what "do not hardcode IPv4" requires.
+            AgentTransport::Discovered => {
+                Endpoint::builder(iroh::endpoint::presets::N0)
+                    .secret_key(identity.secret_key().clone())
+                    .alpns(vec![SYNC_ALPN.to_vec()])
+                    .relay_mode(RelayMode::Default)
+                    .bind()
+                    .await?
+            }
+        };
 
         let broker = Arc::new(BrokerState::with_addr_label(&self_label));
 
@@ -210,6 +272,7 @@ impl P2pAgent {
                 tcp_identity,
                 tcp_self_label,
                 tcp_token,
+                transport,
             )
             .await;
         });
@@ -288,6 +351,7 @@ async fn accept_c_tcp(
     identity: Identity,
     self_label: String,
     token: String,
+    transport: AgentTransport,
 ) {
     loop {
         // AUDIT (2026-08-28, gpt-oss): a transient accept error (EMFILE,
@@ -309,6 +373,7 @@ async fn accept_c_tcp(
             identity: identity.clone(),
             self_label: self_label.clone(),
             token: token.clone(),
+            transport,
         };
         tokio::spawn(async move {
             // A connection that errors is just a dropped/short C call; nothing
@@ -325,6 +390,9 @@ struct Ctx {
     identity: Identity,
     self_label: String,
     token: String,
+    /// Governs `dial_peer`: `Loopback` injects addresses from the process-local
+    /// registry, `Discovered` dials by node id alone and lets iroh resolve it.
+    transport: AgentTransport,
 }
 
 async fn handle_c_connection(stream: &mut tokio::net::TcpStream, ctx: &Ctx) -> std::io::Result<()> {
@@ -632,37 +700,108 @@ async fn relay_put_to_peer(put: &PutRequest, node_id: &PublicKey, ctx: &Ctx) -> 
     }
 }
 
-/// Resolve a peer's iroh direct address and dial it. The agent's
-/// [`P2pAgent::direct_addresses`] supplies the peer's socket addresses for the
-/// same-machine proof; production discovery (relay/DNS/pkarr) is SYNC-8.
+/// Resolve `node_id` to an [`EndpointAddr`] and dial it. In `Loopback` mode the
+/// agent's own [`P2pAgent::direct_addresses`] (via the process-local
+/// `DIRECT_ADDRS` registry) supplies the peer's socket addresses directly —
+/// there is no relay and no address lookup to fall back on. In `Discovered`
+/// mode no addresses are injected: `EndpointAddr::new(node_id)` names the
+/// peer by node id alone, and iroh's relay/DNS address-lookup service (wired
+/// up in [`P2pAgent::start_with_transport`]) resolves it (SYNC-8).
 async fn dial_peer(node_id: &PublicKey, ctx: &Ctx) -> Result<iroh::endpoint::Connection, String> {
-    // Build an EndpointAddr from the node id + the peer's known direct
-    // addresses. For the convergence proof the addresses are injected via the
-    // shared DIRECT_ADDR registry (see `register_direct_addr`); production
-    // would resolve them through the relay/DNS address lookup (SYNC-8).
-    //
-    // Retry briefly: a peer's iroh endpoint may not be accepting the instant
-    // we dial (it binds asynchronously, and under concurrent test load the
-    // readiness gap can exceed a fixed sleep). A few quick attempts with
-    // backoff handle the race deterministically and mirror real-world dialing.
-    let addrs = lookup_direct_addrs(node_id);
     let mut ea = EndpointAddr::new(*node_id);
-    for a in addrs {
-        ea = ea.with_ip_addr(a);
+    if ctx.transport == AgentTransport::Loopback {
+        let addrs = lookup_direct_addrs(node_id).await;
+        for a in addrs {
+            ea = ea.with_ip_addr(a);
+        }
     }
 
+    // Retry with backoff: a peer may not be dialable on the very first
+    // attempt for reasons that differ by transport (see `dial_attempts` /
+    // `dial_backoff`), and a bounded ladder rides that out without blocking a
+    // real sync call forever on a genuinely offline peer.
+    //
+    // FINDING (SYNC-8, found while writing the offline-reconnect test):
+    // `Endpoint::connect` has no cap of its own. A peer that is offline in the
+    // way that matters here — bound to a dead address, not merely slow — never
+    // sends anything back, so there is no QUIC packet to fail fast on; iroh
+    // just keeps waiting up to its own internal handshake/idle timeout, which
+    // is tens of seconds. Retried 8x that turns "offline peer" into a
+    // multi-minute hang, which is exactly the "no hang" requirement this dial
+    // ladder exists to satisfy. Each attempt is therefore wrapped in its own
+    // `tokio::time::timeout` so a non-responding peer fails on this ladder's
+    // schedule, not iroh's.
     let mut last_err = String::from("dial failed");
-    for attempt in 0..8u32 {
-        match ctx.endpoint.connect(ea.clone(), SYNC_ALPN).await {
-            Ok(conn) => return Ok(conn),
-            Err(e) => last_err = format!("{e}"),
+    for attempt in 0..dial_attempts(ctx.transport) {
+        match tokio::time::timeout(
+            dial_attempt_timeout(ctx.transport),
+            ctx.endpoint.connect(ea.clone(), SYNC_ALPN),
+        )
+        .await
+        {
+            Ok(Ok(conn)) => return Ok(conn),
+            Ok(Err(e)) => last_err = format!("{e}"),
+            Err(_) => last_err = "dial attempt timed out".to_string(),
         }
-        // Backoff: 1ms, 2ms, 4ms, … up to ~128ms across all attempts (~250ms
-        // total worst case) — enough to ride out an endpoint that is still
-        // binding, without blocking a real sync call on a dead peer.
-        tokio::time::sleep(std::time::Duration::from_millis(1 << attempt)).await;
+        tokio::time::sleep(dial_backoff(ctx.transport, attempt)).await;
     }
     Err(last_err)
+}
+
+/// Number of dial attempts before `dial_peer` gives up. See [`dial_backoff`]
+/// for the per-attempt wait and why the two modes differ.
+fn dial_attempts(transport: AgentTransport) -> u32 {
+    match transport {
+        AgentTransport::Loopback => 8,
+        AgentTransport::Discovered => 6,
+    }
+}
+
+/// Per-attempt backoff before the next `connect()` retry in `dial_peer`.
+///
+/// `Loopback`: unchanged from the original same-machine proof — 1, 2, 4, …,
+/// 128ms (~255ms total across 8 attempts). That ladder only ever needs to
+/// ride out a same-process peer endpoint that is still finishing its own
+/// `bind()` under concurrent test load; the peer is either up within a couple
+/// hundred ms or it never will be, so a WAN-scale ladder here would just make
+/// every offline-peer test slow for no benefit.
+///
+/// `Discovered`: retuned for a real relayed QUIC dial. The original ladder's
+/// ~128ms ceiling assumed a peer already reachable on localhost; over a real
+/// network a `connect()` may need to complete a DNS/pkarr address-lookup
+/// round trip and/or a relay handshake before the QUIC handshake can even
+/// start, which routinely costs hundreds of ms to low seconds even on a
+/// healthy path. 250ms, 500ms, 1s, 2s, 4s, 8s (~15.75s total across 6
+/// attempts) gives a WAN dial room to complete without turning a genuinely
+/// offline peer into a multi-minute hang — bounded, not unbounded.
+fn dial_backoff(transport: AgentTransport, attempt: u32) -> std::time::Duration {
+    let base_ms: u64 = match transport {
+        AgentTransport::Loopback => 1,
+        AgentTransport::Discovered => 250,
+    };
+    std::time::Duration::from_millis(base_ms << attempt)
+}
+
+/// Cap on a single `connect()` attempt in `dial_peer`. See the `FINDING` note
+/// at the call site: without this, a peer bound to a dead address (not merely
+/// slow) leaves iroh waiting on its own internal handshake/idle timeout —
+/// tens of seconds — with no per-attempt bound to fail fast on instead.
+///
+/// `Loopback`: 500ms is generous for a same-machine handshake (normally single
+/// digit ms) while still bounding a dead-port dial. `Discovered`: 8s allows
+/// room for a real DNS/pkarr address-lookup round trip plus a relay-assisted
+/// QUIC handshake on a path that is merely slow (elevated latency, a loaded
+/// relay), not offline — a genuinely dead peer still fails within that same
+/// 8s rather than lingering on iroh's own multi-ten-second internal timeout.
+/// AUDIT (auditor, minimax, 2026-08-31): an earlier 5s cap was tight enough
+/// that a *reachable but slow* WAN path (elevated DNS/relay latency) could be
+/// misread as offline and get a spurious failure on every attempt; widened to
+/// 8s so slow-but-alive is more reliably distinguished from actually-dead.
+fn dial_attempt_timeout(transport: AgentTransport) -> std::time::Duration {
+    match transport {
+        AgentTransport::Loopback => std::time::Duration::from_millis(500),
+        AgentTransport::Discovered => std::time::Duration::from_secs(8),
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -991,13 +1130,13 @@ fn endpoint_authority(url: &str) -> Option<String> {
 }
 
 // ---------------------------------------------------------------------------
-// peer direct-address registry (same-machine proof only)
+// peer direct-address registry (Loopback mode only)
 // ---------------------------------------------------------------------------
 
 // A process-local registry mapping a peer node id → the iroh socket addresses
-// it is reachable on. The convergence proof populates this directly (both
-// agents live in the same process). Production replaces this with relay/DNS
-// address lookup — that is SYNC-8 (rendezvous/relay), out of scope here.
+// it is reachable on. Populated directly by tests/examples (all agents live in
+// the same process). Only consulted in `AgentTransport::Loopback` — `Discovered`
+// resolves peers through iroh's relay/DNS address-lookup service instead (SYNC-8).
 
 static DIRECT_ADDRS: tokio::sync::Mutex<
     Option<std::collections::HashMap<[u8; 32], Vec<std::net::SocketAddr>>>,
@@ -1014,27 +1153,29 @@ async fn direct_addrs_map() -> tokio::sync::MutexGuard<
     g
 }
 
-/// Register a peer's iroh direct addresses so this agent can dial it without
-/// external discovery. (Same-machine proof; production uses relay/DNS — SYNC-8.)
+/// Register a peer's iroh direct addresses so a `Loopback`-mode agent can dial
+/// it without discovery. (Same-machine proof / tests only; `Discovered` mode
+/// uses relay/DNS instead — SYNC-8.)
 pub async fn register_direct_addr(node_id: PublicKey, addrs: Vec<std::net::SocketAddr>) {
     let mut map = direct_addrs_map().await;
     map.as_mut().unwrap().insert(*node_id.as_bytes(), addrs);
 }
 
-fn lookup_direct_addrs(node_id: &PublicKey) -> Vec<std::net::SocketAddr> {
-    // Synchronous lookup is fine: the registry is populated up-front by the
-    // test/example, and `dial_peer` is already async, so we do a quick
-    // try-lock. Fall back to empty (dial will then rely on relay, which is
-    // Disabled in the proof — so an unregistered peer simply fails to dial,
-    // which is the safe/correct outcome for the proof).
-    match DIRECT_ADDRS.try_lock() {
-        Ok(g) => g
-            .as_ref()
-            .and_then(|m| m.get(node_id.as_bytes()))
-            .cloned()
-            .unwrap_or_default(),
-        Err(_) => Vec::new(),
-    }
+/// AUDIT (doc §854, carried from the SYNC-3 audit as a SYNC-8 finding): this
+/// used to be a synchronous `fn` that reached for the registry with
+/// `DIRECT_ADDRS.try_lock()` and fell back to an **empty address list** on any
+/// contention, producing a spurious dial failure under concurrent load rather
+/// than an actual "peer unknown" outcome. `dial_peer` (the only caller) is
+/// already async, so there was never a reason to avoid the wait — `.await`ing
+/// the lock removes the false failure mode entirely. See
+/// `lookup_direct_addrs_awaits_the_lock_instead_of_dropping_addrs_under_contention`
+/// below for the regression test.
+async fn lookup_direct_addrs(node_id: &PublicKey) -> Vec<std::net::SocketAddr> {
+    let g = DIRECT_ADDRS.lock().await;
+    g.as_ref()
+        .and_then(|m| m.get(node_id.as_bytes()))
+        .cloned()
+        .unwrap_or_default()
 }
 
 #[cfg(test)]
@@ -1054,5 +1195,103 @@ mod tests {
         let (a, b) = rest.split_once('/').unwrap();
         assert_eq!(a, "abcd1234");
         assert_eq!(b, "99");
+    }
+
+    /// REGRESSION (doc §854): `lookup_direct_addrs` used to reach for the
+    /// registry with `try_lock` and silently fall back to an empty address
+    /// list on any contention, producing a spurious dial failure. `dial_peer`
+    /// is already async, so the fix `.await`s the lock instead. This test
+    /// holds the lock on a background task long enough to force the
+    /// contention, and fails against the pre-fix `try_lock` code (which would
+    /// observe the lock held and return `vec![]`).
+    #[tokio::test]
+    async fn lookup_direct_addrs_awaits_the_lock_instead_of_dropping_addrs_under_contention() {
+        let node_id = Identity::for_test().id();
+        let addr: std::net::SocketAddr = "127.0.0.1:9".parse().unwrap();
+        register_direct_addr(node_id, vec![addr]).await;
+
+        let held = tokio::spawn(async {
+            let g = DIRECT_ADDRS.lock().await;
+            tokio::time::sleep(std::time::Duration::from_millis(150)).await;
+            drop(g);
+        });
+        // Give the background task a chance to grab the lock first.
+        tokio::time::sleep(std::time::Duration::from_millis(30)).await;
+
+        let found = lookup_direct_addrs(&node_id).await;
+        held.await.unwrap();
+
+        assert_eq!(
+            found,
+            vec![addr],
+            "lookup must wait for the lock and return the registered address, not fall back to empty"
+        );
+    }
+
+    /// Requirement: discovery changes *how* a peer is found, never *whether*
+    /// it is allowed. `AgentTransport::Discovered` is the mode where a peer
+    /// is genuinely reachable from the open internet the moment it is
+    /// discoverable — this pins that the allowlist gate in
+    /// `relay_request_to_peer` / `relay_put_to_peer` still runs, and still
+    /// refuses, strictly before `dial_peer` is ever called. The endpoint
+    /// itself only needs to exist (Loopback-shaped, built offline) because a
+    /// non-allowlisted node id must never reach the point where the
+    /// endpoint's real capabilities (relay, discovery) would matter.
+    #[tokio::test]
+    async fn discovered_mode_still_refuses_an_unpaired_but_reachable_peer() {
+        let dir = tempfile::tempdir().unwrap();
+        let broker = Arc::new(BrokerState::with_addr_label("self"));
+        // Empty allowlist: the peer below is not paired.
+        let peers = PeerStore::load_or_create_in(dir.path()).unwrap();
+        let identity = Identity::for_test();
+
+        let endpoint = Endpoint::builder(iroh::endpoint::presets::Minimal)
+            .secret_key(identity.secret_key().clone())
+            .alpns(vec![SYNC_ALPN.to_vec()])
+            .relay_mode(RelayMode::Disabled)
+            .bind_addr("127.0.0.1:0")
+            .unwrap()
+            .bind()
+            .await
+            .unwrap();
+
+        let ctx = Ctx {
+            broker,
+            peers,
+            endpoint,
+            identity,
+            self_label: "self".to_string(),
+            token: "token".to_string(),
+            transport: AgentTransport::Discovered,
+        };
+
+        let unpaired = Identity::for_test().id();
+        let req = Request {
+            token: "token".to_string(),
+            endpoint: format!(
+                "p2p://{}/v2/cloudsync/databases/db/site/upload",
+                Fingerprint::from_pubkey(&unpaired).compact()
+            ),
+            is_post: false,
+            body: None,
+        };
+        let resp = relay_request_to_peer(&req, &unpaired, &ctx).await;
+        assert_eq!(
+            resp.status, 403,
+            "unpaired peer refused before dial (Discovered, Request)"
+        );
+        assert!(resp.error.unwrap().contains("not allowlisted"));
+
+        let put = PutRequest {
+            token: "token".to_string(),
+            url: format!("mem://{}/id", Fingerprint::from_pubkey(&unpaired).compact()),
+            blob: b"x".to_vec(),
+        };
+        let put_resp = relay_put_to_peer(&put, &unpaired, &ctx).await;
+        assert!(
+            !put_resp.ok,
+            "unpaired peer refused before dial (Discovered, Put)"
+        );
+        assert!(put_resp.error.unwrap().contains("not allowlisted"));
     }
 }
