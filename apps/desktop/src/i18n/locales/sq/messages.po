@@ -18,6 +18,11 @@ msgstr ""
 msgid "\"{0}\" will be permanently deleted. This cannot be undone."
 msgstr ""
 
+#. placeholder {0}: pendingRemove?.label || t`Unnamed device`
+#: src/settings/sync/index.tsx
+msgid "\"{0}\" will no longer be able to sync with this device. You can pair it again later."
+msgstr ""
+
 #: src/settings/general/notification.tsx
 msgid "(default)"
 msgstr ""
@@ -176,6 +181,14 @@ msgstr ""
 
 #: src/snippets/index.tsx
 msgid "Add {pairs} to your dictionary?"
+msgstr ""
+
+#: src/settings/sync/index.tsx
+msgid "Add a device"
+msgstr ""
+
+#: src/settings/sync/index.tsx
+msgid "Add device"
 msgstr ""
 
 #: src/settings/general/spoken-languages.tsx
@@ -429,6 +442,7 @@ msgstr ""
 #: src/settings/general/storage/legacy-cleanup.tsx
 #: src/settings/general/storage/notes-location.tsx
 #: src/settings/personalization/dictionary-settings.tsx
+#: src/settings/sync/index.tsx
 #: src/settings/todo/github.tsx
 #: src/snippets/entry-row.tsx
 #: src/trash/confirm-dialog.tsx
@@ -681,12 +695,17 @@ msgid "Continuing without trial"
 msgstr ""
 
 #: src/settings/dictation/index.tsx
+#: src/settings/sync/index.tsx
 #: src/snippets/index.tsx
 msgid "Copied to clipboard"
 msgstr ""
 
 #: src/snippets/entry-row.tsx
 msgid "Copy"
+msgstr ""
+
+#: src/settings/sync/index.tsx
+msgid "Copy fingerprint"
 msgstr ""
 
 #: src/session/components/note-input/header.tsx
@@ -848,6 +867,19 @@ msgstr ""
 msgid "Detection delay"
 msgstr ""
 
+#: src/settings/sync/index.tsx
+msgid "Device label"
+msgstr ""
+
+#: src/settings/sync/index.tsx
+msgid "Device sync isn't available in this build"
+msgstr ""
+
+#: src/settings/sync/index.tsx
+#: src/sidebar/settings.tsx
+msgid "Devices"
+msgstr ""
+
 #: src/settings/dictation/translation.tsx
 msgid "Dictate in any language, insert the text in {targetLabel}. Requires AI cleanup's language model; falls back to normal cleanup when no model is available."
 msgstr ""
@@ -873,6 +905,10 @@ msgstr ""
 
 #: src/settings/personalization/dictionary-settings.tsx
 msgid "Dictionary"
+msgstr ""
+
+#: src/settings/sync/index.tsx
+msgid "Direct device-to-device sync isn't included in this build of Notare."
 msgstr ""
 
 #: src/snippets/entry-row.tsx
@@ -1038,6 +1074,10 @@ msgstr ""
 
 #: src/settings/webhook/index.tsx
 msgid "Enter a signing secret"
+msgstr ""
+
+#: src/settings/sync/index.tsx
+msgid "Enter a valid 52-character fingerprint"
 msgstr ""
 
 #: src/session/components/outer-header/metadata/date.tsx
@@ -1465,6 +1505,10 @@ msgstr ""
 msgid "Keeps the microphone open while idle so dictation starts instantly. Your system may show the mic-in-use indicator the whole time."
 msgstr ""
 
+#: src/settings/sync/index.tsx
+msgid "Label (optional), e.g. \"Work laptop\""
+msgstr ""
+
 #: src/settings/general/index.tsx
 msgid "Language & Region"
 msgstr "Gjuha dhe rajoni"
@@ -1472,6 +1516,16 @@ msgstr "Gjuha dhe rajoni"
 #: src/settings/general/main-language.tsx
 msgid "Language for summaries, chats, and AI-generated responses"
 msgstr "Gjuha për përmbledhjet, bisedat dhe përgjigjet e krijuara nga AI"
+
+#. placeholder {0}: formatDistanceToNow(new Date(peer.lastSeen * 1000), { addSuffix: true })
+#: src/settings/sync/index.tsx
+msgid "Last seen {0}"
+msgstr ""
+
+#. placeholder {0}: formatDistanceToNow(new Date(status.lastSyncAtMs), { addSuffix: true })
+#: src/settings/sync/index.tsx
+msgid "Last synced {0}"
+msgstr ""
 
 #: src/session/components/note-input/header.tsx
 #: src/stt/useLiveTranscriptCopyShortcuts.ts
@@ -1536,12 +1590,17 @@ msgstr ""
 msgid "Loading models..."
 msgstr ""
 
+#: src/settings/sync/index.tsx
+msgid "Loading sync status"
+msgstr ""
+
 #: src/changelog/index.tsx
 #: src/task/resource-view.tsx
 msgid "Loading..."
 msgstr ""
 
 #: src/calendar/components/ics/content.tsx
+#: src/settings/sync/index.tsx
 msgid "Loading…"
 msgstr ""
 
@@ -1717,6 +1776,10 @@ msgstr ""
 msgid "Name"
 msgstr ""
 
+#: src/settings/sync/index.tsx
+msgid "Never connected"
+msgstr ""
+
 #: src/chat/components/toolbar-controls.tsx
 msgid "New chat"
 msgstr ""
@@ -1776,6 +1839,10 @@ msgstr ""
 
 #: src/task/resource-view.tsx
 msgid "No description provided."
+msgstr ""
+
+#: src/settings/sync/index.tsx
+msgid "No devices paired yet."
 msgstr ""
 
 #: src/dictation/host.tsx
@@ -2077,6 +2144,14 @@ msgstr ""
 msgid "Override the timezone used for the sidebar timeline"
 msgstr ""
 
+#: src/settings/sync/index.tsx
+msgid "Pair another one of your devices to sync sessions between them directly, without going through a server. Both devices need to add each other's fingerprint before they'll sync."
+msgstr ""
+
+#: src/settings/sync/index.tsx
+msgid "Paired devices"
+msgstr ""
+
 #: src/session/components/note-input/transcript/renderer/speaker-assign.tsx
 #: src/session/components/outer-header/overflow/export-modal.tsx
 msgid "Participants"
@@ -2098,6 +2173,10 @@ msgstr ""
 msgid "Paste the browser URL here if the browser button did not reopen Notare."
 msgstr ""
 
+#: src/settings/sync/index.tsx
+msgid "Paste the fingerprint shown on the other device's Devices settings page."
+msgstr ""
+
 #: src/settings/dictation/index.tsx
 msgid "Paste the transcript into the focused app when you stop. When off it is only copied to the clipboard, so you paste it yourself."
 msgstr ""
@@ -2108,6 +2187,10 @@ msgstr ""
 
 #: src/settings/dictation/index.tsx
 msgid "Pause music while dictating, resume after."
+msgstr ""
+
+#: src/settings/sync/index.tsx
+msgid "Peer fingerprint"
 msgstr ""
 
 #: src/contacts/organization-details.tsx
@@ -2255,6 +2338,7 @@ msgid "Reminders"
 msgstr ""
 
 #: src/calendar/components/ics/content.tsx
+#: src/settings/sync/index.tsx
 msgid "Remove"
 msgstr ""
 
@@ -2269,6 +2353,14 @@ msgstr ""
 
 #: src/settings/todo/github.tsx
 msgid "Remove repository"
+msgstr ""
+
+#: src/settings/sync/index.tsx
+msgid "Remove this device?"
+msgstr ""
+
+#: src/settings/sync/index.tsx
+msgid "Removing..."
 msgstr ""
 
 #: src/instruction/index.tsx
@@ -2610,6 +2702,10 @@ msgstr ""
 msgid "Settings"
 msgstr ""
 
+#: src/settings/sync/index.tsx
+msgid "Share this fingerprint with another device to pair it."
+msgstr ""
+
 #: src/settings/general/app-settings.tsx
 msgid "Share usage data"
 msgstr "Ndani të dhënat e përdorimit"
@@ -2882,6 +2978,14 @@ msgstr ""
 msgid "Symbols"
 msgstr ""
 
+#: src/settings/sync/index.tsx
+msgid "Sync idle"
+msgstr ""
+
+#: src/settings/sync/index.tsx
+msgid "Sync running"
+msgstr ""
+
 #: src/settings/general/theme.tsx
 msgid "System"
 msgstr ""
@@ -2973,6 +3077,10 @@ msgstr ""
 
 #: src/settings/dictation/index.tsx
 msgid "This combination is already used by the paste-last-dictation shortcut below."
+msgstr ""
+
+#: src/settings/sync/index.tsx
+msgid "This device"
 msgstr ""
 
 #: src/session/components/action-items/index.tsx
@@ -3103,8 +3211,16 @@ msgstr ""
 msgid "Unnamed"
 msgstr ""
 
+#: src/settings/sync/index.tsx
+msgid "Unnamed device"
+msgstr ""
+
 #: src/snippets/entry-row.tsx
 msgid "Unpin"
+msgstr ""
+
+#: src/settings/sync/index.tsx
+msgid "Unsent changes pending"
 msgstr ""
 
 #: src/search/page/index.tsx
