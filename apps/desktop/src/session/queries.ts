@@ -59,6 +59,15 @@ type SessionSummarySqlRow = {
   created_at: string;
 };
 
+type TrashedSessionSqlRow = {
+  id: string;
+  title: string;
+  created_at: string;
+  deleted_at: string;
+  note_body: string;
+  note_body_format: string;
+};
+
 type SessionTranscriptStateSqlRow = {
   has_transcript: boolean | number;
 };
@@ -109,6 +118,14 @@ export type SessionSummaryRecord = {
   created_at: string;
 };
 
+export type TrashedSessionRecord = {
+  id: string;
+  title: string;
+  created_at: string;
+  deleted_at: string;
+  preview: string;
+};
+
 export type EnhancedNoteRecord = {
   id: string;
   sessionId: string;
@@ -134,6 +151,36 @@ export type SessionParticipantRecord = {
 const EMPTY_ENHANCED_NOTES: EnhancedNoteRecord[] = [];
 const EMPTY_SESSION_PARTICIPANTS: SessionParticipantRecord[] = [];
 const EMPTY_SESSION_SUMMARIES: SessionSummaryRecord[] = [];
+const EMPTY_TRASHED_SESSIONS: TrashedSessionRecord[] = [];
+
+/**
+ * Every table that carries session-owned rows and gets a `deleted_at`
+ * tombstone from `buildSessionTombstoneStatements`. Kept as one list so the
+ * soft-delete, restore and hard-delete paths can never drift apart.
+ */
+const SESSION_OWNED_TABLES = [
+  "session_documents",
+  "transcripts",
+  "session_participants",
+  "session_tags",
+  "action_items",
+  "session_attachments",
+] as const;
+
+/**
+ * Single-line plain-text rendering of a stored note body for list previews.
+ * Mirrors `bodyToMarkdown` in `session/content-queries.ts` (prosemirror_json
+ * bodies go through `json2md`), then strips markdown noise so a trashed
+ * session row can show what its note actually said.
+ */
+function noteBodyToPlainText(body: string, format: string): string {
+  if (!body || format === "markdown") return body;
+  try {
+    return json2md(JSON.parse(body));
+  } catch {
+    return body;
+  }
+}
 
 const SESSION_SELECT_SQL = `
   SELECT
@@ -198,6 +245,38 @@ export function useSessionSummaries(): SessionSummaryRecord[] {
       WHERE deleted_at IS NULL
       ORDER BY created_at DESC, id
     `,
+  });
+  return data;
+}
+
+export function useTrashedSessions(): TrashedSessionRecord[] {
+  const { data = EMPTY_TRASHED_SESSIONS } = useLiveQuery<
+    TrashedSessionSqlRow,
+    TrashedSessionRecord[]
+  >({
+    sql: `
+      SELECT
+        sessions.id,
+        sessions.title,
+        sessions.created_at,
+        sessions.deleted_at,
+        COALESCE(note.body, '') AS note_body,
+        COALESCE(note.body_format, 'prosemirror_json') AS note_body_format
+      FROM sessions
+      LEFT JOIN session_documents AS note
+        ON note.id = sessions.id
+        AND note.kind = 'note'
+      WHERE sessions.deleted_at IS NOT NULL
+      ORDER BY sessions.deleted_at DESC, sessions.id
+    `,
+    mapRows: (rows) =>
+      rows.map((row) => ({
+        id: row.id,
+        title: row.title,
+        created_at: row.created_at,
+        deleted_at: row.deleted_at,
+        preview: noteBodyToPlainText(row.note_body, row.note_body_format),
+      })),
   });
   return data;
 }
@@ -879,6 +958,33 @@ export async function restoreDeletedSession(
   );
 }
 
+/**
+ * Reads back a trashed session's id, title and live `deleted_at` value so a
+ * surface that only knows the session id (the Trash view) can build the
+ * `DeletedSessionData` that `restoreDeletedSession` requires. Reading the
+ * tombstone from the row (instead of assuming one) keeps the restore
+ * predicate anchored to the exact tombstone the deletion actually wrote.
+ */
+export async function loadTrashedSessionData(
+  sessionId: string,
+): Promise<DeletedSessionData | null> {
+  const [row] = await liveQueryClient.execute<{
+    id: string;
+    title: string;
+    deleted_at: string;
+  }>(
+    `SELECT id, title, deleted_at FROM sessions WHERE id = ? AND deleted_at IS NOT NULL LIMIT 1`,
+    [sessionId],
+  );
+  if (!row) return null;
+
+  return {
+    session: { id: row.id, title: row.title },
+    tombstone: row.deleted_at,
+    deletedAt: Date.parse(row.deleted_at) || 0,
+  };
+}
+
 export async function finalizeSessionDeletion(
   sessionId: string,
 ): Promise<void> {
@@ -897,6 +1003,41 @@ export async function finalizeSessionDeletion(
   }
 }
 
+/**
+ * Hard-DELETEs a tombstoned session and every owned child row, then removes
+ * its folder from disk. The inverse of `softDeleteSession`: the same table
+ * set, but as real DELETEs gated on the tombstone so a live row can never be
+ * destroyed by mistake. Returns false when the session was not trashed (or
+ * already purged), so callers can distinguish "nothing to do" from failure.
+ */
+export async function hardDeleteSession(sessionId: string): Promise<boolean> {
+  const [session] = await liveQueryClient.execute<SessionDeleteSqlRow>(
+    `SELECT id, title FROM sessions WHERE id = ? AND deleted_at IS NOT NULL LIMIT 1`,
+    [sessionId],
+  );
+  if (!session) return false;
+
+  await executeTransaction(buildSessionHardDeleteStatements(sessionId));
+  await finalizeSessionDeletion(sessionId);
+  return true;
+}
+
+/** "Empty trash": hard-DELETEs every currently-trashed session in one pass. */
+export async function hardDeleteAllTrashedSessions(): Promise<number> {
+  const rows = await liveQueryClient.execute<{ id: string }>(
+    `SELECT id FROM sessions WHERE deleted_at IS NOT NULL`,
+  );
+
+  const statements = rows.flatMap((row) =>
+    buildSessionHardDeleteStatements(row.id),
+  );
+  if (statements.length === 0) return 0;
+
+  await executeTransaction(statements);
+  await Promise.all(rows.map((row) => finalizeSessionDeletion(row.id)));
+  return rows.length;
+}
+
 export function buildSessionTombstoneStatements(
   sessionId: string,
   tombstone: string,
@@ -905,14 +1046,7 @@ export function buildSessionTombstoneStatements(
   const value = restore ? null : tombstone;
   const predicate = restore ? "deleted_at = ?" : "deleted_at IS NULL";
   const predicateParams = restore ? [tombstone] : [];
-  const directTables = [
-    "session_documents",
-    "transcripts",
-    "session_participants",
-    "session_tags",
-    "action_items",
-    "session_attachments",
-  ];
+  const directTables = SESSION_OWNED_TABLES;
 
   const statements = directTables.map((table) => ({
     sql: `
@@ -941,6 +1075,35 @@ export function buildSessionTombstoneStatements(
       WHERE id = ? AND ${predicate}
     `,
     params: [value, tombstone, sessionId, ...predicateParams],
+  });
+
+  return statements;
+}
+
+/**
+ * Hard-DELETE statements for a trashed session and its owned rows. Children
+ * first, session row last, every statement gated on `deleted_at IS NOT NULL`
+ * so only tombstoned data is ever physically removed.
+ */
+export function buildSessionHardDeleteStatements(sessionId: string) {
+  const statements = SESSION_OWNED_TABLES.map((table) => ({
+    sql: `DELETE FROM ${table} WHERE session_id = ? AND deleted_at IS NOT NULL`,
+    params: [sessionId],
+  }));
+
+  statements.push({
+    sql: `
+      DELETE FROM entity_mentions
+      WHERE (
+        (source_type = 'session' AND source_id = ?)
+        OR (target_type = 'session' AND target_id = ?)
+      ) AND deleted_at IS NOT NULL
+    `,
+    params: [sessionId, sessionId],
+  });
+  statements.push({
+    sql: `DELETE FROM sessions WHERE id = ? AND deleted_at IS NOT NULL`,
+    params: [sessionId],
   });
 
   return statements;

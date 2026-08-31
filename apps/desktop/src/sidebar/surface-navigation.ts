@@ -7,6 +7,7 @@ export type SurfaceId =
   | "calendar"
   | "contacts"
   | "templates"
+  | "trash"
   | "settings";
 
 export const SPECIAL_SURFACE_TYPES: Tab["type"][] = [
@@ -24,6 +25,8 @@ export const surfaceFromTabType = (
       return "search";
     case "snippets":
       return "snippets";
+    case "trash":
+      return "trash";
     case "calendar":
       return "calendar";
     case "contacts":
@@ -84,6 +87,9 @@ export const openSurfaceTab = (surface: Exclude<SurfaceId, "notes">) => {
       return;
     case "snippets":
       openNew({ type: "snippets" });
+      return;
+    case "trash":
+      openNew({ type: "trash" });
       return;
     case "calendar":
       openNew({ type: "calendar" });

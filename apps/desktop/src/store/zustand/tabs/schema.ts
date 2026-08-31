@@ -29,7 +29,10 @@ export type TabInput =
   | { type: "search"; query?: string }
   // App-only tab input (no Rust/windows binding): the Snippets (dictation
   // history) surface, promoted out of Settings > Dictation.
-  | { type: "snippets" };
+  | { type: "snippets" }
+  // App-only tab input (no Rust/windows binding): the Trash (trashed
+  // sessions) surface.
+  | { type: "trash" };
 
 export const isTabInputSupported = (
   tab: WindowsTabInput,
@@ -136,6 +139,7 @@ export type Tab =
   | (BaseTab & { type: "calendar" })
   | (BaseTab & { type: "search"; query?: string })
   | (BaseTab & { type: "snippets" })
+  | (BaseTab & { type: "trash" })
   | (BaseTab & {
       type: "changelog";
       state: ChangelogState;
@@ -200,6 +204,8 @@ export const getDefaultState = (tab: TabInput): Tab => {
       return { ...base, type: "search", query: tab.query };
     case "snippets":
       return { ...base, type: "snippets" };
+    case "trash":
+      return { ...base, type: "trash" };
     case "changelog":
       return {
         ...base,
@@ -247,6 +253,8 @@ export const uniqueIdfromTab = (tab: Tab): string => {
       return `search`;
     case "snippets":
       return `snippets`;
+    case "trash":
+      return `trash`;
     case "changelog":
       return "changelog";
     case "settings":

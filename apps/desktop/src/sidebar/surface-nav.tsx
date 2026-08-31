@@ -8,6 +8,7 @@ import {
   ScrollTextIcon,
   SearchIcon,
   SettingsIcon,
+  Trash2Icon,
   UsersIcon,
 } from "lucide-react";
 import { useCallback } from "react";
@@ -93,6 +94,12 @@ export function SidebarSurfaceNav() {
       label: t`Templates`,
       icon: LayoutTemplateIcon,
       onClick: () => openSurface("templates"),
+    },
+    {
+      id: "trash",
+      label: t`Trash`,
+      icon: Trash2Icon,
+      onClick: () => openSurface("trash"),
     },
     {
       id: "settings",

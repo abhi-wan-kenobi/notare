@@ -13,9 +13,19 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
+#. placeholder {0}: pendingDelete.title || t`Untitled`
+#: src/trash/index.tsx
+msgid "\"{0}\" will be permanently deleted. This cannot be undone."
+msgstr "\"{0}\" will be permanently deleted. This cannot be undone."
+
 #: src/settings/general/notification.tsx
 msgid "(default)"
 msgstr "(default)"
+
+#. placeholder {0}: sessions.length
+#: src/trash/index.tsx
+msgid "{0} item(s)"
+msgstr "{0} item(s)"
 
 #. placeholder {0}: issue.user?.login
 #: src/task/resource-view.tsx
@@ -233,6 +243,11 @@ msgstr "AI cleanup isn't using a language model right now, so translation will f
 msgid "AI-generated summary of all interactions and notes with this contact will appear here. This will synthesize key discussion points, action items, and relationship context across all meetings and notes."
 msgstr "AI-generated summary of all interactions and notes with this contact will appear here. This will synthesize key discussion points, action items, and relationship context across all meetings and notes."
 
+#. placeholder {0}: sessions.length
+#: src/trash/index.tsx
+msgid "All {0} trashed items will be permanently deleted. This cannot be undone."
+msgstr "All {0} trashed items will be permanently deleted. This cannot be undone."
+
 #: src/shared/open-note-dialog.tsx
 msgid "All Notes"
 msgstr "All Notes"
@@ -416,6 +431,7 @@ msgstr "Can transcribe while the meeting is happening."
 #: src/settings/personalization/dictionary-settings.tsx
 #: src/settings/todo/github.tsx
 #: src/snippets/entry-row.tsx
+#: src/trash/confirm-dialog.tsx
 msgid "Cancel"
 msgstr "Cancel"
 
@@ -782,6 +798,10 @@ msgstr "Delete All Recurring Events"
 msgid "Delete Event"
 msgstr "Delete Event"
 
+#: src/trash/index.tsx
+msgid "Delete forever"
+msgstr "Delete forever"
+
 #: src/settings/dictation/index.tsx
 msgid "Delete history entry"
 msgstr "Delete history entry"
@@ -806,7 +826,17 @@ msgstr "Delete Selected ({sessionCount})"
 msgid "Delete This Event"
 msgstr "Delete This Event"
 
+#: src/trash/index.tsx
+msgid "Delete this note forever?"
+msgstr "Delete this note forever?"
+
+#. placeholder {0}: format(deletedDate, "PPP p")
+#: src/trash/index.tsx
+msgid "Deleted {0}"
+msgstr "Deleted {0}"
+
 #: src/session/components/outer-header/overflow/delete.tsx
+#: src/trash/confirm-dialog.tsx
 msgid "Deleting..."
 msgstr "Deleting..."
 
@@ -964,6 +994,14 @@ msgstr "Ember"
 #: src/templates/template-icon-picker.tsx
 msgid "Emojis"
 msgstr "Emojis"
+
+#: src/trash/index.tsx
+msgid "Empty trash"
+msgstr "Empty trash"
+
+#: src/trash/index.tsx
+msgid "Empty trash?"
+msgstr "Empty trash?"
 
 #. placeholder {0}: permissionName.toLowerCase()
 #: src/onboarding/permissions.tsx
@@ -1896,6 +1934,10 @@ msgstr "Notes copied"
 msgid "Notes folder"
 msgstr "Notes folder"
 
+#: src/trash/index.tsx
+msgid "Notes you delete land here first and stay until you empty the trash."
+msgstr "Notes you delete land here first and stay until you empty the trash."
+
 #: src/settings/dictation/index.tsx
 msgid "Nothing here yet - finished dictations appear here so you can copy them again."
 msgstr "Nothing here yet - finished dictations appear here so you can copy them again."
@@ -2311,6 +2353,10 @@ msgstr "Respect Do-Not-Disturb mode"
 #: src/settings/general/app-settings.tsx
 msgid "Restart to update"
 msgstr "Restart to update"
+
+#: src/trash/index.tsx
+msgid "Restore"
+msgstr "Restore"
 
 #: src/session/components/outer-header/index.tsx
 msgid "Resume"
@@ -3014,6 +3060,15 @@ msgstr "Translate to"
 msgid "Translation target language"
 msgstr "Translation target language"
 
+#: src/sidebar/surface-nav.tsx
+#: src/trash/index.tsx
+msgid "Trash"
+msgstr "Trash"
+
+#: src/trash/index.tsx
+msgid "Trash is empty"
+msgstr "Trash is empty"
+
 #: src/templates/template-icon-picker.tsx
 msgid "Travel & Places"
 msgstr "Travel & Places"
@@ -3060,6 +3115,7 @@ msgstr "Unpin"
 #: src/sidebar/timeline/item.tsx
 #: src/templates/details.tsx
 #: src/templates/sections-editor.tsx
+#: src/trash/index.tsx
 msgid "Untitled"
 msgstr "Untitled"
 
