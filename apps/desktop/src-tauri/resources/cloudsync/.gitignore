@@ -1,0 +1,5 @@
+# Staged at build time by crates/cloudsync/build.rs under the `from-source`
+# feature so the Tauri bundler can package the extension. Never committed —
+# see stage_for_bundling() for why it lives here rather than in OUT_DIR.
+*
+!.gitignore
