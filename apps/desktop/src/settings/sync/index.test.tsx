@@ -16,6 +16,10 @@ const mocks = vi.hoisted(() => ({
   syncListPeers: vi.fn(),
   syncAddPeer: vi.fn(),
   syncRemovePeer: vi.fn(),
+  syncStart: vi.fn(),
+  syncStop: vi.fn(),
+  syncEnabled: undefined as boolean | undefined,
+  setSyncEnabled: vi.fn(),
 }));
 
 vi.mock("@hypr/plugin-db", () => ({
@@ -24,6 +28,21 @@ vi.mock("@hypr/plugin-db", () => ({
   syncListPeers: mocks.syncListPeers,
   syncAddPeer: mocks.syncAddPeer,
   syncRemovePeer: mocks.syncRemovePeer,
+  syncStart: mocks.syncStart,
+  syncStop: mocks.syncStop,
+}));
+
+vi.mock("~/settings/queries", () => ({
+  useStoredSettingValue: (key: string) => ({
+    value: key === "sync_enabled" ? mocks.syncEnabled : undefined,
+    hasValue: mocks.syncEnabled !== undefined,
+  }),
+  useSetSettingValue: (key: string) => (value: unknown) => {
+    if (key === "sync_enabled") {
+      mocks.syncEnabled = value as boolean;
+    }
+    mocks.setSyncEnabled(key, value);
+  },
 }));
 
 vi.mock("@lingui/react/macro", () => ({
@@ -93,6 +112,12 @@ describe("isValidFingerprint", () => {
 describe("SettingsSync", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Most of these tests exercise pairing (add/remove device) and predate
+    // the sync_enabled runtime gate, so default it on here; the dedicated
+    // "off" tests below set it explicitly.
+    mocks.syncEnabled = true;
+    mocks.syncStart.mockResolvedValue(undefined);
+    mocks.syncStop.mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -226,5 +251,90 @@ describe("SettingsSync", () => {
     await waitFor(() =>
       expect(screen.getByText("No devices paired yet.")).toBeTruthy(),
     );
+  });
+
+  describe("sync_enabled runtime gate", () => {
+    it("defaults to off: the toggle starts unchecked, no start/stop call is made, and the pairing UI is inert", async () => {
+      mocks.syncEnabled = undefined;
+      mocks.syncStatus.mockResolvedValue({ kind: "live", running: false });
+      mocks.syncThisDevice.mockResolvedValue(VALID_FINGERPRINT_GROUPED);
+      mocks.syncListPeers.mockResolvedValue([]);
+
+      renderPage();
+
+      const toggle = await screen.findByRole("switch", {
+        name: "Enable device sync (experimental)",
+      });
+      expect(toggle.getAttribute("aria-checked")).toBe("false");
+      expect(mocks.syncStart).not.toHaveBeenCalled();
+      expect(mocks.syncStop).not.toHaveBeenCalled();
+
+      const fingerprintInput = (await screen.findByLabelText(
+        "Peer fingerprint",
+      )) as HTMLInputElement;
+      expect(fingerprintInput.disabled).toBe(true);
+      expect(
+        (screen.getByLabelText("Device label") as HTMLInputElement).disabled,
+      ).toBe(true);
+      expect(
+        (
+          screen.getByRole("button", {
+            name: /Add device/,
+          }) as HTMLButtonElement
+        ).disabled,
+      ).toBe(true);
+    });
+
+    it("turning sync on persists the setting and starts the agent without requiring a restart", async () => {
+      mocks.syncEnabled = false;
+      mocks.syncStatus.mockResolvedValue({ kind: "live", running: false });
+      mocks.syncThisDevice.mockResolvedValue(VALID_FINGERPRINT_GROUPED);
+      mocks.syncListPeers.mockResolvedValue([]);
+
+      renderPage();
+
+      const toggle = await screen.findByRole("switch", {
+        name: "Enable device sync (experimental)",
+      });
+      fireEvent.click(toggle);
+
+      expect(mocks.setSyncEnabled).toHaveBeenCalledWith("sync_enabled", true);
+      await waitFor(() => expect(mocks.syncStart).toHaveBeenCalledTimes(1));
+      expect(mocks.syncStop).not.toHaveBeenCalled();
+
+      // Once the setting flips on, the pairing UI stops being inert — no
+      // app restart needed.
+      await waitFor(() =>
+        expect(
+          (screen.getByLabelText("Peer fingerprint") as HTMLInputElement)
+            .disabled,
+        ).toBe(false),
+      );
+    });
+
+    it("turning sync off persists the setting and stops the agent without requiring a restart", async () => {
+      mocks.syncEnabled = true;
+      mocks.syncStatus.mockResolvedValue({ kind: "live", running: true });
+      mocks.syncThisDevice.mockResolvedValue(VALID_FINGERPRINT_GROUPED);
+      mocks.syncListPeers.mockResolvedValue([]);
+
+      renderPage();
+
+      const toggle = await screen.findByRole("switch", {
+        name: "Enable device sync (experimental)",
+      });
+      fireEvent.click(toggle);
+
+      expect(mocks.setSyncEnabled).toHaveBeenCalledWith("sync_enabled", false);
+      await waitFor(() => expect(mocks.syncStop).toHaveBeenCalledTimes(1));
+      expect(mocks.syncStart).not.toHaveBeenCalled();
+
+      await waitFor(() =>
+        expect(
+          (screen.getByLabelText("Peer fingerprint") as HTMLInputElement)
+            .disabled,
+        ).toBe(true),
+      );
+    });
   });
 });

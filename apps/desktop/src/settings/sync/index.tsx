@@ -10,13 +10,16 @@ import {
   PlusIcon,
   Trash2Icon,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { motion } from "motion/react";
+import { useEffect, useId, useRef, useState } from "react";
 
 import {
   syncAddPeer,
   syncListPeers,
   syncRemovePeer,
+  syncStart,
   syncStatus,
+  syncStop,
   syncThisDevice,
   type SyncPeer,
   type SyncStatusResult,
@@ -31,10 +34,12 @@ import {
   DialogTitle,
 } from "@hypr/ui/components/ui/dialog";
 import { Input } from "@hypr/ui/components/ui/input";
+import { Switch } from "@hypr/ui/components/ui/switch";
 import { sonnerToast } from "@hypr/ui/components/ui/toast";
 import { cn, formatDistanceToNow } from "@hypr/utils";
 
 import { SettingsPageTitle } from "~/settings/page-title";
+import { useSetSettingValue, useStoredSettingValue } from "~/settings/queries";
 
 const STATUS_QUERY_KEY = ["settings", "sync", "status"] as const;
 const THIS_DEVICE_QUERY_KEY = ["settings", "sync", "this-device"] as const;
@@ -117,6 +122,22 @@ function SyncSettingsContent({
 }) {
   const queryClient = useQueryClient();
 
+  const { value: syncEnabledValue } = useStoredSettingValue("sync_enabled");
+  const syncEnabled = syncEnabledValue ?? false;
+  const setSyncEnabled = useSetSettingValue("sync_enabled");
+
+  const toggleSync = useMutation({
+    mutationFn: (next: boolean) => (next ? syncStart() : syncStop()),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: STATUS_QUERY_KEY });
+    },
+  });
+
+  const handleToggle = (next: boolean) => {
+    setSyncEnabled(next);
+    toggleSync.mutate(next);
+  };
+
   const thisDeviceQuery = useQuery({
     queryKey: THIS_DEVICE_QUERY_KEY,
     queryFn: syncThisDevice,
@@ -131,6 +152,15 @@ function SyncSettingsContent({
     <div className="flex flex-col gap-6">
       <SettingsPageTitle title={<Trans>Devices</Trans>} />
 
+      <SyncEnableToggle
+        enabled={syncEnabled}
+        onChange={handleToggle}
+        isPending={toggleSync.isPending}
+        startingUp={toggleSync.isPending && toggleSync.variables === true}
+        error={toggleSync.isError ? toggleSync.error : null}
+        errorWasStarting={toggleSync.variables === true}
+      />
+
       <p className="text-muted-foreground text-xs">
         <Trans>
           Pair another one of your devices to sync sessions between them
@@ -141,22 +171,109 @@ function SyncSettingsContent({
 
       <SyncStatusLine status={status} />
 
-      <ThisDeviceSection
-        fingerprint={thisDeviceQuery.data}
-        isLoading={thisDeviceQuery.isLoading}
-        error={thisDeviceQuery.error}
-      />
+      <motion.div
+        animate={{ opacity: syncEnabled ? 1 : 0.5 }}
+        transition={{ duration: 0.2 }}
+        aria-disabled={!syncEnabled}
+        className={cn([
+          "flex flex-col gap-6",
+          !syncEnabled && "pointer-events-none",
+        ])}
+      >
+        {!syncEnabled && (
+          <p className="text-muted-foreground text-xs italic">
+            <Trans>
+              Sync is off, so pairing won't do anything yet. Turn it on above
+              first.
+            </Trans>
+          </p>
+        )}
 
-      <AddDeviceForm
-        onAdded={() => {
-          void queryClient.invalidateQueries({ queryKey: PEERS_QUERY_KEY });
-        }}
-      />
+        <ThisDeviceSection
+          fingerprint={thisDeviceQuery.data}
+          isLoading={thisDeviceQuery.isLoading}
+          error={thisDeviceQuery.error}
+          disabled={!syncEnabled}
+        />
 
-      <PairedDevicesList
-        peers={peersQuery.data ?? []}
-        isLoading={peersQuery.isLoading}
-      />
+        <AddDeviceForm
+          disabled={!syncEnabled}
+          onAdded={() => {
+            void queryClient.invalidateQueries({ queryKey: PEERS_QUERY_KEY });
+          }}
+        />
+
+        <PairedDevicesList
+          peers={peersQuery.data ?? []}
+          isLoading={peersQuery.isLoading}
+          disabled={!syncEnabled}
+        />
+      </motion.div>
+    </div>
+  );
+}
+
+function SyncEnableToggle({
+  enabled,
+  onChange,
+  isPending,
+  startingUp,
+  error,
+  errorWasStarting,
+}: {
+  enabled: boolean;
+  onChange: (next: boolean) => void;
+  isPending: boolean;
+  startingUp: boolean;
+  error: unknown;
+  errorWasStarting: boolean;
+}) {
+  const { t } = useLingui();
+  const titleId = useId();
+  const descriptionId = useId();
+
+  return (
+    <div className="border-border bg-muted/30 flex flex-col gap-3 rounded-lg border p-4">
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex-1">
+          <h3 id={titleId} className="text-sm font-medium">
+            <Trans>Enable device sync (experimental)</Trans>
+          </h3>
+          <p id={descriptionId} className="text-muted-foreground mt-1 text-xs">
+            <Trans>
+              Off by default. Turning this on starts a background sync agent
+              that publishes this device's id and network address to Number 0
+              (n0.computer)'s public discovery service for as long as it runs,
+              so your other devices can find it. No note content or
+              paired-device information is ever published — only where this
+              device can be reached. Turning it off immediately stops
+              advertising this device.
+            </Trans>
+          </p>
+        </div>
+        <Switch
+          checked={enabled}
+          onCheckedChange={onChange}
+          disabled={isPending}
+          aria-labelledby={titleId}
+          aria-describedby={descriptionId}
+        />
+      </div>
+
+      {isPending && (
+        <p className="text-muted-foreground flex items-center gap-1.5 text-xs">
+          <Loader2Icon className="size-3 animate-spin" />
+          {startingUp ? t`Starting sync…` : t`Stopping sync…`}
+        </p>
+      )}
+
+      {error != null && (
+        <p className="text-xs text-red-500">
+          {errorWasStarting
+            ? t`Sync is enabled, but the agent failed to start: ${errorMessage(error)}`
+            : t`Sync is disabled, but the agent failed to stop cleanly: ${errorMessage(error)}`}
+        </p>
+      )}
     </div>
   );
 }
@@ -202,10 +319,12 @@ function ThisDeviceSection({
   fingerprint,
   isLoading,
   error,
+  disabled,
 }: {
   fingerprint: string | undefined;
   isLoading: boolean;
   error: unknown;
+  disabled: boolean;
 }) {
   const { t } = useLingui();
   const [copied, setCopied] = useState(false);
@@ -255,7 +374,7 @@ function ThisDeviceSection({
           type="button"
           variant="outline"
           size="icon"
-          disabled={!fingerprint}
+          disabled={!fingerprint || disabled}
           onClick={() => void handleCopy()}
           aria-label={t`Copy fingerprint`}
         >
@@ -270,7 +389,13 @@ function ThisDeviceSection({
   );
 }
 
-function AddDeviceForm({ onAdded }: { onAdded: () => void }) {
+function AddDeviceForm({
+  onAdded,
+  disabled,
+}: {
+  onAdded: () => void;
+  disabled: boolean;
+}) {
   const { t } = useLingui();
 
   const addPeer = useMutation({
@@ -343,6 +468,7 @@ function AddDeviceForm({ onAdded }: { onAdded: () => void }) {
                 placeholder="abcd-efgh-ijkl-..."
                 aria-label={t`Peer fingerprint`}
                 className="font-mono text-xs"
+                disabled={disabled}
               />
               {field.state.meta.errors.length > 0 && (
                 <p className="text-xs text-red-500">
@@ -359,6 +485,7 @@ function AddDeviceForm({ onAdded }: { onAdded: () => void }) {
               onChange={(e) => field.handleChange(e.target.value)}
               placeholder={t`Label (optional), e.g. "Work laptop"`}
               aria-label={t`Device label`}
+              disabled={disabled}
             />
           )}
         </form.Field>
@@ -378,6 +505,7 @@ function AddDeviceForm({ onAdded }: { onAdded: () => void }) {
               variant="outline"
               className="self-start"
               disabled={
+                disabled ||
                 !canSubmit ||
                 !isValidFingerprint(fingerprintValue) ||
                 addPeer.isPending
@@ -400,9 +528,11 @@ function AddDeviceForm({ onAdded }: { onAdded: () => void }) {
 function PairedDevicesList({
   peers,
   isLoading,
+  disabled,
 }: {
   peers: SyncPeer[];
   isLoading: boolean;
+  disabled: boolean;
 }) {
   const { t } = useLingui();
   const queryClient = useQueryClient();
@@ -457,6 +587,7 @@ function PairedDevicesList({
                 variant="ghost"
                 size="sm"
                 className="shrink-0 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                disabled={disabled}
                 onClick={() => setPendingRemove(peer)}
               >
                 <Trash2Icon className="size-3.5" />
