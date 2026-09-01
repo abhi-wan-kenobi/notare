@@ -107,6 +107,18 @@ voice-orb visualisation crowd.
 More background: [`docs/PROJECT-BRIEF.md`](docs/PROJECT-BRIEF.md) and
 [`docs/adr/`](docs/adr/) for architecture decisions.
 
+## Sponsor
+
+Notare is free and stays free. Sponsorship covers what shipping it actually costs: Apple
+Developer membership, code-signing certificates, and the hours to keep three platforms'
+release pipelines working.
+
+**Current goal — a Windows code-signing certificate.** Windows installers are unsigned
+today, so SmartScreen warns people the app might be dangerous. Signing removes that
+warning for every Windows user.
+
+[Sponsor this work](https://github.com/sponsors/abhi-wan-kenobi) · [SPONSORS.md](SPONSORS.md)
+
 ## License
 
 [MIT](LICENSE) — including upstream anarlog code (MIT, Fastrepl, Inc.).
