@@ -413,9 +413,15 @@ fn startup_failure_message(error: &impl std::fmt::Display) -> String {
 /// `apps/desktop/src/settings/schema.ts`) straight from the `app_settings`
 /// table through the db plugin's managed runtime — the frontend settings
 /// store, not the legacy JSON settings file, is the source of truth for it.
-/// Best-effort by contract, same as `start_sync`: a missing runtime, a
-/// missing row, or a value that doesn't parse as a JSON bool all default to
-/// "off" rather than panicking at startup.
+/// Only consulted here, at startup, to decide whether to auto-start sync;
+/// toggling the setting later while the app is running goes through the
+/// separate `sync_start`/`sync_stop` commands (`plugins/db/src/commands.rs`)
+/// instead, so enabling or disabling sync never requires a restart. Reads
+/// the raw JSON value rather than assuming a bare bool, so a value stored
+/// in an unexpected shape falls through to `unwrap_or(false)` instead of
+/// silently mis-parsing. Best-effort by contract, same as `start_sync`: a
+/// missing runtime, a missing row, or a value that isn't a JSON bool all
+/// default to "off" rather than panicking at startup.
 #[cfg(all(feature = "sync", sync_platform))]
 async fn sync_enabled_setting(app: &tauri::AppHandle) -> bool {
     use tauri::Manager;
@@ -441,7 +447,8 @@ async fn sync_enabled_setting(app: &tauri::AppHandle) -> bool {
     rows.first()
         .and_then(|row| row.get("value_json"))
         .and_then(|value| value.as_str())
-        .and_then(|json| serde_json::from_str::<bool>(json).ok())
+        .and_then(|json| serde_json::from_str::<serde_json::Value>(json).ok())
+        .and_then(|value| value.as_bool())
         .unwrap_or(false)
 }
 
