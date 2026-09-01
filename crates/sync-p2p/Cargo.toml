@@ -72,3 +72,17 @@ required-features = ["from-source"]
 name = "sync_sessions_schema"
 path = "examples/sync_sessions_schema.rs"
 required-features = ["from-source"]
+
+# table-proofs lane: transcripts + action_items — the two most user-visible
+# tables in the registry that do not sync today.
+[[example]]
+name = "sync_transcripts_action_items_schema"
+path = "examples/sync_transcripts_action_items_schema.rs"
+required-features = ["from-source"]
+
+# table-proofs lane: tags + session_tags (a join table — concurrent add/remove
+# of the same association is a different CRDT case from row-update convergence).
+[[example]]
+name = "sync_tags_schema"
+path = "examples/sync_tags_schema.rs"
+required-features = ["from-source"]

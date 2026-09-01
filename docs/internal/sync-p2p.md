@@ -3045,3 +3045,395 @@ assumed):**
   promoted into `ci`'s `needs:` list. Per the existing promotion
   checklist, promote after observing green across a few more PRs, not
   after a single run.
+
+## 23. Table-proofs lane — 4 more tables proven, `SYNCED_TABLES` grows from 2 to 6 (2026-09-01)
+
+Editorial note: the task brief for this lane said "§22 is the last section
+on main." At the time this lane forked (`main` @ `677a14468`), the last
+section actually on main was §21 (SYNC-9); no §22 exists. This section is
+still numbered §23, per the brief, to avoid a second renumbering collision
+if whatever produced the expected §22 lands and merges around the same
+time — the same non-collision reasoning §19 used for its own numbering gap.
+
+Before this lane, `SYNCED_TABLES` was `["sessions", "session_documents"]` —
+the only two tables ever proven, out of 17 registered. That is the sync
+feature's biggest user-visible gap: meeting transcripts and the action items
+extracted from them, arguably the two most product-critical entities in the
+app, did not sync at all. This lane closes that gap for four more tables.
+
+### 23.1 Batch chosen, and why
+
+`transcripts`, `action_items`, `tags`, `session_tags` — in that priority
+order:
+
+- **`transcripts`** and **`action_items`** are the highest product value:
+  meeting transcripts and the action items extracted from them are core to
+  what the app is for, and until now neither synced across devices at all.
+  `transcripts` also carries the largest realistic payload of any table in
+  the registry (`words_json`, a diarized per-word JSON array for the whole
+  recording), which is exactly the "large text/JSON column" case worth
+  testing at realistic size rather than a toy fixture.
+- **`tags`** and **`session_tags`** were chosen together because
+  `session_tags` is a **join table**, which looked like a genuinely
+  different CRDT case from row-update convergence and was called out
+  explicitly as worth its own scenario: the schema has no
+  `UNIQUE(session_id, tag_id)` constraint, so a naive proof fixture that
+  generates its own row ids can make it *look* like concurrent identical
+  "add this tag" actions produce two rows. §23.4 corrects that: the real
+  app derives both `tags.id` and `session_tags.id` deterministically from
+  content (`apps/desktop/src/session/content-mutations.ts`), so the actual
+  case is a same-row concurrent insert/update, not a duplicate-row one —
+  and that is the case this section proves.
+
+Five tables remain unproven and disabled: `calendars`, `chat_groups`,
+`chat_messages`, `daily_notes`, `entity_mentions`, `events`, `humans`,
+`organizations`, `session_attachments`, `session_participants`, `templates`
+(11, not 5 — the original 15 minus the 4 proven here). None were attempted
+this lane; each needs its own §17-style proof before enabling.
+
+### 23.2 Schema fidelity — copied verbatim from the migration, not approximated
+
+Per the §19 correction (the existing `sync_sessions_schema.rs` proof
+declared a `FOREIGN KEY` on `session_documents` that production does not
+have), both new proof examples copy their `CREATE TABLE` bodies **verbatim**
+from `crates/db-app/migrations/20260710223922_canonical_data_model.sql`:
+
+- `transcripts`: lines 78-97, unmodified (including the source file's own
+  extra-space misalignment in the `memo` column declaration — copied
+  character-for-character, not "cleaned up", since the point is to test
+  what production actually runs).
+- `action_items`: lines 115-134 for the base columns, **plus** the six
+  `ALTER TABLE action_items ADD COLUMN ...` statements from
+  `20260723130000_action_items_v2.sql` (`confidence`, `source_text`,
+  `source_start_ms`, `owner_speaker_id`, `priority`, `synced_targets_json`),
+  applied via `sqlx::query` in the same order as the real migration file
+  rather than hand-merged into one CREATE TABLE. This is the first proof in
+  the repo to replay a post-creation ALTER TABLE, since `action_items` is
+  the first proven table whose schema grew after its initial migration.
+- `tags`: lines 155-163, unmodified.
+- `session_tags`: lines 165-174, unmodified. Confirmed by grep against every
+  migration file that no `UNIQUE` constraint exists on
+  `(session_id, tag_id)` — this matters for §23.4 below.
+
+No further schema divergences between the old proof and the migration were
+found beyond the one §19 already recorded (the `session_documents` FK).
+
+### 23.3 `transcripts` + `action_items` — all scenarios PASS
+
+Run: `cargo run -p sync-p2p --example sync_transcripts_action_items_schema --features from-source`
+
+- **A→B and B→A converge.** A writes a realistic ~9000-word diarized
+  transcript (see §23.5) plus an action item with the v2 provenance columns
+  populated; B ends up with both, byte-identical `words_json`. Reverse
+  direction with smaller rows also converges.
+- **Disconnected concurrent UPDATE of the same `action_items.status`**
+  converges conflict-free: `[conv] concurrent update converged and held
+  (status = "done" on both)` — a single value, one of the two writes, no
+  torn merge.
+- **Tombstone-as-delete:** A soft-deletes a transcript (`deleted_at`) and
+  hard-deletes an action item; B receives the exact `deleted_at` value, the
+  action item is gone, and three further sync rounds do not resurrect it on
+  either node.
+- **Multi-row catch-up** across both tables, full set equality after drain.
+
+Verbatim tail of the run (teardown panic omitted — see "Known noise"):
+
+```
+[A] realistic transcript payload: 793541 bytes
+[A] wrote transcript (realistic size) + action item
+[B] drained 1 change set(s)
+[timing] A->B sync of realistic transcript took 178.272169ms
+[conv] A -> B OK (transcripts realistic size intact, action_items v2 columns intact)
+[B] wrote transcript + action item
+[A] drained 1 change set(s)
+[conv] B -> A OK
+[both] updated action item 22222222-2222-2222-2222-222222222222's status concurrently while disconnected
+[conv] concurrent update converged and held (status = "done" on both)
+[A] soft-deleted transcript 11111111-1111-1111-1111-111111111111 and hard-deleted action item 44444444-4444-4444-4444-444444444444
+[conv] tombstone-as-delete OK, no resurrection after further sync rounds
+[both] wrote bulk rows before draining
+[conv] multi-row catch-up OK (full set equality across both tables)
+
+=== transcripts + action_items schema proof: converge, incl. realistic-size words_json and v2 columns ===
+```
+
+### 23.4 `tags` + `session_tags` — all scenarios PASS, under the app's REAL write pattern
+
+**Correction (2026-09-01, same day, before this lane's work was accepted):**
+the first version of this section claimed that concurrent identical
+"add this tag" actions on two offline devices converge to **two** rows for
+one association, because `session_tags.id` looked like an
+independently-generated PK with no `UNIQUE(session_id, tag_id)` constraint
+to stop it. The DDL half of that was true; the conclusion was not, because
+the *proof fixture* — not the schema — generated a random UUID per insert.
+The real app, `apps/desktop/src/session/content-mutations.ts:146-186`,
+never does that: it derives **both** primary keys deterministically —
+`tags.id = tagName` (line ~151) and
+`session_tags.id = ${sessionId}:${tagName}` (line ~179) — and writes through
+`INSERT ... ON CONFLICT(id) DO UPDATE SET ... deleted_at = NULL`, not a bare
+INSERT. Two devices tagging the same session with the same tag therefore
+write the **same primary key** on both sides; it is a same-row concurrent
+insert/update race, not a two-row duplication. `sync_tags_schema.rs` was
+rewritten so `upsert_tag`/`upsert_session_tag` copy the app's real SQL text
+and id derivation verbatim, and the join-table scenarios below are the
+corrected ones. The "two rows" claim is retracted.
+
+Run: `cargo run -p sync-p2p --example sync_tags_schema --features from-source`
+
+- **A→B and B→A converge**, tag + association together, via the app's real
+  upsert (deterministic ids: e.g. `tags.id='urgent'`,
+  `session_tags.id='sess-x:urgent'`).
+- **Tombstone-as-delete (no concurrent race):** A soft-deletes a
+  `session_tags` association (modeling a remove-tag action — the app has no
+  dedicated remove-tag mutation yet, confirmed by grep of `apps/desktop/src`;
+  this uses the same soft-delete convention every other table in this schema
+  already relies on); B receives the exact `deleted_at` value and it does
+  not resurrect across further sync rounds.
+- **Multi-row catch-up** across both tables, via the real upsert.
+- **Join-table-specific, corrected: concurrent identical add on the SAME
+  primary key.** Two devices, disconnected, both call the app's real
+  add-tag upsert for the same session + same tag name, as two different
+  users (`user-a`@`t0`, `user-b`@`t0+5s`) would. Both writes land on the
+  same deterministic PK on both nodes. Result: **exactly one** `tags` row
+  and **exactly one** `session_tags` row on both nodes after sync — no
+  duplicate — with `owner_user_id`/`updated_at` converged to one of the two
+  writes (`user-b`'s, the later `updated_at`, in every run observed). This
+  is the scenario that actually matters, and it converges cleanly: no torn
+  merge, no duplicate row, stable across further sync rounds.
+- **Join-table-specific, corrected: concurrent tombstone vs. reinsert on the
+  SAME primary key.** Baseline: A tags session `sess-z` with `urgent`,
+  synced to both. Then, disconnected: A soft-deletes that association
+  (`deleted_at = 02:00:10`) while B, unaware, independently re-issues the
+  app's real add-tag upsert for the identical `(session_id, tag_id)` pair
+  (`updated_at = 02:00:11`, chronologically *after* A's tombstone value and
+  second in program order) — which the deterministic id scheme routes to
+  the **same row**, not a new one, and which explicitly sets
+  `deleted_at = NULL` on conflict. **Result, reproduced across repeated
+  runs: A's removal wins.** The row converges to `deleted_at =
+  '2026-09-01T02:00:10.000Z'` on both nodes — the tag stays absent — even
+  though B's conflicting write happened later in real execution order and
+  carries a later `updated_at` value. **Traced to source, and it is
+  explained — not by the row-presence causal-length mechanism, but by
+  ordinary per-column version comparison, because neither write in this
+  scenario ever issues a real SQL `DELETE`.**
+
+  `crdt_algo: None` for every table in `crates/db-app/src/cloudsync.rs`
+  resolves to the default algorithm, Causal-Length Set (CLS)
+  (`crates/cloudsync/vendor/src/cloudsync.c:3514`,
+  `algo_new = algo_current = table_algo_crdt_cls`). CLS's row-presence
+  mechanism — a causal length per row, even = deleted, odd = alive, a
+  lower incoming causal length is ignored (`cloudsync.c:1961-2000`) — is
+  real, and it is what makes this proof suite's genuine hard-delete tests
+  not resurrect (§17's `session_documents` `DELETE`, and this lane's
+  `transcripts`/`action_items` `DELETE FROM ... WHERE id = ?` in §23.3).
+  But that mechanism is driven off SQLite's own `AFTER INSERT` / `AFTER
+  DELETE` triggers — `cloudsync_insert`/`cloudsync_delete`
+  (`crates/cloudsync/vendor/src/sqlite/database_sqlite.c:905-937`), which
+  is what actually reads or advances a row's causal length
+  (`local_update_sentinel` on `INSERT` into an existing pk,
+  `local_mark_delete_meta` on `DELETE`, both in `cloudsync.c:2622-2721`).
+  Neither fires here: A's "removal" is `UPDATE session_tags SET
+  deleted_at = ? WHERE id = ?` — the same soft-delete-via-column
+  convention every table in this schema uses, not a SQL `DELETE` — and
+  B's "reinsert" is `INSERT ... ON CONFLICT(id) DO UPDATE`, which SQLite
+  routes through the `AFTER UPDATE` trigger (`cloudsync_update` /
+  `dbsync_update_step` + `dbsync_update_final`,
+  `cloudsync_sqlite.c:592-611`) because the row already exists locally on
+  B. Neither path touches the causal length.
+
+  What actually decides it: `dbsync_update_final` only registers a
+  per-column edit — the only thing that bumps that column's version and
+  makes it something for CRDT merge to fight over — for columns whose
+  local OLD and NEW value actually differ
+  (`if (dbutils_value_compare(payload->old_values[col_index],
+  payload->new_values[col_index]) != 0)`, guarding the sole call to
+  `local_mark_insert_or_update_meta`, `cloudsync_sqlite.c:687-689` and
+  `:782-786`). On B, the upsert's `SET ... deleted_at = NULL` compares
+  `NULL` (B's own local value — B never learned of A's edit before
+  writing) against `NULL` (the value being set) — **no change**, so B
+  never generates a `deleted_at` edit at all; it isn't contested, A's
+  edit simply arrives uncontested. `owner_user_id` and `updated_at`, by
+  contrast, genuinely differ between B's baseline and B's reinsert, so
+  those *do* get bumped on B and *do* go through real per-column
+  last-writer-wins: `merge_did_cid_win` compares `col_version` — a plain
+  local per-column edit counter incremented via `col_version =
+  "col".col_version + 1` on every local write
+  (`local_mark_insert_or_update_meta` → `_impl(..., col_version=1, ...)`
+  at `cloudsync.c:2672-2709`; the increment itself:
+  `SQL_CLOUDSYNC_UPSERT_RAW_COLVERSION` at
+  `crates/cloudsync/vendor/src/sqlite/sql_sqlite.c:185-190`) — and higher
+  wins (`cloudsync.c:1617-1630`). Tracing the actual counts: `deleted_at`
+  is at version 2 on A (bumped by A's soft-delete) vs. version 1 on B
+  (never bumped, since B's local before/after was unchanged) → A wins.
+  `owner_user_id` and `updated_at` are at version 1 on A (A's soft-delete
+  touched only `deleted_at`) vs. version 2 on B (both genuinely changed
+  by B's reinsert) → B wins both. This predicts, column for column, the
+  exact values in the run below — `deleted_at` from A, `owner_user_id`
+  and `updated_at` from B — with no residual unexplained behavior.
+
+  **So this is real, reproducible, and not a bug — but it is not a
+  deliberate "delete wins" policy either.** It is an artifact of which
+  columns each write happened to touch: B's write only "lost" the
+  `deleted_at` column because it never contested that column in the
+  first place (upserting `NULL` onto an already-`NULL` local value is
+  invisible to the trigger-level change detector). The row-presence
+  causal-length protection an earlier draft of this section credited is
+  real and does apply to actual `DELETE`s elsewhere in this proof suite;
+  it does not apply to this table's soft-delete-via-`deleted_at`-column
+  convention, which gets only ordinary per-column LWW, the same as any
+  other column.
+- **Join-table-specific, the reassuring counterpart to 4b: B sees the
+  removal FIRST, then re-tags — the ordinary "I removed it, then added it
+  back" flow.** 4b's mechanism only explains the case where B's write
+  never touches `deleted_at` locally. The complementary, and far more
+  common, case is: B syncs, drains until it holds A's tombstone
+  (`deleted_at` is non-`NULL` on B), and only then re-issues the app's
+  real add-tag upsert. This time `SET deleted_at = NULL` against a local
+  **non-`NULL`** value *is* a genuine local delta, so by the same traced
+  mechanism it must bump B's `deleted_at` `col_version` and actually
+  contest the field, not arrive for free. Continuing from 4b's already-
+  settled, already-tombstoned row (`base_id = "sess-z:urgent"`, agreed
+  `deleted_at = Some("2026-09-01T02:00:10.000Z")` on both nodes): B
+  re-tags with `updated_at = "2026-09-01T02:00:20.000Z"`, sync-and-drain
+  runs, and **the tag reappears and stays present on both nodes.**
+  Reproduced across 3 runs, identical result each time. This is the
+  guarantee users actually depend on — remove-then-re-add across devices
+  works — and it holds. The two scenarios together fully characterize
+  this table's soft-delete behavior: **a removal only wins the race when
+  it lands during the genuine concurrency window** (the re-add's local
+  value already matched what's being set, so it never contested
+  `deleted_at`); **a causally-later re-add (one that has seen the
+  removal) wins normally**, exactly as ordinary per-column LWW predicts.
+
+Verbatim key lines from the run (each of the three tombstone/re-add lines
+below reproduced across 3 separate runs, identical result each time):
+
+```
+[both] concurrently, independently added the SAME tag "shared-tag" to session sess-y (same PK "sess-y:shared-tag" on both nodes, via the app's real upsert; A as user-a@2026-09-01T00:00:00.000Z, B as user-b@2026-09-01T00:00:05.000Z)
+[conv] concurrent identical tag-add converged to ONE tags row on both nodes (owner_user_id="user-b", updated_at="2026-09-01T00:00:05.000Z")
+[conv] concurrent identical tag-add converged to ONE session_tags row on both nodes (id=sess-y:shared-tag, owner_user_id="user-b", updated_at="2026-09-01T00:00:05.000Z") — no duplicate row, matching the app's real deterministic-id write pattern
+[setup] session sess-z tagged with 'urgent' via sess-z:urgent, synced to both
+[concurrent] A removed association sess-z:urgent (deleted_at=2026-09-01T02:00:10.000Z) while B, unaware, independently re-added the SAME (session, tag) pair via the app's real upsert (updated_at=2026-09-01T02:00:11.000Z) — same PK, not a new row
+[conv] concurrent tombstone-vs-reinsert on the SAME row converged: both nodes agree (deleted_at=Some("2026-09-01T02:00:10.000Z"), owner_user_id="user-b", updated_at="2026-09-01T02:00:11.000Z") — A's removal won — the tag stays absent on both nodes
+[conv] tombstone-vs-reinsert outcome held stable across further sync rounds
+[B] saw A's removal first (local deleted_at was Some("2026-09-01T02:00:10.000Z")), THEN re-tagged sess-z with 'urgent' via the app's real upsert (updated_at=2026-09-01T02:00:20.000Z)
+[conv] causally-later re-add OK: the tag is present again on both nodes (deleted_at=None, owner_user_id="user-b", updated_at="2026-09-01T02:00:20.000Z")
+[conv] causally-later re-add stayed present across further sync rounds
+
+=== tags + session_tags schema proof: converge under the app's REAL deterministic id scheme, including the concurrent-identical-add and tombstone-vs-reinsert races on the SAME primary key ===
+```
+
+**`session_tags` stays enabled.** The corrected scenarios converge cleanly
+on every axis the proof checks: no torn merge, no duplicate row, no
+cross-node divergence, and both the concurrent-race outcome (4b) and the
+causally-later re-add outcome (4c) are stable under repeated sync rounds
+and reproducible across repeated runs — and both are now fully explained
+at the source level rather than left as an open question. Product-facing
+implication, stated at the precision the trace supports: for this table's
+soft-delete convention (`deleted_at` as a plain column, not a SQL
+`DELETE`), a remove racing a re-add resolves per-column, not row-wide. The
+loss in 4b is confined to the genuine concurrency window — the re-add's
+local value already matched what it was setting, so it never contested
+that column — and 4c shows the ordinary, causally-later case (see the
+removal, then re-add) works exactly as expected. This is a narrower and
+more precise guarantee than blanket "delete wins" or "delete-safe" framing
+would suggest, but it is the guarantee that actually matters for the
+product: an accidental cross-device removal can be corrected by re-tagging
+once the removal has synced, which is the normal user flow. What is
+**not** proven is the specific case 4b covers holding under a different
+interleaving (e.g. B's local copy already carrying some other stale
+`deleted_at` value, or a genuine `col_version` tie on `deleted_at` falling
+to CLS's value-comparison tie-break) — that remains open, see §23.7. The
+row-presence causal-length no-resurrection guarantee this suite proves
+elsewhere (§17's `session_documents`, this lane's
+`transcripts`/`action_items` hard deletes) is a stronger, structural
+guarantee than what soft-delete-via-column gets here; if the product ever
+needs "remove can never be silently undone by a stale concurrent add" as a
+hard guarantee rather than an interleaving-dependent one, `session_tags`
+removal should be implemented as a real `DELETE`, not a `deleted_at`
+column write.
+
+### 23.5 Realistic-size check on `transcripts.words_json`
+
+The task flagged transcripts' large JSON column as worth checking at real
+size rather than a toy fixture, since CRDT overhead or blob-size limits
+could behave badly under load that a tiny fixture would never exercise.
+`realistic_words_json(9000)` builds a diarized two-speaker word list (each
+entry: `text`, `start_ms`, `end_ms`, `speaker`, `confidence`) approximating
+a full 60-minute meeting at a typical ~150 words/minute — **793,541 bytes**
+serialized. The A→B sync of that single row (INSERT, full round trip through
+`cloudsync_network_sync` + drained `cloudsync_network_check_changes` on B)
+completed in **178ms** and the payload arrived byte-identical
+(`assert_eq!(b_words, Some(big_words.clone()))`, not just a length check).
+No pathological slowdown, truncation, or blob-size failure observed at this
+size on the local-broker iroh harness. This is a single-message, two-node,
+localhost-latency measurement — not a claim about hub fan-out at scale or
+over a real network path; a longer transcript (multi-hour recordings exist
+in the product) or many transcripts synced in one drain cycle were not
+tested and would be the next thing to check before treating large payloads
+as fully characterized.
+
+### 23.6 `SYNCED_TABLES` — new contents
+
+`crates/db-app/src/cloudsync.rs`:
+
+```rust
+const SYNCED_TABLES: &[&str] = &[
+    "sessions",
+    "session_documents",
+    "transcripts",
+    "action_items",
+    "tags",
+    "session_tags",
+];
+```
+
+The guard test `cloudsync_registry_enables_only_the_proven_tables` in
+`crates/db-app/src/lib.rs` was updated to assert this exact `BTreeSet` (was
+`{"sessions", "session_documents"}`) and to assert
+`cloudsync_alter_guard_required` is true for all six enabled tables and
+false for at least one still-disabled table (`calendars`, replacing the
+old `transcripts` example now that `transcripts` is enabled). Its
+fail-loudly-on-a-quietly-enabled-third-table property is unchanged: any
+future addition to `SYNCED_TABLES` without a matching update here fails
+this test.
+
+### 23.7 What's still open
+
+- 11 registered tables remain unproven and disabled: `calendars`,
+  `chat_groups`, `chat_messages`, `daily_notes`, `entity_mentions`,
+  `events`, `humans`, `organizations`, `session_attachments`,
+  `session_participants`, `templates`. Each needs its own §17-style proof.
+- The `session_tags` tombstone-vs-reinsert result (§23.4, scenario 4b: a
+  concurrent remove won over a concurrent re-add on the same row) is now
+  traced into `cls`'s source and explained by ordinary per-column version
+  comparison, not row-level causal-length delete semantics. Scenario 4c
+  proves the complementary, ordinary case — B sees the removal first,
+  then re-tags — reappears and stays, reproduced across 3 runs. Together
+  they show: a removal only wins in the genuine concurrency window (the
+  re-add's local value already matched what it was setting, so it never
+  contested `deleted_at`); a causally-later re-add wins normally. What
+  remains untested is a *different* interleaving of 4b's case — e.g. B's
+  local copy already carrying some other stale `deleted_at` value when it
+  writes, or the two writes landing on a genuine `col_version` tie for
+  `deleted_at` and falling to CLS's value-comparison tie-break — which
+  this proof suite does not cover. This table's soft-delete-via-column
+  convention only gets ordinary per-column LWW, not the causal-length
+  no-resurrection guarantee real `DELETE`s get elsewhere in this suite;
+  if a hard "remove can never be silently undone" guarantee is ever
+  needed, give `session_tags` a real removal path (a SQL `DELETE`) once
+  one exists in the app.
+- The app currently has no dedicated remove-tag mutation (checked
+  `apps/desktop/src`, none found); §23.4's tombstone scenarios model one
+  using the existing soft-delete convention. When a real remove-tag
+  mutation is added, re-run this proof against its actual SQL the same way
+  §23.4 corrected the add path, rather than assuming the modeled version
+  still matches.
+- The realistic-size check (§23.5) covers one ~800KB row over one sync
+  round on localhost; multi-hour transcripts and multi-transcript drain
+  batches are untested.
+- Known noise (unchanged from §17): both new examples exit with the
+  `sqlx-sqlite-worker` "unable to close due to unfinalized statements"
+  teardown panic after their final `===` success line — the same benign
+  ordering issue, not a failure. Confirmed both runs printed every `[conv]`
+  PASS line before the panic.
