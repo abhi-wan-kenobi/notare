@@ -527,6 +527,40 @@ jobs:
       - name: cargo check -p cloudsync --features from-source
         run: cargo check --locked -p cloudsync --features from-source
 
+  # linux/aarch64 is the last target `crates/cloudsync/build.rs`'s `supported()`
+  # admits that nothing has ever compiled (§21.7 records it as an untested
+  # claim, and §22 excludes it from the app gate for exactly that reason).
+  # GitHub's `ubuntu-24.04-arm` runners are free for public repos, so the claim
+  # is cheap to settle rather than carry.
+  #
+  # Native aarch64, no cross-compilation: the point is to compile the vendored
+  # C on a real arm64 Linux host, which is where a POSIX/arch assumption would
+  # surface (the same class of bug that produced the macOS `Security.framework`
+  # and Windows `bcrypt.lib` link failures).
+  #
+  # PROVISIONAL / NON-BLOCKING, same policy as the other cloudsync jobs: it
+  # must be OBSERVED green on its real runner before promotion. If it passes,
+  # the follow-up is to widen `build-support/sync_app_gate.rs` and the two
+  # Cargo.toml tables that mirror it to admit linux/aarch64 — do NOT widen
+  # them on the strength of this job's existence alone.
+  cloudsync_from_source_linux_arm:
+    if: ${{ !startsWith(github.head_ref || '', 'blog/') }}
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - uses: ./.github/actions/rust_install
+        with:
+          platform: linux-aarch64
+      - name: cargo check -p cloudsync --features from-source (aarch64-unknown-linux-gnu, native)
+        run: cargo check --locked -p cloudsync --features from-source
+
   # App-gate widening (docs/internal/sync-p2p.md §22): the two
   # `cloudsync_from_source_*` jobs above only prove the standalone `cloudsync`
   # crate compiles+links off Linux. `plugins/db/Cargo.toml` and
@@ -654,12 +688,31 @@ jobs:
 
   ci:
     if: always()
-    # NOTE: `windows_stt`, the two `cloudsync_from_source_*` jobs, and the two
-    # `desktop_sync_gate_*` jobs are intentionally NOT listed here yet — they
-    # are provisional, non-blocking signals (see the comments on those jobs).
-    # Add each once it has been observed green on its real runner across a
-    # few PRs.
-    needs: [desktop_ci, desktop_i18n, desktop_swift, linux_crate_check]
+    # `windows_stt` and the two `cloudsync_from_source_*` jobs are now REQUIRED:
+    # each has been observed green on its real runner across several PRs
+    # (#142, #143 and the dispatch runs recorded in docs/internal/sync-p2p.md
+    # §21.10–§21.17), which is the promotion bar the comments on those jobs set.
+    #
+    # Promoting these is the whole point of having them. `windows_stt` sat red
+    # on `main` for an extended period precisely because nothing blocked on it,
+    # and that masked two stacked CI-plumbing bugs AND three genuine
+    # portability defects (§21.11–§21.16). A non-blocking job that nobody reads
+    # is not a signal.
+    #
+    # STILL PROVISIONAL, deliberately: the two `desktop_sync_gate_*` jobs (only
+    # observed green since §22 — not yet "a few PRs") and
+    # `cloudsync_from_source_linux_arm` (brand new, never run). Promote each on
+    # the same bar, not on the strength of it merely existing.
+    needs:
+      [
+        desktop_ci,
+        desktop_i18n,
+        desktop_swift,
+        linux_crate_check,
+        windows_stt,
+        cloudsync_from_source_macos,
+        cloudsync_from_source_windows,
+      ]
     runs-on: ubuntu-latest
     steps:
       - run: exit 1
