@@ -13,6 +13,7 @@ hypr-voxtral-llama-model = { workspace = true }
 hypr-whisper-local-model = { workspace = true }
 
 serde = { workspace = true }
+sha2 = { workspace = true }
 specta = { workspace = true }
 
 [dev-dependencies]
