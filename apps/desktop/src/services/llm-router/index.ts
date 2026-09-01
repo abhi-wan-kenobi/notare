@@ -287,7 +287,13 @@ export function useTaskModel(task: LlmTask): TaskModel {
   // Short poll, not a one-shot fetch: the server can finish starting (or a
   // freshly-downloaded model can come online) after this hook has already
   // rendered once. Local IPC to the app's own sidecar plugin — cheap enough
-  // to poll every few seconds for the life of the component.
+  // to poll every few seconds for the life of the component. Relies on
+  // TanStack Query v5's default `structuralSharing` (unmodified anywhere in
+  // this codebase): `.data` keeps the same array/object reference across
+  // polls whose result is deep-equal to the previous one, so the `useMemo`
+  // below — and the `embeddedLanguageModel` call inside it — only actually
+  // recomputes when the server's address genuinely changes, not on every
+  // 5-second tick.
   const { data: embeddedCandidates = [] } = useQuery({
     queryKey: ["llm-router", "embedded-local-llm-discovery"],
     queryFn: discoverEmbeddedModel,
