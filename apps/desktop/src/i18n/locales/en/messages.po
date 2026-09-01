@@ -1048,6 +1048,10 @@ msgstr "Enable {0}"
 msgid "Enable a local or cloud model"
 msgstr "Enable a local or cloud model"
 
+#: src/settings/sync/index.tsx
+msgid "Enable device sync (experimental)"
+msgstr "Enable device sync (experimental)"
+
 #: src/calendar/components/google/content.tsx
 msgid "Enable the Google Calendar API for that project."
 msgstr "Enable the Google Calendar API for that project."
@@ -2041,6 +2045,10 @@ msgstr "Now"
 msgid "Objects"
 msgstr "Objects"
 
+#: src/settings/sync/index.tsx
+msgid "Off by default. Turning this on starts a background sync agent that publishes this device's id and network address to Number 0 (n0.computer)'s public discovery service for as long as it runs, so your other devices can find it. No note content or paired-device information is ever published — only where this device can be reached. Turning it off immediately stops advertising this device."
+msgstr "Off by default. Turning this on starts a background sync agent that publishes this device's id and network address to Number 0 (n0.computer)'s public discovery service for as long as it runs, so your other devices can find it. No note content or paired-device information is ever published — only where this device can be reached. Turning it off immediately stops advertising this device."
+
 #: src/contacts/shared.tsx
 msgid "Oldest"
 msgstr "Oldest"
@@ -2889,6 +2897,10 @@ msgstr "Start when meeting begins"
 msgid "Start with permissions"
 msgstr "Start with permissions"
 
+#: src/settings/sync/index.tsx
+msgid "Starting sync…"
+msgstr "Starting sync…"
+
 #: src/onboarding/account/after-login.tsx
 msgid "Starting your trial..."
 msgstr "Starting your trial..."
@@ -2930,6 +2942,10 @@ msgstr "Stop transcription"
 #: src/settings/general/app-settings.tsx
 msgid "Stop when meeting ends"
 msgstr "Stop when meeting ends"
+
+#: src/settings/sync/index.tsx
+msgid "Stopping sync…"
+msgstr "Stopping sync…"
 
 #: src/onboarding/index.tsx
 #: src/settings/general/storage/index.tsx
@@ -2981,6 +2997,20 @@ msgstr "Symbols"
 #: src/settings/sync/index.tsx
 msgid "Sync idle"
 msgstr "Sync idle"
+
+#. placeholder {0}: errorMessage(error)
+#: src/settings/sync/index.tsx
+msgid "Sync is disabled, but the agent failed to stop cleanly: {0}"
+msgstr "Sync is disabled, but the agent failed to stop cleanly: {0}"
+
+#. placeholder {0}: errorMessage(error)
+#: src/settings/sync/index.tsx
+msgid "Sync is enabled, but the agent failed to start: {0}"
+msgstr "Sync is enabled, but the agent failed to start: {0}"
+
+#: src/settings/sync/index.tsx
+msgid "Sync is off, so pairing won't do anything yet. Turn it on above first."
+msgstr "Sync is off, so pairing won't do anything yet. Turn it on above first."
 
 #: src/settings/sync/index.tsx
 msgid "Sync running"
