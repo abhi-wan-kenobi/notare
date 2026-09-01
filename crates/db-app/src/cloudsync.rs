@@ -6,8 +6,20 @@ use hypr_db_core::CloudsyncTableSpec;
 /// mutates its data semantics across every paired device, so each table must
 /// have a convergence proof (§17-style) before it is added. SYNC-6 part A
 /// proved convergence for the real `sessions` + `session_documents` schema
-/// (TEXT-PK, STRICT, FK, `deleted_at` tombstones, no resurrect).
-const SYNCED_TABLES: &[&str] = &["sessions", "session_documents"];
+/// (TEXT-PK, STRICT, `deleted_at` tombstones, no resurrect — no FK, per the
+/// §19 correction). The table-proofs lane (docs/internal/sync-p2p.md §23)
+/// added the same proof for `transcripts` + `action_items` (incl. a
+/// realistic-size `words_json` check and the action_items_v2 ALTER TABLE
+/// columns) and for `tags` + `session_tags` (incl. the join-table concurrent
+/// add/remove case).
+const SYNCED_TABLES: &[&str] = &[
+    "sessions",
+    "session_documents",
+    "transcripts",
+    "action_items",
+    "tags",
+    "session_tags",
+];
 
 static CLOUDSYNC_TABLE_REGISTRY: LazyLock<Vec<CloudsyncTableSpec>> = LazyLock::new(|| {
     [

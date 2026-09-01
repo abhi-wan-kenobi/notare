@@ -589,7 +589,14 @@ mod tests {
             .collect();
         assert_eq!(
             enabled,
-            std::collections::BTreeSet::from(["sessions", "session_documents"])
+            std::collections::BTreeSet::from([
+                "sessions",
+                "session_documents",
+                "transcripts",
+                "action_items",
+                "tags",
+                "session_tags",
+            ])
         );
 
         assert!(
@@ -599,7 +606,11 @@ mod tests {
         );
         assert!(cloudsync_alter_guard_required("sessions"));
         assert!(cloudsync_alter_guard_required("session_documents"));
-        assert!(!cloudsync_alter_guard_required("transcripts"));
+        assert!(cloudsync_alter_guard_required("transcripts"));
+        assert!(cloudsync_alter_guard_required("action_items"));
+        assert!(cloudsync_alter_guard_required("tags"));
+        assert!(cloudsync_alter_guard_required("session_tags"));
+        assert!(!cloudsync_alter_guard_required("calendars"));
     }
 
     #[tokio::test]
