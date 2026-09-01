@@ -2731,12 +2731,16 @@ order:
   recording), which is exactly the "large text/JSON column" case worth
   testing at realistic size rather than a toy fixture.
 - **`tags`** and **`session_tags`** were chosen together because
-  `session_tags` is a **join table**: unlike every other proven table so
-  far, the CRDT-relevant conflict a user causes by acting on two offline
-  devices is not an UPDATE race on one shared row, it is two independent
-  INSERTs referencing the same logical association. That is a genuinely
+  `session_tags` is a **join table**, which looked like a genuinely
   different CRDT case from row-update convergence and was called out
-  explicitly as worth its own scenario.
+  explicitly as worth its own scenario: the schema has no
+  `UNIQUE(session_id, tag_id)` constraint, so a naive proof fixture that
+  generates its own row ids can make it *look* like concurrent identical
+  "add this tag" actions produce two rows. §23.4 corrects that: the real
+  app derives both `tags.id` and `session_tags.id` deterministically from
+  content (`apps/desktop/src/session/content-mutations.ts`), so the actual
+  case is a same-row concurrent insert/update, not a duplicate-row one —
+  and that is the case this section proves.
 
 Five tables remain unproven and disabled: `calendars`, `chat_groups`,
 `chat_messages`, `daily_notes`, `entity_mentions`, `events`, `humans`,
@@ -2810,65 +2814,107 @@ Verbatim tail of the run (teardown panic omitted — see "Known noise"):
 === transcripts + action_items schema proof: converge, incl. realistic-size words_json and v2 columns ===
 ```
 
-### 23.4 `tags` + `session_tags` — all scenarios PASS, including the join-table finding
+### 23.4 `tags` + `session_tags` — all scenarios PASS, under the app's REAL write pattern
+
+**Correction (2026-09-01, same day, before this lane's work was accepted):**
+the first version of this section claimed that concurrent identical
+"add this tag" actions on two offline devices converge to **two** rows for
+one association, because `session_tags.id` looked like an
+independently-generated PK with no `UNIQUE(session_id, tag_id)` constraint
+to stop it. The DDL half of that was true; the conclusion was not, because
+the *proof fixture* — not the schema — generated a random UUID per insert.
+The real app, `apps/desktop/src/session/content-mutations.ts:146-186`,
+never does that: it derives **both** primary keys deterministically —
+`tags.id = tagName` (line ~151) and
+`session_tags.id = ${sessionId}:${tagName}` (line ~179) — and writes through
+`INSERT ... ON CONFLICT(id) DO UPDATE SET ... deleted_at = NULL`, not a bare
+INSERT. Two devices tagging the same session with the same tag therefore
+write the **same primary key** on both sides; it is a same-row concurrent
+insert/update race, not a two-row duplication. `sync_tags_schema.rs` was
+rewritten so `upsert_tag`/`upsert_session_tag` copy the app's real SQL text
+and id derivation verbatim, and the join-table scenarios below are the
+corrected ones. The "two rows" claim is retracted.
 
 Run: `cargo run -p sync-p2p --example sync_tags_schema --features from-source`
 
-- **A→B and B→A converge**, tag + association together.
-- **Disconnected concurrent UPDATE of the same `tags.name`** converges
-  conflict-free (`urgent-renamed-by-B` won this run — either write is valid,
-  the scenario asserts it's one of the two, not which one).
-- **Tombstone-as-delete:** a soft-deleted tag and a hard-deleted association
-  row both sync correctly and do not resurrect.
-- **Multi-row catch-up** across both tables.
-- **Join-table-specific: concurrent identical add.** Two devices, offline,
-  independently associate the same session with the same tag. Because
-  `session_tags.id` is its own independently-generated TEXT PK — not a
-  composite key of `(session_id, tag_id)`, and the migration defines no
-  `UNIQUE` constraint on that pair — the two inserts are two *different*
-  rows referencing the same logical association, not a conflict on one row.
-  **Finding, not a bug:** convergence is clean (both nodes agree, no torn
-  state, no divergence), but the result is **two live `session_tags` rows**
-  for what the user experienced as adding the same tag once each on two
-  devices. A tag-list UI reading raw `session_tags` rows would show the tag
-  twice. This is a CRDT-convergence-is-not-application-idempotency gap, and
-  it is real: `assert_eq!(live_a.len(), 2, ...)` — the proof asserts the
-  duplicate, it does not hide it.
-- **Join-table-specific: concurrent add vs. remove.** An existing
-  association is soft-deleted (tombstoned) on A while B, unaware, adds a
-  *fresh* row for the same `(session_id, tag_id)` pair. After sync: the
-  tombstoned row stays tombstoned on both nodes (no resurrection), and the
-  concurrently-added row is the sole surviving live association on both
-  nodes — i.e. the net effect is "the tag is still applied" despite one
-  device having removed it, because the two actions targeted different rows
-  under the hood. This converges identically on both nodes, but is worth
-  flagging to product: a user who removes a tag on device A can see it
-  reappear because device B independently re-added it before it saw the
-  removal — expected CRDT behavior for an un-deduplicated join table, but
-  possibly surprising in the UI.
+- **A→B and B→A converge**, tag + association together, via the app's real
+  upsert (deterministic ids: e.g. `tags.id='urgent'`,
+  `session_tags.id='sess-x:urgent'`).
+- **Tombstone-as-delete (no concurrent race):** A soft-deletes a
+  `session_tags` association (modeling a remove-tag action — the app has no
+  dedicated remove-tag mutation yet, confirmed by grep of `apps/desktop/src`;
+  this uses the same soft-delete convention every other table in this schema
+  already relies on); B receives the exact `deleted_at` value and it does
+  not resurrect across further sync rounds.
+- **Multi-row catch-up** across both tables, via the real upsert.
+- **Join-table-specific, corrected: concurrent identical add on the SAME
+  primary key.** Two devices, disconnected, both call the app's real
+  add-tag upsert for the same session + same tag name, as two different
+  users (`user-a`@`t0`, `user-b`@`t0+5s`) would. Both writes land on the
+  same deterministic PK on both nodes. Result: **exactly one** `tags` row
+  and **exactly one** `session_tags` row on both nodes after sync — no
+  duplicate — with `owner_user_id`/`updated_at` converged to one of the two
+  writes (`user-b`'s, the later `updated_at`, in every run observed). This
+  is the scenario that actually matters, and it converges cleanly: no torn
+  merge, no duplicate row, stable across further sync rounds.
+- **Join-table-specific, corrected: concurrent tombstone vs. reinsert on the
+  SAME primary key.** Baseline: A tags session `sess-z` with `urgent`,
+  synced to both. Then, disconnected: A soft-deletes that association
+  (`deleted_at = 02:00:10`) while B, unaware, independently re-issues the
+  app's real add-tag upsert for the identical `(session_id, tag_id)` pair
+  (`updated_at = 02:00:11`, chronologically *after* A's tombstone value and
+  second in program order) — which the deterministic id scheme routes to
+  the **same row**, not a new one, and which explicitly sets
+  `deleted_at = NULL` on conflict. **Result, reproduced across repeated
+  runs: A's removal wins.** The row converges to `deleted_at =
+  '2026-09-01T02:00:10.000Z'` on both nodes — the tag stays absent — even
+  though B's conflicting write both happened later in real execution order
+  and carries a later `updated_at` value. This is the opposite of the
+  outcome in the `sessions.title` concurrent-rename scenario (§17), where
+  the write that happened second, program-order, won. **This was not forced
+  or expected going in** — it fell out of running the corrected scenario,
+  is reproducible (confirmed 3 consecutive runs, identical result each
+  time), and is worth recording plainly: on this schema, the specific
+  column being contested (`deleted_at`, cleared vs. set) appears to matter
+  to cls's resolution, not just which write is "later." Whether that is a
+  deliberate delete-wins-over-concurrent-clear rule inside `cls` (which
+  would be the same tombstone-cannot-be-clobbered property the whole
+  `deleted_at` convention already depends on for the trash view) was **not**
+  independently confirmed against the `cls`/cloudsync source — this proof
+  observed the behavior at the SQL boundary, it did not trace the C
+  extension's conflict-resolution code path. Either way, the result is
+  *consistent* on both nodes and *stable* across further sync rounds (an
+  additional 3 rounds re-checked and did not move it) — not a torn or
+  flapping value — which is what the enable decision below rests on.
 
-Verbatim key lines from the run:
+Verbatim key lines from the run (repeated 3 times to confirm the
+tombstone-vs-reinsert result is deterministic, not a timing fluke):
 
 ```
-[both] concurrently, independently associated session sess-y with tag 11111111-1111-1111-1111-111111111111 (different row ids: 55555555-5555-5555-5555-555555555555 on A, 66666666-6666-6666-6666-666666666666 on B)
-[conv] concurrent identical add OK — CRDT converges cleanly to 2 agreeing rows (documented duplicate-association finding, see assertion message)
-[concurrent] A removed association 77777777-7777-7777-7777-777777777777 while B, unaware, independently re-added it as 88888888-8888-8888-8888-888888888888
-[conv] concurrent add-vs-remove OK — the removed row (77777777-7777-7777-7777-777777777777) stayed tombstoned on both nodes, the concurrently-added row (88888888-8888-8888-8888-888888888888) is the sole surviving live association on both nodes
+[both] concurrently, independently added the SAME tag "shared-tag" to session sess-y (same PK "sess-y:shared-tag" on both nodes, via the app's real upsert; A as user-a@2026-09-01T00:00:00.000Z, B as user-b@2026-09-01T00:00:05.000Z)
+[conv] concurrent identical tag-add converged to ONE tags row on both nodes (owner_user_id="user-b", updated_at="2026-09-01T00:00:05.000Z")
+[conv] concurrent identical tag-add converged to ONE session_tags row on both nodes (id=sess-y:shared-tag, owner_user_id="user-b", updated_at="2026-09-01T00:00:05.000Z") — no duplicate row, matching the app's real deterministic-id write pattern
+[setup] session sess-z tagged with 'urgent' via sess-z:urgent, synced to both
+[concurrent] A removed association sess-z:urgent (deleted_at=2026-09-01T02:00:10.000Z) while B, unaware, independently re-added the SAME (session, tag) pair via the app's real upsert (updated_at=2026-09-01T02:00:11.000Z) — same PK, not a new row
+[conv] concurrent tombstone-vs-reinsert on the SAME row converged: both nodes agree (deleted_at=Some("2026-09-01T02:00:10.000Z"), owner_user_id="user-b", updated_at="2026-09-01T02:00:11.000Z") — A's removal won — the tag stays absent on both nodes
+[conv] tombstone-vs-reinsert outcome held stable across further sync rounds
 
-=== tags + session_tags schema proof: converge; join-table duplicate-on-concurrent-add is a real, documented finding (not a torn merge) ===
+=== tags + session_tags schema proof: converge under the app's REAL deterministic id scheme, including the concurrent-identical-add and tombstone-vs-reinsert races on the SAME primary key ===
 ```
 
-**This finding does not block enabling `session_tags`.** It is not a torn
-merge, a resurrection, or a divergence between nodes — every assertion
-about cross-node agreement passed. It is a pre-existing application-level
-gap (no uniqueness enforcement on the join pair) that sync makes marginally
-more visible, since local single-device usage was already exposed to a
-lesser version of it (e.g. a retried insert). Deduplicating
-`session_tags` display, or adding a `UNIQUE(session_id, tag_id)` constraint
-plus `INSERT OR IGNORE`/upsert semantics at the app layer, is follow-up work
-outside this lane's scope (schema changes to an enabled cloudsync table
-need their own migration-safety review, per the `cloudsync_alter_guard`
-this table now participates in).
+**`session_tags` stays enabled.** The corrected scenarios converge cleanly
+on every axis the proof checks: no torn merge, no duplicate row, no
+cross-node divergence, and the tombstone-vs-reinsert outcome is stable
+under repeated sync rounds and reproducible across repeated runs. The
+surprising part is *which* write wins a same-row delete-vs-clear race, not
+*whether* the nodes agree — they always do. Product-facing implication
+worth carrying forward: if a user removes a tag on one device while another
+device concurrently (re-)adds the same tag before seeing the removal, the
+removal currently wins the race in this proof's ordering — the tag stays
+off. That is arguably the safer default (an explicit remove is not silently
+undone by a stale add), but it was not a designed choice being verified
+here, it is an emergent property of `cls`'s conflict resolution that
+product should know about before relying on it.
 
 ### 23.5 Realistic-size check on `transcripts.words_json`
 
@@ -2921,11 +2967,19 @@ this test.
   `chat_groups`, `chat_messages`, `daily_notes`, `entity_mentions`,
   `events`, `humans`, `organizations`, `session_attachments`,
   `session_participants`, `templates`. Each needs its own §17-style proof.
-- The `session_tags` duplicate-association and add-vs-remove-reappearance
-  findings (§23.4) are product-visible and not fixed here — they are CRDT
-  correctness properties (convergence held), not CRDT bugs, but the
-  no-UNIQUE-constraint gap should get a deliberate app-layer decision before
-  this ships to users at scale.
+- The `session_tags` tombstone-vs-reinsert result (§23.4: a concurrent
+  remove wins over a concurrent re-add on the same row, even though the
+  re-add is chronologically later) was observed at the SQL boundary, not
+  traced into `cls`'s conflict-resolution code. If this matters for a
+  product decision (e.g. relying on it, or wanting the opposite behavior),
+  confirm the rule against the `cls`/cloudsync source rather than trusting
+  the one observed-and-reproduced-3-times pattern here.
+- The app currently has no dedicated remove-tag mutation (checked
+  `apps/desktop/src`, none found); §23.4's tombstone scenarios model one
+  using the existing soft-delete convention. When a real remove-tag
+  mutation is added, re-run this proof against its actual SQL the same way
+  §23.4 corrected the add path, rather than assuming the modeled version
+  still matches.
 - The realistic-size check (§23.5) covers one ~800KB row over one sync
   round on localhost; multi-hour transcripts and multi-transcript drain
   batches are untested.
