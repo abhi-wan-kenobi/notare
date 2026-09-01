@@ -144,6 +144,33 @@ jobs:
           Add-Content $env:GITHUB_ENV 'CC=cl'
           Add-Content $env:GITHUB_ENV 'CXX=cl'
 
+      # tauri.conf.citest.json hardcodes "version": "0.4.1", so EVERY test
+      # build reported the same version. Two real consequences, both hit
+      # during manual Windows testing:
+      #   1. You cannot tell which build is installed — Apps & Features shows
+      #      0.4.1 whether the bundle is a month old or minutes old.
+      #   2. Windows MSI treats a same-version install as a repair, not an
+      #      upgrade, so a fresh bundle does NOT replace the installed one.
+      #      The app then launches as the OLD build, which reads as "the new
+      #      build is broken" when nothing was ever replaced.
+      # Stamp a unique, monotonically increasing patch instead, so MSI always
+      # upgrades and the installed version identifies its build. 0.0.<run>
+      # is deliberately not a plausible release version — these are unsigned
+      # test bundles and should never be mistaken for one.
+      - name: Stamp a unique test-build version
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, os
+          p = "apps/desktop/src-tauri/tauri.conf.citest.json"
+          with open(p) as f:
+              conf = json.load(f)
+          conf["version"] = f"0.0.{os.environ['GITHUB_RUN_NUMBER']}"
+          with open(p, "w") as f:
+              json.dump(conf, f, indent=2)
+          print("stamped test-build version:", conf["version"])
+          PY
+
       # `directml`/`voxtral-cuda` are Windows-only and need no build-time
       # Vulkan SDK, so they skip the Ninja/CARGO_TARGET_DIR workaround above
       # (that's whisper.cpp/Vulkan-shader-gen-specific).
