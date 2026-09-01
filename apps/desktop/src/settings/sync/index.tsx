@@ -131,6 +131,13 @@ function SyncSettingsContent({
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: STATUS_QUERY_KEY });
     },
+    // The setting is set optimistically in handleToggle so the switch
+    // responds immediately; if the agent fails to start/stop, revert it so
+    // the persisted setting — and the pairing UI it gates — track what the
+    // agent actually did rather than what was merely requested.
+    onError: (_error, next) => {
+      setSyncEnabled(!next);
+    },
   });
 
   const handleToggle = (next: boolean) => {
@@ -270,8 +277,8 @@ function SyncEnableToggle({
       {error != null && (
         <p className="text-xs text-red-500">
           {errorWasStarting
-            ? t`Sync is enabled, but the agent failed to start: ${errorMessage(error)}`
-            : t`Sync is disabled, but the agent failed to stop cleanly: ${errorMessage(error)}`}
+            ? t`Couldn't start sync, so it's been turned back off: ${errorMessage(error)}`
+            : t`Couldn't stop sync cleanly, so it's been turned back on: ${errorMessage(error)}`}
         </p>
       )}
     </div>

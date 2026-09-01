@@ -336,5 +336,48 @@ describe("SettingsSync", () => {
         ).toBe(true),
       );
     });
+
+    it("reverts the setting and re-disables the pairing UI if the agent fails to start", async () => {
+      mocks.syncEnabled = false;
+      mocks.syncStatus.mockResolvedValue({ kind: "live", running: false });
+      mocks.syncThisDevice.mockResolvedValue(VALID_FINGERPRINT_GROUPED);
+      mocks.syncListPeers.mockResolvedValue([]);
+      mocks.syncStart.mockRejectedValue(new Error("agent failed to start"));
+
+      renderPage();
+
+      const toggle = await screen.findByRole("switch", {
+        name: "Enable device sync (experimental)",
+      });
+      fireEvent.click(toggle);
+
+      // Optimistic: the setting flips on immediately...
+      expect(mocks.setSyncEnabled).toHaveBeenNthCalledWith(
+        1,
+        "sync_enabled",
+        true,
+      );
+      // ...then reverts once syncStart rejects, so the persisted setting and
+      // the pairing UI it gates track what the agent actually did.
+      await waitFor(() =>
+        expect(mocks.setSyncEnabled).toHaveBeenNthCalledWith(
+          2,
+          "sync_enabled",
+          false,
+        ),
+      );
+      await waitFor(() =>
+        expect(toggle.getAttribute("aria-checked")).toBe("false"),
+      );
+      await waitFor(() =>
+        expect(
+          (screen.getByLabelText("Peer fingerprint") as HTMLInputElement)
+            .disabled,
+        ).toBe(true),
+      );
+      expect(
+        screen.getByText(/Couldn't start sync, so it's been turned back off/),
+      ).toBeTruthy();
+    });
   });
 });
