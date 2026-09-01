@@ -18,4 +18,6 @@ permissions = [
   "allow-sync-this-device",
   "allow-sync-add-peer",
   "allow-sync-remove-peer",
+  "allow-sync-start",
+  "allow-sync-stop",
 ]

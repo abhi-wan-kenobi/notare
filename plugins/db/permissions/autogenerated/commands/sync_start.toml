@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-sync-start"
+description = "Enables the sync_start command without any pre-configured scope."
+commands.allow = ["sync_start"]
+
+[[permission]]
+identifier = "deny-sync-start"
+description = "Denies the sync_start command without any pre-configured scope."
+commands.deny = ["sync_start"]

@@ -32,3 +32,18 @@ describe("SETTING_DEFINITIONS meeting_bar_theme", () => {
     });
   });
 });
+
+describe("SETTING_DEFINITIONS sync_enabled", () => {
+  it("defaults to off — compiling the sync feature in must not be enough on its own", () => {
+    expect(SETTING_DEFINITIONS.sync_enabled).toEqual({
+      type: "boolean",
+      path: ["sync", "enabled"],
+      default: false,
+    });
+  });
+
+  it("exposes sync_enabled as a SettingKey", () => {
+    const keys = Object.keys(SETTING_DEFINITIONS) as SettingKey[];
+    expect(keys).toContain("sync_enabled");
+  });
+});

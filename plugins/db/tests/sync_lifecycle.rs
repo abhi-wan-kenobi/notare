@@ -223,6 +223,90 @@ async fn add_peer_rejects_invalid_fingerprint_and_self_but_accepts_grouped_or_co
     drop(db_dir);
 }
 
+/// Runtime opt-out (the desktop `sync_enabled` setting toggled off while the
+/// app keeps running): `PluginDbRuntime::stop_sync` must run the same
+/// `db_cloudsync_stop` → `stop_agent` order `shutdown` uses, but must NOT
+/// touch the pool or the live-query dispatcher — those are app-wide and the
+/// rest of the running app still needs them. Also pins that it is a no-op
+/// when sync was never started, and that a fresh `start_sync_with` after a
+/// `stop_sync` works (the toggle can be flipped back on in the same run).
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn stop_sync_tears_down_the_lifecycle_without_closing_the_pool() {
+    let _env = lifecycle_env_lock().lock().await;
+
+    // A no-op stop_sync before anything ever started must succeed quietly.
+    let db_dir = tempfile::tempdir().unwrap();
+    let db = test_db(&db_dir).await;
+    let runtime = tauri_plugin_db::PluginDbRuntime::new(Arc::clone(&db));
+    runtime.stop_sync().await.unwrap();
+
+    let (agent_dir, agent) = test_agent().await;
+    runtime.start_sync_with(agent).await.unwrap();
+    let status = runtime.sync_status().await.unwrap();
+    assert!(status.running, "lifecycle started");
+
+    runtime.stop_sync().await.unwrap();
+
+    let status = db.cloudsync_status().await.unwrap();
+    assert!(
+        !status.running && !status.network_initialized,
+        "stop_sync must have run db_cloudsync_stop"
+    );
+
+    // The pool must still be open — a runtime opt-out must not disturb the
+    // rest of the running app.
+    sqlx::query("SELECT 1")
+        .fetch_one(db.pool())
+        .await
+        .expect("pool must stay open after stop_sync");
+
+    // Flipping the setting back on in the same run must work.
+    let (agent_dir2, agent2) = test_agent().await;
+    runtime.start_sync_with(agent2).await.unwrap();
+    let status = runtime.sync_status().await.unwrap();
+    assert!(status.running, "restart after stop_sync must succeed");
+
+    runtime.shutdown().await;
+
+    drop(agent_dir);
+    drop(agent_dir2);
+    drop(db_dir);
+}
+
+/// `PluginDbRuntime::start_sync`/`start_sync_with` must be idempotent: a
+/// second call while already running is a documented no-op (`if
+/// guard.is_some() { return Ok(()); }`), not a silent agent swap. Pins the
+/// observable consequence — the second agent never replaces the first — so
+/// a future regression (e.g. dropping the `is_some()` guard) shows up as a
+/// changed fingerprint rather than passing silently.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn start_sync_is_idempotent_and_does_not_swap_in_a_second_agent() {
+    let _env = lifecycle_env_lock().lock().await;
+
+    let (agent_dir, agent) = test_agent().await;
+    let db_dir = tempfile::tempdir().unwrap();
+    let db = test_db(&db_dir).await;
+    let runtime = tauri_plugin_db::PluginDbRuntime::new(Arc::clone(&db));
+
+    runtime.start_sync_with(agent).await.unwrap();
+    let first_device = runtime.sync_this_device().await.unwrap();
+
+    let (agent_dir2, agent2) = test_agent().await;
+    runtime.start_sync_with(agent2).await.unwrap();
+    let second_device = runtime.sync_this_device().await.unwrap();
+
+    assert_eq!(
+        first_device, second_device,
+        "a second start_sync_with while running must not replace the lifecycle"
+    );
+
+    runtime.shutdown().await;
+
+    drop(agent_dir);
+    drop(agent_dir2);
+    drop(db_dir);
+}
+
 /// SYNC-6: `SyncLifecycle::remove_peer` reports whether the peer actually
 /// existed — `false` for an unknown fingerprint, `true` (once) for a peer
 /// that was paired, and `false` again on a second removal of the same peer.

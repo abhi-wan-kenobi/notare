@@ -475,6 +475,18 @@
           "markdownDescription": "Denies the sync_remove_peer command without any pre-configured scope."
         },
         {
+          "description": "Enables the sync_start command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-sync-start",
+          "markdownDescription": "Enables the sync_start command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the sync_start command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-sync-start",
+          "markdownDescription": "Denies the sync_start command without any pre-configured scope."
+        },
+        {
           "description": "Enables the sync_status command without any pre-configured scope.",
           "type": "string",
           "const": "allow-sync-status",
@@ -485,6 +497,18 @@
           "type": "string",
           "const": "deny-sync-status",
           "markdownDescription": "Denies the sync_status command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the sync_stop command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-sync-stop",
+          "markdownDescription": "Enables the sync_stop command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the sync_stop command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-sync-stop",
+          "markdownDescription": "Denies the sync_stop command without any pre-configured scope."
         },
         {
           "description": "Enables the sync_this_device command without any pre-configured scope.",
@@ -523,10 +547,10 @@
           "markdownDescription": "Denies the unsubscribe command without any pre-configured scope."
         },
         {
-          "description": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-execute`\n- `allow-execute-proxy`\n- `allow-execute-transaction`\n- `allow-list-meetings`\n- `allow-get-meeting`\n- `allow-get-meeting-transcript`\n- `allow-get-recurring-meeting-history`\n- `allow-get-legacy-cleanup-status`\n- `allow-cleanup-legacy-files`\n- `allow-subscribe`\n- `allow-unsubscribe`\n- `allow-sync-status`\n- `allow-sync-trigger`\n- `allow-sync-list-peers`\n- `allow-sync-this-device`\n- `allow-sync-add-peer`\n- `allow-sync-remove-peer`",
+          "description": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-execute`\n- `allow-execute-proxy`\n- `allow-execute-transaction`\n- `allow-list-meetings`\n- `allow-get-meeting`\n- `allow-get-meeting-transcript`\n- `allow-get-recurring-meeting-history`\n- `allow-get-legacy-cleanup-status`\n- `allow-cleanup-legacy-files`\n- `allow-subscribe`\n- `allow-unsubscribe`\n- `allow-sync-status`\n- `allow-sync-trigger`\n- `allow-sync-list-peers`\n- `allow-sync-this-device`\n- `allow-sync-add-peer`\n- `allow-sync-remove-peer`\n- `allow-sync-start`\n- `allow-sync-stop`",
           "type": "string",
           "const": "default",
-          "markdownDescription": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-execute`\n- `allow-execute-proxy`\n- `allow-execute-transaction`\n- `allow-list-meetings`\n- `allow-get-meeting`\n- `allow-get-meeting-transcript`\n- `allow-get-recurring-meeting-history`\n- `allow-get-legacy-cleanup-status`\n- `allow-cleanup-legacy-files`\n- `allow-subscribe`\n- `allow-unsubscribe`\n- `allow-sync-status`\n- `allow-sync-trigger`\n- `allow-sync-list-peers`\n- `allow-sync-this-device`\n- `allow-sync-add-peer`\n- `allow-sync-remove-peer`"
+          "markdownDescription": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-execute`\n- `allow-execute-proxy`\n- `allow-execute-transaction`\n- `allow-list-meetings`\n- `allow-get-meeting`\n- `allow-get-meeting-transcript`\n- `allow-get-recurring-meeting-history`\n- `allow-get-legacy-cleanup-status`\n- `allow-cleanup-legacy-files`\n- `allow-subscribe`\n- `allow-unsubscribe`\n- `allow-sync-status`\n- `allow-sync-trigger`\n- `allow-sync-list-peers`\n- `allow-sync-this-device`\n- `allow-sync-add-peer`\n- `allow-sync-remove-peer`\n- `allow-sync-start`\n- `allow-sync-stop`"
         }
       ]
     }

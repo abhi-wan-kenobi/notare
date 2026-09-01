@@ -766,6 +766,16 @@ msgstr ""
 msgid "Couldn't start dictation. Check that a local model is selected, then try again."
 msgstr ""
 
+#. placeholder {0}: errorMessage(error)
+#: src/settings/sync/index.tsx
+msgid "Couldn't start sync, so it's been turned back off: {0}"
+msgstr ""
+
+#. placeholder {0}: errorMessage(error)
+#: src/settings/sync/index.tsx
+msgid "Couldn't stop sync cleanly, so it's been turned back on: {0}"
+msgstr ""
+
 #: src/snippets/index.tsx
 msgid "Couldn't update pin"
 msgstr ""
@@ -1046,6 +1056,10 @@ msgstr ""
 
 #: src/session/components/action-items/index.tsx
 msgid "Enable a local or cloud model"
+msgstr ""
+
+#: src/settings/sync/index.tsx
+msgid "Enable device sync (experimental)"
 msgstr ""
 
 #: src/calendar/components/google/content.tsx
@@ -2041,6 +2055,10 @@ msgstr ""
 msgid "Objects"
 msgstr ""
 
+#: src/settings/sync/index.tsx
+msgid "Off by default. Turning this on starts a background sync agent that publishes this device's id and network address to Number 0 (n0.computer)'s public discovery service for as long as it runs, so your other devices can find it. No note content or paired-device information is ever published — only where this device can be reached. Turning it off immediately stops advertising this device."
+msgstr ""
+
 #: src/contacts/shared.tsx
 msgid "Oldest"
 msgstr ""
@@ -2889,6 +2907,10 @@ msgstr "मीटिंग शुरू होने पर प्रारं�
 msgid "Start with permissions"
 msgstr ""
 
+#: src/settings/sync/index.tsx
+msgid "Starting sync…"
+msgstr ""
+
 #: src/onboarding/account/after-login.tsx
 msgid "Starting your trial..."
 msgstr ""
@@ -2930,6 +2952,10 @@ msgstr ""
 #: src/settings/general/app-settings.tsx
 msgid "Stop when meeting ends"
 msgstr "मीटिंग ख़त्म होने पर रुकें"
+
+#: src/settings/sync/index.tsx
+msgid "Stopping sync…"
+msgstr ""
 
 #: src/onboarding/index.tsx
 #: src/settings/general/storage/index.tsx
@@ -2980,6 +3006,10 @@ msgstr ""
 
 #: src/settings/sync/index.tsx
 msgid "Sync idle"
+msgstr ""
+
+#: src/settings/sync/index.tsx
+msgid "Sync is off, so pairing won't do anything yet. Turn it on above first."
 msgstr ""
 
 #: src/settings/sync/index.tsx

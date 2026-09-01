@@ -374,6 +374,19 @@ export const SETTING_DEFINITIONS = {
     path: ["general", "dictation_caption"],
     default: true as boolean,
   },
+  // Runtime opt-in for P2P device sync (experimental). Compiling the `sync`
+  // feature in no longer starts it — this must also be true. Default OFF:
+  // enabling it starts a background agent that, in `Discovered` transport
+  // mode (the only mode the app uses), publishes this device's node id and
+  // reachable addresses to n0.computer's DNS/pkarr discovery infrastructure
+  // for as long as it runs (docs/internal/sync-p2p.md §20.3). Read on the
+  // Rust side at startup straight from `app_settings`; a missing/unreadable
+  // row must default to false, never panic.
+  sync_enabled: {
+    type: "boolean",
+    path: ["sync", "enabled"],
+    default: false as boolean,
+  },
 } as const;
 
 export type SettingKey = keyof typeof SETTING_DEFINITIONS;
