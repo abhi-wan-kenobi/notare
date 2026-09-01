@@ -2702,3 +2702,235 @@ for `BCryptGenRandom`). None touched `crates/sync-p2p/src/agent.rs`; none
 weakened `from-source`'s default-OFF/opt-in status (`cargo check -p
 cloudsync` default resolve stays `features=[]`, reverified after every
 change in this lane).
+
+## 23. Table-proofs lane — 4 more tables proven, `SYNCED_TABLES` grows from 2 to 6 (2026-09-01)
+
+Editorial note: the task brief for this lane said "§22 is the last section
+on main." At the time this lane forked (`main` @ `677a14468`), the last
+section actually on main was §21 (SYNC-9); no §22 exists. This section is
+still numbered §23, per the brief, to avoid a second renumbering collision
+if whatever produced the expected §22 lands and merges around the same
+time — the same non-collision reasoning §19 used for its own numbering gap.
+
+Before this lane, `SYNCED_TABLES` was `["sessions", "session_documents"]` —
+the only two tables ever proven, out of 17 registered. That is the sync
+feature's biggest user-visible gap: meeting transcripts and the action items
+extracted from them, arguably the two most product-critical entities in the
+app, did not sync at all. This lane closes that gap for four more tables.
+
+### 23.1 Batch chosen, and why
+
+`transcripts`, `action_items`, `tags`, `session_tags` — in that priority
+order:
+
+- **`transcripts`** and **`action_items`** are the highest product value:
+  meeting transcripts and the action items extracted from them are core to
+  what the app is for, and until now neither synced across devices at all.
+  `transcripts` also carries the largest realistic payload of any table in
+  the registry (`words_json`, a diarized per-word JSON array for the whole
+  recording), which is exactly the "large text/JSON column" case worth
+  testing at realistic size rather than a toy fixture.
+- **`tags`** and **`session_tags`** were chosen together because
+  `session_tags` is a **join table**: unlike every other proven table so
+  far, the CRDT-relevant conflict a user causes by acting on two offline
+  devices is not an UPDATE race on one shared row, it is two independent
+  INSERTs referencing the same logical association. That is a genuinely
+  different CRDT case from row-update convergence and was called out
+  explicitly as worth its own scenario.
+
+Five tables remain unproven and disabled: `calendars`, `chat_groups`,
+`chat_messages`, `daily_notes`, `entity_mentions`, `events`, `humans`,
+`organizations`, `session_attachments`, `session_participants`, `templates`
+(11, not 5 — the original 15 minus the 4 proven here). None were attempted
+this lane; each needs its own §17-style proof before enabling.
+
+### 23.2 Schema fidelity — copied verbatim from the migration, not approximated
+
+Per the §19 correction (the existing `sync_sessions_schema.rs` proof
+declared a `FOREIGN KEY` on `session_documents` that production does not
+have), both new proof examples copy their `CREATE TABLE` bodies **verbatim**
+from `crates/db-app/migrations/20260710223922_canonical_data_model.sql`:
+
+- `transcripts`: lines 78-97, unmodified (including the source file's own
+  extra-space misalignment in the `memo` column declaration — copied
+  character-for-character, not "cleaned up", since the point is to test
+  what production actually runs).
+- `action_items`: lines 115-134 for the base columns, **plus** the six
+  `ALTER TABLE action_items ADD COLUMN ...` statements from
+  `20260723130000_action_items_v2.sql` (`confidence`, `source_text`,
+  `source_start_ms`, `owner_speaker_id`, `priority`, `synced_targets_json`),
+  applied via `sqlx::query` in the same order as the real migration file
+  rather than hand-merged into one CREATE TABLE. This is the first proof in
+  the repo to replay a post-creation ALTER TABLE, since `action_items` is
+  the first proven table whose schema grew after its initial migration.
+- `tags`: lines 155-163, unmodified.
+- `session_tags`: lines 165-174, unmodified. Confirmed by grep against every
+  migration file that no `UNIQUE` constraint exists on
+  `(session_id, tag_id)` — this matters for §23.4 below.
+
+No further schema divergences between the old proof and the migration were
+found beyond the one §19 already recorded (the `session_documents` FK).
+
+### 23.3 `transcripts` + `action_items` — all scenarios PASS
+
+Run: `cargo run -p sync-p2p --example sync_transcripts_action_items_schema --features from-source`
+
+- **A→B and B→A converge.** A writes a realistic ~9000-word diarized
+  transcript (see §23.5) plus an action item with the v2 provenance columns
+  populated; B ends up with both, byte-identical `words_json`. Reverse
+  direction with smaller rows also converges.
+- **Disconnected concurrent UPDATE of the same `action_items.status`**
+  converges conflict-free: `[conv] concurrent update converged and held
+  (status = "done" on both)` — a single value, one of the two writes, no
+  torn merge.
+- **Tombstone-as-delete:** A soft-deletes a transcript (`deleted_at`) and
+  hard-deletes an action item; B receives the exact `deleted_at` value, the
+  action item is gone, and three further sync rounds do not resurrect it on
+  either node.
+- **Multi-row catch-up** across both tables, full set equality after drain.
+
+Verbatim tail of the run (teardown panic omitted — see "Known noise"):
+
+```
+[A] realistic transcript payload: 793541 bytes
+[A] wrote transcript (realistic size) + action item
+[B] drained 1 change set(s)
+[timing] A->B sync of realistic transcript took 178.272169ms
+[conv] A -> B OK (transcripts realistic size intact, action_items v2 columns intact)
+[B] wrote transcript + action item
+[A] drained 1 change set(s)
+[conv] B -> A OK
+[both] updated action item 22222222-2222-2222-2222-222222222222's status concurrently while disconnected
+[conv] concurrent update converged and held (status = "done" on both)
+[A] soft-deleted transcript 11111111-1111-1111-1111-111111111111 and hard-deleted action item 44444444-4444-4444-4444-444444444444
+[conv] tombstone-as-delete OK, no resurrection after further sync rounds
+[both] wrote bulk rows before draining
+[conv] multi-row catch-up OK (full set equality across both tables)
+
+=== transcripts + action_items schema proof: converge, incl. realistic-size words_json and v2 columns ===
+```
+
+### 23.4 `tags` + `session_tags` — all scenarios PASS, including the join-table finding
+
+Run: `cargo run -p sync-p2p --example sync_tags_schema --features from-source`
+
+- **A→B and B→A converge**, tag + association together.
+- **Disconnected concurrent UPDATE of the same `tags.name`** converges
+  conflict-free (`urgent-renamed-by-B` won this run — either write is valid,
+  the scenario asserts it's one of the two, not which one).
+- **Tombstone-as-delete:** a soft-deleted tag and a hard-deleted association
+  row both sync correctly and do not resurrect.
+- **Multi-row catch-up** across both tables.
+- **Join-table-specific: concurrent identical add.** Two devices, offline,
+  independently associate the same session with the same tag. Because
+  `session_tags.id` is its own independently-generated TEXT PK — not a
+  composite key of `(session_id, tag_id)`, and the migration defines no
+  `UNIQUE` constraint on that pair — the two inserts are two *different*
+  rows referencing the same logical association, not a conflict on one row.
+  **Finding, not a bug:** convergence is clean (both nodes agree, no torn
+  state, no divergence), but the result is **two live `session_tags` rows**
+  for what the user experienced as adding the same tag once each on two
+  devices. A tag-list UI reading raw `session_tags` rows would show the tag
+  twice. This is a CRDT-convergence-is-not-application-idempotency gap, and
+  it is real: `assert_eq!(live_a.len(), 2, ...)` — the proof asserts the
+  duplicate, it does not hide it.
+- **Join-table-specific: concurrent add vs. remove.** An existing
+  association is soft-deleted (tombstoned) on A while B, unaware, adds a
+  *fresh* row for the same `(session_id, tag_id)` pair. After sync: the
+  tombstoned row stays tombstoned on both nodes (no resurrection), and the
+  concurrently-added row is the sole surviving live association on both
+  nodes — i.e. the net effect is "the tag is still applied" despite one
+  device having removed it, because the two actions targeted different rows
+  under the hood. This converges identically on both nodes, but is worth
+  flagging to product: a user who removes a tag on device A can see it
+  reappear because device B independently re-added it before it saw the
+  removal — expected CRDT behavior for an un-deduplicated join table, but
+  possibly surprising in the UI.
+
+Verbatim key lines from the run:
+
+```
+[both] concurrently, independently associated session sess-y with tag 11111111-1111-1111-1111-111111111111 (different row ids: 55555555-5555-5555-5555-555555555555 on A, 66666666-6666-6666-6666-666666666666 on B)
+[conv] concurrent identical add OK — CRDT converges cleanly to 2 agreeing rows (documented duplicate-association finding, see assertion message)
+[concurrent] A removed association 77777777-7777-7777-7777-777777777777 while B, unaware, independently re-added it as 88888888-8888-8888-8888-888888888888
+[conv] concurrent add-vs-remove OK — the removed row (77777777-7777-7777-7777-777777777777) stayed tombstoned on both nodes, the concurrently-added row (88888888-8888-8888-8888-888888888888) is the sole surviving live association on both nodes
+
+=== tags + session_tags schema proof: converge; join-table duplicate-on-concurrent-add is a real, documented finding (not a torn merge) ===
+```
+
+**This finding does not block enabling `session_tags`.** It is not a torn
+merge, a resurrection, or a divergence between nodes — every assertion
+about cross-node agreement passed. It is a pre-existing application-level
+gap (no uniqueness enforcement on the join pair) that sync makes marginally
+more visible, since local single-device usage was already exposed to a
+lesser version of it (e.g. a retried insert). Deduplicating
+`session_tags` display, or adding a `UNIQUE(session_id, tag_id)` constraint
+plus `INSERT OR IGNORE`/upsert semantics at the app layer, is follow-up work
+outside this lane's scope (schema changes to an enabled cloudsync table
+need their own migration-safety review, per the `cloudsync_alter_guard`
+this table now participates in).
+
+### 23.5 Realistic-size check on `transcripts.words_json`
+
+The task flagged transcripts' large JSON column as worth checking at real
+size rather than a toy fixture, since CRDT overhead or blob-size limits
+could behave badly under load that a tiny fixture would never exercise.
+`realistic_words_json(9000)` builds a diarized two-speaker word list (each
+entry: `text`, `start_ms`, `end_ms`, `speaker`, `confidence`) approximating
+a full 60-minute meeting at a typical ~150 words/minute — **793,541 bytes**
+serialized. The A→B sync of that single row (INSERT, full round trip through
+`cloudsync_network_sync` + drained `cloudsync_network_check_changes` on B)
+completed in **178ms** and the payload arrived byte-identical
+(`assert_eq!(b_words, Some(big_words.clone()))`, not just a length check).
+No pathological slowdown, truncation, or blob-size failure observed at this
+size on the local-broker iroh harness. This is a single-message, two-node,
+localhost-latency measurement — not a claim about hub fan-out at scale or
+over a real network path; a longer transcript (multi-hour recordings exist
+in the product) or many transcripts synced in one drain cycle were not
+tested and would be the next thing to check before treating large payloads
+as fully characterized.
+
+### 23.6 `SYNCED_TABLES` — new contents
+
+`crates/db-app/src/cloudsync.rs`:
+
+```rust
+const SYNCED_TABLES: &[&str] = &[
+    "sessions",
+    "session_documents",
+    "transcripts",
+    "action_items",
+    "tags",
+    "session_tags",
+];
+```
+
+The guard test `cloudsync_registry_enables_only_the_proven_tables` in
+`crates/db-app/src/lib.rs` was updated to assert this exact `BTreeSet` (was
+`{"sessions", "session_documents"}`) and to assert
+`cloudsync_alter_guard_required` is true for all six enabled tables and
+false for at least one still-disabled table (`calendars`, replacing the
+old `transcripts` example now that `transcripts` is enabled). Its
+fail-loudly-on-a-quietly-enabled-third-table property is unchanged: any
+future addition to `SYNCED_TABLES` without a matching update here fails
+this test.
+
+### 23.7 What's still open
+
+- 11 registered tables remain unproven and disabled: `calendars`,
+  `chat_groups`, `chat_messages`, `daily_notes`, `entity_mentions`,
+  `events`, `humans`, `organizations`, `session_attachments`,
+  `session_participants`, `templates`. Each needs its own §17-style proof.
+- The `session_tags` duplicate-association and add-vs-remove-reappearance
+  findings (§23.4) are product-visible and not fixed here — they are CRDT
+  correctness properties (convergence held), not CRDT bugs, but the
+  no-UNIQUE-constraint gap should get a deliberate app-layer decision before
+  this ships to users at scale.
+- The realistic-size check (§23.5) covers one ~800KB row over one sync
+  round on localhost; multi-hour transcripts and multi-transcript drain
+  batches are untested.
+- Known noise (unchanged from §17): both new examples exit with the
+  `sqlx-sqlite-worker` "unable to close due to unfinalized statements"
+  teardown panic after their final `===` success line — the same benign
+  ordering issue, not a failure. Confirmed both runs printed every `[conv]`
+  PASS line before the panic.
