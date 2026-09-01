@@ -48,6 +48,19 @@ impl GgufLlmModel {
     /// backward-compatibility-only entries (see `description()`) predating
     /// this restoration — they keep their original aarch64-only gate rather
     /// than being widened into a new default.
+    ///
+    /// This is a wider gate than `VoxtralLlama` gets below
+    /// (`is_x86_64_win_or_linux` only) despite both using `llama-cpp-2`: that
+    /// gate is about the `mtmd` (multimodal/audio) path specifically — it
+    /// needs GPU-class latency for anything like realtime STT (ruling out
+    /// macOS, which has no CUDA) and hits a real upstream Vulkan+mtmd bug on
+    /// the CPU/Vulkan fallback platforms (ggml-org/llama.cpp#22128, see the
+    /// comment on `transcribe-voxtral-llama`'s `Cargo.toml`). Plain
+    /// text-only chat completion (this model) uses neither `mtmd` nor
+    /// Vulkan-with-mtmd, tolerates CPU-only latency for a chat/action-items
+    /// response the way an interactive audio pipeline cannot, and isn't
+    /// implicated by that bug — so the two engines built from the same
+    /// underlying crate legitimately have different platform gates.
     pub fn is_available_on_current_platform(&self) -> bool {
         match self {
             GgufLlmModel::HyprLLM => true,
