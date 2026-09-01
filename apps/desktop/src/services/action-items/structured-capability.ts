@@ -11,6 +11,14 @@
  * (structured-generate.ts), which grammar-constrains the decode, so a probe of
  * ollama's openai-compat surface (which reasoning models fail) would be a false
  * negative. For every other provider the probe is authoritative.
+ *
+ * notare-local (the embedded llama.cpp server) is deliberately NOT on that
+ * exemption list, even though it also grammar-constrains
+ * `response_format: json_schema` (via llama.cpp's `llguidance` sampler —
+ * see `local-llm-core`'s server). Unlike ollama, its `/v1/chat/completions`
+ * *is* the endpoint real extraction uses — there's no separate native path
+ * for the probe to miss — so the probe is expected to pass honestly rather
+ * than needing ollama's convenience carve-out.
  */
 
 import { probeStructuredOutputs } from "~/services/llm-router/local-discovery";

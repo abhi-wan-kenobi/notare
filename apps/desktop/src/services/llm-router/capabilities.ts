@@ -42,12 +42,17 @@ export const TASK_REQUIREMENTS: Record<LlmTask, TaskRequirements> = {
  * (`generateObject` with a JSON schema) as used by the AI SDK:
  * - ollama: `format: <json schema>` on /api and OpenAI-compat response_format
  * - lmstudio: OpenAI-compat `response_format: { type: "json_schema", … }`
+ * - notare-local: the embedded server's own `/v1/chat/completions` grammar-
+ *   constrains decoding via llama.cpp's `llguidance` for any `response_format`
+ *   of `json_schema`/`json_object` — the same class of provider-enforced
+ *   guarantee as ollama's native `format`, not a probe result
  * - the listed clouds: native structured outputs
  * - custom: unknown endpoint — treated as capable only via user override
  */
 const STRUCTURED_OUTPUT_PROVIDERS: ReadonlySet<string> = new Set([
   "ollama",
   "lmstudio",
+  "notare-local",
   "openai",
   "azure_openai",
   "azure_ai",

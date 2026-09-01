@@ -16,6 +16,8 @@
 
 import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
 
+import { commands as localLlmCommands } from "@hypr/plugin-local-llm";
+
 import type { Candidate } from "./index";
 
 import { listOllamaModels } from "~/settings/ai/shared/list-ollama";
@@ -182,5 +184,43 @@ export async function probeStructuredOutputs(
     );
   } catch {
     return false;
+  }
+}
+
+/** `Candidate.providerId` for the embedded, in-process local LLM server. */
+export const EMBEDDED_PROVIDER_ID = "notare-local";
+
+/**
+ * The built-in local LLM's candidate, if it's currently running. Unlike
+ * ollama/LM Studio (external processes, discovered by probing a port over
+ * HTTP), this server is in-process and Tauri already knows its exact
+ * address — asking the plugin (`server_url()`) is authoritative, not a
+ * probe, so there's no false-negative/false-positive class of bug to guard
+ * against here the way there is for `discoverLocalModels`.
+ *
+ * Returns `[]` (no candidate) whenever the server isn't running yet — the
+ * ordinary state before its one model has been downloaded, or before
+ * `start_server()` has finished loading it — never throws.
+ */
+export async function discoverEmbeddedModel(): Promise<Candidate[]> {
+  try {
+    const result = await localLlmCommands.serverUrl();
+    if (result.status !== "ok" || !result.data) {
+      return [];
+    }
+    return [
+      {
+        providerId: EMBEDDED_PROVIDER_ID,
+        // The server always answers with whatever single model it loaded,
+        // regardless of this id (see `LlmServer::start_with_model_path`'s
+        // doc comment) — "HyprLLM" names the model the caps heuristics
+        // (`inferParamsB`) can't size from the id alone, same as any other
+        // custom/unlisted model id.
+        modelId: "HyprLLM",
+        baseUrl: result.data,
+      },
+    ];
+  } catch {
+    return [];
   }
 }
