@@ -7,6 +7,15 @@ exclude = ["/js", "/node_modules"]
 links = "tauri-plugin-local-llm"
 description = ""
 
+[features]
+default = []
+# Opt-in, default OFF, mirroring `tauri-plugin-local-stt`'s
+# `voxtral-llama` / `voxtral-llama-cuda` naming: `llama-cpp-2` builds C++
+# and is expensive, so a default build stays byte-identical to today's.
+local-llm = ["hypr-local-llm-core/llama"]
+local-llm-cuda = ["local-llm", "hypr-local-llm-core/cuda"]
+local-llm-vulkan = ["local-llm", "hypr-local-llm-core/vulkan"]
+
 [build-dependencies]
 tauri-plugin = { workspace = true, features = ["build"] }
 

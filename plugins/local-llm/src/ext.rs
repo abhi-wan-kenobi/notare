@@ -169,7 +169,51 @@ impl<'a, R: Runtime, M: Manager<R>> LocalLlmExt<'a, R, M> {
         Ok(hypr_local_llm_core::list_custom_models()?)
     }
 
-    pub fn start_server(&self) {}
+    /// Starts the embedded local LLM server if its one shipped model
+    /// (`HyprLLM` — see `hypr_local_llm_core`'s `SUPPORTED_MODELS` doc
+    /// comment for why that's the deliberate choice) is already downloaded.
+    /// A no-op otherwise: this is the "download on first use" model, so
+    /// "not downloaded yet" is the ordinary first-run state, not a failure.
+    ///
+    /// Also a no-op — logged, not surfaced — when this build doesn't
+    /// compile in the `llama` engine (`hypr-local-llm-core`'s default-OFF
+    /// feature): `start_with_model_path` fails fast with a clear "not
+    /// enabled" error in that case, so calling this unconditionally at
+    /// startup is safe regardless of which build this is.
+    #[tracing::instrument(skip_all)]
+    pub async fn start_server(&self) {
+        let model = crate::SupportedModel::HyprLLM;
+
+        let downloaded = match self.is_model_downloaded(&model).await {
+            Ok(downloaded) => downloaded,
+            Err(error) => {
+                tracing::warn!(%error, "local_llm_start_server_check_failed");
+                return;
+            }
+        };
+
+        if !downloaded {
+            tracing::info!("local_llm_start_server_skipped: model not downloaded");
+            return;
+        }
+
+        let model_path = self.models_dir().join(model.file_name());
+
+        match hypr_local_llm_core::LlmServer::start_with_model_path(
+            model.display_name().to_string(),
+            model_path,
+        )
+        .await
+        {
+            Ok(server) => {
+                let state = self.manager.state::<crate::SharedState>();
+                state.lock().await.server = Some(server);
+            }
+            Err(error) => {
+                tracing::warn!(%error, "local_llm_start_server_failed");
+            }
+        }
+    }
 }
 
 pub trait LocalLlmPluginExt<R: Runtime> {
