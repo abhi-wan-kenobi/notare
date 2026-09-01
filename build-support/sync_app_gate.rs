@@ -28,10 +28,7 @@ fn sync_app_gate_supported() -> bool {
     let arch = std::env::var("CARGO_CFG_TARGET_ARCH").unwrap_or_default();
     matches!(
         (os.as_str(), arch.as_str()),
-        ("linux", "x86_64")
-            | ("macos", "aarch64")
-            | ("macos", "x86_64")
-            | ("windows", "x86_64")
+        ("linux", "x86_64") | ("macos", "aarch64") | ("macos", "x86_64") | ("windows", "x86_64")
     )
 }
 
