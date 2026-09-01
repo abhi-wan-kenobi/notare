@@ -175,13 +175,30 @@ impl<'a, R: Runtime, M: Manager<R>> LocalLlmExt<'a, R, M> {
     /// A no-op otherwise: this is the "download on first use" model, so
     /// "not downloaded yet" is the ordinary first-run state, not a failure.
     ///
-    /// Also a no-op — logged, not surfaced — when this build doesn't
-    /// compile in the `llama` engine (`hypr-local-llm-core`'s default-OFF
-    /// feature): `start_with_model_path` fails fast with a clear "not
-    /// enabled" error in that case, so calling this unconditionally at
-    /// startup is safe regardless of which build this is.
+    /// Also a no-op — logged, not surfaced, and callers must poll
+    /// `server_url()` rather than expect a return value here (the same
+    /// fire-and-forget-plus-poll shape `download_model`/
+    /// `is_model_downloading` already use in this plugin) — when this build
+    /// doesn't compile in the `llama` engine (`hypr-local-llm-core`'s
+    /// default-OFF feature): `start_with_model_path` fails fast with a
+    /// clear "not enabled" error in that case, so calling this
+    /// unconditionally at startup is safe regardless of which build this is.
+    ///
+    /// Safe to call more than once (e.g. a future "restart server" action):
+    /// checks for an already-running server both before and after the
+    /// (slow, several-second) model load, so a concurrent or repeated call
+    /// can't silently drop and leak a running server's listener and
+    /// background tasks by overwriting it in `SharedState` — the loser of
+    /// the race shuts its own redundant server down instead.
     #[tracing::instrument(skip_all)]
     pub async fn start_server(&self) {
+        let state = self.manager.state::<crate::SharedState>();
+
+        if state.lock().await.server.is_some() {
+            tracing::debug!("local_llm_start_server_skipped: already running");
+            return;
+        }
+
         let model = crate::SupportedModel::HyprLLM;
 
         let downloaded = match self.is_model_downloaded(&model).await {
@@ -206,8 +223,14 @@ impl<'a, R: Runtime, M: Manager<R>> LocalLlmExt<'a, R, M> {
         .await
         {
             Ok(server) => {
-                let state = self.manager.state::<crate::SharedState>();
-                state.lock().await.server = Some(server);
+                let mut guard = state.lock().await;
+                if guard.server.is_some() {
+                    tracing::debug!("local_llm_start_server_race: stopping redundant server");
+                    drop(guard);
+                    server.stop().await;
+                } else {
+                    guard.server = Some(server);
+                }
             }
             Err(error) => {
                 tracing::warn!(%error, "local_llm_start_server_failed");
