@@ -10,7 +10,6 @@
 
 use std::num::NonZeroU32;
 use std::path::Path;
-use std::sync::OnceLock;
 
 use llama_cpp_2::context::LlamaContext;
 use llama_cpp_2::context::params::LlamaContextParams;
@@ -71,14 +70,14 @@ pub enum VoxtralError {
 }
 
 /// The llama backend can only be initialized once per process
-/// (`LlamaBackend::init` errors on a second call) — a single `OnceLock`
-/// covers every `VoxtralModel` loaded in this process, including in tests.
+/// (`LlamaBackend::init` errors on a second call). Delegates to
+/// `hypr-llama-cpp-backend`'s shared `OnceLock`, which is the single
+/// initialization point for every crate in this workspace that touches
+/// `llama-cpp-2` — including the embedded local LLM server
+/// (`local-llm-llama`), which can be active in the same process at the same
+/// time as this engine.
 fn backend() -> Result<&'static LlamaBackend, VoxtralError> {
-    static BACKEND: OnceLock<Result<LlamaBackend, String>> = OnceLock::new();
-    BACKEND
-        .get_or_init(|| LlamaBackend::init().map_err(|e| e.to_string()))
-        .as_ref()
-        .map_err(|e| VoxtralError::Backend(e.clone()))
+    hypr_llama_cpp_backend::backend().map_err(|e| VoxtralError::Backend(e.to_string()))
 }
 
 /// Whether to offload the LLM decoder + mtmd audio encoder to GPU. Only

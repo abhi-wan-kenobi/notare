@@ -11377,6 +11377,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "llama-cpp-backend"
+version = "0.1.0"
+dependencies = [
+ "llama-cpp-2",
+ "thiserror 2.0.18",
+]
+
+[[package]]
 name = "llama-cpp-sys-2"
 version = "0.1.151"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -21968,6 +21976,7 @@ dependencies = [
  "encoding_rs",
  "language",
  "llama-cpp-2",
+ "llama-cpp-backend",
  "model-manager",
  "tempfile",
  "thiserror 2.0.18",
