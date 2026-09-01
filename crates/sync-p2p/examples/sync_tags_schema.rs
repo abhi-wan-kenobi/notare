@@ -1,17 +1,26 @@
 //! SYNC-10 (table-proofs lane): the CRDT converges notare's **real** `tags`
 //! and `session_tags` tables. `session_tags` is a join table (session <->
-//! tag association), which is a genuinely different CRDT case from plain
-//! row-update convergence: the "same edit" a user makes on two devices is
-//! not an UPDATE to a shared row but an INSERT of a *new* row referencing
-//! the same (session_id, tag_id) pair, because `session_tags.id` is its own
-//! independently-generated TEXT PK, not a composite key of
-//! `(session_id, tag_id)`. There is no UNIQUE constraint on that pair in the
-//! migration either (verified: no `UNIQUE` on `session_tags` in
-//! `20260710223922_canonical_data_model.sql`). This example both proves
-//! CRDT-level convergence (no torn/lost writes, no resurrection) AND
-//! documents the resulting product-level finding: concurrent identical
-//! "add this tag" actions on two offline devices converge to **two** rows
-//! for the same association, not one.
+//! tag association), which looked at first like a different CRDT case from
+//! plain row-update convergence — two devices tagging the same session with
+//! the same tag would insert two DIFFERENT rows if `session_tags.id` were an
+//! independently-generated PK. It is not: the real app
+//! (`apps/desktop/src/session/content-mutations.ts:148-186`) derives BOTH
+//! primary keys deterministically —
+//!
+//! - `tags.id` = the tag name itself (line ~151: `VALUES (?, ?, ?, ?, ?,
+//!   NULL)` bound to `[tagName, userId, tagName, now, now]`).
+//! - `session_tags.id` = `` `${sessionId}:${tagName}` `` (line ~179).
+//!
+//! and both writes go through `INSERT ... ON CONFLICT(id) DO UPDATE SET ...
+//! deleted_at = NULL`, not a plain INSERT. So when two devices independently
+//! tag the same session with the same tag, they generate the SAME primary
+//! key on both sides — this is a same-row concurrent-insert/update case, not
+//! a duplicate-row case. An earlier version of this proof used random UUIDs
+//! for `session_tags.id` and concluded the opposite; that was a fixture bug,
+//! not a schema or CRDT finding — see docs/internal/sync-p2p.md §23 for the
+//! correction. This version's helper functions (`upsert_tag`,
+//! `upsert_session_tag`) copy the app's real SQL text and id derivation
+//! verbatim, not just the DDL.
 //!
 //! `CREATE TABLE` bodies are copied verbatim from
 //! `crates/db-app/migrations/20260710223922_canonical_data_model.sql`
@@ -41,8 +50,7 @@ const CREATE_TAGS: &str = "CREATE TABLE IF NOT EXISTS tags (
   deleted_at     TEXT
 ) STRICT";
 
-/// Verbatim from `20260710223922_canonical_data_model.sql:165-174`. No
-/// UNIQUE constraint on (session_id, tag_id) — the same shape production has.
+/// Verbatim from `20260710223922_canonical_data_model.sql:165-174`.
 const CREATE_SESSION_TAGS: &str = "CREATE TABLE IF NOT EXISTS session_tags (
   id            TEXT PRIMARY KEY NOT NULL,
   workspace_id  TEXT NOT NULL DEFAULT '',
@@ -53,6 +61,67 @@ const CREATE_SESSION_TAGS: &str = "CREATE TABLE IF NOT EXISTS session_tags (
   updated_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
   deleted_at    TEXT
 ) STRICT";
+
+/// Verbatim from `apps/desktop/src/session/content-mutations.ts:146-160` —
+/// the real "add tag" upsert the app issues. `id` = `tag_name`
+/// (deterministic): two devices adding the same tag name write the same PK.
+async fn upsert_tag(pool: &SqlitePool, tag_name: &str, owner_user_id: &str, now: &str) {
+    sqlx::query(
+        "INSERT INTO tags (
+            id, owner_user_id, name, created_at, updated_at, deleted_at
+        ) VALUES (?, ?, ?, ?, ?, NULL)
+        ON CONFLICT(id) DO UPDATE SET
+            owner_user_id = excluded.owner_user_id,
+            name = excluded.name,
+            updated_at = excluded.updated_at,
+            deleted_at = NULL",
+    )
+    .bind(tag_name)
+    .bind(owner_user_id)
+    .bind(tag_name)
+    .bind(now)
+    .bind(now)
+    .execute(pool)
+    .await
+    .unwrap();
+}
+
+/// Verbatim from `apps/desktop/src/session/content-mutations.ts:161-179` —
+/// the real "tag this session" upsert. `id` = `` `${session_id}:${tag_name}` ``
+/// (deterministic — this is the fact that changes the CRDT case: two devices
+/// tagging the same session with the same tag write the SAME primary key,
+/// not two different rows). Returns the derived id.
+async fn upsert_session_tag(
+    pool: &SqlitePool,
+    session_id: &str,
+    tag_name: &str,
+    owner_user_id: &str,
+    now: &str,
+) -> String {
+    let id = format!("{session_id}:{tag_name}");
+    sqlx::query(
+        "INSERT INTO session_tags (
+            id, owner_user_id, session_id, tag_id,
+            created_at, updated_at, deleted_at
+        ) VALUES (?, ?, ?, ?, ?, ?, NULL)
+        ON CONFLICT(id) DO UPDATE SET
+            owner_user_id = excluded.owner_user_id,
+            session_id = excluded.session_id,
+            tag_id = excluded.tag_id,
+            updated_at = excluded.updated_at,
+            deleted_at = NULL",
+    )
+    .bind(&id)
+    .bind(owner_user_id)
+    .bind(session_id)
+    .bind(tag_name)
+    .bind(now)
+    .bind(now)
+    .execute(pool)
+    .await
+    .unwrap();
+    id
+}
 
 async fn setup_node(
     uri: &str,
@@ -159,25 +228,24 @@ async fn sync_and_drain(pool: &SqlitePool, tcp: &str, token: &str, label: &str) 
     drain_check(pool, tcp, token, label).await;
 }
 
-async fn tag_name(pool: &SqlitePool, id: &str) -> Option<String> {
-    sqlx::query_scalar("SELECT name FROM tags WHERE id = ?")
-        .bind(id)
-        .fetch_optional(pool)
-        .await
-        .unwrap()
+/// (name, owner_user_id, updated_at, deleted_at)
+async fn tag_row(pool: &SqlitePool, id: &str) -> Option<(String, String, String, Option<String>)> {
+    sqlx::query_as::<_, (String, String, String, Option<String>)>(
+        "SELECT name, owner_user_id, updated_at, deleted_at FROM tags WHERE id = ?",
+    )
+    .bind(id)
+    .fetch_optional(pool)
+    .await
+    .unwrap()
 }
 
-async fn tag_deleted_at(pool: &SqlitePool, id: &str) -> Option<Option<String>> {
-    sqlx::query_scalar("SELECT deleted_at FROM tags WHERE id = ?")
-        .bind(id)
-        .fetch_optional(pool)
-        .await
-        .unwrap()
-}
-
-async fn session_tag_row(pool: &SqlitePool, id: &str) -> Option<(String, String, Option<String>)> {
-    sqlx::query_as::<_, (String, String, Option<String>)>(
-        "SELECT session_id, tag_id, deleted_at FROM session_tags WHERE id = ?",
+/// (session_id, tag_id, owner_user_id, updated_at, deleted_at)
+async fn session_tag_full(
+    pool: &SqlitePool,
+    id: &str,
+) -> Option<(String, String, String, String, Option<String>)> {
+    sqlx::query_as::<_, (String, String, String, String, Option<String>)>(
+        "SELECT session_id, tag_id, owner_user_id, updated_at, deleted_at FROM session_tags WHERE id = ?",
     )
     .bind(id)
     .fetch_optional(pool)
@@ -266,240 +334,216 @@ async fn main() {
     .await;
     println!("[nodes] A and B initialized; cloudsync enabled on tags + session_tags (broker = A)");
 
-    // 1. Scenario A->B: A creates a tag and associates it with a session.
-    const TAG1: &str = "11111111-1111-1111-1111-111111111111";
-    const ST1: &str = "22222222-2222-2222-2222-222222222222";
     const SESSION_X: &str = "sess-x";
-    sqlx::query("INSERT INTO tags (id, name) VALUES (?, 'urgent')")
-        .bind(TAG1)
-        .execute(&a)
-        .await
-        .unwrap();
-    sqlx::query("INSERT INTO session_tags (id, session_id, tag_id) VALUES (?, ?, ?)")
-        .bind(ST1)
-        .bind(SESSION_X)
-        .bind(TAG1)
-        .execute(&a)
-        .await
-        .unwrap();
-    println!("[A] created tag 'urgent' and tagged session {SESSION_X}");
+
+    // 1. Scenario A->B: A adds tag 'urgent' to session X via the app's real
+    //    upsert (deterministic ids: tags.id='urgent',
+    //    session_tags.id='sess-x:urgent').
+    let t0 = "2026-09-01T00:00:00.000Z";
+    upsert_tag(&a, "urgent", "user-a", t0).await;
+    let urgent_on_x = upsert_session_tag(&a, SESSION_X, "urgent", "user-a", t0).await;
+    println!("[A] added tag 'urgent' to session {SESSION_X} (session_tags.id={urgent_on_x})");
 
     run_sync(&a, &a_tcp, &a_token).await;
     drain_check(&b, &b_tcp, &b_token, "B").await;
 
+    let tag_b = tag_row(&b, "urgent").await.expect("B has A's tag");
+    assert_eq!(tag_b.0, "urgent", "B's tag name");
+    let assoc_b = session_tag_full(&b, &urgent_on_x)
+        .await
+        .expect("B has A's session_tags association");
     assert_eq!(
-        tag_name(&b, TAG1).await,
-        Some("urgent".into()),
-        "B has A's tag"
+        (assoc_b.0.as_str(), assoc_b.1.as_str(), assoc_b.4.clone()),
+        (SESSION_X, "urgent", None),
+        "B's association row"
     );
-    assert_eq!(
-        session_tag_row(&b, ST1).await,
-        Some((SESSION_X.into(), TAG1.into(), None)),
-        "B has A's session_tags association"
-    );
-    println!("[conv] A -> B OK (tag + association)");
+    println!("[conv] A -> B OK (tag + association, real deterministic ids)");
 
     // 2. Scenario B->A: reverse direction, a second tag.
-    const TAG2: &str = "33333333-3333-3333-3333-333333333333";
-    const ST2: &str = "44444444-4444-4444-4444-444444444444";
-    sqlx::query("INSERT INTO tags (id, name) VALUES (?, 'follow-up')")
-        .bind(TAG2)
-        .execute(&b)
-        .await
-        .unwrap();
-    sqlx::query("INSERT INTO session_tags (id, session_id, tag_id) VALUES (?, ?, ?)")
-        .bind(ST2)
-        .bind(SESSION_X)
-        .bind(TAG2)
-        .execute(&b)
-        .await
-        .unwrap();
-    println!("[B] created tag 'follow-up' and tagged session {SESSION_X}");
+    upsert_tag(&b, "follow-up", "user-b", t0).await;
+    let followup_on_x = upsert_session_tag(&b, SESSION_X, "follow-up", "user-b", t0).await;
+    println!("[B] added tag 'follow-up' to session {SESSION_X} (session_tags.id={followup_on_x})");
 
     run_sync(&b, &b_tcp, &b_token).await;
     drain_check(&a, &a_tcp, &a_token, "A").await;
 
+    let tag_a = tag_row(&a, "follow-up").await.expect("A has B's tag");
+    assert_eq!(tag_a.0, "follow-up", "A's tag name");
+    let assoc_a = session_tag_full(&a, &followup_on_x)
+        .await
+        .expect("A has B's session_tags association");
     assert_eq!(
-        tag_name(&a, TAG2).await,
-        Some("follow-up".into()),
-        "A has B's tag"
-    );
-    assert_eq!(
-        session_tag_row(&a, ST2).await,
-        Some((SESSION_X.into(), TAG2.into(), None)),
-        "A has B's session_tags association"
+        (assoc_a.0.as_str(), assoc_a.1.as_str(), assoc_a.4.clone()),
+        (SESSION_X, "follow-up", None),
+        "A's association row"
     );
     println!("[conv] B -> A OK");
 
-    // 3. Scenario: disconnected concurrent UPDATE of the same tag's `name`
-    //    converges conflict-free.
-    sqlx::query("UPDATE tags SET name = 'urgent-renamed-by-A' WHERE id = ?")
-        .bind(TAG1)
-        .execute(&a)
-        .await
-        .unwrap();
-    sqlx::query("UPDATE tags SET name = 'urgent-renamed-by-B' WHERE id = ?")
-        .bind(TAG1)
-        .execute(&b)
-        .await
-        .unwrap();
-    println!("[both] renamed tag {TAG1} concurrently while disconnected");
+    // 3. Scenario (the corrected core case): concurrent IDENTICAL tag-add on
+    //    the SAME deterministic primary key. Two devices, disconnected,
+    //    independently call the app's real "add tag" upsert for the SAME
+    //    session + SAME tag name, as two different users (different
+    //    owner_user_id, different `now`) would if they both tagged a shared
+    //    session while offline. Because both PKs are deterministic, this
+    //    writes the SAME row on both nodes — a same-row concurrent
+    //    insert/update, not two rows.
+    const SESSION_Y: &str = "sess-y";
+    const SHARED_TAG: &str = "shared-tag";
+    let t_a = "2026-09-01T00:00:00.000Z";
+    let t_b = "2026-09-01T00:00:05.000Z"; // B writes 5s "later"
+
+    upsert_tag(&a, SHARED_TAG, "user-a", t_a).await;
+    let sid_a = upsert_session_tag(&a, SESSION_Y, SHARED_TAG, "user-a", t_a).await;
+    upsert_tag(&b, SHARED_TAG, "user-b", t_b).await;
+    let sid_b = upsert_session_tag(&b, SESSION_Y, SHARED_TAG, "user-b", t_b).await;
+    assert_eq!(
+        sid_a, sid_b,
+        "the app's deterministic id scheme must produce the same session_tags id on both nodes"
+    );
+    println!(
+        "[both] concurrently, independently added the SAME tag {SHARED_TAG:?} to session \
+         {SESSION_Y} (same PK {sid_a:?} on both nodes, via the app's real upsert; A as \
+         user-a@{t_a}, B as user-b@{t_b})"
+    );
 
     for _ in 0..MAX_DRAIN {
         sync_and_drain(&a, &a_tcp, &a_token, "A").await;
         sync_and_drain(&b, &b_tcp, &b_token, "B").await;
-        let (na, nb) = (tag_name(&a, TAG1).await, tag_name(&b, TAG1).await);
-        if na == nb {
-            sync_and_drain(&a, &a_tcp, &a_token, "A").await;
-            sync_and_drain(&b, &b_tcp, &b_token, "B").await;
-            let (fa, fb) = (tag_name(&a, TAG1).await, tag_name(&b, TAG1).await);
-            assert_eq!(fa, fb, "tag name diverged A vs B after a settling round");
-            assert_eq!(
-                fa, na,
-                "tag name was not stable — agreed on {na:?} then moved to {fa:?}"
-            );
-            let settled = fa.expect("row vanished during settle");
-            assert!(
-                settled == "urgent-renamed-by-A" || settled == "urgent-renamed-by-B",
-                "converged value {settled:?} is neither of the two writes — torn or merged"
-            );
-            println!(
-                "[conv] concurrent tag rename converged and held (name = {settled:?} on both)"
-            );
-            break;
-        }
     }
 
-    // 4. Scenario: tombstone-as-delete. A soft-deletes tag TAG2 (deleted_at)
-    //    and hard-deletes the association row ST2 that referenced it; B must
-    //    see the tombstone and the row must not resurrect.
-    sqlx::query("UPDATE tags SET deleted_at = '2026-09-01T00:00:00Z' WHERE id = ?")
-        .bind(TAG2)
+    let final_tag_a = tag_row(&a, SHARED_TAG)
+        .await
+        .expect("tags row must exist on A");
+    let final_tag_b = tag_row(&b, SHARED_TAG)
+        .await
+        .expect("tags row must exist on B");
+    assert_eq!(
+        final_tag_a, final_tag_b,
+        "tags row for {SHARED_TAG} diverged A vs B after the concurrent add"
+    );
+    assert!(
+        final_tag_a.1 == "user-a" || final_tag_a.1 == "user-b",
+        "converged owner_user_id {:?} is neither of the two writes — torn or merged",
+        final_tag_a.1
+    );
+    println!(
+        "[conv] concurrent identical tag-add converged to ONE tags row on both nodes \
+         (owner_user_id={:?}, updated_at={:?})",
+        final_tag_a.1, final_tag_a.2
+    );
+
+    let final_assoc_a = session_tag_full(&a, &sid_a)
+        .await
+        .expect("session_tags row must exist on A");
+    let final_assoc_b = session_tag_full(&b, &sid_a)
+        .await
+        .expect("session_tags row must exist on B");
+    assert_eq!(
+        final_assoc_a, final_assoc_b,
+        "session_tags row {sid_a} diverged A vs B after the concurrent add"
+    );
+    assert!(
+        final_assoc_a.2 == "user-a" || final_assoc_a.2 == "user-b",
+        "converged owner_user_id {:?} is neither of the two writes — torn or merged",
+        final_assoc_a.2
+    );
+    let live = live_associations(&a, SESSION_Y, SHARED_TAG).await;
+    assert_eq!(
+        live,
+        vec![sid_a.clone()],
+        "expected exactly ONE live session_tags row for the concurrently-added association — \
+         the app's deterministic id scheme prevents a duplicate-row outcome"
+    );
+    println!(
+        "[conv] concurrent identical tag-add converged to ONE session_tags row on both nodes \
+         (id={sid_a}, owner_user_id={:?}, updated_at={:?}) — no duplicate row, matching the \
+         app's real deterministic-id write pattern",
+        final_assoc_a.2, final_assoc_a.3
+    );
+
+    // 4a. Scenario: tombstone-as-delete (no concurrent race). A "removes" the
+    //     'follow-up' tag from session X by soft-deleting the session_tags
+    //     association row. No dedicated remove-tag mutation exists in the
+    //     app yet (checked apps/desktop/src for it — none found); this
+    //     models one using the same soft-delete/tombstone convention every
+    //     other table in this schema already relies on. B must see the
+    //     tombstone and it must not resurrect.
+    let tombstone_at = "2026-09-01T01:00:00.000Z";
+    sqlx::query("UPDATE session_tags SET deleted_at = ? WHERE id = ?")
+        .bind(tombstone_at)
+        .bind(&followup_on_x)
         .execute(&a)
         .await
         .unwrap();
-    sqlx::query("DELETE FROM session_tags WHERE id = ?")
-        .bind(ST2)
-        .execute(&a)
-        .await
-        .unwrap();
-    println!("[A] soft-deleted tag {TAG2} and hard-deleted association {ST2}");
+    println!("[A] soft-deleted association {followup_on_x} (removed 'follow-up' from {SESSION_X})");
 
     run_sync(&a, &a_tcp, &a_token).await;
     drain_check(&b, &b_tcp, &b_token, "B").await;
 
     assert_eq!(
-        tag_deleted_at(&b, TAG2).await,
-        Some(Some("2026-09-01T00:00:00Z".into())),
+        session_tag_full(&b, &followup_on_x).await.and_then(|r| r.4),
+        Some(tombstone_at.to_string()),
         "the deleted_at tombstone value must sync across verbatim"
-    );
-    assert!(
-        session_tag_row(&b, ST2).await.is_none(),
-        "the deleted association must not resurrect on B"
     );
 
     for _ in 0..3 {
         sync_and_drain(&a, &a_tcp, &a_token, "A").await;
         sync_and_drain(&b, &b_tcp, &b_token, "B").await;
     }
-    assert!(
-        session_tag_row(&b, ST2).await.is_none(),
-        "deleted association resurrected on B after further syncs"
-    );
-    assert!(
-        session_tag_row(&a, ST2).await.is_none(),
-        "deleted association resurrected on A after further syncs"
-    );
-    println!("[conv] tombstone-as-delete OK, no resurrection after further sync rounds");
-
-    // 5a. Scenario: concurrent IDENTICAL add — both devices, offline,
-    //     independently associate session Y with the SAME tag (TAG1). This
-    //     is the join-table-specific case: since session_tags.id is its own
-    //     PK (not a composite key of session_id+tag_id, and there is no
-    //     UNIQUE constraint on that pair — verified against the migration),
-    //     the two inserts are two DIFFERENT rows, not a conflict on one row.
-    const SESSION_Y: &str = "sess-y";
-    const ST3_A: &str = "55555555-5555-5555-5555-555555555555";
-    const ST3_B: &str = "66666666-6666-6666-6666-666666666666";
-    sqlx::query("INSERT INTO session_tags (id, session_id, tag_id) VALUES (?, ?, ?)")
-        .bind(ST3_A)
-        .bind(SESSION_Y)
-        .bind(TAG1)
-        .execute(&a)
-        .await
-        .unwrap();
-    sqlx::query("INSERT INTO session_tags (id, session_id, tag_id) VALUES (?, ?, ?)")
-        .bind(ST3_B)
-        .bind(SESSION_Y)
-        .bind(TAG1)
-        .execute(&b)
-        .await
-        .unwrap();
-    println!(
-        "[both] concurrently, independently associated session {SESSION_Y} with tag {TAG1} (different row ids: {ST3_A} on A, {ST3_B} on B)"
-    );
-
-    for _ in 0..MAX_DRAIN {
-        sync_and_drain(&a, &a_tcp, &a_token, "A").await;
-        sync_and_drain(&b, &b_tcp, &b_token, "B").await;
-    }
-
-    let live_a = live_associations(&a, SESSION_Y, TAG1).await;
-    let live_b = live_associations(&b, SESSION_Y, TAG1).await;
     assert_eq!(
-        live_a, live_b,
-        "live association set for (session_y, tag1) diverged A vs B"
+        session_tag_full(&b, &followup_on_x).await.and_then(|r| r.4),
+        Some(tombstone_at.to_string()),
+        "tombstone changed / row resurrected on B after further syncs"
     );
     assert_eq!(
-        live_a.len(),
-        2,
-        "FINDING: concurrent identical add-tag actions on two offline devices converge \
-         CLEANLY (both nodes agree, no torn state) but produce TWO session_tags rows for \
-         the same (session_id, tag_id) pair, not one — the schema has no UNIQUE constraint \
-         on that pair and the join-row PK is independently generated per device. CRDT \
-         convergence does not imply application-level idempotency here."
+        session_tag_full(&a, &followup_on_x).await.and_then(|r| r.4),
+        Some(tombstone_at.to_string()),
+        "tombstone changed / row resurrected on A after further syncs"
     );
     println!(
-        "[conv] concurrent identical add OK — CRDT converges cleanly to {} agreeing rows \
-         (documented duplicate-association finding, see assertion message)",
-        live_a.len()
+        "[conv] tombstone-as-delete OK, no resurrection after further sync rounds (clean, no concurrent race)"
     );
 
-    // 5b. Scenario: concurrent add vs remove of the same association. Tag
-    //     TAG1 is tagged on session Z via row X on both nodes; A removes it
-    //     (soft-deletes X) while B, unaware, independently re-adds the same
-    //     association as a fresh row Y. Net effect after sync: X stays
-    //     tombstoned, Y survives — the association exists post-sync despite
-    //     A's removal. This must converge identically on both sides, with no
-    //     resurrection of the specific row A deleted.
+    // 4b. Scenario (the corrected add-vs-remove case): concurrent tombstone
+    //     vs. reinsert on the SAME primary key. Baseline: A tags session Z
+    //     with 'urgent', synced to both. Then, disconnected: A "removes" it
+    //     (soft-delete, same modeling caveat as 4a) while B, unaware,
+    //     independently re-issues the app's real add-tag upsert for the
+    //     SAME (session, tag) pair — which hits the SAME row (deterministic
+    //     id) and explicitly sets deleted_at = NULL on conflict. This is a
+    //     genuine last-writer-wins race on one row's deleted_at column, not
+    //     the two-row outcome the earlier (incorrect) version of this proof
+    //     found.
     const SESSION_Z: &str = "sess-z";
-    const ST4_X: &str = "77777777-7777-7777-7777-777777777777";
-    sqlx::query("INSERT INTO session_tags (id, session_id, tag_id) VALUES (?, ?, ?)")
-        .bind(ST4_X)
-        .bind(SESSION_Z)
-        .bind(TAG1)
-        .execute(&a)
-        .await
-        .unwrap();
+    let base_id = upsert_session_tag(
+        &a,
+        SESSION_Z,
+        "urgent",
+        "user-a",
+        "2026-09-01T02:00:00.000Z",
+    )
+    .await;
     run_sync(&a, &a_tcp, &a_token).await;
     drain_check(&b, &b_tcp, &b_token, "B").await;
-    println!("[setup] session {SESSION_Z} tagged with {TAG1} via row {ST4_X}, synced to both");
+    println!("[setup] session {SESSION_Z} tagged with 'urgent' via {base_id}, synced to both");
 
-    const ST4_Y: &str = "88888888-8888-8888-8888-888888888888";
-    sqlx::query("UPDATE session_tags SET deleted_at = '2026-09-01T00:00:01Z' WHERE id = ?")
-        .bind(ST4_X)
+    let remove_at = "2026-09-01T02:00:10.000Z";
+    sqlx::query("UPDATE session_tags SET deleted_at = ? WHERE id = ?")
+        .bind(remove_at)
+        .bind(&base_id)
         .execute(&a)
         .await
         .unwrap();
-    sqlx::query("INSERT INTO session_tags (id, session_id, tag_id) VALUES (?, ?, ?)")
-        .bind(ST4_Y)
-        .bind(SESSION_Z)
-        .bind(TAG1)
-        .execute(&b)
-        .await
-        .unwrap();
+    let reinsert_at = "2026-09-01T02:00:11.000Z";
+    let reinsert_id = upsert_session_tag(&b, SESSION_Z, "urgent", "user-b", reinsert_at).await;
+    assert_eq!(
+        base_id, reinsert_id,
+        "the reinsert must hit the SAME row as the removal (deterministic id) — this is the point"
+    );
     println!(
-        "[concurrent] A removed association {ST4_X} while B, unaware, independently re-added it as {ST4_Y}"
+        "[concurrent] A removed association {base_id} (deleted_at={remove_at}) while B, \
+         unaware, independently re-added the SAME (session, tag) pair via the app's real \
+         upsert (updated_at={reinsert_at}) — same PK, not a new row"
     );
 
     for _ in 0..MAX_DRAIN {
@@ -507,49 +551,54 @@ async fn main() {
         sync_and_drain(&b, &b_tcp, &b_token, "B").await;
     }
 
-    assert!(
-        session_tag_row(&a, ST4_X).await.unwrap().2.is_some(),
-        "removed association {ST4_X} must stay tombstoned on A"
-    );
-    assert!(
-        session_tag_row(&b, ST4_X).await.unwrap().2.is_some(),
-        "removed association {ST4_X} must stay tombstoned on B (no resurrection)"
-    );
-    let live_z_a = live_associations(&a, SESSION_Z, TAG1).await;
-    let live_z_b = live_associations(&b, SESSION_Z, TAG1).await;
+    let race_a = session_tag_full(&a, &base_id)
+        .await
+        .expect("row must still exist — only deleted_at is contested, never a real DELETE");
+    let race_b = session_tag_full(&b, &base_id)
+        .await
+        .expect("row must still exist on B");
     assert_eq!(
-        live_z_a, live_z_b,
-        "live association set for (session_z, tag1) diverged A vs B"
+        race_a, race_b,
+        "session_tags row {base_id} diverged A vs B after the tombstone-vs-reinsert race — \
+         this would be a real convergence failure, not a benign duplicate"
     );
-    assert_eq!(
-        live_z_a,
-        vec![ST4_Y.to_string()],
-        "expected exactly the concurrently-re-added row {ST4_Y} to survive as the live association"
-    );
+    let outcome = if race_a.4.is_none() {
+        "B's reinsert won — the tag is present on both nodes"
+    } else {
+        "A's removal won — the tag stays absent on both nodes"
+    };
     println!(
-        "[conv] concurrent add-vs-remove OK — the removed row ({ST4_X}) stayed tombstoned on \
-         both nodes, the concurrently-added row ({ST4_Y}) is the sole surviving live association \
-         on both nodes"
+        "[conv] concurrent tombstone-vs-reinsert on the SAME row converged: both nodes agree \
+         (deleted_at={:?}, owner_user_id={:?}, updated_at={:?}) — {outcome}",
+        race_a.4, race_a.2, race_a.3
     );
 
-    // 6. Multi-row catch-up across both tables.
+    // Run a few more rounds to confirm the settled outcome is STABLE, not an
+    // intermediate value still in flight.
+    for _ in 0..3 {
+        sync_and_drain(&a, &a_tcp, &a_token, "A").await;
+        sync_and_drain(&b, &b_tcp, &b_token, "B").await;
+    }
+    let settled_a = session_tag_full(&a, &base_id).await.unwrap();
+    let settled_b = session_tag_full(&b, &base_id).await.unwrap();
+    assert_eq!(
+        settled_a, settled_b,
+        "row diverged again after further syncs"
+    );
+    assert_eq!(
+        settled_a.4, race_a.4,
+        "the tombstone-vs-reinsert outcome was not stable — it moved after further sync rounds"
+    );
+    println!("[conv] tombstone-vs-reinsert outcome held stable across further sync rounds");
+
+    // 5. Multi-row catch-up across both tables, via the app's real upsert.
     for n in 0..3 {
-        let id = format!("aaaa0000-0000-0000-0000-{n:012x}");
-        sqlx::query("INSERT INTO tags (id, name) VALUES (?, ?)")
-            .bind(&id)
-            .bind(format!("bulk-tag-a-{n}"))
-            .execute(&a)
-            .await
-            .unwrap();
+        let name = format!("bulk-tag-a-{n}");
+        upsert_tag(&a, &name, "user-a", "2026-09-01T03:00:00.000Z").await;
     }
     for n in 0..3 {
-        let id = format!("bbbb0000-0000-0000-0000-{n:012x}");
-        sqlx::query("INSERT INTO tags (id, name) VALUES (?, ?)")
-            .bind(&id)
-            .bind(format!("bulk-tag-b-{n}"))
-            .execute(&b)
-            .await
-            .unwrap();
+        let name = format!("bulk-tag-b-{n}");
+        upsert_tag(&b, &name, "user-b", "2026-09-01T03:00:00.000Z").await;
     }
     println!("[both] wrote 3 bulk tags each before draining");
 
@@ -571,8 +620,9 @@ async fn main() {
     println!("[conv] multi-row catch-up OK (full set equality across both tables)");
 
     println!(
-        "\n=== tags + session_tags schema proof: converge; join-table duplicate-on-concurrent-add \
-         is a real, documented finding (not a torn merge) ==="
+        "\n=== tags + session_tags schema proof: converge under the app's REAL deterministic \
+         id scheme, including the concurrent-identical-add and tombstone-vs-reinsert races on \
+         the SAME primary key ==="
     );
 
     a.close().await;
