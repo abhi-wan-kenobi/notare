@@ -21,6 +21,8 @@ Default permissions for the plugin
 - `allow-sync-this-device`
 - `allow-sync-add-peer`
 - `allow-sync-remove-peer`
+- `allow-sync-start`
+- `allow-sync-stop`
 
 ## Permission Table
 
@@ -424,6 +426,32 @@ Denies the sync_remove_peer command without any pre-configured scope.
 <tr>
 <td>
 
+`db:allow-sync-start`
+
+</td>
+<td>
+
+Enables the sync_start command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`db:deny-sync-start`
+
+</td>
+<td>
+
+Denies the sync_start command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
 `db:allow-sync-status`
 
 </td>
@@ -443,6 +471,32 @@ Enables the sync_status command without any pre-configured scope.
 <td>
 
 Denies the sync_status command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`db:allow-sync-stop`
+
+</td>
+<td>
+
+Enables the sync_stop command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`db:deny-sync-stop`
+
+</td>
+<td>
+
+Denies the sync_stop command without any pre-configured scope.
 
 </td>
 </tr>

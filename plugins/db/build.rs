@@ -25,6 +25,8 @@ const COMMANDS: &[&str] = &[
     "sync_this_device",
     "sync_add_peer",
     "sync_remove_peer",
+    "sync_start",
+    "sync_stop",
 ];
 
 fn main() {

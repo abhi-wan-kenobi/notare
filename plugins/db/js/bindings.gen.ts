@@ -157,6 +157,30 @@ async syncRemovePeer(fingerprint: string) : Promise<Result<boolean, string>> {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
+},
+/**
+ * Runtime opt-in: start the sync agent on an already-running app, without a
+ * restart. Idempotent — a no-op if sync is already running.
+ */
+async syncStart() : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:db|sync_start") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Runtime opt-out: stop the sync agent while the app keeps running, without
+ * a restart. Idempotent — a no-op if sync was never started.
+ */
+async syncStop() : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:db|sync_stop") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 }
 }
 

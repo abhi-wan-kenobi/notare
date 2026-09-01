@@ -161,6 +161,29 @@ impl PluginDbRuntime {
         Ok(())
     }
 
+    /// Runtime opt-out: stop the sync lifecycle while the app keeps running,
+    /// so flipping the setting off takes effect immediately (SYNC's runtime
+    /// opt-in). Reuses `SyncLifecycle`'s own teardown steps 1 and 4 (the
+    /// `db_cloudsync_stop` → `stop_agent` half of the #101 sequence in
+    /// [`Self::shutdown`]) but — unlike `shutdown` — leaves the live-query
+    /// dispatcher and the pool open, since those are app-wide resources the
+    /// rest of the running app still needs. A no-op if sync was never
+    /// started.
+    #[cfg(all(feature = "sync", sync_platform))]
+    pub async fn stop_sync(&self) -> std::result::Result<(), crate::sync::SyncError> {
+        let lifecycle = {
+            let mut guard = self.sync.lock().await;
+            guard.take()
+        };
+
+        let Some(lifecycle) = lifecycle else {
+            return Ok(());
+        };
+
+        lifecycle.db_cloudsync_stop().await?;
+        lifecycle.stop_agent().await
+    }
+
     #[cfg(all(feature = "sync", sync_platform))]
     pub async fn sync_status(
         &self,

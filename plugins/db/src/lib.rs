@@ -143,6 +143,8 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
             commands::sync_this_device,
             commands::sync_add_peer,
             commands::sync_remove_peer,
+            commands::sync_start,
+            commands::sync_stop,
         ])
         .error_handling(tauri_specta::ErrorHandlingMode::Result)
 }

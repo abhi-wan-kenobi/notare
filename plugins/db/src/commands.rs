@@ -242,6 +242,38 @@ pub(crate) async fn unsubscribe(
 // available" error, keeping the specta surface identical across configs so
 // generated bindings don't churn between feature sets.
 
+/// Runtime opt-in: start the sync agent on an already-running app, without a
+/// restart. Idempotent — a no-op if sync is already running.
+#[tauri::command]
+#[specta::specta]
+pub(crate) async fn sync_start(state: tauri::State<'_, ManagedState>) -> Result<(), String> {
+    #[cfg(all(feature = "sync", sync_platform))]
+    {
+        state.start_sync().await.map_err(|error| error.to_string())
+    }
+    #[cfg(not(all(feature = "sync", sync_platform)))]
+    {
+        let _ = &state;
+        Err("sync is not available in this build".to_string())
+    }
+}
+
+/// Runtime opt-out: stop the sync agent while the app keeps running, without
+/// a restart. Idempotent — a no-op if sync was never started.
+#[tauri::command]
+#[specta::specta]
+pub(crate) async fn sync_stop(state: tauri::State<'_, ManagedState>) -> Result<(), String> {
+    #[cfg(all(feature = "sync", sync_platform))]
+    {
+        state.stop_sync().await.map_err(|error| error.to_string())
+    }
+    #[cfg(not(all(feature = "sync", sync_platform)))]
+    {
+        let _ = &state;
+        Err("sync is not available in this build".to_string())
+    }
+}
+
 #[tauri::command]
 #[specta::specta]
 pub(crate) async fn sync_status(

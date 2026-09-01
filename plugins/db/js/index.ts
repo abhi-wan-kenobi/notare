@@ -115,6 +115,16 @@ export async function syncStatus(): Promise<SyncStatusResult> {
   return invoke("plugin:db|sync_status");
 }
 
+// Runtime opt-in/opt-out: start or stop the sync agent on an already-running
+// app, without a restart. Both are idempotent.
+export async function syncStart(): Promise<void> {
+  return invoke("plugin:db|sync_start");
+}
+
+export async function syncStop(): Promise<void> {
+  return invoke("plugin:db|sync_stop");
+}
+
 export async function syncTrigger(): Promise<number> {
   return invoke("plugin:db|sync_trigger");
 }
