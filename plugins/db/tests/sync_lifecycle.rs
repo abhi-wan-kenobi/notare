@@ -21,9 +21,10 @@
 //! Env vars are process-global, so the whole file serializes on one static
 //! lock; tests run in the same binary can never interleave.
 //!
-//! Requires the `sync` feature (linux/x86_64) — see the crate's Cargo.toml.
+//! Requires the `sync` feature, on the app's sync-platform gate (§22) — see
+//! the crate's Cargo.toml.
 
-#![cfg(all(feature = "sync", target_os = "linux", target_arch = "x86_64"))]
+#![cfg(all(feature = "sync", sync_platform))]
 
 use std::sync::Arc;
 use std::sync::OnceLock;

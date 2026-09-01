@@ -1,3 +1,10 @@
+// Single source of truth for the `sync_platform` cfg — see the file itself
+// for why this is `include!`d rather than duplicated (docs/internal/sync-p2p.md §22).
+include!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../../build-support/sync_app_gate.rs"
+));
+
 const COMMANDS: &[&str] = &[
     "execute",
     "execute_proxy",
@@ -21,5 +28,10 @@ const COMMANDS: &[&str] = &[
 ];
 
 fn main() {
+    println!(
+        "cargo:rerun-if-changed={}/../../build-support/sync_app_gate.rs",
+        env!("CARGO_MANIFEST_DIR")
+    );
+    emit_sync_app_gate_cfg();
     tauri_plugin::Builder::new(COMMANDS).build();
 }
