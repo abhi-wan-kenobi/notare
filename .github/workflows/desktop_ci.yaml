@@ -701,6 +701,7 @@ jobs:
   local_llm_gate_linux:
     if: ${{ !startsWith(github.head_ref || '', 'blog/') }}
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     defaults:
       run:
         shell: bash
