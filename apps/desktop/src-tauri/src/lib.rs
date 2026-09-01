@@ -284,6 +284,17 @@ pub async fn main() {
                 supervisor::monitor_supervisor(handle, ctx.is_exiting.clone(), app_handle.clone());
             }
 
+            // The db is opened before tracing exists (see `db::open_desktop_db`),
+            // so a cloudsync-extension failure there had nowhere to go at the
+            // time. Surface it now that the tracing plugin is registered —
+            // otherwise the app silently runs as a plain local notes app with
+            // no indication of why sync never works.
+            if let Some(reason) = db::CLOUDSYNC_DEGRADED.get() {
+                tracing::error!(
+                    "cloudsync extension failed to load; opened the database without it and sync is unavailable: {reason}"
+                );
+            }
+
             // SYNC-5: best-effort sync start on the app's sync-platform gate
             // (§22: linux/x86_64, macOS, windows/x86_64), after the db
             // plugin's setup has registered its managed runtime (this is the
