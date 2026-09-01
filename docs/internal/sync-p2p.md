@@ -2933,19 +2933,37 @@ Run: `cargo run -p sync-p2p --example sync_tags_schema --features from-source`
   columns each write happened to touch: B's write only "lost" the
   `deleted_at` column because it never contested that column in the
   first place (upserting `NULL` onto an already-`NULL` local value is
-  invisible to the trigger-level change detector). A different
-  interleaving — e.g. B's local copy already carrying some other
-  `deleted_at` value when it wrote, or the two writes hitting a genuine
-  version tie on `deleted_at` and falling to CLS's value-comparison
-  tie-break — is not guaranteed to resolve the same way, and this proof
-  did not test those interleavings. The row-presence causal-length
-  protection the earlier draft of this section credited is real and does
-  apply to actual `DELETE`s elsewhere in this proof suite; it does not
-  apply to this table's soft-delete-via-`deleted_at`-column convention,
-  which gets only ordinary per-column LWW, the same as any other column.
+  invisible to the trigger-level change detector). The row-presence
+  causal-length protection an earlier draft of this section credited is
+  real and does apply to actual `DELETE`s elsewhere in this proof suite;
+  it does not apply to this table's soft-delete-via-`deleted_at`-column
+  convention, which gets only ordinary per-column LWW, the same as any
+  other column.
+- **Join-table-specific, the reassuring counterpart to 4b: B sees the
+  removal FIRST, then re-tags — the ordinary "I removed it, then added it
+  back" flow.** 4b's mechanism only explains the case where B's write
+  never touches `deleted_at` locally. The complementary, and far more
+  common, case is: B syncs, drains until it holds A's tombstone
+  (`deleted_at` is non-`NULL` on B), and only then re-issues the app's
+  real add-tag upsert. This time `SET deleted_at = NULL` against a local
+  **non-`NULL`** value *is* a genuine local delta, so by the same traced
+  mechanism it must bump B's `deleted_at` `col_version` and actually
+  contest the field, not arrive for free. Continuing from 4b's already-
+  settled, already-tombstoned row (`base_id = "sess-z:urgent"`, agreed
+  `deleted_at = Some("2026-09-01T02:00:10.000Z")` on both nodes): B
+  re-tags with `updated_at = "2026-09-01T02:00:20.000Z"`, sync-and-drain
+  runs, and **the tag reappears and stays present on both nodes.**
+  Reproduced across 3 runs, identical result each time. This is the
+  guarantee users actually depend on — remove-then-re-add across devices
+  works — and it holds. The two scenarios together fully characterize
+  this table's soft-delete behavior: **a removal only wins the race when
+  it lands during the genuine concurrency window** (the re-add's local
+  value already matched what's being set, so it never contested
+  `deleted_at`); **a causally-later re-add (one that has seen the
+  removal) wins normally**, exactly as ordinary per-column LWW predicts.
 
-Verbatim key lines from the run (repeated 3 times to confirm the
-tombstone-vs-reinsert result is deterministic, not a timing fluke):
+Verbatim key lines from the run (each of the three tombstone/re-add lines
+below reproduced across 3 separate runs, identical result each time):
 
 ```
 [both] concurrently, independently added the SAME tag "shared-tag" to session sess-y (same PK "sess-y:shared-tag" on both nodes, via the app's real upsert; A as user-a@2026-09-01T00:00:00.000Z, B as user-b@2026-09-01T00:00:05.000Z)
@@ -2955,31 +2973,42 @@ tombstone-vs-reinsert result is deterministic, not a timing fluke):
 [concurrent] A removed association sess-z:urgent (deleted_at=2026-09-01T02:00:10.000Z) while B, unaware, independently re-added the SAME (session, tag) pair via the app's real upsert (updated_at=2026-09-01T02:00:11.000Z) — same PK, not a new row
 [conv] concurrent tombstone-vs-reinsert on the SAME row converged: both nodes agree (deleted_at=Some("2026-09-01T02:00:10.000Z"), owner_user_id="user-b", updated_at="2026-09-01T02:00:11.000Z") — A's removal won — the tag stays absent on both nodes
 [conv] tombstone-vs-reinsert outcome held stable across further sync rounds
+[B] saw A's removal first (local deleted_at was Some("2026-09-01T02:00:10.000Z")), THEN re-tagged sess-z with 'urgent' via the app's real upsert (updated_at=2026-09-01T02:00:20.000Z)
+[conv] causally-later re-add OK: the tag is present again on both nodes (deleted_at=None, owner_user_id="user-b", updated_at="2026-09-01T02:00:20.000Z")
+[conv] causally-later re-add stayed present across further sync rounds
 
 === tags + session_tags schema proof: converge under the app's REAL deterministic id scheme, including the concurrent-identical-add and tombstone-vs-reinsert races on the SAME primary key ===
 ```
 
 **`session_tags` stays enabled.** The corrected scenarios converge cleanly
 on every axis the proof checks: no torn merge, no duplicate row, no
-cross-node divergence, and the tombstone-vs-reinsert outcome is stable
-under repeated sync rounds and reproducible across repeated runs, and it
-is now fully explained at the source level rather than left as an open
-question. Product-facing implication worth carrying forward, stated at the
-precision the trace actually supports: for this table's soft-delete
-convention (`deleted_at` as a plain column, not a SQL `DELETE`), a remove
-racing a re-add resolves per-column, not row-wide — in this run, removal
-won because the re-add never actually touched the `deleted_at` column
-value locally (it upserted `NULL` onto an already-`NULL` local copy), so
-it had nothing to contend with. That is a *possible* outcome of ordinary
-per-column LWW under this specific interleaving, not a guaranteed
-"remove always beats re-add" rule the way real SQL-level tombstoning
-(proven elsewhere in this suite: §17's `session_documents`, and this
-lane's `transcripts`/`action_items` hard deletes) genuinely provides via
-CLS's causal-length protection. Product should treat "does a concurrent
-re-tag survive a concurrent remove" as interleaving-dependent for this
-table, not as a settled guarantee, unless `session_tags` removal is later
-implemented as a real `DELETE` (engaging the causal-length path) rather
-than a `deleted_at` column write.
+cross-node divergence, and both the concurrent-race outcome (4b) and the
+causally-later re-add outcome (4c) are stable under repeated sync rounds
+and reproducible across repeated runs — and both are now fully explained
+at the source level rather than left as an open question. Product-facing
+implication, stated at the precision the trace supports: for this table's
+soft-delete convention (`deleted_at` as a plain column, not a SQL
+`DELETE`), a remove racing a re-add resolves per-column, not row-wide. The
+loss in 4b is confined to the genuine concurrency window — the re-add's
+local value already matched what it was setting, so it never contested
+that column — and 4c shows the ordinary, causally-later case (see the
+removal, then re-add) works exactly as expected. This is a narrower and
+more precise guarantee than blanket "delete wins" or "delete-safe" framing
+would suggest, but it is the guarantee that actually matters for the
+product: an accidental cross-device removal can be corrected by re-tagging
+once the removal has synced, which is the normal user flow. What is
+**not** proven is the specific case 4b covers holding under a different
+interleaving (e.g. B's local copy already carrying some other stale
+`deleted_at` value, or a genuine `col_version` tie on `deleted_at` falling
+to CLS's value-comparison tie-break) — that remains open, see §23.7. The
+row-presence causal-length no-resurrection guarantee this suite proves
+elsewhere (§17's `session_documents`, this lane's
+`transcripts`/`action_items` hard deletes) is a stronger, structural
+guarantee than what soft-delete-via-column gets here; if the product ever
+needs "remove can never be silently undone by a stale concurrent add" as a
+hard guarantee rather than an interleaving-dependent one, `session_tags`
+removal should be implemented as a real `DELETE`, not a `deleted_at`
+column write.
 
 ### 23.5 Realistic-size check on `transcripts.words_json`
 
@@ -3032,18 +3061,25 @@ this test.
   `chat_groups`, `chat_messages`, `daily_notes`, `entity_mentions`,
   `events`, `humans`, `organizations`, `session_attachments`,
   `session_participants`, `templates`. Each needs its own §17-style proof.
-- The `session_tags` tombstone-vs-reinsert result (§23.4: a concurrent
-  remove won over a concurrent re-add on the same row) is now traced into
-  `cls`'s source and explained by ordinary per-column version comparison,
-  not row-level causal-length delete semantics — see §23.4 for the
-  file:line trace. What is still open is the product question it raises:
-  this table's soft-delete-via-`deleted_at`-column convention only gets
-  per-column LWW, not the causal-length no-resurrection guarantee real
-  `DELETE`s get elsewhere in this suite, so "does a concurrent re-tag
-  survive a concurrent remove" is interleaving-dependent here, not a
-  settled guarantee. If that matters, either accept the interleaving
-  dependence or give `session_tags` a real removal path (a SQL `DELETE`)
-  once one exists in the app.
+- The `session_tags` tombstone-vs-reinsert result (§23.4, scenario 4b: a
+  concurrent remove won over a concurrent re-add on the same row) is now
+  traced into `cls`'s source and explained by ordinary per-column version
+  comparison, not row-level causal-length delete semantics. Scenario 4c
+  proves the complementary, ordinary case — B sees the removal first,
+  then re-tags — reappears and stays, reproduced across 3 runs. Together
+  they show: a removal only wins in the genuine concurrency window (the
+  re-add's local value already matched what it was setting, so it never
+  contested `deleted_at`); a causally-later re-add wins normally. What
+  remains untested is a *different* interleaving of 4b's case — e.g. B's
+  local copy already carrying some other stale `deleted_at` value when it
+  writes, or the two writes landing on a genuine `col_version` tie for
+  `deleted_at` and falling to CLS's value-comparison tie-break — which
+  this proof suite does not cover. This table's soft-delete-via-column
+  convention only gets ordinary per-column LWW, not the causal-length
+  no-resurrection guarantee real `DELETE`s get elsewhere in this suite;
+  if a hard "remove can never be silently undone" guarantee is ever
+  needed, give `session_tags` a real removal path (a SQL `DELETE`) once
+  one exists in the app.
 - The app currently has no dedicated remove-tag mutation (checked
   `apps/desktop/src`, none found); §23.4's tombstone scenarios model one
   using the existing soft-delete convention. When a real remove-tag
