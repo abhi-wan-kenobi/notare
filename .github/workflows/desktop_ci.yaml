@@ -688,12 +688,31 @@ jobs:
 
   ci:
     if: always()
-    # NOTE: `windows_stt`, the two `cloudsync_from_source_*` jobs, and the two
-    # `desktop_sync_gate_*` jobs are intentionally NOT listed here yet — they
-    # are provisional, non-blocking signals (see the comments on those jobs).
-    # Add each once it has been observed green on its real runner across a
-    # few PRs.
-    needs: [desktop_ci, desktop_i18n, desktop_swift, linux_crate_check]
+    # `windows_stt` and the two `cloudsync_from_source_*` jobs are now REQUIRED:
+    # each has been observed green on its real runner across several PRs
+    # (#142, #143 and the dispatch runs recorded in docs/internal/sync-p2p.md
+    # §21.10–§21.17), which is the promotion bar the comments on those jobs set.
+    #
+    # Promoting these is the whole point of having them. `windows_stt` sat red
+    # on `main` for an extended period precisely because nothing blocked on it,
+    # and that masked two stacked CI-plumbing bugs AND three genuine
+    # portability defects (§21.11–§21.16). A non-blocking job that nobody reads
+    # is not a signal.
+    #
+    # STILL PROVISIONAL, deliberately: the two `desktop_sync_gate_*` jobs (only
+    # observed green since §22 — not yet "a few PRs") and
+    # `cloudsync_from_source_linux_arm` (brand new, never run). Promote each on
+    # the same bar, not on the strength of it merely existing.
+    needs:
+      [
+        desktop_ci,
+        desktop_i18n,
+        desktop_swift,
+        linux_crate_check,
+        windows_stt,
+        cloudsync_from_source_macos,
+        cloudsync_from_source_windows,
+      ]
     runs-on: ubuntu-latest
     steps:
       - run: exit 1
