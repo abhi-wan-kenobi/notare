@@ -96,5 +96,42 @@ async fn starts_serves_a_chat_completion_and_a_grammar_constrained_one() {
         serde_json::from_str(content.trim()).expect("grammar-constrained output is valid JSON");
     assert!(parsed.get("ok").and_then(|v| v.as_bool()).is_some());
 
+    // SSE streaming — Requirement 2. Collects `data:` lines and confirms
+    // they parse as chat.completion.chunk deltas ending in `[DONE]`.
+    let started = std::time::Instant::now();
+    let res = client
+        .post(format!("{}/chat/completions", server.url()))
+        .json(&serde_json::json!({
+            "model": "local",
+            "messages": [{"role": "user", "content": "Reply with exactly the word: pong"}],
+            "max_tokens": 16,
+            "temperature": 0.0,
+            "stream": true,
+        }))
+        .send()
+        .await
+        .expect("request succeeds");
+    assert!(res.status().is_success(), "status: {}", res.status());
+
+    let body = res.text().await.expect("body reads fully");
+    let data_lines: Vec<&str> = body
+        .lines()
+        .filter_map(|line| line.strip_prefix("data: "))
+        .collect();
+    println!(
+        "SSE stream ({:.1}s): {} data lines, last = {:?}",
+        started.elapsed().as_secs_f64(),
+        data_lines.len(),
+        data_lines.last()
+    );
+    assert_eq!(data_lines.last(), Some(&"[DONE]"));
+    let chunk_lines = &data_lines[..data_lines.len() - 1];
+    assert!(!chunk_lines.is_empty(), "at least one chunk before [DONE]");
+    for line in chunk_lines {
+        let chunk: serde_json::Value = serde_json::from_str(line).expect("chunk is valid JSON");
+        assert_eq!(chunk["object"], "chat.completion.chunk");
+        assert!(chunk["choices"][0]["delta"].is_object());
+    }
+
     server.stop().await;
 }

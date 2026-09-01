@@ -17,7 +17,7 @@ mod inner {
     use tokio::net::TcpListener;
     use tokio::sync::mpsc;
     use tokio_stream::StreamExt;
-    use tokio_stream::wrappers::UnboundedReceiverStream;
+    use tokio_stream::wrappers::ReceiverStream;
     use tower_http::cors::CorsLayer;
 
     use crate::Error;
@@ -333,11 +333,18 @@ mod inner {
         })
     }
 
+    /// Chunk backlog before `blocking_send` (called from the dedicated
+    /// `spawn_blocking` thread, so blocking here costs nothing on the tokio
+    /// runtime) applies backpressure against a client reading slower than
+    /// the model generates — an unbounded channel would instead buffer
+    /// every pending chunk in memory with no limit.
+    const STREAM_CHANNEL_CAPACITY: usize = 32;
+
     fn stream_completion(
         state: AppState,
         req: ChatCompletionRequest,
     ) -> Sse<impl tokio_stream::Stream<Item = Result<Event, std::convert::Infallible>>> {
-        let (tx, rx) = mpsc::unbounded_channel::<Event>();
+        let (tx, rx) = mpsc::channel::<Event>(STREAM_CHANNEL_CAPACITY);
         let model_name = req.model.clone().unwrap_or_else(|| "local".to_string());
         let generate_request = to_generate_request(&req);
 
@@ -362,7 +369,17 @@ mod inner {
                     .unwrap_or_else(|_| Event::default())
             };
 
-            let _ = tx.send(chunk(
+            // A stream error has no first-class OpenAI SSE shape; an
+            // `error` object in place of `choices` is what OpenAI's own
+            // server sends on a mid-stream failure, and what a
+            // spec-following client looks for instead of `choices`.
+            let error_event = |message: String| {
+                Event::default()
+                    .json_data(serde_json::json!({ "error": { "message": message, "type": "server_error" } }))
+                    .unwrap_or_else(|_| Event::default())
+            };
+
+            let _ = tx.blocking_send(chunk(
                 Delta {
                     role: Some("assistant"),
                     content: None,
@@ -374,14 +391,16 @@ mod inner {
                 Ok(m) => m,
                 Err(_) => {
                     tracing::error!("local LLM model mutex poisoned");
-                    let _ = tx.send(chunk(Delta::default(), Some("stop")));
-                    let _ = tx.send(Event::default().data("[DONE]"));
+                    let _ = tx.blocking_send(error_event(
+                        "local LLM model is unavailable (poisoned lock)".to_string(),
+                    ));
+                    let _ = tx.blocking_send(Event::default().data("[DONE]"));
                     return;
                 }
             };
 
             let result = model.generate(&generate_request, |piece| {
-                tx.send(chunk(
+                tx.blocking_send(chunk(
                     Delta {
                         role: None,
                         content: Some(piece.to_string()),
@@ -391,19 +410,23 @@ mod inner {
                 .is_ok()
             });
 
-            let finish_reason = match result {
-                Ok(outcome) => finish_reason_str(outcome.finish_reason),
+            match result {
+                Ok(outcome) => {
+                    let _ = tx.blocking_send(chunk(
+                        Delta::default(),
+                        Some(finish_reason_str(outcome.finish_reason)),
+                    ));
+                }
                 Err(e) => {
                     tracing::error!(error = %e, "local LLM streaming generation failed");
-                    "stop"
+                    let _ = tx.blocking_send(error_event(e.to_string()));
                 }
-            };
+            }
 
-            let _ = tx.send(chunk(Delta::default(), Some(finish_reason)));
-            let _ = tx.send(Event::default().data("[DONE]"));
+            let _ = tx.blocking_send(Event::default().data("[DONE]"));
         });
 
-        let stream = UnboundedReceiverStream::new(rx).map(Ok);
+        let stream = ReceiverStream::new(rx).map(Ok);
         Sse::new(stream).keep_alive(KeepAlive::default())
     }
 }
