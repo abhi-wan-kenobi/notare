@@ -766,6 +766,16 @@ msgstr ""
 msgid "Couldn't start dictation. Check that a local model is selected, then try again."
 msgstr ""
 
+#. placeholder {0}: errorMessage(error)
+#: src/settings/sync/index.tsx
+msgid "Couldn't start sync, so it's been turned back off: {0}"
+msgstr ""
+
+#. placeholder {0}: errorMessage(error)
+#: src/settings/sync/index.tsx
+msgid "Couldn't stop sync cleanly, so it's been turned back on: {0}"
+msgstr ""
+
 #: src/snippets/index.tsx
 msgid "Couldn't update pin"
 msgstr ""
@@ -2996,16 +3006,6 @@ msgstr ""
 
 #: src/settings/sync/index.tsx
 msgid "Sync idle"
-msgstr ""
-
-#. placeholder {0}: errorMessage(error)
-#: src/settings/sync/index.tsx
-msgid "Sync is disabled, but the agent failed to stop cleanly: {0}"
-msgstr ""
-
-#. placeholder {0}: errorMessage(error)
-#: src/settings/sync/index.tsx
-msgid "Sync is enabled, but the agent failed to start: {0}"
 msgstr ""
 
 #: src/settings/sync/index.tsx
