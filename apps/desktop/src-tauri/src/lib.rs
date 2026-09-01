@@ -287,12 +287,21 @@ pub async fn main() {
             // SYNC-5: best-effort sync start on the app's sync-platform gate
             // (§22: linux/x86_64, macOS, windows/x86_64), after the db
             // plugin's setup has registered its managed runtime (this is the
-            // instance the sync commands share). A failure is logged and the
-            // app keeps running with sync disabled.
+            // instance the sync commands share). Compiling the feature in no
+            // longer means starting it — the `sync_enabled` runtime setting
+            // (apps/desktop/src/settings/schema.ts, default off) gates the
+            // spawn too, so a user must opt in before this device starts
+            // publishing itself (docs/internal/sync-p2p.md §20.3). A failure
+            // to read the setting or to start sync is logged and the app
+            // keeps running with sync disabled.
             #[cfg(all(feature = "sync", sync_platform))]
             {
                 let handle = app_handle.clone();
                 tauri::async_runtime::spawn(async move {
+                    if !sync_enabled_setting(&handle).await {
+                        tracing::info!("sync setting is off; not starting sync");
+                        return;
+                    }
                     if let Err(error) = start_sync(&handle).await {
                         tracing::warn!("sync did not start; continuing without it: {error}");
                     }
@@ -398,6 +407,42 @@ pub async fn main() {
 
 fn startup_failure_message(error: &impl std::fmt::Display) -> String {
     format!("Notare failed to start: {error}")
+}
+
+/// Runtime opt-in gate: reads the `sync_enabled` setting (default off,
+/// `apps/desktop/src/settings/schema.ts`) straight from the `app_settings`
+/// table through the db plugin's managed runtime — the frontend settings
+/// store, not the legacy JSON settings file, is the source of truth for it.
+/// Best-effort by contract, same as `start_sync`: a missing runtime, a
+/// missing row, or a value that doesn't parse as a JSON bool all default to
+/// "off" rather than panicking at startup.
+#[cfg(all(feature = "sync", sync_platform))]
+async fn sync_enabled_setting(app: &tauri::AppHandle) -> bool {
+    use tauri::Manager;
+
+    let Some(state) = app.try_state::<tauri_plugin_db::ManagedState>() else {
+        return false;
+    };
+
+    let rows = match state
+        .execute(
+            "SELECT value_json FROM app_settings WHERE id = ?".to_string(),
+            vec![serde_json::Value::String("sync_enabled".to_string())],
+        )
+        .await
+    {
+        Ok(rows) => rows,
+        Err(error) => {
+            tracing::warn!("failed to read sync_enabled setting; defaulting to off: {error}");
+            return false;
+        }
+    };
+
+    rows.first()
+        .and_then(|row| row.get("value_json"))
+        .and_then(|value| value.as_str())
+        .and_then(|json| serde_json::from_str::<bool>(json).ok())
+        .unwrap_or(false)
 }
 
 /// SYNC-5 sync-platform-gated (§22) sync start, through the db plugin's managed
