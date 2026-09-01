@@ -63,7 +63,7 @@ pub(crate) struct SyncPeer {
     pub last_seen: i64,
 }
 
-#[cfg(all(feature = "sync", target_os = "linux", target_arch = "x86_64"))]
+#[cfg(all(feature = "sync", sync_platform))]
 impl From<sync_p2p::Peer> for SyncPeer {
     fn from(peer: sync_p2p::Peer) -> Self {
         Self {
@@ -247,7 +247,7 @@ pub(crate) async fn unsubscribe(
 pub(crate) async fn sync_status(
     state: tauri::State<'_, ManagedState>,
 ) -> Result<SyncStatusResult, String> {
-    #[cfg(all(feature = "sync", target_os = "linux", target_arch = "x86_64"))]
+    #[cfg(all(feature = "sync", sync_platform))]
     {
         state
             .sync_status()
@@ -255,7 +255,7 @@ pub(crate) async fn sync_status(
             .map(|status| SyncStatusResult::Live(SyncStatusPayload::from(status)))
             .map_err(|error| error.to_string())
     }
-    #[cfg(not(all(feature = "sync", target_os = "linux")))]
+    #[cfg(not(all(feature = "sync", sync_platform)))]
     {
         let _ = &state;
         Ok(SyncStatusResult::Unavailable)
@@ -265,14 +265,14 @@ pub(crate) async fn sync_status(
 #[tauri::command]
 #[specta::specta]
 pub(crate) async fn sync_trigger(state: tauri::State<'_, ManagedState>) -> Result<i64, String> {
-    #[cfg(all(feature = "sync", target_os = "linux", target_arch = "x86_64"))]
+    #[cfg(all(feature = "sync", sync_platform))]
     {
         state
             .sync_trigger()
             .await
             .map_err(|error| error.to_string())
     }
-    #[cfg(not(all(feature = "sync", target_os = "linux")))]
+    #[cfg(not(all(feature = "sync", sync_platform)))]
     {
         let _ = &state;
         Err("sync is not available in this build".to_string())
@@ -284,7 +284,7 @@ pub(crate) async fn sync_trigger(state: tauri::State<'_, ManagedState>) -> Resul
 pub(crate) async fn sync_list_peers(
     state: tauri::State<'_, ManagedState>,
 ) -> Result<Vec<SyncPeer>, String> {
-    #[cfg(all(feature = "sync", target_os = "linux", target_arch = "x86_64"))]
+    #[cfg(all(feature = "sync", sync_platform))]
     {
         Ok(state
             .sync_list_peers()
@@ -293,7 +293,7 @@ pub(crate) async fn sync_list_peers(
             .map(SyncPeer::from)
             .collect())
     }
-    #[cfg(not(all(feature = "sync", target_os = "linux")))]
+    #[cfg(not(all(feature = "sync", sync_platform)))]
     {
         let _ = &state;
         Err("sync is not available in this build".to_string())
@@ -305,14 +305,14 @@ pub(crate) async fn sync_list_peers(
 pub(crate) async fn sync_this_device(
     state: tauri::State<'_, ManagedState>,
 ) -> Result<String, String> {
-    #[cfg(all(feature = "sync", target_os = "linux", target_arch = "x86_64"))]
+    #[cfg(all(feature = "sync", sync_platform))]
     {
         state
             .sync_this_device()
             .await
             .map_err(|error| error.to_string())
     }
-    #[cfg(not(all(feature = "sync", target_os = "linux")))]
+    #[cfg(not(all(feature = "sync", sync_platform)))]
     {
         let _ = &state;
         Err("sync is not available in this build".to_string())
@@ -326,14 +326,14 @@ pub(crate) async fn sync_add_peer(
     fingerprint: String,
     label: String,
 ) -> Result<String, String> {
-    #[cfg(all(feature = "sync", target_os = "linux", target_arch = "x86_64"))]
+    #[cfg(all(feature = "sync", sync_platform))]
     {
         state
             .sync_add_peer(fingerprint, label)
             .await
             .map_err(|error| error.to_string())
     }
-    #[cfg(not(all(feature = "sync", target_os = "linux")))]
+    #[cfg(not(all(feature = "sync", sync_platform)))]
     {
         let _ = (&state, fingerprint, label);
         Err("sync is not available in this build".to_string())
@@ -346,14 +346,14 @@ pub(crate) async fn sync_remove_peer(
     state: tauri::State<'_, ManagedState>,
     fingerprint: String,
 ) -> Result<bool, String> {
-    #[cfg(all(feature = "sync", target_os = "linux", target_arch = "x86_64"))]
+    #[cfg(all(feature = "sync", sync_platform))]
     {
         state
             .sync_remove_peer(fingerprint)
             .await
             .map_err(|error| error.to_string())
     }
-    #[cfg(not(all(feature = "sync", target_os = "linux")))]
+    #[cfg(not(all(feature = "sync", sync_platform)))]
     {
         let _ = (&state, fingerprint);
         Err("sync is not available in this build".to_string())
