@@ -169,6 +169,15 @@ impl PluginDbRuntime {
     /// dispatcher and the pool open, since those are app-wide resources the
     /// rest of the running app still needs. A no-op if sync was never
     /// started.
+    ///
+    /// `db_cloudsync_stop` failing must never skip `stop_agent`: the guard
+    /// above already took the lifecycle out of `self.sync`, so a bailout
+    /// here (via `?`) would leak a P2P agent that is still live — still
+    /// bound to the network and, in `Discovered` mode, still publishing
+    /// itself — while the rest of the app believes sync is off. So this
+    /// warns and continues through `cloudsync_stop`, same as `shutdown`, and
+    /// only propagates `stop_agent`'s own error (the step that actually
+    /// matters for "is this device still reachable").
     #[cfg(all(feature = "sync", sync_platform))]
     pub async fn stop_sync(&self) -> std::result::Result<(), crate::sync::SyncError> {
         let lifecycle = {
@@ -180,7 +189,10 @@ impl PluginDbRuntime {
             return Ok(());
         };
 
-        lifecycle.db_cloudsync_stop().await?;
+        if let Err(error) = lifecycle.db_cloudsync_stop().await {
+            tracing::warn!("stop_sync: db_cloudsync_stop failed: {error}");
+        }
+
         lifecycle.stop_agent().await
     }
 
