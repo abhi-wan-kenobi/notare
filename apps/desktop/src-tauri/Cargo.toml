@@ -144,6 +144,19 @@ voxtral-cuda = ["tauri-plugin-local-stt/voxtral-llama-cuda"]
 # (Parakeet)".
 directml = ["tauri-plugin-local-stt/directml"]
 
+# Embedded local LLM server (llama.cpp), restored after the Cactus removal —
+# see LLM-EMBED-SPEC's archaeology. Opt-in and independent of the STT
+# features above: builds C++ (llama-cpp-sys-2) and is expensive, so a
+# default build stays unchanged without it. `local-llm-cuda`/
+# `local-llm-vulkan` are additive GPU offload on top of `local-llm`, not a
+# replacement for it (matching `voxtral-cuda`'s relationship to the always-on
+# CPU `voxtral-llama` feature above) — unlike Voxtral's mtmd (audio) path,
+# plain text chat completion isn't implicated by the mtmd+Vulkan bug that
+# keeps `voxtral-llama` CPU/CUDA-only, so Vulkan is offered here.
+local-llm = ["tauri-plugin-local-llm/local-llm"]
+local-llm-cuda = ["tauri-plugin-local-llm/local-llm-cuda"]
+local-llm-vulkan = ["tauri-plugin-local-llm/local-llm-vulkan"]
+
 # Compile the whisper.cpp, Parakeet (ONNX) and Voxtral (llama.cpp) engines on
 # platforms that have no Argmax/Soniqo runtime (those are Apple-Silicon-only).
 # CPU inference by default; opt into GPU offload with `--features gpu-vulkan`
