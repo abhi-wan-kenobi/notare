@@ -11495,15 +11495,23 @@ dependencies = [
 name = "local-llm-core"
 version = "0.1.0"
 dependencies = [
+ "axum 0.8.9",
  "dirs 6.0.0",
  "file",
  "gguf",
  "lmstudio",
+ "local-llm-llama",
  "local-model",
+ "reqwest 0.13.4",
  "serde",
+ "serde_json",
  "specta",
+ "tempfile",
  "thiserror 2.0.18",
  "tokio",
+ "tokio-stream",
+ "tower-http 0.6.8",
+ "tracing",
 ]
 
 [[package]]
