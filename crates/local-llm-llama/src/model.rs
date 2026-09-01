@@ -236,6 +236,16 @@ impl LlamaLlmModel {
                 break;
             }
 
+            // A caller-supplied `max_tokens` can exceed what's left of the
+            // context window (the prompt already used part of it). Stop
+            // cleanly instead of decoding into a full KV cache, which
+            // `llama_ctx.decode` would otherwise reject as `LlmError::Decode`
+            // partway through an otherwise-successful response.
+            if n_past + 1 >= N_CTX as i32 {
+                finish_reason = FinishReason::Length;
+                break;
+            }
+
             let mut batch = LlamaBatch::new(1, 1);
             batch
                 .add(token, n_past, &[0], true)
