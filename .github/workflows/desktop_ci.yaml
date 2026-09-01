@@ -686,6 +686,134 @@ jobs:
       - name: cargo check -p desktop --features sync
         run: cargo check --locked -p desktop --features sync
 
+  # LLM-EMBED: prove the embedded local LLM server (llama-cpp-2, restored
+  # after the Cactus removal) actually compiles on every platform it
+  # claims — not reasoning about it. SYNC-9 widened a `supported()`
+  # predicate on reasoning alone and its first real CI run failed instantly
+  # on undefined `_SecRandomCopyBytes` on macOS; a `cargo check` job per
+  # claimed platform is what closes that exact gap here.
+  #
+  # Linux is the cheapest and only NATIVELY-provable-from-this-box target
+  # (this job's own runner), so it gets both the CPU and the Vulkan variant.
+  # `local-llm-cuda` is NOT checked anywhere — same reasoning as
+  # `voxtral-cuda` above: requires the CUDA toolkit + a matching driver,
+  # which no CI runner here has, so it's manual-validation-only.
+  local_llm_gate_linux:
+    if: ${{ !startsWith(github.head_ref || '', 'blog/') }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - uses: ./.github/actions/install_desktop_deps
+        with:
+          target: linux
+      - uses: ./.github/actions/rust_install
+        with:
+          platform: linux
+      - name: cargo check -p desktop --features local-llm
+        run: cargo check --locked -p desktop --features local-llm
+      # Vulkan build deps: loader headers for find_package(Vulkan) + glslc
+      # for shader compilation (same packages desktop_test_build.yaml's
+      # gpu-vulkan path installs).
+      - run: sudo apt-get install -y libvulkan-dev glslc
+      - name: cargo check -p desktop --features local-llm-vulkan
+        run: cargo check --locked -p desktop --features local-llm-vulkan
+
+  # Same proof as `desktop_sync_gate_macos`: PROVISIONAL/NON-BLOCKING until
+  # observed green on a real runner across a few PRs — this exact
+  # combination has never run outside this Linux dev box. No Vulkan/CUDA
+  # variant claimed on macOS (neither is offered on this platform; see
+  # apps/desktop/src-tauri/Cargo.toml's `local-llm-vulkan`/`voxtral-cuda`
+  # doc comments).
+  local_llm_gate_macos:
+    if: ${{ !startsWith(github.head_ref || '', 'blog/') }}
+    runs-on: macos-15
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          submodules: recursive
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: ./.github/actions/pnpm_install
+      - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
+      - run: pnpm -F ui build
+      - uses: ./.github/actions/install_desktop_deps
+        with:
+          target: macos
+      - uses: ./.github/actions/rust_install
+        with:
+          platform: macos
+      - run: echo "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)" >> $GITHUB_ENV
+      - name: cargo check -p desktop --features local-llm
+        run: cargo check --locked -p desktop --features local-llm
+
+  # Same proof as `desktop_sync_gate_windows`, including the Vulkan variant
+  # (this platform DOES offer `local-llm-vulkan`, unlike macOS) — reuses the
+  # exact Vulkan SDK / libclang / MSVC-linker-pinning setup already proven
+  # for `windows_stt`/`desktop_sync_gate_windows` (see that job's comments
+  # for why each step is ordered the way it is). PROVISIONAL/NON-BLOCKING,
+  # same reasoning as the other provisional jobs in this file: never run on
+  # a real Windows runner yet.
+  local_llm_gate_windows:
+    if: ${{ !startsWith(github.head_ref || '', 'blog/') }}
+    runs-on: windows-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    env:
+      LIBCLANG_PATH: 'C:\Program Files\LLVM\bin'
+      CMAKE_GENERATOR: Ninja
+      CC: cl
+      CXX: cl
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          submodules: recursive
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: ./.github/actions/pnpm_install
+      - run: pnpm -F ui build
+      - uses: humbletim/install-vulkan-sdk@30ba978f977e81b72d091fc8888feb1fb26f9aff # v1.2
+        with:
+          version: 1.4.309.0
+          cache: true
+      - shell: pwsh
+        run: |
+          if (!(Test-Path "C:\Program Files\LLVM\bin\libclang.dll")) {
+            choco install llvm -y --no-progress
+          }
+      - uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
+      - name: Pin cargo to MSVC's link.exe by absolute path (bypasses PATH search)
+        run: |
+          IFS=$'\n' read -d '' -ra path_dirs < <(echo "$PATH" | tr ':' '\n') || true
+          for dir in "${path_dirs[@]}"; do
+            if [ -f "$dir/link.exe" ] && [[ "$dir" != *"/Git/"* ]] \
+              && [[ "$dir" == *"Microsoft Visual Studio"* || "$dir" == *"Windows Kits"* ]]; then
+              echo "found MSVC link.exe: $dir/link.exe"
+              echo "CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER=$dir/link.exe" >> "$GITHUB_ENV"
+              exit 0
+            fi
+          done
+          echo "::error::no MSVC link.exe found on PATH after msvc-dev-cmd" >&2
+          exit 1
+      - uses: ./.github/actions/rust_install
+        with:
+          platform: windows
+      - name: cargo check -p desktop --features local-llm
+        run: cargo check --locked -p desktop --features local-llm
+      - name: cargo check -p desktop --features local-llm-vulkan
+        run: cargo check --locked -p desktop --features local-llm-vulkan
+
   ci:
     if: always()
     # `windows_stt` and the two `cloudsync_from_source_*` jobs are now REQUIRED:
