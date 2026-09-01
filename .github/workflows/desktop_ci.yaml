@@ -527,12 +527,138 @@ jobs:
       - name: cargo check -p cloudsync --features from-source
         run: cargo check --locked -p cloudsync --features from-source
 
+  # App-gate widening (docs/internal/sync-p2p.md §22): the two
+  # `cloudsync_from_source_*` jobs above only prove the standalone `cloudsync`
+  # crate compiles+links off Linux. `plugins/db/Cargo.toml` and
+  # `apps/desktop/src-tauri/Cargo.toml` used to gate `sync-p2p`/`hypr-cloudsync`
+  # to `cfg(all(target_os = "linux", target_arch = "x86_64"))` — so even with
+  # `supported()` widened, the shipped DESKTOP APP never pulled those deps in
+  # on macOS/Windows at all (§21.8's "next required step"). Those tables now
+  # admit macOS (both arches) and windows/x86_64 too (matching
+  # `build-support/sync_app_gate.rs`'s `sync_platform` cfg, which
+  # `plugins/db`'s and `desktop`'s Rust code is gated on); this job is the CI
+  # proof that the app itself — not just the vendored C crate — compiles with
+  # `--features sync` there.
+  #
+  # linux/aarch64 is deliberately EXCLUDED from this gate even though
+  # `crates/cloudsync/build.rs`'s `supported()` admits it: no CI job and no
+  # local toolchain have ever compiled anything against it (§21.7). Widen
+  # `build-support/sync_app_gate.rs` (and the two Cargo.toml tables that
+  # mirror it) only once that changes.
+  #
+  # Deliberately `cargo check`, not `tauri build` / an MSI/dmg bundle — cheap
+  # relative to release.yaml's full build, while still compiling every line
+  # of the sync-gated code (plugins/db/src/{lib,runtime,commands,sync}.rs,
+  # apps/desktop/src-tauri/src/lib.rs's `start_sync`/`shutdown_sync`) for real,
+  # because `cargo check` still runs build scripts (so cloudsync's from-source
+  # C build is genuinely exercised as a dependency of the full desktop crate,
+  # not just standalone).
+  desktop_sync_gate_macos:
+    if: ${{ !startsWith(github.head_ref || '', 'blog/') }}
+    runs-on: macos-15
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          submodules: recursive
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: ./.github/actions/pnpm_install
+      - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
+      - run: pnpm -F ui build
+      - uses: ./.github/actions/install_desktop_deps
+        with:
+          target: macos
+      - uses: ./.github/actions/rust_install
+        with:
+          platform: macos
+      - run: echo "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)" >> $GITHUB_ENV
+      - name: cargo check -p desktop --features sync
+        run: cargo check --locked -p desktop --features sync
+
+  # Same proof as `desktop_sync_gate_macos`, for Windows. Needs the same
+  # Vulkan SDK / libclang setup as `windows_stt` — the desktop crate's default
+  # features pull in `tauri-plugin-local-stt`'s whisper.cpp/ONNX/Voxtral
+  # engines unconditionally on windows regardless of the `sync` feature (see
+  # apps/desktop/src-tauri/Cargo.toml's `cfg(any(target_os = "linux",
+  # target_os = "windows"))` dependency table) — plus `CC`/`CXX: cl` and
+  # `CMAKE_GENERATOR: Ninja`, the combination `release.yaml`'s actually-proven
+  # `build-windows` job uses for whisper.cpp's CMake build on Windows.
+  #
+  # Ordering follows the FIXED shape from `cloudsync_from_source_windows`
+  # (docs/internal/sync-p2p.md §21.10-§21.12), not `windows_stt`'s (which has
+  # never been observed reaching its own `cargo` step): `msvc-dev-cmd` runs
+  # BEFORE `rust_install`, so `PATH` already has a real `cl.exe` by the time
+  # any cargo/build-script invocation happens even with `CC=cl` set at job
+  # level, and the linker is pinned by absolute path
+  # (`CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER`) rather than relying on
+  # `PATH` search order surviving a fresh Git Bash shell — the `rm -f
+  # /usr/bin/link.exe` approach was tried and proven NOT reliable (§21.12).
+  #
+  # PROVISIONAL / NON-BLOCKING, same reasoning as the two
+  # `cloudsync_from_source_*` jobs and `windows_stt`: this exact combination
+  # (full desktop crate + `sync` feature, on Windows) has never run on a real
+  # runner, so it cannot be proven green from a Linux dev box. Promote
+  # alongside the other provisional jobs once observed green across a few PRs.
+  desktop_sync_gate_windows:
+    if: ${{ !startsWith(github.head_ref || '', 'blog/') }}
+    runs-on: windows-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    env:
+      LIBCLANG_PATH: 'C:\Program Files\LLVM\bin'
+      CMAKE_GENERATOR: Ninja
+      CC: cl
+      CXX: cl
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          submodules: recursive
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: ./.github/actions/pnpm_install
+      - run: pnpm -F ui build
+      - uses: humbletim/install-vulkan-sdk@30ba978f977e81b72d091fc8888feb1fb26f9aff # v1.2
+        with:
+          version: 1.4.309.0
+          cache: true
+      - shell: pwsh
+        run: |
+          if (!(Test-Path "C:\Program Files\LLVM\bin\libclang.dll")) {
+            choco install llvm -y --no-progress
+          }
+      - uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
+      - name: Pin cargo to MSVC's link.exe by absolute path (bypasses PATH search)
+        run: |
+          IFS=$'\n' read -d '' -ra path_dirs < <(echo "$PATH" | tr ':' '\n') || true
+          for dir in "${path_dirs[@]}"; do
+            if [ -f "$dir/link.exe" ] && [[ "$dir" != *"/Git/"* ]] \
+              && [[ "$dir" == *"Microsoft Visual Studio"* || "$dir" == *"Windows Kits"* ]]; then
+              echo "found MSVC link.exe: $dir/link.exe"
+              echo "CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER=$dir/link.exe" >> "$GITHUB_ENV"
+              exit 0
+            fi
+          done
+          echo "::error::no MSVC link.exe found on PATH after msvc-dev-cmd" >&2
+          exit 1
+      - uses: ./.github/actions/rust_install
+        with:
+          platform: windows
+      - name: cargo check -p desktop --features sync
+        run: cargo check --locked -p desktop --features sync
+
   ci:
     if: always()
-    # NOTE: `windows_stt` and the two `cloudsync_from_source_*` jobs are
-    # intentionally NOT listed here yet — they are provisional, non-blocking
-    # signals (see the comments on those jobs). Add each once it has been
-    # observed green on its real runner across a few PRs.
+    # NOTE: `windows_stt`, the two `cloudsync_from_source_*` jobs, and the two
+    # `desktop_sync_gate_*` jobs are intentionally NOT listed here yet — they
+    # are provisional, non-blocking signals (see the comments on those jobs).
+    # Add each once it has been observed green on its real runner across a
+    # few PRs.
     needs: [desktop_ci, desktop_i18n, desktop_swift, linux_crate_check]
     runs-on: ubuntu-latest
     steps:
