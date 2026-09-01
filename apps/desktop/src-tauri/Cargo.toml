@@ -114,9 +114,10 @@ tracing = { workspace = true }
 [features]
 default = []
 dev = ["dep:hypr-audio-mock"]
-# SYNC-5 passthrough: turns on tauri-plugin-db's sync lifecycle (linux/x86_64
-# only — on any other target `dep:tauri-plugin-db` selects nothing and this
-# feature gates no code on, keeping the build unchanged).
+# SYNC-5 passthrough: turns on tauri-plugin-db's sync lifecycle, on the app's
+# CI-proven sync-platform gate (see the `[target...]` table below) — on any
+# other target `dep:tauri-plugin-db` selects nothing and this feature gates
+# no code on, keeping the build unchanged).
 sync = ["dep:tauri-plugin-db", "tauri-plugin-db/sync"]
 devtools = ["tauri/devtools", "dep:hypr-audio-mock"]
 automation = ["tauri-plugin-automation"]
@@ -152,12 +153,22 @@ directml = ["tauri-plugin-local-stt/directml"]
 [target.'cfg(any(target_os = "linux", target_os = "windows"))'.dependencies]
 tauri-plugin-local-stt = { workspace = true, features = ["whisper-cpp", "parakeet-onnx", "voxtral-llama"] }
 
-# SYNC-5: P2P sync on linux/x86_64 only — the from-source cloudsync build the
-# `sync` feature enables panics on any other target (see plugins/db
-# Cargo.toml). Cargo target tables cannot see target_arch for feature
-# selection, so the crate dep is target-gated here and the `sync` feature
-# above turns it on; on every other target/feature combination the build is
-# unchanged (no agent, no extension, no env vars).
+# SYNC-5: P2P sync on the app's CI-proven sync-platform gate — linux/x86_64,
+# macOS (aarch64/x86_64), windows/x86_64 (§22 widening of the original
+# linux/x86_64-only gate; see plugins/db/Cargo.toml and
+# build-support/sync_app_gate.rs). The from-source cloudsync build the `sync`
+# feature enables panics on any target outside `crates/cloudsync/build.rs`'s
+# `supported()`, and this app gate is a strict subset of that (excludes
+# linux/aarch64, which `supported()` admits but which has no CI proof yet —
+# see docs/internal/sync-p2p.md §21.7/§22).
+#
+# Cargo target tables cannot reference the `sync_platform` cfg emitted by
+# `build.rs` (dependency resolution happens before any build script runs),
+# so the crate dep is target-gated here with the same hand-written boolean
+# the `sync_platform` cfg uses, and the `sync` feature above turns it on; on
+# every other target/feature combination the build is unchanged (no agent,
+# no extension, no env vars). This expression MUST stay textually identical
+# to the twin table in plugins/db/Cargo.toml.
 #
 # The dep MUST be optional. A non-optional target-gated entry unifies with the
 # plain `tauri-plugin-db` dep in [dependencies] and pushes `features =
@@ -166,7 +177,7 @@ tauri-plugin-local-stt = { workspace = true, features = ["whisper-cpp", "parakee
 # desktop` was run on linux/x86_64, where default already resolved sync on,
 # so it could not see this). Optional + `dep:` keeps the feature the only
 # switch.
-[target.'cfg(all(target_os = "linux", target_arch = "x86_64"))'.dependencies]
+[target.'cfg(any(all(target_os = "linux", target_arch = "x86_64"), all(target_os = "macos", target_arch = "aarch64"), all(target_os = "macos", target_arch = "x86_64"), all(target_os = "windows", target_arch = "x86_64")))'.dependencies]
 tauri-plugin-db = { workspace = true, features = ["sync"], optional = true }
 
 [target.'cfg(target_os = "macos")'.dependencies]

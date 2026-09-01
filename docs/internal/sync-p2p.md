@@ -2702,3 +2702,346 @@ for `BCryptGenRandom`). None touched `crates/sync-p2p/src/agent.rs`; none
 weakened `from-source`'s default-OFF/opt-in status (`cargo check -p
 cloudsync` default resolve stays `features=[]`, reverified after every
 change in this lane).
+
+---
+
+## 22. App-gate widening — `sync-p2p`/`hypr-cloudsync` reachable off linux/x86_64
+
+SYNC-9 (§21) proved `crates/cloudsync`'s `from-source` C transport compiles
+and links on macOS (both arches) and Windows x86_64. It deliberately did
+**not** touch `plugins/db/Cargo.toml:52` or
+`apps/desktop/src-tauri/Cargo.toml:169`'s
+`cfg(all(target_os = "linux", target_arch = "x86_64"))` dependency gates
+(§21.8's named next step) — so the shipped app still could not use any of
+it. This section widens those gates and adds the CI proof the widening
+needs to be more than a claim.
+
+### 22.1 The target set this app gate admits
+
+Exactly four `(target_os, target_arch)` pairs, all four with CI proof from
+this lane:
+
+| target | admitted here | `supported()` (§21.1) | CI proof |
+|---|---|---|---|
+| linux/x86_64 | yes | yes | pre-existing (S0b onward) + reverified this lane |
+| macOS aarch64 | yes | yes | **new, this lane** (`desktop_sync_gate_macos`) |
+| macOS x86_64 | yes | yes | **new, this lane** (`desktop_sync_gate_macos`, cross-compiled) |
+| windows/x86_64 | yes | yes | **new, this lane** (`desktop_sync_gate_windows`) |
+| linux/aarch64 | **no** | yes | **none** — see §22.2 |
+| android, linux/musl | no | no / untested | n/a |
+
+### 22.2 The linux/aarch64 decision — excluded, not widened
+
+`crates/cloudsync/build.rs`'s `supported()` has admitted linux/aarch64
+since SYNC-9, but §21.7 already flagged it as the one target with **zero**
+verification of any kind: no CI job, no local toolchain, nothing ever
+compiled against it. Widening the *app* gate to match `supported()`
+one-for-one would have shipped exactly the unverified claim §21.10's
+`_SecRandomCopyBytes` failure exists as a cautionary tale against — SYNC-9
+widened `supported()` on reasoning alone and its first real CI run failed
+immediately on a platform API nobody had checked.
+
+**Decision: linux/aarch64 stays excluded from the app gate.** Adding CI
+for it was considered and explicitly rejected for this lane: this repo has
+no existing aarch64-linux runner shape to model from (unlike macOS/Windows,
+where `cloudsync_from_source_{macos,windows}` already existed as a
+template — §21.6), and GitHub's aarch64 Ubuntu-hosted runners were not
+validated against this repo's CI plumbing (secrets, caching, `rust_install`
+target list) within this lane's scope. Standing up a new runner class is a
+larger decision than a same-shaped CI job copy, and the task's own
+instruction is explicit: exclude until proven, or add CI — not widen on
+inference. `build-support/sync_app_gate.rs` documents this decision at the
+point future widening would happen.
+
+### 22.3 Single source of truth instead of 24-fold duplication
+
+Before this section, the linux/x86_64-only gate was spelled out by hand at
+~29 sites: two `Cargo.toml` `[target.'cfg(...)'.dependencies]` tables and
+27 Rust `#[cfg(...)]`/`cfg!(...)` sites across
+`plugins/db/src/{lib,runtime,commands}.rs`,
+`plugins/db/tests/sync_lifecycle.rs`, and
+`apps/desktop/src-tauri/src/lib.rs`. Hand-widening all 29 to the new
+four-target boolean was rejected as exactly the kind of mechanical,
+error-prone duplication this file already warns about (§15.2b, §21).
+
+**What Rust/Cargo can and can't express once:**
+
+- **Cargo's `[target.'cfg(...)'.dependencies]` tables cannot be
+  collapsed.** Cargo resolves dependency graphs — including which
+  `[target...]` tables apply — before any build script runs, so a
+  dependency table cannot reference a cfg a build script emits. The two
+  tables (`plugins/db/Cargo.toml`, `apps/desktop/src-tauri/Cargo.toml`)
+  necessarily spell the same four-target boolean out by hand in TOML. Kept
+  mechanically identical (comments on both point at each other and at
+  `build-support/sync_app_gate.rs`), and now **enforced** by
+  `plugins/db/tests/sync_platform_gate_matches_desktop.rs` (§22.5) — a
+  plain string-match test that fails if the two ever drift.
+- **Rust's `#[cfg(...)]` sites collapse to one.** `build-support/sync_app_gate.rs`
+  is a single predicate function, `include!()`d verbatim by both
+  `plugins/db/build.rs` and `apps/desktop/src-tauri/build.rs` (two
+  `include!` call sites, one file — genuinely zero drift risk, not just
+  "kept in sync by convention"). Each build script calls
+  `emit_sync_app_gate_cfg()`, which emits `cargo:rustc-cfg=sync_platform`
+  when the target matches, plus the `cargo::rustc-check-cfg=cfg(sync_platform)`
+  declaration so the custom cfg never trips `unexpected_cfgs`. All 27 Rust
+  sites now read `#[cfg(all(feature = "sync", sync_platform))]` (or
+  `cfg!(...)`/`not(...)` variants of the same), one flag, defined once.
+
+This is the "least-repetitive expression available" the task asked for:
+one Rust predicate function, `include!`d rather than copy-pasted, plus
+exactly two irreducible TOML strings whose divergence is now a test
+failure, not a silent runtime gap.
+
+### 22.4 A real bug this closed: the arch-less negative branches
+
+`plugins/db/src/commands.rs`'s specta-command fallback bodies and
+`plugins/db/src/runtime.rs`'s `cloudsync_enabled` flag checked only
+`target_os = "linux"` on their negative/fallback side — no
+`target_arch` — while the positive/real-impl side (and the actual
+dependency gate) required `x86_64` too:
+
+```rust
+#[cfg(all(feature = "sync", target_os = "linux", target_arch = "x86_64"))]
+{ /* real impl */ }
+#[cfg(not(all(feature = "sync", target_os = "linux")))]
+{ /* fallback */ }
+```
+
+On a hypothetical `linux/aarch64` build with `--features sync`, **both**
+arms evaluate false: the real-impl arm needs `x86_64` (false), and the
+negated fallback arm needs `not(feature=sync AND linux)` — which is also
+false, since `feature=sync` and `target_os=linux` are both true, arch
+notwithstanding. A `#[tauri::command]` function whose body is empty on
+both branches doesn't compile (the declared `Result<...>` return type has
+no producing expression) — a build break, and separately,
+`runtime.rs`'s `cloudsync_enabled = cfg!(all(feature = "sync", target_os = "linux"))`
+would have claimed `true` on that same target even though no code path
+existed to act on it. Untested until this lane: no CI job or local
+toolchain has ever compiled `tauri-plugin-db`/`desktop` for
+`linux/aarch64`, so this was a live, unverified gap in the exact style
+this file's Section headers keep calling out. Collapsing both arms onto
+`sync_platform` closes it by construction — the positive and negative
+branches are now exact logical complements of the same one flag, on every
+target, not just the ones anyone happened to build for.
+
+### 22.5 CI (Requirement 4, again)
+
+`.github/workflows/desktop_ci.yaml` gained `desktop_sync_gate_macos` and
+`desktop_sync_gate_windows`, modeled on §21.6's
+`cloudsync_from_source_{macos,windows}` but checking the **full desktop
+crate** with `--features sync`, not just the standalone `cloudsync` crate
+— the CI proof that the widened dependency gate (§22.1) is reachable, not
+just resolvable. Both `cargo check`, not `tauri build` / a bundle; both
+PROVISIONAL / NON-BLOCKING, not in `ci`'s `needs:` list, same reasoning as
+the existing provisional jobs (never observed before this lane; promote
+after a few more observed-green runs).
+
+Windows reuses the **proven** shape from `cloudsync_from_source_windows`
+(§21.11/§21.12/§21.17), not `windows_stt`'s (which had never been observed
+reaching its own `cargo` step as of §21 — though it happened to go green
+in this lane's own CI run, see §22.6): `ilammy/msvc-dev-cmd` runs before
+`rust_install`, and the linker is pinned by absolute path
+(`CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER`) rather than trusting `PATH`
+order to survive a fresh Git Bash shell. On top of that, the job sets
+`CC`/`CXX: cl` and `CMAKE_GENERATOR: Ninja` (the combination
+`release.yaml`'s actually-proven `build-windows` job uses) plus the Vulkan
+SDK/libclang setup `windows_stt` uses, because — unlike
+`cloudsync_from_source_windows`, which only builds the standalone
+`cloudsync` crate — this job compiles the **full** `desktop` crate, which
+pulls in `tauri-plugin-local-stt`'s whisper.cpp/ONNX/Voxtral engines
+unconditionally on windows/linux, regardless of the `sync` feature.
+
+### 22.6 CI run 1 (2026-09-01) — GREEN on every platform, first try
+
+Pushed to `feat/sync-app-gate-xplat`, `gh workflow run desktop_ci.yaml`
+(run `33462796372`). Every job in the run completed `success`, including
+the required `ci` gate:
+
+| job | conclusion |
+|---|---|
+| `desktop_sync_gate_macos` | **success** |
+| `desktop_sync_gate_windows` | **success** |
+| `cloudsync_from_source_macos` | success (unaffected, reconfirmed) |
+| `cloudsync_from_source_windows` | success (unaffected, reconfirmed) |
+| `desktop_ci (macos, macos-15)` | success (unaffected, reconfirmed) |
+| `desktop_i18n`, `desktop_swift`, `linux_crate_check`, `windows_stt` | success |
+| `ci` (the required gate) | **success** |
+
+**`desktop_sync_gate_macos`** (job `99716338483`): `cargo check --locked -p
+desktop --features sync` completed in **24m 04s**, confirmed by the literal
+log line (`Finished \`dev\` profile [unoptimized + debuginfo] target(s) in
+24m 04s`), with `cloudsync`'s from-source build showing the expected
+`DEP_SQLITE3_INCLUDE` note (§21.14's mechanism, confirmed working as a
+transitive dependency of the full desktop crate, not just standalone) and
+zero errors.
+
+**`desktop_sync_gate_windows`** (job `99716338702`): `cargo check --locked
+-p desktop --features sync` completed in **25m 52s** (`Finished \`dev\`
+profile [unoptimized + debuginfo] target(s) in 25m 52s`), confirmed by
+direct log inspection, not the green checkmark alone. The linker-pin step
+found and exported
+`CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER=/c/Program Files/Microsoft
+Visual Studio/18/Enterprise/VC/Tools/MSVC/14.51.36231/bin/HostX64/x64/link.exe`,
+`cloudsync` compiled and linked (same `DEP_SQLITE3_INCLUDE` note as
+macOS/Linux, resolving to the Windows runner's own `libsqlite3-sys`
+checkout), and no compiler or linker error appears anywhere in the log.
+
+**This is the first time `network_p2p.c`'s Winsock2 code has been compiled
+and linked as an actual dependency of the shipped `desktop` binary target**
+(§21.17 proved it compiles+links for the standalone `cloudsync` crate;
+this proves the same for the crate graph the app itself builds — the
+distinction §21.8 existed to name). First-try green on both platforms is
+consistent with §21's own conclusion that all the hard, non-obvious
+platform bugs (missing `-framework Security`, three rounds of Windows CI
+plumbing, the vendored `sqlite3.h` gap, the `sqlite3_cloudsync_init`
+MSVC linkage strictness, the missing `bcrypt.lib`) live in
+`crates/cloudsync`'s own from-source build, which SYNC-9 already fixed and
+this lane's `sync_platform` cfg only had to gate correctly, not patch
+further. No new platform-specific C or Rust bug was found by this lane's
+CI run.
+
+Local verification (linux/x86_64 dev box) before pushing, all green:
+`cargo check -p desktop` (default) and `--features sync`; `cargo test -p
+tauri-plugin-db` (default: 26/26; `--features sync`: 26 + 4
+`sync_lifecycle` + 1 new gate-matching test); `cargo test -p sync-p2p`
+(28/29, one deliberately-ignored network test, unaffected by this lane);
+`cargo test -p cloudsync --features from-source` (6/6); `cargo tree -e
+features -i cloudsync` shows zero `from-source` edges in a default
+resolve.
+
+### 22.7 Auditor outcome (2026-09-01)
+
+`auditor` skill, `--coder claude-sonnet-5`, per-commit (and per-file, where
+a commit's combined payload exceeded the tool's validated size — see §21.9
+for why oversized payloads read as false-clean rather than a real signal).
+Seats: `audit-minimax-m2.7`, `audit-gpt-oss:120b` (coder's family excluded).
+Every finding checked against the real code before acting.
+
+**Fixed (real, confirmed):**
+
+- minimax flagged that nothing enforced the two Cargo.toml
+  `[target.'cfg(...)'.dependencies]` tables staying textually identical,
+  despite both comments asserting they must. Real — Cargo can't reference
+  a build-script cfg from a target-dependency table, so the two TOML
+  strings are the only place this invariant lives, and no automated check
+  existed. Fixed: `plugins/db/tests/sync_platform_gate_matches_desktop.rs`,
+  a plain `include_str!` + substring-match test that fails if either table
+  drifts from the expected four-target expression.
+
+**Rejected as false positives (verified against the real code, not
+assumed):**
+
+- **gpt-oss, repeated across nearly every file in this lane (≥6
+  occurrences):** "`sync_platform` is never defined / undefined cfg /
+  silently disables sync on all platforms." False on every occurrence —
+  `sync_platform` is defined in `build-support/sync_app_gate.rs`
+  (committed separately, in an earlier commit of this same lane) and
+  verified live: `cargo test -p tauri-plugin-db --features sync` passes
+  all 4 `sync_lifecycle` tests, which only compile and only pass when
+  `sync_platform` is true on this linux/x86_64 dev box, and the CI run in
+  §22.6 proves the same cfg resolves correctly on macOS and Windows. This
+  is a structural blind spot of per-commit auditing, not a code defect:
+  the tool inlines only the files touched by the commit under review, so a
+  cfg defined in commit 1 is invisible to a seat auditing commit 3's diff
+  in isolation. Recorded here rather than silently dropped, since the same
+  pattern recurred often enough to be worth naming as a known limitation of
+  this audit shape, not a one-off.
+- **minimax, same theme, several files:** the same "cannot verify
+  `sync_platform`'s definition from this diff alone" caveat, phrased as a
+  medium/critical finding rather than gpt-oss's flat "undefined" claim.
+  Same resolution: verified via cross-commit review + the CI run, not
+  actioned as a code change.
+- **gpt-oss, `plugins/db/Cargo.toml`:** "the panic-on-unsupported-targets
+  comment contradicts adding macOS/Windows to the supported set." False —
+  the comment refers to `crates/cloudsync/build.rs`'s five-target
+  `supported()` (§21.1), a strict superset of this four-target app gate;
+  every platform this lane added is inside `supported()`, so enabling
+  `from-source` there does not panic. The seat did not have
+  `crates/cloudsync/build.rs` in its payload (outside this commit's diff)
+  to check against.
+- **gpt-oss, `apps/desktop/src-tauri/Cargo.toml`:** "the unconditional
+  `tauri-plugin-db = { workspace = true }` entry defeats optional sync
+  gating." False — that line is the pre-existing, unconditional base DB
+  plugin dependency (predates SYNC-5 entirely, untouched by this lane's
+  diff); only the *separate*, target-gated, optional entry lower in the
+  file carries the `sync` feature. Confirmed via `git show` that this line
+  is not part of any commit in this lane.
+- **gpt-oss, `apps/desktop/src-tauri/src/lib.rs`:** "`ExitRequested`
+  handler can never exit because `app.exit(0)` only runs on
+  `emit_to().is_err()`." Pre-existing code, untouched by this lane (`git
+  show` confirms zero diff lines in that handler) — also almost certainly
+  a misreading of the app's own multi-step graceful-shutdown design
+  (`EXIT_FLUSH_COMPLETE` gates a *second* `ExitRequested` into an
+  unconditional allow), not verified further since it is out of this
+  lane's scope regardless.
+- **gpt-oss, `plugins/db/tests/sync_platform_gate_matches_desktop.rs`:**
+  "the `include_str!` path breaks if `plugins/db` is built as a standalone
+  published crate." Inapplicable — `tauri-plugin-db` is a private
+  workspace member of this Tauri monorepo (`links =
+  "tauri-plugin-db"`, dozens of `hypr-*` workspace-only dependencies,
+  never published), and the file lives under `tests/`, which is not part
+  of a published crate's contents regardless.
+- **gpt-oss, `desktop_ci.yaml`:** "the linker-pin script's `tr ':' '\n'`
+  breaks on Windows, which uses `;`-separated `PATH`." Not actioned — this
+  is the identical script (same logic, trimmed of that job's own
+  debugging-history comments) as `cloudsync_from_source_windows`'s already
+  **observed-green** (§21.17, reconfirmed §22.6) linker pin, run under the
+  same `shell: bash`, where Git Bash's MSYS2 layer presents `$PATH` already
+  colon-joined. Changing a proven-green script on inference alone would be
+  the same mistake §21.10 already made once with the macOS link command.
+- Several lower-severity findings (unrelated pre-existing code paths:
+  `bind_params`'s float-precision fallback in `runtime.rs`, missing
+  `stop_agent()` calls in two `sync_lifecycle.rs` tests, `export_types`'s
+  relative-path `fs::write`) were all confirmed to be outside this lane's
+  diff via `git show` and not actioned, consistent with the task's scope.
+
+### 22.8 Verified vs. not, after this lane
+
+**Verified (compile-time, on real CI, this lane):**
+- `desktop` compiles with `--features sync` on linux/x86_64, macOS
+  aarch64, macOS x86_64, and windows/x86_64 (§22.6).
+- The widened dependency gate does not affect the default build: `cargo
+  tree -e features -i cloudsync` shows `features=[]` in a default resolve,
+  reverified after every commit in this lane.
+- The `sync_platform` cfg resolves identically to the intended four-target
+  set on all three CI-tested OSes (inferred from the app compiling
+  correctly on each — a target-mismatched cfg would either fail to compile
+  `sync`-gated code that should exist, or try to compile code depending on
+  `sync-p2p`/`hypr-cloudsync` that Cargo never resolved as a dependency,
+  either of which would be a hard compile error, not a silent pass).
+- `plugins/db`'s and `sync-p2p`'s existing test suites (S0b through
+  SYNC-8's proofs) are unaffected: `cargo test -p sync-p2p` 28/29 (one
+  deliberately-ignored network test), `cargo test -p cloudsync --features
+  from-source` 6/6, `cargo test -p tauri-plugin-db` 26/26 default, 31/31
+  with `--features sync`.
+
+**NOT verified — genuinely still unknown, runtime not just compile-time:**
+- **Nothing in this lane executes the sync stack on macOS or Windows.**
+  Every proof in §22.6 is `cargo check` — it proves the code compiles and
+  links, not that `P2pAgent::start`, the C-layer socket to
+  `NOTARE_SYNC_AGENT_ADDR`, or a real two-peer sync round trip works when
+  actually run on those OSes. The macOS/Windows Winsock2 vs. POSIX socket
+  code in `network_p2p.c` has now been *compiled* on Windows (§21.17,
+  reconfirmed as part of the full app in §22.6) but never *executed*
+  anywhere but linux/x86_64 — the two-node and three-node convergence
+  proofs (§11.4, §15) have only ever run on Linux.
+- **The app's own startup/shutdown wiring** (`start_sync`/`shutdown_sync`
+  in `apps/desktop/src-tauri/src/lib.rs`, the #101 teardown order in
+  `PluginDbRuntime::shutdown`) has only ever been exercised at runtime on
+  linux/x86_64 (`sync_lifecycle.rs`'s 4 tests). Nothing in this lane adds a
+  runtime test for macOS/Windows — that would require either a real
+  integration test running in CI (not attempted here — out of scope,
+  "does it compile", not "does it run") or manual verification on
+  physical/VM hardware, neither of which happened.
+- **linux/aarch64 remains completely unverified** (§22.2) — deliberately
+  excluded from the app gate, not silently shipped.
+- **The pre-existing production-hardening gaps** carried since §12/§13.9/§21
+  (`strstr`-based JSON parsing in `network_p2p.c`, no hostile-broker/peer
+  test fixture, IPv6 bracket handling verified only via the
+  `agent_addr.h` unit harness) are unchanged by this lane — it only
+  widened *which platforms* can reach this code, not what the code does.
+- **`desktop_sync_gate_{macos,windows}` are PROVISIONAL**, same as
+  `cloudsync_from_source_{macos,windows}` — one green run each, not yet
+  promoted into `ci`'s `needs:` list. Per the existing promotion
+  checklist, promote after observing green across a few more PRs, not
+  after a single run.

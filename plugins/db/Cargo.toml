@@ -9,11 +9,13 @@ description = ""
 
 [features]
 # SYNC-5: opt-in P2P sync. Turns on the sync-p2p dependency and cloudsync's
-# from-source path (linux/x86_64 only until SYNC-9) — everything sync-related
-# in this crate is additionally cfg-gated on target_os = "linux", so a default
-# build is byte-identical in behavior to pre-SYNC-5 (no agent, no env vars,
+# from-source path, on the app's CI-proven sync-platform gate (linux/x86_64,
+# macOS aarch64/x86_64, windows/x86_64 as of the app-gate widening in §22;
+# see build-support/sync_app_gate.rs) — everything sync-related in this crate
+# is additionally cfg-gated on `sync_platform`, so a default build is
+# byte-identical in behavior to pre-SYNC-5 (no agent, no env vars,
 # cloudsync_enabled: false). Must stay default-OFF: cargo unifies features
-# across the workspace, and from-source panics on non-linux/x86_64 targets.
+# across the workspace, and from-source panics on unsupported targets.
 sync = ["dep:sync-p2p", "hypr-cloudsync/from-source"]
 
 [dependencies]
@@ -40,16 +42,30 @@ tokio = { workspace = true, features = ["sync"] }
 tracing = { workspace = true }
 uuid = { workspace = true, features = ["v4"] }
 
-# Target-gated like the from-source cloudsync build it enables: linux only.
-# cloudsync is a dep only so the `sync` feature can turn on `from-source` —
-# feature unification propagates it to db-core's hypr-cloudsync usage.
+# Target-gated to the app's CI-proven sync gate (SYNC-9/§21 -> app-gate
+# widening, §22): linux/x86_64, macOS (both arches), windows/x86_64. cloudsync
+# is a dep only so the `sync` feature can turn on `from-source` — feature
+# unification propagates it to db-core's hypr-cloudsync usage.
+#
+# NOT the same set as `crates/cloudsync/build.rs`'s `supported()` (which also
+# admits linux/aarch64): that function only claims the C transport compiles;
+# this table gates what the shipped app is allowed to try, and linux/aarch64
+# has no CI proof yet (docs/internal/sync-p2p.md §21.7/§22). Widen it here
+# only once that changes.
+#
+# Cargo resolves `[target.'cfg(...)'.dependencies]` before any build script
+# runs, so this cannot reference the `sync_platform` cfg emitted by
+# `build.rs` (see build-support/sync_app_gate.rs) — this expression MUST stay
+# textually identical to the twin table in
+# apps/desktop/src-tauri/Cargo.toml, and semantically identical to
+# `sync_app_gate_supported()` in build-support/sync_app_gate.rs.
 #
 # This MUST come after the plain [dependencies] entries above. A `[target…]`
-# table opened before them would swallow every following entry into the
-# linux-x86_64 table, so on macOS/Windows the plain `serde`/`tauri`/`sqlx`/…
+# table opened before them would swallow every following entry into this
+# table, so on targets outside this cfg the plain `serde`/`tauri`/`sqlx`/…
 # would not resolve at all (the exact E0432/E0433 the macOS desktop_ci hit).
-# Linux never surfaced it because both cfgs are true there.
-[target.'cfg(all(target_os = "linux", target_arch = "x86_64"))'.dependencies]
+# Linux/x86_64 never surfaced it because both cfgs are true there.
+[target.'cfg(any(all(target_os = "linux", target_arch = "x86_64"), all(target_os = "macos", target_arch = "aarch64"), all(target_os = "macos", target_arch = "x86_64"), all(target_os = "windows", target_arch = "x86_64")))'.dependencies]
 sync-p2p = { workspace = true, optional = true }
 hypr-cloudsync = { workspace = true, optional = true }
 

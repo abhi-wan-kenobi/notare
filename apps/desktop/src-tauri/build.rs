@@ -8,7 +8,20 @@ use std::{
 #[cfg(target_os = "macos")]
 const MACOS_MINIMUM_SYSTEM_VERSION: &str = "14.2";
 
+// Single source of truth for the `sync_platform` cfg — see the file itself
+// for why this is `include!`d rather than duplicated (docs/internal/sync-p2p.md §22).
+include!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../../../build-support/sync_app_gate.rs"
+));
+
 fn main() {
+    println!(
+        "cargo:rerun-if-changed={}/../../../build-support/sync_app_gate.rs",
+        env!("CARGO_MANIFEST_DIR")
+    );
+    emit_sync_app_gate_cfg();
+
     #[cfg(target_os = "macos")]
     println!("cargo:rustc-link-arg=-fapple-link-rtlib");
 
