@@ -591,6 +591,81 @@ async fn main() {
     );
     println!("[conv] tombstone-vs-reinsert outcome held stable across further sync rounds");
 
+    // 4c. Scenario (the complementary, ordinary case): B sees A's removal
+    //     FIRST, then re-tags — the normal "I removed it, then added it
+    //     back" flow, as opposed to 4b's genuine concurrency window.
+    //     Continuing from 4b's settled state: both nodes already agree
+    //     row `base_id` is tombstoned (deleted_at = Some(remove_at)), so
+    //     B's OWN local deleted_at is now non-NULL. When B now re-issues
+    //     the app's real add-tag upsert, `SET deleted_at = NULL` against a
+    //     local NON-NULL value IS a genuine delta this time (unlike 4b,
+    //     where B's local value was already NULL) — so per the traced
+    //     mechanism (§23.4) it must bump B's local col_version for that
+    //     column and contest it, not arrive uncontested. If this does NOT
+    //     converge to "present on both nodes, stays present", tags would
+    //     be silently un-re-addable after any cross-device removal — a
+    //     serious product bug, not a benign concurrency artifact.
+    assert_eq!(
+        settled_b.4,
+        Some(remove_at.to_string()),
+        "precondition: B must see the tombstone (non-NULL deleted_at) before re-tagging, \
+         or this isn't testing the causally-later case"
+    );
+    let readd_at = "2026-09-01T02:00:20.000Z";
+    let readd_id = upsert_session_tag(&b, SESSION_Z, "urgent", "user-b", readd_at).await;
+    assert_eq!(
+        readd_id, base_id,
+        "the re-add must hit the SAME row (deterministic id)"
+    );
+    println!(
+        "[B] saw A's removal first (local deleted_at was {:?}), THEN re-tagged {SESSION_Z} \
+         with 'urgent' via the app's real upsert (updated_at={readd_at})",
+        settled_b.4
+    );
+
+    for _ in 0..MAX_DRAIN {
+        sync_and_drain(&a, &a_tcp, &a_token, "A").await;
+        sync_and_drain(&b, &b_tcp, &b_token, "B").await;
+    }
+
+    let readd_a = session_tag_full(&a, &base_id)
+        .await
+        .expect("row must still exist on A");
+    let readd_b = session_tag_full(&b, &base_id)
+        .await
+        .expect("row must still exist on B");
+    assert_eq!(
+        readd_a, readd_b,
+        "session_tags row {base_id} diverged A vs B after the causally-later re-add"
+    );
+    assert_eq!(
+        readd_a.4, None,
+        "the causally-later re-add must win: deleted_at should be cleared (tag present) on \
+         both nodes, not stuck tombstoned — a silent un-re-addable tag would be a real bug"
+    );
+    println!(
+        "[conv] causally-later re-add OK: the tag is present again on both nodes \
+         (deleted_at={:?}, owner_user_id={:?}, updated_at={:?})",
+        readd_a.4, readd_a.2, readd_a.3
+    );
+
+    // Confirm it STAYS present, not just momentarily in flight.
+    for _ in 0..3 {
+        sync_and_drain(&a, &a_tcp, &a_token, "A").await;
+        sync_and_drain(&b, &b_tcp, &b_token, "B").await;
+    }
+    let final_readd_a = session_tag_full(&a, &base_id).await.unwrap();
+    let final_readd_b = session_tag_full(&b, &base_id).await.unwrap();
+    assert_eq!(
+        final_readd_a, final_readd_b,
+        "row diverged again after further syncs"
+    );
+    assert_eq!(
+        final_readd_a.4, None,
+        "the re-added tag did not stay present after further sync rounds"
+    );
+    println!("[conv] causally-later re-add stayed present across further sync rounds");
+
     // 5. Multi-row catch-up across both tables, via the app's real upsert.
     for n in 0..3 {
         let name = format!("bulk-tag-a-{n}");
