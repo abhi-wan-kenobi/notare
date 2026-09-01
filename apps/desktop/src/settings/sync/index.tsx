@@ -128,7 +128,11 @@ function SyncSettingsContent({
 
   const toggleSync = useMutation({
     mutationFn: (next: boolean) => (next ? syncStart() : syncStop()),
-    onSuccess: () => {
+    // Refetch the status on both outcomes — a failed start/stop can still
+    // change what the agent is doing (e.g. a stop that partially tore down
+    // cloudsync before failing), so the status line must never keep showing
+    // a stale pre-attempt read.
+    onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: STATUS_QUERY_KEY });
     },
     // The setting is set optimistically in handleToggle so the switch

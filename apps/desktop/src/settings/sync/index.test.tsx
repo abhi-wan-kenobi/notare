@@ -378,6 +378,10 @@ describe("SettingsSync", () => {
       expect(
         screen.getByText(/Couldn't start sync, so it's been turned back off/),
       ).toBeTruthy();
+
+      // The status line must refetch on failure too, not just success —
+      // otherwise it can keep showing a stale pre-attempt read.
+      await waitFor(() => expect(mocks.syncStatus).toHaveBeenCalledTimes(2));
     });
   });
 });
