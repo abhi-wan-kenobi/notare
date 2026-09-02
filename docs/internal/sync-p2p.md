@@ -3604,3 +3604,191 @@ section rather than silently changing the conclusion.
   teardown panic after its final `===` line. Benign, and both runs printed
   every `[conv]`/`[FINDING]` line before it.
 - Nothing here runs off linux/x86_64, unchanged from §22.8.
+
+## 26. Table-proofs lane, batch 3a — `calendars` + `events`: NO-GO (2026-09-02)
+
+Proof: `crates/sync-p2p/examples/sync_calendar_schema.rs`
+Run: `cargo run -p sync-p2p --example sync_calendar_schema --features from-source`
+
+Same defect class as §25, but it will fire far more often, because the
+duplicating write is not a user action — it is the calendar poller, and it
+runs automatically on every device.
+
+### 26.1 The identity is in a non-primary column
+
+Both tables are a **local cache of provider state**. The provider's real
+identity lives in a non-PK column while the primary key is a locally-minted
+`crypto.randomUUID()`:
+
+| Table | Real identity | Primary key |
+|---|---|---|
+| `calendars` | `tracking_id_calendar` | `stored?.id ?? id()` — `services/calendar/storage.ts:222` |
+| `events` | `tracking_id_event` | `const eventId = id()` — `services/calendar/storage.ts:509` |
+
+In both cases the lookup that would reuse an existing id (`stored`, and the
+`eventKey(calendarId, tracking_id_event)` diff behind `events.toAdd`)
+consults **local** rows only. A second device polling the same account
+finds nothing locally for that tracking id and mints its own key.
+
+### 26.2 Measured
+
+A laptop and a desktop both signed into one Google account, disconnected
+from each other, both polling — the ordinary case:
+
+```
+[FINDING] calendars DID NOT dedup: provider calendar "provider-cal-personal"
+          exists TWICE after merge on both nodes (["cal-uuid-a", "cal-uuid-b"])
+[FINDING] events DID NOT dedup: provider event "provider-evt-review" exists
+          TWICE after merge on both nodes (["evt-uuid-a", "evt-uuid-b"])
+```
+
+The user would see the same meeting twice in their agenda, permanently, and
+once per additional device.
+
+As in §25, the cause is isolated rather than assumed: scenario 3 shows a
+singly-ingested event edited concurrently on both devices merges correctly
+per column (`title="Standup (moved)"`, `location="Room 4"`, both survived),
+and scenario 4 shows the tombstone column added by
+`20260711000000_calendar_event_tombstones.sql` converges without
+resurrection. The rows are fine. The *ingest* is what duplicates.
+
+### 26.3 Verdict and the deeper reason
+
+**NO-GO for both.** The narrow fix is the same as §25.4 — derive the PK
+from the provider tracking id (plus `connection_id`, since the same
+provider id can appear under two accounts).
+
+But there is a design point worth recording before anyone implements that:
+**this data is already replicated by the calendar provider.** Every device
+independently pulls the same feed from Google or Outlook. Syncing these two
+tables device-to-device duplicates a replication path that already exists,
+rather than adding one that is missing — and it is the reason the defect
+exists at all, since two independent ingests of the same upstream object is
+precisely the situation the local id-minting cannot handle. The columns
+that are *genuinely* local (`events.note`, `calendars.enabled`) are the only
+part with a real case for syncing, and they would be better served by a
+separate table keyed by tracking id than by syncing the provider cache.
+
+## 27. Table-proofs lane, batch 3b — `templates`: GO, and §23.7's DELETE gap closed (2026-09-02)
+
+Proof: `crates/sync-p2p/examples/sync_templates_schema.rs`
+Run: `cargo run -p sync-p2p --example sync_templates_schema --features from-source`
+
+`SYNCED_TABLES` 7 → **8**.
+
+### 27.1 The first real hard DELETE in this suite
+
+Every table proven before this one soft-deletes: it carries `deleted_at`
+and "removal" is an UPDATE, so CLS resolves it by ordinary per-column LWW.
+§23.7 recorded that as a limitation and named the missing case in as many
+words — *"give `session_tags` a real removal path (a SQL `DELETE`) once one
+exists in the app."*
+
+`templates` is that table. It has **no `deleted_at` column at all**
+(`20260413020000_templates.sql`) and removal is
+`DELETE FROM templates WHERE id = ?` (`crates/db-app/src/template_ops.rs:75`).
+
+Result: **a real hard DELETE propagates to the peer and stays deleted**
+across further sync rounds, on both nodes. That closes the §23.7 gap for
+real DELETEs generally, not just for this table.
+
+### 27.2 Why it does not duplicate, unlike §25/§26
+
+Two different reasons, both worth stating because they are the general
+lesson of batches 2 and 3:
+
+- **Built-in templates** are seeded by
+  `20260524000000_default_templates.sql` with **fixed, content-derived ids**
+  (`default-board-meeting`, `default-daily-standup`, ...) via
+  `INSERT OR IGNORE`. Every device that runs migrations produces the *same*
+  primary keys, so independent seeding on two devices converges to one row
+  per template. Measured: both nodes independently seeded, then converged to
+  exactly `["default-board-meeting", "default-daily-standup"]` — not a
+  duplicate pair. This is the direct contrast with §26, where independent
+  creation of the same object forks.
+- **User templates** go through `upsert_template` — `INSERT ... ON
+  CONFLICT(id) DO UPDATE` with a caller-supplied id — and the app has no
+  find-or-create-by-title path, so a user template is minted on one device
+  and replicated. The `organizations` shape from §25.
+
+Per-column merge also holds: A retitled while B rewrote the description,
+and both edits survived.
+
+### 27.3 The `icon_json` ALTER is load-bearing
+
+`20260712170000_template_icons.sql` adds `icon_json TEXT NOT NULL DEFAULT
+'{...}'`. That is not cosmetic for sync:
+`registered_tables_match_cloudsync_schema_requirements` requires every
+non-PK `NOT NULL` column to declare a DEFAULT, and this one only satisfies
+it because the ALTER supplies one. The proof replays create-then-ALTER in
+migration order rather than hand-merging, per the §23.2 convention.
+
+### 27.4 Caveat — a fresh device's re-seed resurrects a deleted default
+
+This one has product consequences and is **not** a CRDT failure, so it is a
+caveat on enabling rather than a blocker.
+
+Scenario 5: A deletes `default-daily-standup` (a real DELETE), both nodes
+agree it is gone. Then B replays the default-template seed — which is
+exactly what a **fresh device** does on first launch, since
+`INSERT OR IGNORE` is evaluated per id against a database that has never
+seen that row. Measured:
+
+```
+[RESULT] re-seed vs prior hard DELETE converged to present=true on BOTH nodes
+```
+
+The nodes converge — this is not divergence — but the template is **back**.
+So once `templates` is synced, deleting a built-in template is undone the
+first time the user pairs a new device, and the resurrection propagates to
+every device.
+
+Today, without sync, this quirk is invisible: each install seeds its own
+copy and they are independent. Enabling this table is what makes it
+cross-device, so enabling it is what creates the user-visible bug.
+
+The fix belongs in the seeder, not in sync: seed **once per database**
+behind a marker (an `app_settings` row, or any "defaults seeded" flag)
+instead of `INSERT OR IGNORE` per id, so a device that joins an existing
+sync set does not re-assert rows the set has already deleted. Recorded here
+as the follow-up; `templates` is enabled on the judgement that the table
+itself converges correctly on every axis tested and the defect is in
+migration seeding logic that is independently wrong. **That is a product
+call and a reviewer may reasonably reverse it** — reverting means dropping
+`"templates"` from `SYNCED_TABLES` and the two guard-test assertions.
+
+## 28. Table-proofs lane — the three dormant tables (2026-09-02)
+
+`daily_notes`, `session_attachments` and `entity_mentions` are registered
+in `CLOUDSYNC_TABLE_REGISTRY` and migrated, but they are **not written by
+the running app**. From the §25.1 triage, confirmed by grepping every
+`INSERT` site outside tests:
+
+| Table | Only writer |
+|---|---|
+| `daily_notes` | `crates/db-app/src/legacy_import.rs:930` |
+| `session_attachments` | `crates/db-app/src/legacy_import.rs:868` |
+| `entity_mentions` | nothing, anywhere |
+
+Consequences for this effort:
+
+- There is **no real app write pattern to model** for any of them, so a
+  §17-style proof would be testing a fixture of our own invention. Every
+  finding in §23–§27 came from matching the app's actual SQL and id
+  provenance; without a write path there is nothing to match, and a proof
+  would establish only that CLS converges rows in general — which §17
+  already established.
+- They stay **disabled**, but for a third reason distinct from the other
+  two: not "unproven" (§23) and not "proven unsafe" (§25/§26), simply
+  **unused**. Enabling them would sync a table nothing writes.
+- `session_attachments` carries a further caveat if it is ever revived: it
+  references attachment files on disk. Syncing the table without syncing
+  the blobs would replicate rows pointing at files the peer does not have.
+  That is a separate design problem, and the §20.10 blob-log GC item is
+  adjacent to it.
+
+The honest verdict is that these three should be resolved by deciding
+whether the features that write them are coming back, not by writing
+proofs. If `daily_notes` gains a real UI write path, it needs a proof at
+that point, and the write pattern it lands with — deterministic id or
+random — is what will decide whether it can be enabled at all.

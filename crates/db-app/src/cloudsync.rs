@@ -24,6 +24,24 @@ use hypr_db_core::CloudsyncTableSpec;
 /// distinct primary keys. Do not add either without first making their ids
 /// deterministic — `crates/sync-p2p/examples/sync_contacts_schema.rs`
 /// scenarios 3 and 5 fail loudly if that changes.
+///
+/// §26 found the same duplication defect in `calendars` and `events`, which
+/// are worse: the duplicating write is the calendar poller, not a user
+/// action, so it fires on every device automatically. Both keep the
+/// provider's real identity in a non-PK column (`tracking_id_calendar` /
+/// `tracking_id_event`) while the PK is a local
+/// `crypto.randomUUID()`. NO-GO for both.
+///
+/// §27 added `templates`, which is safe for the opposite reason: its
+/// built-in rows are seeded with fixed content-derived ids
+/// (`default-daily-standup`, ...), so independent seeding on two devices
+/// converges to one row instead of forking. It is also the first table here
+/// with a real hard `DELETE` (`template_ops.rs:75`; the table has no
+/// `deleted_at`), which §23.7 had named as an untested case — it
+/// propagates without resurrection. One caveat recorded in §27.4: a fresh
+/// device's migration re-seed resurrects a default template deleted
+/// elsewhere. That is a seeder bug, not a CRDT one, but enabling this table
+/// makes it cross-device.
 const SYNCED_TABLES: &[&str] = &[
     "sessions",
     "session_documents",
@@ -32,6 +50,7 @@ const SYNCED_TABLES: &[&str] = &[
     "tags",
     "session_tags",
     "organizations",
+    "templates",
 ];
 
 static CLOUDSYNC_TABLE_REGISTRY: LazyLock<Vec<CloudsyncTableSpec>> = LazyLock::new(|| {
