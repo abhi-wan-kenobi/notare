@@ -42,6 +42,16 @@ use hypr_db_core::CloudsyncTableSpec;
 /// device's migration re-seed resurrects a default template deleted
 /// elsewhere. That is a seeder bug, not a CRDT one, but enabling this table
 /// makes it cross-device.
+///
+/// §29 added `chat_groups` + `chat_messages`, the last two live tables.
+/// Both use `ON CONFLICT(id) DO UPDATE` with an id minted once on the
+/// creating device and no dedup guard, so they do not fork. Concurrent
+/// appends to one conversation both survive — two different messages
+/// correctly stay two messages — and both nodes agree on the rendered
+/// transcript order. One caveat in §29.3: `deleteChatMessagesExcept`'s
+/// retained set is computed from the writing device's local view, so a
+/// regenerate cannot prune a message it has never seen. App logic, not
+/// convergence.
 const SYNCED_TABLES: &[&str] = &[
     "sessions",
     "session_documents",
@@ -51,6 +61,8 @@ const SYNCED_TABLES: &[&str] = &[
     "session_tags",
     "organizations",
     "templates",
+    "chat_groups",
+    "chat_messages",
 ];
 
 static CLOUDSYNC_TABLE_REGISTRY: LazyLock<Vec<CloudsyncTableSpec>> = LazyLock::new(|| {

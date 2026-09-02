@@ -598,6 +598,8 @@ mod tests {
                 "session_tags",
                 "organizations",
                 "templates",
+                "chat_groups",
+                "chat_messages",
             ])
         );
 
@@ -614,6 +616,8 @@ mod tests {
         assert!(cloudsync_alter_guard_required("session_tags"));
         assert!(cloudsync_alter_guard_required("organizations"));
         assert!(cloudsync_alter_guard_required("templates"));
+        assert!(cloudsync_alter_guard_required("chat_groups"));
+        assert!(cloudsync_alter_guard_required("chat_messages"));
 
         // §25 and §26 proved these four are unsafe to enable, not merely
         // unproven: each duplicates the entity under concurrent creation,

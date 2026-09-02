@@ -3792,3 +3792,109 @@ whether the features that write them are coming back, not by writing
 proofs. If `daily_notes` gains a real UI write path, it needs a proof at
 that point, and the write pattern it lands with — deterministic id or
 random — is what will decide whether it can be enabled at all.
+
+## 29. Table-proofs lane, batch 4 — the chat tables, and every live table adjudicated (2026-09-02)
+
+Proof: `crates/sync-p2p/examples/sync_chat_schema.rs`
+Run: `cargo run -p sync-p2p --example sync_chat_schema --features from-source`
+
+`SYNCED_TABLES` 8 → **10**. With this batch **every table the app actually
+writes has a verdict**: 10 enabled, 4 proven unsafe, 3 unused. Nothing in
+the registry is now disabled merely for want of a proof.
+
+### 29.1 Why they are safe
+
+Both use `INSERT ... ON CONFLICT(id) DO UPDATE` with a caller-supplied id
+minted by `id()` — `chat/store/use-chat-actions.ts:76` for `messageId`,
+`:88` for `currentGroupId` — and **no dedup guard**. There is no
+find-or-create-by-title path for a chat, so a group and a message are each
+minted once on the creating device and replicated. That is the
+`organizations` (§25) / user-`templates` (§27) shape, not the
+locally-guarded shape that forks in §25/§26.
+
+Verified: group + first message A→B, reply B→A with order preserved,
+concurrent per-column merge on one message row (A rewrote `content` while B
+flipped `status` to `streaming` — both survived), group tombstone with no
+resurrection, multi-row catch-up.
+
+### 29.2 Concurrent appends: two messages correctly stay two messages
+
+The chat-specific case worth more than row convergence. Both devices append
+a new message to the same conversation while disconnected. These are
+genuinely two different messages, so both surviving is *correct* — the
+question is whether the two devices then render the same conversation,
+since a chat is read as an ordered sequence (`ORDER BY created_at, id`).
+
+They do:
+
+```
+[conv] concurrent appends both survived and BOTH nodes agree on the
+       transcript order (["msg-1", "msg-2", "msg-3a", "msg-3b"])
+```
+
+This is the distinction §25 and §26 turn on, stated positively: forking is
+only a defect when the two rows are meant to be *one entity*. Two messages
+are two messages.
+
+### 29.3 Caveat — a regenerate cannot prune what it has never seen
+
+`deleteChatMessagesExcept` (`apps/desktop/src/chat/store/queries.ts:214-232`)
+is the regenerate / edit-and-resubmit path. It bulk-tombstones every live
+message in a group whose id is `NOT IN` a retained set:
+
+```sql
+UPDATE chat_messages SET deleted_at = ?, updated_at = ?
+WHERE chat_group_id = ? AND deleted_at IS NULL
+  AND id NOT IN (SELECT value FROM json_each(?))
+```
+
+That retained set is computed from the writing device's **local** view of
+the conversation — the same local-view assumption behind §25's `NOT EXISTS`
+defect, in a different disguise. A message another device appended
+concurrently was never in that view, so it is neither retained nor
+tombstoned, and it survives the prune.
+
+Measured. Baseline: both nodes agree on a 4-message transcript. Then,
+disconnected, A appends `msg-4a` (an assistant reply) while B regenerates
+from `msg-1`:
+
+```
+[RESULT] after regenerate-vs-concurrent-append, BOTH nodes agree on:
+         ["msg-1", "msg-4a"]
+```
+
+Both nodes converge — this is not divergence — but the surviving
+transcript is incoherent: the user re-asked their question and now sees it
+followed by a stray answer belonging to the branch they discarded.
+
+**Why this is a caveat and not a NO-GO.** Nothing is duplicated and nothing
+diverges; the two enabled tables satisfy every convergence property tested.
+The defect is in a `NOT IN`-over-a-local-snapshot predicate in app logic,
+and it is *already* wrong on a single device in the presence of any
+concurrent writer. Unlike §25/§26 there is no id scheme that fixes it,
+because the operation is inherently "discard a branch" and the schema has
+no notion of a branch.
+
+The fix, if it is wanted, is to make the prune predicate positive rather
+than exclusionary — give messages a parent/branch id and delete *that*
+branch, or at minimum scope the delete to `created_at <= ` the newest
+message the writer had actually seen, so a message from the future is left
+alone instead of silently inherited. Recorded as a follow-up, not attempted
+here: it is a chat-feature design change, not a sync change.
+
+### 29.4 The registry, complete
+
+| Verdict | Count | Tables |
+|---|---|---|
+| **Enabled** | 10 | `sessions`, `session_documents`, `transcripts`, `action_items`, `tags`, `session_tags`, `organizations`, `templates`, `chat_groups`, `chat_messages` |
+| **Proven unsafe** (§25, §26) | 4 | `humans`, `session_participants`, `calendars`, `events` |
+| **Unused — no live write path** (§28) | 3 | `daily_notes`, `session_attachments`, `entity_mentions` |
+
+17 registered, all adjudicated. The four unsafe ones each need a
+deterministic primary key before they can be reconsidered (§25.4, §26.3);
+the three unused ones need a decision about whether their features are
+coming back, not a proof (§28).
+
+Same known noise as §17/§23/§25/§27: the example exits with the
+`sqlx-sqlite-worker` teardown panic after its final `===` line, benign, and
+every `[conv]`/`[FINDING]` line printed before it.
