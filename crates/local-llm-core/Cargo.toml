@@ -5,16 +5,43 @@ edition = "2024"
 
 [features]
 specta = ["dep:specta"]
+# Opt-in, default OFF, mirroring the `plugins/local-stt` precedent
+# (`voxtral-llama` / `voxtral-llama-cuda`): `llama-cpp-2` builds C++ and is
+# expensive, so a default build must stay byte-identical to today's without
+# it. `cuda`/`vulkan` forward into the engine crate's own GPU features via
+# the `?` optional-dependency syntax, so enabling them alone (without
+# `llama`) is a no-op rather than a build error.
+llama = [
+  "dep:hypr-local-llm-llama",
+  "dep:axum",
+  "dep:tokio-stream",
+  "dep:tower-http",
+  "dep:serde_json",
+]
+cuda = ["hypr-local-llm-llama?/cuda"]
+vulkan = ["hypr-local-llm-llama?/vulkan"]
 
 [dependencies]
 hypr-file = { workspace = true }
 hypr-gguf = { workspace = true }
 hypr-lmstudio = { workspace = true }
+hypr-local-llm-llama = { workspace = true, optional = true }
 hypr-local-model = { workspace = true }
 
+axum = { workspace = true, optional = true }
 dirs = { workspace = true }
 serde = { workspace = true }
+serde_json = { workspace = true, optional = true }
 thiserror = { workspace = true }
-tokio = { workspace = true }
+tokio = { workspace = true, features = ["rt", "macros", "sync", "net"] }
+tokio-stream = { workspace = true, optional = true }
+tower-http = { workspace = true, features = ["cors"], optional = true }
+tracing = { workspace = true }
 
 specta = { workspace = true, optional = true }
+
+[dev-dependencies]
+reqwest = { workspace = true, features = ["json"] }
+serde_json = { workspace = true }
+tempfile = { workspace = true }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "time"] }

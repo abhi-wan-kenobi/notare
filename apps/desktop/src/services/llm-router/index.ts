@@ -21,11 +21,15 @@
  * the model-construction path is unchanged (secrets stay on store2/keyring).
  */
 
+import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
+import { useQuery } from "@tanstack/react-query";
+import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
 import { useMemo } from "react";
 
 import type { CharTask } from "@hypr/api-client";
 
 import { type CapsCheck, checkCaps, type LlmTask } from "./capabilities";
+import { discoverEmbeddedModel, EMBEDDED_PROVIDER_ID } from "./local-discovery";
 
 import { useLanguageModel, useLLMConnection } from "~/ai/hooks";
 import { type ProviderId, PROVIDERS } from "~/settings/ai/llm/shared";
@@ -91,7 +95,11 @@ export type ResolutionFailure = {
 
 export type ResolveResult = Resolution | ResolutionFailure;
 
-const LOCAL_PROVIDER_IDS: ReadonlySet<string> = new Set(["ollama", "lmstudio"]);
+const LOCAL_PROVIDER_IDS: ReadonlySet<string> = new Set([
+  "ollama",
+  "lmstudio",
+  EMBEDDED_PROVIDER_ID,
+]);
 const HOSTED_PROVIDER_IDS: ReadonlySet<string> = new Set(["hyprnote"]);
 
 /** RFC1918 / loopback / mDNS-local hosts count as local endpoints. */
@@ -239,16 +247,59 @@ export type TaskModel = {
 };
 
 /**
+ * Builds the AI-SDK model directly for a fallback-discovered candidate
+ * (currently only the embedded local LLM). `useLanguageModel` can't be
+ * reused here — it always builds from the user's explicit `conn`, and the
+ * embedded provider's `baseUrl` is neither persisted settings nor a static
+ * `PROVIDERS` entry (it's an OS-assigned port that only exists once the
+ * in-process server has actually started). No auth, no thinking-middleware
+ * special-casing (that's only for `hyprnote`) — a plain OpenAI-compatible
+ * client against the embedded server's own `/v1`.
+ */
+function embeddedLanguageModel(modelId: string, baseUrl: string) {
+  return createOpenAICompatible({
+    fetch: tauriFetch,
+    name: EMBEDDED_PROVIDER_ID,
+    baseURL: baseUrl,
+  }).chatModel(modelId);
+}
+
+/**
  * React binding: resolve `task` against the user's current selection and
  * construct the AI-SDK model (same construction path as before — this hook
  * wraps `useLanguageModel`, it does not reimplement providers or touch
  * secrets). Returns `model: null` whenever resolution fails, with the
  * structured `resolution` explaining why.
+ *
+ * The embedded local LLM participates as a `localFallbacks` candidate
+ * (discovered via `server_url()`, not a port probe — see
+ * `discoverEmbeddedModel`'s doc comment), the same extension point
+ * `ResolveContext` already had for ollama/LM Studio-style discovery. It is
+ * never explicit, so invariant 1 (no silent cloud fallback) is unaffected;
+ * when the server isn't running, `embeddedCandidates` is empty and
+ * resolution behaves exactly as it did before this candidate existed.
  */
 export function useTaskModel(task: LlmTask): TaskModel {
   const { conn } = useLLMConnection();
   const { llm_caps_override } = useConfigValues(["llm_caps_override"] as const);
   const model = useLanguageModel(asCharTask(task));
+
+  // Short poll, not a one-shot fetch: the server can finish starting (or a
+  // freshly-downloaded model can come online) after this hook has already
+  // rendered once. Local IPC to the app's own sidecar plugin — cheap enough
+  // to poll every few seconds for the life of the component. Relies on
+  // TanStack Query v5's default `structuralSharing` (unmodified anywhere in
+  // this codebase): `.data` keeps the same array/object reference across
+  // polls whose result is deep-equal to the previous one, so the `useMemo`
+  // below — and the `embeddedLanguageModel` call inside it — only actually
+  // recomputes when the server's address genuinely changes, not on every
+  // 5-second tick.
+  const { data: embeddedCandidates = [] } = useQuery({
+    queryKey: ["llm-router", "embedded-local-llm-discovery"],
+    queryFn: discoverEmbeddedModel,
+    refetchInterval: 5_000,
+    staleTime: 2_000,
+  });
 
   return useMemo(() => {
     const providerDef = conn
@@ -265,22 +316,44 @@ export function useTaskModel(task: LlmTask): TaskModel {
       // conn is only ever populated from settings the user wrote (see
       // ResolveContext docs); discovery-sourced candidates must NOT set this.
       selectionIsExplicit: conn !== null,
+      localFallbacks: embeddedCandidates,
       capsUserOverride: llm_caps_override === true,
     });
 
+    const embeddedMatch =
+      resolution.status === "ok" &&
+      resolution.providerId === EMBEDDED_PROVIDER_ID
+        ? embeddedCandidates.find((c) => c.providerId === EMBEDDED_PROVIDER_ID)
+        : undefined;
+
     const target: ModelTarget | null =
-      resolution.status === "ok" && conn
+      resolution.status === "ok" &&
+      conn &&
+      resolution.providerId === conn.providerId
         ? {
             providerId: conn.providerId,
             modelId: conn.modelId,
             baseUrl: conn.baseUrl ?? providerDef?.baseUrl ?? "",
           }
-        : null;
+        : embeddedMatch
+          ? {
+              providerId: embeddedMatch.providerId,
+              modelId: embeddedMatch.modelId,
+              baseUrl: embeddedMatch.baseUrl ?? "",
+            }
+          : null;
+
+    const resolvedModel = embeddedMatch
+      ? embeddedLanguageModel(
+          embeddedMatch.modelId,
+          embeddedMatch.baseUrl ?? "",
+        )
+      : model;
 
     return {
-      model: resolution.status === "ok" ? model : null,
+      model: resolution.status === "ok" ? resolvedModel : null,
       resolution,
       target,
     };
-  }, [conn, task, model, llm_caps_override]);
+  }, [conn, task, model, llm_caps_override, embeddedCandidates]);
 }

@@ -1,0 +1,8 @@
+[package]
+name = "llama-cpp-backend"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+llama-cpp-2 = { version = "0.1.151" }
+thiserror = { workspace = true }

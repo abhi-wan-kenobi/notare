@@ -15,6 +15,7 @@ cuda = ["llama-cpp-2/cuda"]
 
 [dependencies]
 hypr-language = { workspace = true }
+hypr-llama-cpp-backend = { workspace = true }
 hypr-model-manager = { workspace = true }
 hypr-transcribe-core = { workspace = true }
 

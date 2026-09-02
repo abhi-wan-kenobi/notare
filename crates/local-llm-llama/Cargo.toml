@@ -1,0 +1,21 @@
+[package]
+name = "local-llm-llama"
+version = "0.1.0"
+edition = "2024"
+
+[features]
+default = []
+cuda = ["llama-cpp-2/cuda"]
+vulkan = ["llama-cpp-2/vulkan"]
+
+[dependencies]
+hypr-llama-cpp-backend = { workspace = true }
+
+encoding_rs = "0.8"
+llama-cpp-2 = { version = "0.1.151", features = ["llguidance"] }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }

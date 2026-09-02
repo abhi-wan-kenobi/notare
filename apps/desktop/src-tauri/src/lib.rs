@@ -319,11 +319,20 @@ pub async fn main() {
                 });
             }
 
+            // Best-effort embedded local LLM server start: a no-op (logged,
+            // not surfaced) when its one shipped model isn't downloaded yet
+            // (the ordinary first-run state — "download on first use", not a
+            // failure) or when this build doesn't compile in the `llama`
+            // engine feature. Spawned rather than awaited because a model
+            // load takes several seconds and must not delay app startup;
+            // the frontend discovers readiness by polling `server_url()`,
+            // the same fire-and-forget-plus-poll shape as model downloads.
             {
                 use tauri_plugin_local_llm::LocalLlmPluginExt;
-                if false {
-                    app_handle.local_llm().start_server();
-                }
+                let handle = app_handle.clone();
+                tauri::async_runtime::spawn(async move {
+                    handle.local_llm().start_server().await;
+                });
             }
 
             Ok(())
