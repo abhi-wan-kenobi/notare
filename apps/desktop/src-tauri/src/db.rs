@@ -1,8 +1,18 @@
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
 use hypr_db_core::Db;
 
 const DB_FILENAME: &str = "app.db";
+
+/// Set when the database had to be opened WITHOUT cloudsync because loading
+/// the extension failed.
+///
+/// The db is opened before the tracing plugin is registered, so an error there
+/// has nowhere to go — a `tracing::error!` at that point is discarded, and on
+/// Windows `windows_subsystem = "windows"` means stderr is not visible either.
+/// Stashing the reason here lets `setup()` log it once tracing exists, so the
+/// degrade is diagnosable instead of silent.
+pub static CLOUDSYNC_DEGRADED: OnceLock<String> = OnceLock::new();
 
 pub async fn open_desktop_db(identifier: &str) -> Arc<Db> {
     let db_path = desktop_db_dir(identifier).map(|dir| {
@@ -10,9 +20,23 @@ pub async fn open_desktop_db(identifier: &str) -> Arc<Db> {
         dir.join(DB_FILENAME)
     });
 
-    let db = tauri_plugin_db::open_app_db(db_path.as_deref())
-        .await
-        .expect("failed to open app database");
+    // A cloudsync extension that fails to load must not make the notes app
+    // unlaunchable. Retrying with cloudsync off is also how the two failure
+    // modes are told apart without inspecting error types: if the retry
+    // succeeds the extension was at fault and sync degrades to off; if it
+    // fails too the database itself is broken, which is genuinely fatal.
+    let db = match tauri_plugin_db::open_app_db(db_path.as_deref()).await {
+        Ok(db) => db,
+        Err(error) if tauri_plugin_db::cloudsync_available() => {
+            let _ = CLOUDSYNC_DEGRADED.set(error.to_string());
+            eprintln!("failed to open app database with cloudsync; retrying without it: {error}");
+
+            tauri_plugin_db::open_app_db_with_cloudsync(db_path.as_deref(), false)
+                .await
+                .expect("failed to open app database")
+        }
+        Err(error) => panic!("failed to open app database: {error}"),
+    };
 
     Arc::new(db)
 }

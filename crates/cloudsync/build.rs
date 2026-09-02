@@ -256,4 +256,64 @@ fn main() {
         "cargo:rustc-env=CLOUDSYNC_FROM_SOURCE_SO={}",
         so_path.display()
     );
+
+    stage_for_bundling(&so_path, so_file_name);
+}
+
+/// Copy the freshly-built extension somewhere the Tauri bundler can package it,
+/// so a from-source build is actually distributable.
+///
+/// Without this, `bundled_extension_path()` resolves to the `OUT_DIR` copy,
+/// whose path is baked in at compile time. That works for `cargo run`/`cargo
+/// test` ON the build machine and fails on every installed copy, because
+/// `OUT_DIR` is not packaged and does not exist on a user's disk — the app then
+/// cannot open its database at all.
+///
+/// `OUT_DIR` is hash-suffixed and so cannot be named in `tauri.conf.json`'s
+/// static `resources` map, and a target-dir-relative path breaks the moment
+/// `CARGO_TARGET_DIR` is overridden (the Windows Vulkan build sets it to
+/// `D:\nb`). Hence a fixed destination under the desktop crate, computed from
+/// this crate's own manifest dir.
+///
+/// This deliberately writes outside `OUT_DIR`, into another crate's tree. The
+/// wart is accepted: the destination is gitignored, it only happens under the
+/// opt-in `from-source` feature, and the tidier alternative — passing the path
+/// through `links`/`DEP_` metadata — does not work, because `desktop` is not a
+/// DIRECT dependent of this crate and cargo only exposes that metadata to
+/// direct dependents.
+///
+/// Failure here is warn-not-fatal on purpose: a dev build never needs the
+/// staged copy (it resolves straight from `OUT_DIR`), so a staging problem must
+/// not break every developer's build. A bundle missing the file instead fails
+/// visibly at load time, which is now a degrade rather than a crash.
+fn stage_for_bundling(so_path: &PathBuf, so_file_name: &str) {
+    let manifest = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap_or_default());
+
+    let Some(workspace) = manifest.parent().and_then(|dir| dir.parent()) else {
+        println!("cargo:warning=cloudsync: cannot locate workspace root; skipping bundle staging");
+        return;
+    };
+
+    let dest_dir = workspace
+        .join("apps")
+        .join("desktop")
+        .join("src-tauri")
+        .join("resources")
+        .join("cloudsync");
+
+    if let Err(error) = std::fs::create_dir_all(&dest_dir) {
+        println!(
+            "cargo:warning=cloudsync: cannot create {}: {error}",
+            dest_dir.display()
+        );
+        return;
+    }
+
+    let dest = dest_dir.join(so_file_name);
+    if let Err(error) = std::fs::copy(so_path, &dest) {
+        println!(
+            "cargo:warning=cloudsync: cannot stage {}: {error}",
+            dest.display()
+        );
+    }
 }

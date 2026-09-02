@@ -373,20 +373,38 @@ fn bind_params<'q>(
     query
 }
 
+/// Whether this build would attempt to load the cloudsync extension.
+///
+/// SYNC-5: cloudsync is only loadable in the from-source build, which the
+/// `sync` feature turns on, on the app's sync-platform gate (§22). Every
+/// other configuration must keep opening exactly as before — no extension,
+/// no env vars. Must match the `sync_platform` cfg exactly (previously
+/// checked only `target_os = "linux"`, without the arch/OS set the dependency
+/// graph actually gates on — a latent `cloudsync_enabled: true` claim on a
+/// target where nothing loads).
+pub const fn cloudsync_available() -> bool {
+    cfg!(all(feature = "sync", sync_platform))
+}
+
 pub async fn open_app_db(db_path: Option<&Path>) -> Result<Db> {
+    open_app_db_with_cloudsync(db_path, cloudsync_available()).await
+}
+
+/// Open the app db with cloudsync explicitly on or off.
+///
+/// The `false` case is the recovery path: a cloudsync build whose extension
+/// cannot be loaded must still be able to open the database and run as a
+/// plain local notes app. Reserving that decision for the caller keeps the
+/// distinction honest — if this fails with cloudsync OFF too, the database
+/// itself is broken and that is genuinely fatal.
+pub async fn open_app_db_with_cloudsync(
+    db_path: Option<&Path>,
+    cloudsync_enabled: bool,
+) -> Result<Db> {
     let storage = match db_path {
         Some(path) => DbStorage::Local(path),
         None => DbStorage::Memory,
     };
-
-    // SYNC-5: cloudsync is only loadable in the from-source build, which the
-    // `sync` feature turns on, on the app's sync-platform gate (§22). Every
-    // other configuration must keep opening exactly as before — no
-    // extension, no env vars. Must match the `sync_platform` cfg exactly
-    // (previously checked only `target_os = "linux"`, without the arch/OS
-    // set the dependency graph actually gates on — a latent
-    // `cloudsync_enabled: true` claim on a target where nothing loads).
-    let cloudsync_enabled = cfg!(all(feature = "sync", sync_platform));
 
     let db = Db::open(DbOpenOptions {
         storage,
