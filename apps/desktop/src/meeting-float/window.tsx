@@ -24,13 +24,16 @@ import {
 import { useConfigValues } from "~/shared/config";
 
 /**
- * Webview-based floating meeting widget used on Windows/Linux.
+ * Webview-based floating meeting widget used on EVERY platform.
  *
- * macOS renders a native NSPanel instead; on other platforms the Rust side of
- * the windows plugin creates a small always-on-top webview window pointing at
- * `/app/floating` and streams `FloatingBarStateEvent`s to it. Buttons talk
- * back to the main window through the same plugin events the native macOS bar
- * uses (`floatingBarStop`, `floatingBarOpenMain`, `floatingBarSettingsChange`).
+ * The Rust side of the windows plugin creates a small always-on-top webview
+ * window pointing at `/app/floating` and streams `FloatingBarStateEvent`s to
+ * it. Buttons talk back to the main window through plugin events
+ * (`floatingBarStop`, `floatingBarOpenMain`, `floatingBarSettingsChange`).
+ *
+ * This previously said macOS rendered a native NSPanel instead. It has not
+ * since Track C: the Swift path in `window::floating_bar::macos_native_swift`
+ * is gated off and never reached — see the module comment there.
  *
  * Design: docs/DESIGN-DIRECTION.md §3b — the orb inside a glass bar, with an
  * expandable caption bubble underneath. When the OS window could not be
@@ -206,6 +209,10 @@ export function FloatingBarContent({
             className="bg-rec animate-orb-pulse shadow-glow-rec size-1.5 shrink-0 rounded-full motion-reduce:animate-none"
           />
         )}
+        <RecordingMeter
+          elapsedSeconds={state.elapsedSeconds}
+          wordCount={state.wordCount}
+        />
         <span
           data-tauri-drag-region
           className="min-w-0 flex-1 truncate text-[13px] font-medium"
@@ -251,6 +258,50 @@ export function FloatingBarContent({
         />
       ) : null}
     </div>
+  );
+}
+
+/**
+ * The weighted timer + word count for the default (Notare) bar
+ * (docs/DESIGN-DIRECTION.md §3b, R2 header: red pulse dot + weighted timer +
+ * title). The red dot and the hover-revealed Stop/Open controls §3b also calls
+ * for already exist in the bar around this, so this adds only the two readouts
+ * that were missing.
+ */
+function RecordingMeter({
+  elapsedSeconds,
+  wordCount,
+}: {
+  elapsedSeconds: number;
+  wordCount: number;
+}) {
+  const { t } = useLingui();
+  const elapsed = formatWeightedElapsed(elapsedSeconds);
+
+  return (
+    <span
+      data-testid="recording-meter"
+      data-tauri-drag-region
+      className="flex shrink-0 items-baseline gap-1.5"
+    >
+      <span
+        // `tabular-nums` is mandatory on timers (§103): proportional digits
+        // reflow the whole bar on every tick.
+        className="text-muted-foreground text-[13px] tabular-nums"
+        aria-label={t`Recording time`}
+      >
+        {elapsed.dim}
+        <span className="text-foreground font-semibold">{elapsed.bold}</span>
+      </span>
+      {wordCount > 0 ? (
+        <span
+          data-testid="recording-word-count"
+          className="text-muted-foreground/70 text-[11px] tabular-nums"
+        >
+          {wordCount}
+        </span>
+      ) : null}
+    </span>
   );
 }
 
@@ -439,6 +490,12 @@ function ClassicFloatingBar({
             {state.title}
           </span>
         ) : null}
+        <ClassicRecordingMeter
+          elapsedSeconds={state.elapsedSeconds}
+          wordCount={state.wordCount}
+          isError={isError}
+          palette={palette}
+        />
         <ClassicStopButton
           amplitude={state.amplitude}
           isError={isError}
@@ -530,6 +587,97 @@ function withAlpha([r, g, b]: RGB, alpha: number): string {
  * ErrorMark when the bar is in the error state, and a "Stop" label + square
  * on hover. Ported from `FloatingBarView.swift` `audioControl` :299-334.
  */
+/**
+ * Split an elapsed-seconds count into the weighted timer's dim prefix and bold
+ * seconds (docs/DESIGN-DIRECTION.md §104: "dim `hh:mm`, bold `ss`"). Exported
+ * for tests — the hour rollover and the zero-pad are easy to get subtly wrong
+ * and are not otherwise observable without driving a live recording.
+ */
+export function formatWeightedElapsed(totalSeconds: number): {
+  dim: string;
+  bold: string;
+} {
+  const safe = Number.isFinite(totalSeconds)
+    ? Math.max(0, Math.floor(totalSeconds))
+    : 0;
+  const hours = Math.floor(safe / 3600);
+  const minutes = Math.floor((safe % 3600) / 60);
+  const seconds = safe % 60;
+  const bold = String(seconds).padStart(2, "0");
+
+  if (hours > 0) {
+    return { dim: `${hours}:${String(minutes).padStart(2, "0")}:`, bold };
+  }
+
+  return { dim: `${String(minutes).padStart(2, "0")}:`, bold };
+}
+
+/**
+ * The R2 recording meter: red dot + weighted timer + word count.
+ *
+ * Red is reserved exclusively for the recording state (§2), so the dot takes
+ * the error accent rather than a third colour when the session degrades — the
+ * bar already signals error through the stop button's mark.
+ */
+function ClassicRecordingMeter({
+  elapsedSeconds,
+  wordCount,
+  isError,
+  palette,
+}: {
+  elapsedSeconds: number;
+  wordCount: number;
+  isError: boolean;
+  palette: ClassicPalette;
+}) {
+  const { t } = useLingui();
+  const reducedMotion = usePrefersReducedMotion();
+  const accent = isError ? palette.errorAccent : palette.accent;
+  const elapsed = formatWeightedElapsed(elapsedSeconds);
+
+  return (
+    <div
+      data-testid="classic-recording-meter"
+      data-tauri-drag-region
+      className="flex shrink-0 items-center gap-1.5 pr-0.5 pl-1.5"
+    >
+      <span
+        aria-hidden
+        data-testid="classic-recording-dot"
+        className={cn([
+          "size-1.5 shrink-0 rounded-full",
+          !reducedMotion && "animate-pulse",
+        ])}
+        style={{ backgroundColor: withAlpha(accent, 1) }}
+      />
+      <span
+        // `tabular-nums` is mandatory on timers (§103) — without it the pill
+        // reflows on every tick as glyph widths change.
+        className="text-[12px] tabular-nums"
+        style={{ color: withAlpha(palette.content, 0.55) }}
+        aria-label={t`Recording time`}
+      >
+        {elapsed.dim}
+        <span
+          className="font-semibold"
+          style={{ color: withAlpha(palette.content, 1) }}
+        >
+          {elapsed.bold}
+        </span>
+      </span>
+      {wordCount > 0 ? (
+        <span
+          data-testid="classic-word-count"
+          className="text-[11px] tabular-nums"
+          style={{ color: withAlpha(palette.content, 0.45) }}
+        >
+          {wordCount}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
 function ClassicStopButton({
   amplitude,
   isError,

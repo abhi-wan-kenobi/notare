@@ -36,6 +36,15 @@ pub struct FloatingTranscriptBubble {
 pub struct FloatingBarState {
     pub amplitude: f64,
     pub title: String,
+    /// Elapsed recording time in whole seconds, mirroring the listener store's
+    /// own 1Hz `live.seconds` ticker rather than a second timer. Pushed as a
+    /// count (not a start timestamp) so the bar needs no clock of its own and
+    /// stays correct across a webview reload, which would otherwise restart a
+    /// locally-derived elapsed value from zero.
+    pub elapsed_seconds: u32,
+    /// Words transcribed so far this session. Changes only when a segment
+    /// updates, so it adds no polling of its own to the update path.
+    pub word_count: u32,
     pub status: FloatingBarStatus,
     pub color_scheme: FloatingBarColorScheme,
     pub opacity: f64,

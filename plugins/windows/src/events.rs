@@ -96,7 +96,10 @@ common_event_derives! {
 
 common_event_derives! {
     /// Pushes the latest floating-bar state to the webview-based floating
-    /// window used on Windows/Linux (macOS renders a native panel instead).
+    /// window, which every platform uses since Track C. (This previously said
+    /// macOS rendered a native panel instead; the Swift NSPanel path in
+    /// `window::floating_bar::macos_native_swift` has been gated off since
+    /// then and is never reached — see the module comment there.)
     pub struct FloatingBarStateEvent {
         pub state: crate::window::floating_bar::FloatingBarState,
     }

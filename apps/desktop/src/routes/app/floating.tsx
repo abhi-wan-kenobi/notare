@@ -31,6 +31,7 @@ function FloatingRoute() {
 /** Animated canned state so the orb can be reviewed outside a recording. */
 function FloatingBarDemo({ solid }: { solid: boolean }) {
   const [amplitude, setAmplitude] = useState(0.4);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
   useEffect(() => {
     document.documentElement.classList.add("dark");
@@ -40,9 +41,20 @@ function FloatingBarDemo({ solid }: { solid: boolean }) {
     return () => clearInterval(interval);
   }, []);
 
+  // Ticks so the weighted timer is reviewable here too, not frozen at 00:00 —
+  // the point of this route is previewing the bar outside a real recording.
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setElapsedSeconds((seconds) => seconds + 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
   const state: FloatingBarState = {
     amplitude,
     title: "Weekly sync",
+    elapsedSeconds,
+    wordCount: 128,
     status: "recording",
     colorScheme: "dark",
     opacity: 0.85,
