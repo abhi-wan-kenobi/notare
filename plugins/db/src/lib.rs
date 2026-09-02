@@ -6,7 +6,7 @@ mod runtime;
 pub mod sync;
 
 pub use error::{Error, Result};
-pub use runtime::{PluginDbRuntime, open_app_db};
+pub use runtime::{PluginDbRuntime, cloudsync_available, open_app_db, open_app_db_with_cloudsync};
 use tauri::Manager;
 
 const PLUGIN_NAME: &str = "db";
