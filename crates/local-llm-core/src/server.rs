@@ -456,6 +456,136 @@ mod inner {
         let stream = ReceiverStream::new(rx).map(Ok);
         Sse::new(stream).keep_alive(KeepAlive::default())
     }
+
+    /// Coverage for the request/response CONTRACT — the parts of this server
+    /// that are pure and do not need a loaded model.
+    ///
+    /// This file shipped with zero unit tests (its own PR called that "the
+    /// weakest part of this lane") and is now in release builds, so the
+    /// OpenAI-shaped mapping is worth pinning. The generation path itself
+    /// still needs a trait over `LlamaLlmModel::generate` to be testable;
+    /// that refactor is deliberately NOT bundled here, because rewriting the
+    /// SSE/backpressure hot path immediately before a release trades more
+    /// risk than it buys. Tracked as follow-up work.
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        fn request_from_json(value: serde_json::Value) -> ChatCompletionRequest {
+            serde_json::from_value(value).expect("request should deserialize")
+        }
+
+        #[test]
+        fn maps_messages_and_sampling_params_through() {
+            let req = request_from_json(serde_json::json!({
+                "messages": [
+                    { "role": "system", "content": "be terse" },
+                    { "role": "user", "content": "hello" },
+                ],
+                "max_tokens": 64,
+                "temperature": 0.25,
+            }));
+
+            let generate = to_generate_request(&req);
+
+            assert_eq!(generate.messages.len(), 2);
+            assert_eq!(generate.messages[0].role, "system");
+            assert_eq!(generate.messages[1].content, "hello");
+            assert_eq!(generate.max_tokens, Some(64));
+            assert_eq!(generate.temperature, Some(0.25));
+        }
+
+        /// No `response_format` must mean UNCONSTRAINED decoding. If this
+        /// ever became `Some(...)`, every plain chat call would silently be
+        /// forced to emit JSON.
+        #[test]
+        fn no_response_format_means_no_grammar() {
+            let req = request_from_json(serde_json::json!({
+                "messages": [{ "role": "user", "content": "hi" }],
+            }));
+
+            assert_eq!(to_generate_request(&req).json_schema, None);
+            assert_eq!(to_generate_request(&req).max_tokens, None);
+            assert_eq!(to_generate_request(&req).temperature, None);
+        }
+
+        #[test]
+        fn json_object_requests_a_bare_object_grammar() {
+            let req = request_from_json(serde_json::json!({
+                "messages": [{ "role": "user", "content": "hi" }],
+                "response_format": { "type": "json_object" },
+            }));
+
+            let schema = to_generate_request(&req).json_schema.expect("grammar");
+            let parsed: serde_json::Value =
+                serde_json::from_str(&schema).expect("schema should be valid JSON");
+            assert_eq!(parsed, serde_json::json!({ "type": "object" }));
+        }
+
+        /// The action-items router relies on provider-enforced structured
+        /// output from this server (`STRUCTURED_OUTPUT_PROVIDERS` includes
+        /// `notare-local`). If the caller's schema were dropped or replaced
+        /// here, decoding would still be grammar-constrained but to the WRONG
+        /// shape — valid JSON that does not match what the caller asked for,
+        /// which is the failure mode hardest to notice downstream.
+        #[test]
+        fn json_schema_forwards_the_callers_own_schema() {
+            let caller_schema = serde_json::json!({
+                "type": "object",
+                "properties": { "items": { "type": "array" } },
+                "required": ["items"],
+            });
+            let req = request_from_json(serde_json::json!({
+                "messages": [{ "role": "user", "content": "extract" }],
+                "response_format": {
+                    "type": "json_schema",
+                    "json_schema": { "schema": caller_schema },
+                },
+            }));
+
+            let schema = to_generate_request(&req).json_schema.expect("grammar");
+            let parsed: serde_json::Value =
+                serde_json::from_str(&schema).expect("schema should be valid JSON");
+            assert_eq!(parsed, caller_schema);
+        }
+
+        #[test]
+        fn finish_reasons_use_the_openai_spellings() {
+            assert_eq!(finish_reason_str(FinishReason::Stop), "stop");
+            assert_eq!(finish_reason_str(FinishReason::Length), "length");
+        }
+
+        /// A mid-stream failure has no `choices`; a spec-following client
+        /// looks for an `error` object instead. Pinned because the shape is
+        /// only otherwise exercised by the `#[ignore]`d real-model test.
+        #[test]
+        fn stream_error_event_carries_an_openai_shaped_error() {
+            let event = error_event("boom".to_string());
+            let wire = format!("{:?}", event);
+            assert!(wire.contains("boom"), "message should survive: {wire}");
+            assert!(wire.contains("server_error"), "type should be set: {wire}");
+        }
+
+        #[test]
+        fn completion_ids_are_unique_within_a_process() {
+            let a = completion_id();
+            let b = completion_id();
+            assert_ne!(a, b);
+            assert!(a.starts_with("chatcmpl-"), "got {a}");
+        }
+
+        /// `Delta` skips absent fields so a content-only chunk does not carry
+        /// `"role": null` — some OpenAI clients reject an explicit null role.
+        #[test]
+        fn delta_omits_absent_fields() {
+            let delta = Delta {
+                role: None,
+                content: Some("hi".to_string()),
+            };
+            let json = serde_json::to_value(&delta).unwrap();
+            assert_eq!(json, serde_json::json!({ "content": "hi" }));
+        }
+    }
 }
 
 #[cfg(not(feature = "llama"))]
