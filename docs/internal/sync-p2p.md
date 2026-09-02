@@ -3437,37 +3437,3 @@ this test.
   teardown panic after their final `===` success line — the same benign
   ordering issue, not a failure. Confirmed both runs printed every `[conv]`
   PASS line before the panic.
-
-## 24. CI promotion — the last three provisional sync jobs become required (2026-09-02)
-
-§22.8 left `desktop_sync_gate_macos`, `desktop_sync_gate_windows` and
-`cloudsync_from_source_linux_arm` deliberately non-blocking, with the bar
-written down: "promote after observing green across a few more PRs, not
-after a single run." That bar is now met, so they are in `ci`'s `needs:`
-list and every job in `desktop_ci.yaml` is required.
-
-Evidence, read off the last 12 `desktop_ci` runs via
-`gh api repos/.../actions/runs/<id>/jobs`:
-
-| Job | Green | Red | Distinct PRs |
-|---|---|---|---|
-| `desktop_sync_gate_macos` | 12 | 0 | #143, #149, #150, #152, #153, #154 |
-| `desktop_sync_gate_windows` | 12 | 0 | #143, #149, #150, #152, #153, #154 |
-| `cloudsync_from_source_linux_arm` | 7 | 0 | #149, #150, #154 |
-
-The remainder of each count is post-merge `main` pushes (4 and 3
-respectively). Neither job has gone red on a real runner since it was
-added. #149 matters more than its dependabot title suggests: it is the one
-PR in that set that touches no sync code at all, so its green run says the
-jobs are stable rather than merely passing on their own lane's changes.
-
-What this does **not** change: these are still `cargo check` proofs. §22.8's
-"nothing in this lane executes the sync stack on macOS or Windows" is
-untouched — promotion makes a compile regression blocking, and claims
-nothing about runtime behaviour off linux/x86_64.
-
-Note also that `main` carries no branch-protection required-status-checks
-rule (the `protect-main` ruleset has only `deletion` and `non_fast_forward`),
-so the `ci` aggregate gates the PR's own checks page but does not itself
-block a merge button. Wiring the ruleset is a repo-settings change, not a
-workflow one, and is left to Abhishek.

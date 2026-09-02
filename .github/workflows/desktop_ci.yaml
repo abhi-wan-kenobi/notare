@@ -699,18 +699,10 @@ jobs:
     # portability defects (§21.11–§21.16). A non-blocking job that nobody reads
     # is not a signal.
     #
-    # The two `desktop_sync_gate_*` jobs and `cloudsync_from_source_linux_arm`
-    # have now cleared that same bar and are promoted here. Observed via
-    # `gh api .../actions/runs/<id>/jobs` over the last 12 `desktop_ci` runs:
-    #
-    #   desktop_sync_gate_macos    12 green, 0 red — PRs #143, #149, #150,
-    #   desktop_sync_gate_windows  #152, #153, #154 plus 4 post-merge `main`
-    #                              pushes (6 distinct PRs)
-    #   cloudsync_from_source_linux_arm  7 green, 0 red — PRs #149, #150, #154
-    #                              plus 3 `main` pushes (3 distinct PRs)
-    #
-    # Neither has ever gone red on a real runner. §22.8's "promote after a few
-    # more PRs, not after a single run" is satisfied for all three.
+    # STILL PROVISIONAL, deliberately: the two `desktop_sync_gate_*` jobs (only
+    # observed green since §22 — not yet "a few PRs") and
+    # `cloudsync_from_source_linux_arm` (brand new, never run). Promote each on
+    # the same bar, not on the strength of it merely existing.
     needs:
       [
         desktop_ci,
@@ -720,9 +712,6 @@ jobs:
         windows_stt,
         cloudsync_from_source_macos,
         cloudsync_from_source_windows,
-        cloudsync_from_source_linux_arm,
-        desktop_sync_gate_macos,
-        desktop_sync_gate_windows,
       ]
     runs-on: ubuntu-latest
     steps:
