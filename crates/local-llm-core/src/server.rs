@@ -340,6 +340,18 @@ mod inner {
     /// every pending chunk in memory with no limit.
     const STREAM_CHANNEL_CAPACITY: usize = 32;
 
+    /// A stream error has no first-class OpenAI SSE shape; an `error` object
+    /// in place of `choices` is what OpenAI's own server sends on a
+    /// mid-stream failure, and what a spec-following client looks for
+    /// instead of `choices`.
+    fn error_event(message: String) -> Event {
+        Event::default()
+            .json_data(
+                serde_json::json!({ "error": { "message": message, "type": "server_error" } }),
+            )
+            .unwrap_or_else(|_| Event::default())
+    }
+
     fn stream_completion(
         state: AppState,
         req: ChatCompletionRequest,
@@ -348,7 +360,11 @@ mod inner {
         let model_name = req.model.clone().unwrap_or_else(|| "local".to_string());
         let generate_request = to_generate_request(&req);
 
-        tokio::task::spawn_blocking(move || {
+        // Kept alive past the generator so a panic inside it can still be
+        // reported on the wire — see the supervisor below.
+        let panic_tx = tx.clone();
+
+        let generator = tokio::task::spawn_blocking(move || {
             let id = completion_id();
             let created = unix_now();
 
@@ -366,16 +382,6 @@ mod inner {
                 };
                 Event::default()
                     .json_data(&body)
-                    .unwrap_or_else(|_| Event::default())
-            };
-
-            // A stream error has no first-class OpenAI SSE shape; an
-            // `error` object in place of `choices` is what OpenAI's own
-            // server sends on a mid-stream failure, and what a
-            // spec-following client looks for instead of `choices`.
-            let error_event = |message: String| {
-                Event::default()
-                    .json_data(serde_json::json!({ "error": { "message": message, "type": "server_error" } }))
                     .unwrap_or_else(|_| Event::default())
             };
 
@@ -424,6 +430,27 @@ mod inner {
             }
 
             let _ = tx.blocking_send(Event::default().data("[DONE]"));
+        });
+
+        // `spawn_blocking` captures a panic in its `JoinHandle` rather than
+        // unwinding the process. Dropping that handle would discard it: the
+        // generator's `tx` is dropped by the unwind, the stream simply ends
+        // with neither a `finish_reason` chunk nor `[DONE]`, and a client
+        // waiting on a terminator sees a silent truncation it cannot
+        // distinguish from a short answer. The model mutex is poisoned by
+        // exactly this path — the poison branch above only exists because
+        // panics here are considered reachable — so report it on the wire
+        // instead of dropping it on the floor.
+        tokio::spawn(async move {
+            if let Err(error) = generator.await {
+                tracing::error!(error = %error, "local LLM streaming generation panicked");
+                let _ = panic_tx
+                    .send(error_event(
+                        "local LLM generation panicked mid-stream".to_string(),
+                    ))
+                    .await;
+                let _ = panic_tx.send(Event::default().data("[DONE]")).await;
+            }
         });
 
         let stream = ReceiverStream::new(rx).map(Ok);
