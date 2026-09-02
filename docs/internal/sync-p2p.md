@@ -3437,3 +3437,136 @@ this test.
   teardown panic after their final `===` success line — the same benign
   ordering issue, not a failure. Confirmed both runs printed every `[conv]`
   PASS line before the panic.
+
+## 25. Table-proofs lane, batch 2 — the contacts family, and the first NO-GO (2026-09-02)
+
+`organizations`, `humans`, `session_participants`. `SYNCED_TABLES` grows
+from 6 to **7** — only `organizations`. The other two are the first tables
+in this effort proven **unsafe to enable** rather than merely unproven, and
+that verdict is the substance of this section.
+
+Proof: `crates/sync-p2p/examples/sync_contacts_schema.rs`
+Run: `cargo run -p sync-p2p --example sync_contacts_schema --features from-source`
+
+### 25.1 Why this batch, and the write-path triage that produced it
+
+Before writing any fixture, all 11 remaining tables were triaged for
+whether the app writes them at all, by grepping for real `INSERT` sites
+outside tests:
+
+| Table | Live write sites | Note |
+|---|---|---|
+| `templates` | 12 | live |
+| `humans` | 8 | live |
+| `session_participants` | 8 | live |
+| `events` | 7 | live |
+| `calendars` | 6 | live |
+| `organizations` | 4 | live |
+| `chat_groups` | 2 | live |
+| `chat_messages` | 2 | live |
+| `daily_notes` | 1 | **import-only** — `crates/db-app/src/legacy_import.rs:930` |
+| `session_attachments` | 1 | **import-only** — `legacy_import.rs:868` |
+| `entity_mentions` | 0 | **never written anywhere** |
+
+Two consequences worth recording. `daily_notes` and `session_attachments`
+have no live app write path — only the legacy importer populates them, so
+there is no "real app write pattern" to model for either, and a §17-style
+proof of them would be proving a fixture of our own invention. And
+`entity_mentions` is written by nothing at all. Those three should be
+handled as a documentation batch, not a proof batch.
+
+The contacts family was taken first among the live tables because it is
+the only group whose uniqueness is enforced by something other than a
+deterministic primary key — which turned out to matter.
+
+### 25.2 The finding: a local `NOT EXISTS` guard is not a uniqueness constraint
+
+§23.4 established that `tags`/`session_tags` derive their primary keys from
+content, so two devices doing "the same" thing write the *same row* and CLS
+merges it per column. `humans` and `session_participants` are the inverse.
+The id is `crypto.randomUUID()` (`apps/desktop/src/shared/utils.ts:9`) and
+uniqueness is enforced by a subquery evaluated **on the writing device at
+write time**:
+
+- `humans`, calendar path
+  (`apps/desktop/src/services/calendar/storage.ts:586-609`) — inserts
+  `WHERE NOT EXISTS (SELECT 1 FROM humans WHERE deleted_at IS NULL AND
+  lower(email) = lower(?))`, id from
+  `humanId = id()` (`services/calendar/process/participants/sync.ts:100`).
+- `humans`, manual path (`apps/desktop/src/contacts/queries.ts:273-278`) —
+  a plain INSERT with `id()` and **no guard at all**.
+- `session_participants` (`apps/desktop/src/session/queries.ts:434-452`,
+  `services/calendar/storage.ts:628-683`) — `id()` guarded by
+  `NOT EXISTS (... session_id = ? AND human_id = ? AND deleted_at IS NULL)`.
+
+A guard evaluated locally cannot see a concurrent insert on another device.
+Two offline devices each pass their own guard, each mint a different random
+primary key, and after the merge **both rows exist permanently**. CLS has
+nothing to merge: two distinct primary keys are two distinct rows, each
+internally consistent. This is not a convergence failure — the nodes agree
+precisely — it is a *duplicate entity* that the CRDT is structurally unable
+to resolve.
+
+Measured, reproduced across two consecutive runs:
+
+```
+[FINDING] humans DID NOT dedup: "alice@example.com" exists TWICE after merge
+          on both nodes (["human-uuid-from-device-a", "human-uuid-from-device-b"])
+[FINDING] humans manual-contact path (no guard at all) duplicates identically
+[FINDING] session_participants DID NOT dedup: human-dave appears TWICE in
+          sess-m after merge on both nodes
+```
+
+The user-visible outcome, had these been enabled: every contact added on
+two devices while offline becomes two contacts, and the same person is
+listed twice in a meeting's participant list. Scenario 4 isolates the cause
+— a `humans` row created on **one** device and then edited concurrently on
+both merges correctly per column (`job_title="CTO"`, `phone="+1-555-0100"`,
+both survived) — so the defect is duplicate *creation*, not a merge failure.
+
+### 25.3 Verdicts
+
+| Table | Verdict | Basis |
+|---|---|---|
+| `organizations` | **GO — enabled** | A→B, B→A, concurrent per-column merge on the same row (rename vs memo, both survived), multi-row catch-up. Created on one device with a locally-minted id and then replicated, so there is no concurrent-creation ambiguity: the app has no "find-or-create organization by name" path. |
+| `humans` | **NO-GO** | Duplicates by email under concurrent offline creation, on both write paths. |
+| `session_participants` | **NO-GO** | Duplicates by (session, human) under concurrent offline creation. |
+
+`session_participants` also could not be enabled independently of `humans`
+even if it were safe: its rows carry `human_id`, so duplicated humans
+produce duplicated participants downstream regardless.
+
+### 25.4 The fix these two need before they can be enabled
+
+Give both a deterministic primary key, exactly as `tags`/`session_tags`
+already do:
+
+- `humans.id` derived from `lower(email)` — the field the guard already
+  treats as the identity. Two devices then write the same row, and CLS
+  merges `name`/`phone`/`job_title` per column instead of forking the
+  entity. Needs a decision for humans with **no** email (the calendar path
+  skips them — `sync.ts:93` `if (!email) continue` — but the manual path
+  permits one, so `contacts/queries.ts` would need a rule).
+- `session_participants.id` = `` `${session_id}:${human_id}` `` — the pair
+  the guard already treats as the identity, and the same shape
+  `session_tags.id` uses.
+
+Either change is a migration plus a backfill for existing rows, which is
+why it is named here rather than attempted in a proof lane. Scenarios 3 and
+5 assert the *current* duplicate outcome deliberately, so whoever makes
+ids deterministic will see those assertions fail and be forced back to this
+section rather than silently changing the conclusion.
+
+### 25.5 What this batch does not establish
+
+- Only `organizations` is enabled; 10 tables remain disabled, 2 of them now
+  for a proven reason rather than for want of a proof.
+- The `sessions` table appears in this proof's fixture only because the
+  real `session_participants` INSERT is a `SELECT ... FROM sessions JOIN
+  humans` and will not run without it. It is not under test here (§17
+  already proved it).
+- Same known noise as §17/§23: the example exits with the
+  `sqlx-sqlite-worker` "unable to close due to unfinalized statements"
+  teardown panic after its final `===` line. Benign, and both runs printed
+  every `[conv]`/`[FINDING]` line before it.
+- Nothing here runs off linux/x86_64, unchanged from §22.8.

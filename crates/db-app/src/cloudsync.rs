@@ -12,6 +12,18 @@ use hypr_db_core::CloudsyncTableSpec;
 /// realistic-size `words_json` check and the action_items_v2 ALTER TABLE
 /// columns) and for `tags` + `session_tags` (incl. the join-table concurrent
 /// add/remove case).
+///
+/// §25's contacts batch added `organizations`. It deliberately did **not**
+/// add `humans` or `session_participants`, which are proven *not* safe to
+/// enable rather than merely unproven: both are written with a
+/// `crypto.randomUUID()` id behind a `NOT EXISTS (...)` guard that is
+/// evaluated locally, so two offline devices adding the same person (or the
+/// same person to the same session) each pass their own guard, mint
+/// different primary keys, and keep both rows forever after the merge. The
+/// rows converge; the entity is duplicated, and CLS cannot merge two
+/// distinct primary keys. Do not add either without first making their ids
+/// deterministic — `crates/sync-p2p/examples/sync_contacts_schema.rs`
+/// scenarios 3 and 5 fail loudly if that changes.
 const SYNCED_TABLES: &[&str] = &[
     "sessions",
     "session_documents",
@@ -19,6 +31,7 @@ const SYNCED_TABLES: &[&str] = &[
     "action_items",
     "tags",
     "session_tags",
+    "organizations",
 ];
 
 static CLOUDSYNC_TABLE_REGISTRY: LazyLock<Vec<CloudsyncTableSpec>> = LazyLock::new(|| {

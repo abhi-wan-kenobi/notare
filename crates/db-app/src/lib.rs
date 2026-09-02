@@ -596,6 +596,7 @@ mod tests {
                 "action_items",
                 "tags",
                 "session_tags",
+                "organizations",
             ])
         );
 
@@ -610,7 +611,16 @@ mod tests {
         assert!(cloudsync_alter_guard_required("action_items"));
         assert!(cloudsync_alter_guard_required("tags"));
         assert!(cloudsync_alter_guard_required("session_tags"));
+        assert!(cloudsync_alter_guard_required("organizations"));
         assert!(!cloudsync_alter_guard_required("calendars"));
+
+        // §25 proved these two are unsafe to enable, not merely unproven:
+        // both duplicate the entity under concurrent offline creation
+        // (random id behind a local-only NOT EXISTS guard). This pins the
+        // verdict so a later batch cannot enable them by pattern-matching
+        // "it has a proof example" without reading it.
+        assert!(!cloudsync_alter_guard_required("humans"));
+        assert!(!cloudsync_alter_guard_required("session_participants"));
     }
 
     #[tokio::test]
