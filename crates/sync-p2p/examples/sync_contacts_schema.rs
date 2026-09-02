@@ -35,6 +35,17 @@
 //! CRDT is structurally unable to resolve, because two different primary keys
 //! are two different rows, both valid.
 //!
+//! On id provenance, since §23's earlier proof was retracted for getting
+//! exactly this wrong: that retraction was a fixture minting **different**
+//! ids where the app derives the **same** one, which manufactured a
+//! duplicate. This fixture is the opposite direction — the app mints a
+//! different random id per device, and the fixture uses different fixed ids
+//! per device. The property under test is "two devices assign different
+//! primary keys to the same entity", which fixed distinct strings reproduce
+//! exactly and deterministically. The app's `id()` is TypeScript and
+//! unreachable from a Rust example anyway; its behaviour, not its call, is
+//! what matters.
+//!
 //! Scenarios 3 and 5 below prove exactly that, and they are the reason this
 //! lane does **not** enable `humans` or `session_participants`. See
 //! docs/internal/sync-p2p.md §25 for the verdict and the recommended fix.

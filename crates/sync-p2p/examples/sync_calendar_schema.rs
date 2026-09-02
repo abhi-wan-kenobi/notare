@@ -29,6 +29,24 @@
 //! rows survive, because two distinct primary keys are two distinct rows and
 //! CLS has nothing to merge.
 //!
+//! ## Why the fixture hard-codes distinct ids instead of generating UUIDs
+//!
+//! §23's earlier proof was retracted for a fixture bug, so the id
+//! provenance here is worth stating explicitly. That retraction was a
+//! fixture that minted **different** ids where the app derives the **same**
+//! one — the mismatch inverted the conclusion and manufactured a duplicate.
+//! This fixture is the opposite direction: the app mints a different random
+//! id per device, and the fixture uses different fixed ids per device
+//! (`cal-uuid-a` vs `cal-uuid-b`). The property under test is "the two
+//! devices assign different primary keys to the same provider object", and
+//! fixed distinct strings reproduce that exactly, without the
+//! nondeterminism a real UUID would add.
+//!
+//! Calling the app's own generator is not an option regardless: `id()` is
+//! TypeScript (`apps/desktop/src/shared/utils.ts:9`, `crypto.randomUUID()`)
+//! and unreachable from a Rust example. Its *behaviour* is what matters, and
+//! "two independently minted values are not equal" is what is modelled.
+//!
 //! Scenario 2 proves it. The verdict is NO-GO for both; see
 //! docs/internal/sync-p2p.md §26. Note the deeper point recorded there:
 //! this data is already replicated by the calendar provider, so syncing it
@@ -589,6 +607,15 @@ async fn main() {
     // 4. Tombstone convergence, using the column the tombstones migration
     //    added. A "unsubscribes" from a calendar; B must see it and it must
     //    not resurrect across further rounds.
+    //
+    //    Not covered here, deliberately: re-ingesting a soft-deleted
+    //    calendar. The real upsert's `enabled = CASE WHEN
+    //    calendars.deleted_at IS NULL THEN calendars.enabled ELSE 0 END`
+    //    reads the PRE-update row, so a deleted-then-re-ingested calendar
+    //    comes back with `enabled = 0` — matching the INSERT path, which
+    //    also seeds 0. That is app upsert semantics (a removed calendar
+    //    returns disabled rather than silently resuming), not CRDT
+    //    convergence, so it belongs in a db-app test rather than this proof.
     let removed_at = "2026-09-02T00:02:00Z";
     sqlx::query("UPDATE calendars SET deleted_at = ?, updated_at = ? WHERE id = ?")
         .bind(removed_at)
