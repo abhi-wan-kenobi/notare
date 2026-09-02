@@ -589,20 +589,30 @@ async fn main() {
          convergence failure"
     );
     println!("[RESULT] after regenerate-vs-concurrent-append, BOTH nodes agree on: {after_a:?}");
-    if after_a.len() > 1 {
-        println!(
-            "[FINDING] the regenerate did NOT prune the concurrently-appended message: the \
-             retained set was computed from B's local view, so a message B had never seen was \
-             neither retained nor tombstoned and survived the prune. The nodes converge, but \
-             the conversation now mixes a regenerated branch with a message from the branch \
-             that was supposed to be discarded. Same local-view assumption as §25's NOT \
-             EXISTS defect, in a different disguise. See §29.3."
-        );
-    } else {
-        println!(
-            "[conv] the regenerate pruned everything except the retained message on both nodes"
-        );
-    }
+
+    // Pin the exact transcript rather than inferring from its length. An
+    // earlier version of this scenario asserted only convergence and then
+    // reported the defect if `after_a.len() > 1`, which a *no-op* delete
+    // would also satisfy — the finding could have fired for the wrong
+    // reason. This assertion separates the three claims: `msg-1` was
+    // retained, the messages B could actually see (`msg-2`, `msg-3a`,
+    // `msg-3b`) really were tombstoned, and `msg-4a` — the one B had never
+    // seen — survived a prune that was meant to discard its branch.
+    assert_eq!(
+        after_a,
+        vec!["msg-1".to_string(), "msg-4a".to_string()],
+        "expected the regenerate to prune exactly what B could see and to MISS the \
+         concurrently-appended msg-4a; a different set means either the prune did not run \
+         (msg-2/3a/3b would still be present) or it reached further than B's local view"
+    );
+    println!(
+        "[FINDING] the regenerate pruned msg-2/msg-3a/msg-3b but NOT msg-4a: the retained set \
+         was computed from B's local view, so a message B had never seen was neither retained \
+         nor tombstoned and survived the prune. The nodes converge, but the conversation now \
+         reads as the re-asked question followed by a stray answer from the branch that was \
+         supposed to be discarded. Same local-view assumption as §25's NOT EXISTS defect, in \
+         a different disguise. See §29.3."
+    );
 
     // 6. Group-level soft delete converges and does not resurrect. Note the
     //    app tombstones the GROUP row only; message rows keep their own
