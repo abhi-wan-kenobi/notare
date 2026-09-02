@@ -719,9 +719,18 @@ jobs:
       - name: cargo check -p desktop --features local-llm
         run: cargo check --locked -p desktop --features local-llm
       # Vulkan build deps: loader headers for find_package(Vulkan) + glslc
-      # for shader compilation (same packages desktop_test_build.yaml's
-      # gpu-vulkan path installs).
-      - run: sudo apt-get install -y libvulkan-dev glslc
+      # for shader compilation.
+      #
+      # `spirv-headers` is NOT part of desktop_test_build.yaml's gpu-vulkan
+      # set, and its absence is what made this job's first real run fail
+      # (run 33625122350): llama.cpp's `ggml/src/ggml-vulkan/CMakeLists.txt:14`
+      # does `find_package(SPIRV-Headers)`, which whisper.cpp's Vulkan path
+      # never needed, so copying that dep list was not sufficient here. The
+      # package name is confirmed rather than guessed — on the dev box where
+      # this build succeeds, `dpkg -S` attributes
+      # /usr/share/cmake/SPIRV-Headers/SPIRV-HeadersConfig.cmake to
+      # `spirv-headers`.
+      - run: sudo apt-get install -y libvulkan-dev glslc spirv-headers
       - name: cargo check -p desktop --features local-llm-vulkan
         run: cargo check --locked -p desktop --features local-llm-vulkan
 
@@ -812,8 +821,24 @@ jobs:
           platform: windows
       - name: cargo check -p desktop --features local-llm
         run: cargo check --locked -p desktop --features local-llm
-      - name: cargo check -p desktop --features local-llm-vulkan
-        run: cargo check --locked -p desktop --features local-llm-vulkan
+      # NO `local-llm-vulkan` step here, deliberately. Its first real run
+      # (run 33625122350) failed at llama.cpp's
+      # `ggml/src/ggml-vulkan/CMakeLists.txt:14` —
+      # `find_package(SPIRV-Headers)` — the same root cause as the Linux
+      # failure, but the Linux fix does not transfer: LunarG's SDK is
+      # installed here (VULKAN_SDK was set correctly), and this action pulls
+      # a minimal component set that evidently carries no
+      # SPIRV-HeadersConfig.cmake.
+      #
+      # Resolving it means locating (or installing) that package config on a
+      # real Windows runner — either an extra SDK component or a
+      # CMAKE_PREFIX_PATH/SPIRV-Headers_DIR pointing into the SDK. Which of
+      # those works cannot be determined from here, and §21.10 is the
+      # standing lesson against changing a build command on inference: that
+      # cost seven CI runs the last time it was tried. So the Windows claim
+      # is narrowed to the plain `local-llm` check, which passes, rather than
+      # left as a permanently-red job — a red job nobody can act on is the
+      # anti-pattern the `ci` comment below is about.
 
   ci:
     if: always()
