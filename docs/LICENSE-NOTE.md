@@ -1,10 +1,16 @@
 # License & Legal Diligence Note
 
-_Status: final 2026-07-14, extended 2026-08-28 with the sqlite-sync / ELv2
-determination (see "Sync engine" below). All licenses verified from the actual
-repos & HF model cards, not from memory._
+_Status: final 2026-07-14; extended 2026-08-28 with a sqlite-sync / ELv2
+determination that was **re-opened 2026-09-02** (see "Sync engine" below). All
+licenses verified from the actual repos & HF model cards, not from memory._
 
-## Sync engine: sqlite-sync (Elastic License 2.0) — CLEARED 2026-08-28
+## Sync engine: sqlite-sync (Elastic License 2.0) — RE-OPENED 2026-09-02
+
+> **This section previously read "CLEARED 2026-08-28 / Determination: PERMITTED".
+> That determination has been withdrawn.** It rested on a second-hand summary — the
+> exact evidence gap the note itself flagged — and SQLite Cloud's written reply of
+> 2026-09-02 contradicts it. The prior text is preserved in git history; do not act
+> on it. **Sync must not ship until this is resolved.**
 
 The v0.6 P2P sync work is built on **sqlite-sync v1.0.12** (SQLite Cloud), vendored
 at `crates/cloudsync/vendor/` (upstream SHA `6694c2e8`). Unlike everything else in
@@ -18,31 +24,59 @@ it *from source* (required for the custom P2P network layer — see
 combination is more than plain redistribution, so it was treated as a blocking gate
 (**risk R1**, the only cycle-killing risk in the v0.6 plan) rather than assumed.
 
-**Determination: PERMITTED.** Abhishek raised the intended use with SQLite Cloud —
-MIT open-source desktop app, extension embedded and built from source, custom
-device-to-device transport, no managed service, no resale — and confirmed on
-**2026-08-28** that the licence allows it. This matches the independent reading done
-during the S0a spike: ELv2's restrictions target managed-service resale, which Notare
-is not.
+### Timeline
+
+| Date | Event |
+|---|---|
+| 2026-08-28 | Recorded here as **PERMITTED**, from a summary of a conversation with SQLite Cloud. Flagged at the time as resting on a second-hand source. |
+| 2026-09-02 | **Marco Bambini (SQLite Cloud) replied in writing:** *"The short answer is, unfortunately, no, you cannot use your network layer with our technology."* |
+| 2026-09-02 | Follow-up drafted — asking whether that is an ELv2 reading or a product position, and whether a commercial licence exists. **Not yet sent.** |
+
+**Current status: NOT PERMITTED, pending clarification.** The denial lands precisely
+on the seam v0.6's sync is built on: the documented Custom Network Layer
+(`CLOUDSYNC_OMIT_CURL` + `network_send_buffer` / `network_receive_buffer`),
+implemented in `crates/cloudsync/build/network_p2p.c`. It is not a peripheral
+restriction — it is the integration point.
 
 **Consequences:**
 
-- sqlite-sync **stays** the CRDT engine for v0.6. The pre-approved fallback
-  (**cr-sqlite**, vlcn, MIT/Apache) is **dead scope** — do not re-plan onto it.
+- **sqlite-sync is no longer settled as the v0.6 CRDT engine.** Sync is deferred to
+  0.7 (`docs/release/0.7-sync-gate.md`); 0.6 ships without it. No code change was
+  needed to effect that — `release.yaml` never built the `sync` feature, so the
+  stack has never reached a user.
+- **cr-sqlite (vlcn-io, MIT) is live fallback scope again.** The previous "dead
+  scope — do not re-plan onto it" instruction is withdrawn. A contingency scoping
+  pass exists; its headline findings are that the app's six synced tables clear
+  cr-sqlite's compatibility gate on paper (no FKs, no unique indices beyond the PK,
+  no AUTOINCREMENT, NOT NULL columns already carry DEFAULTs), that `STRICT`-table
+  behaviour is **unverified** and gates everything, and that upstream cr-sqlite has
+  had no substantive work since 2024-01-17.
 - ELv2 is **not** MIT. Notare's own MIT licence is unaffected, but the vendored
   tree is separately licensed and must keep its upstream LICENSE file and notices
-  intact. Do not represent the bundled extension as MIT.
+  intact. Do not represent the bundled extension as MIT. **This holds regardless of
+  how the determination resolves**, for as long as the tree is vendored.
 - The restriction that must never be violated: **do not offer sqlite-sync to third
   parties as a hosted or managed service.** The planned notare.dev rendezvous /
   relay Worker is deliberately outside this line — it brokers discovery and
   store-and-forwards opaque ciphertext blobs; it never runs sqlite-sync and never
   sees plaintext (E2E covenant, v0.6 plan §3.5).
-- If the product ever grows a hosted sync service, this determination **does not
-  cover it** and must be re-opened with SQLite Cloud.
+- If the product ever grows a hosted sync service, no determination recorded here
+  covers it, and it must be re-opened with SQLite Cloud.
 
-**Evidence gap to close:** the confirmation is recorded here second-hand. Archive
-SQLite Cloud's actual reply (email or support-ticket export) alongside this note so
-the determination rests on a primary source rather than a summary of one.
+**To close this out, in order:**
+
+1. Send the drafted follow-up; archive **both** SQLite Cloud replies (email or
+   support-ticket export) alongside this note, so whatever the outcome rests on a
+   primary source rather than a summary of one.
+2. If a commercial licence is offered, price it against the swap cost before
+   assuming either is cheaper.
+3. If the denial stands, the vendored tree under `crates/cloudsync/` is removed
+   rather than left in place unused.
+
+**Process lesson worth keeping:** this note recorded a blocking legal gate as
+cleared on a second-hand summary, and a full release cycle (~75 of 115 commits since
+v0.5.2) was built on it. A gate that can kill a cycle needs its primary source
+archived *before* it is marked cleared, not as a follow-up item.
 
 ## Upstream: anarlog (formerly Hyprnote) — VERIFIED
 
