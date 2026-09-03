@@ -596,6 +596,10 @@ mod tests {
                 "action_items",
                 "tags",
                 "session_tags",
+                "organizations",
+                "templates",
+                "chat_groups",
+                "chat_messages",
             ])
         );
 
@@ -610,7 +614,22 @@ mod tests {
         assert!(cloudsync_alter_guard_required("action_items"));
         assert!(cloudsync_alter_guard_required("tags"));
         assert!(cloudsync_alter_guard_required("session_tags"));
+        assert!(cloudsync_alter_guard_required("organizations"));
+        assert!(cloudsync_alter_guard_required("templates"));
+        assert!(cloudsync_alter_guard_required("chat_groups"));
+        assert!(cloudsync_alter_guard_required("chat_messages"));
+
+        // §25 and §26 proved these four are unsafe to enable, not merely
+        // unproven: each duplicates the entity under concurrent creation,
+        // because the primary key is a locally-minted random UUID while the
+        // real identity lives elsewhere (an email, a (session, human) pair,
+        // or a provider tracking id). This pins those verdicts so a later
+        // batch cannot enable them by pattern-matching "it has a proof
+        // example" without reading what the proof concluded.
+        assert!(!cloudsync_alter_guard_required("humans"));
+        assert!(!cloudsync_alter_guard_required("session_participants"));
         assert!(!cloudsync_alter_guard_required("calendars"));
+        assert!(!cloudsync_alter_guard_required("events"));
     }
 
     #[tokio::test]
