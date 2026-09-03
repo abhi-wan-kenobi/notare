@@ -73,15 +73,16 @@ jobs:
       # binaries already ship DirectML support) and falls back to CPU at
       # runtime if unavailable — see docs/BUILDING.md "GPU builds
       # (Parakeet)". Linux does NOT get `directml` (Windows-only EP).
-      #
       # `local-llm-vulkan` ships the embedded llama.cpp LLM (#20) with Vulkan
       # offload. It transitively enables the base `local-llm` — desktop's
       # `local-llm-vulkan` → plugin's `local-llm-vulkan` = ["local-llm", ...]
-      # — so it does NOT need to be listed alongside it. Passing the GPU
-      # feature ALONE at the core-crate level would be a silent no-op (the
-      # `?`-optional forwarding in crates/local-llm-core), but the plugin
-      # level closes that chain; verified in plugins/local-llm/Cargo.toml.
-      - run: pnpm -F desktop tauri build --config ./src-tauri/tauri.conf.stable.json --features gpu-vulkan,directml,local-llm-vulkan
+      # — so it does NOT need to be listed alongside it.
+      #
+      # However, llama.cpp's ggml-vulkan backend requires SPIRV-Headers at
+      # cmake configure time, and the LunarG SDK action does NOT include them
+      # on Windows. Until that's resolved, Windows ships CPU-only local-llm
+      # (the Vulkan offload is linux-only in release builds).
+      - run: pnpm -F desktop tauri build --config ./src-tauri/tauri.conf.stable.json --features gpu-vulkan,directml,local-llm
         env:
           CI: false
           LIBCLANG_PATH: 'C:\Program Files\LLVM\bin'
@@ -121,7 +122,7 @@ jobs:
           sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential file libxdo-dev libssl-dev \
             libayatana-appindicator3-dev librsvg2-dev xdg-utils libgtk-3-dev libgtk-4-dev \
             libasound2-dev libudev-dev libpulse-dev libpipewire-0.3-dev libgraphene-1.0-dev \
-            pkg-config patchelf cmake libclang-dev clang libvulkan-dev glslc libfuse2
+            pkg-config patchelf cmake libclang-dev clang libvulkan-dev glslc spirv-headers libfuse2
 
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
