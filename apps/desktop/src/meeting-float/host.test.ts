@@ -6,6 +6,7 @@ import {
   getCurrentFloatingBarColorScheme,
   getFloatingRouteState,
   getFloatingTranscriptBubbles,
+  getFloatingWordCount,
   getLiveCaptionDisplayText,
   getLiveCaptionRouteState,
   shouldShowFloatingLiveCaptionToggle,
@@ -80,7 +81,96 @@ function createSegment(
   };
 }
 
+describe("getFloatingWordCount", () => {
+  it("counts words across segments", () => {
+    expect(
+      getFloatingWordCount([
+        createSegment({
+          id: "a",
+          key: { channel: "DirectMic", speaker_index: null },
+          start_ms: 0,
+          text: "hello there",
+          words: [
+            { text: "hello", id: "a1" },
+            { text: "there", id: "a2" },
+          ],
+        }),
+        createSegment({
+          id: "b",
+          key: { channel: "RemoteParty", speaker_index: 0 },
+          start_ms: 200,
+          text: "hi",
+          words: [{ text: "hi", id: "b1" }],
+        }),
+      ]),
+    ).toBe(3);
+  });
+
+  it("ignores whitespace-only words rather than counting them", () => {
+    expect(
+      getFloatingWordCount([
+        createSegment({
+          id: "a",
+          key: { channel: "DirectMic", speaker_index: null },
+          start_ms: 0,
+          text: "hello",
+          words: [
+            { text: "hello", id: "a1" },
+            { text: "   ", id: "a2" },
+          ],
+        }),
+      ]),
+    ).toBe(1);
+  });
+
+  /**
+   * Some providers emit segment text without word-level data. Counting only
+   * `words` would silently report zero for the whole session on those, which
+   * reads as "nothing transcribed" rather than "no word timings".
+   */
+  it("falls back to splitting segment text when a provider gives no words", () => {
+    expect(
+      getFloatingWordCount([
+        createSegment({
+          id: "a",
+          key: { channel: "DirectMic", speaker_index: null },
+          start_ms: 0,
+          text: "one two three",
+          words: [],
+        }),
+      ]),
+    ).toBe(3);
+  });
+
+  it("is zero for no segments", () => {
+    expect(getFloatingWordCount([])).toBe(0);
+  });
+});
+
 describe("getFloatingRouteState", () => {
+  it("carries the elapsed second count and word count", () => {
+    const state = getFloatingRouteState(
+      createListenerStateWithSegments(
+        { status: "active", sessionId: "session-1", seconds: 75 },
+        [
+          createSegment({
+            id: "a",
+            key: { channel: "DirectMic", speaker_index: null },
+            start_ms: 0,
+            text: "hello there",
+            words: [
+              { text: "hello", id: "a1" },
+              { text: "there", id: "a2" },
+            ],
+          }),
+        ],
+      ),
+    );
+
+    expect(state?.elapsedSeconds).toBe(75);
+    expect(state?.wordCount).toBe(2);
+  });
+
   it("returns recording status for healthy live sessions", () => {
     expect(
       getFloatingRouteState(
@@ -94,6 +184,8 @@ describe("getFloatingRouteState", () => {
       sessionId: "session-1",
       title: "Live transcript",
       amplitude: 1,
+      elapsedSeconds: 0,
+      wordCount: 0,
       status: "recording",
       colorScheme: "dark",
       opacity: 0.78,

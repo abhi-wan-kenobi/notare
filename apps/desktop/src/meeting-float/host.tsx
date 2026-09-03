@@ -67,6 +67,8 @@ type FloatingRouteState = {
   sessionId: string;
   title: string;
   amplitude: number;
+  elapsedSeconds: number;
+  wordCount: number;
   status: FloatingBarStatus;
   colorScheme: FloatingBarColorScheme;
   opacity: number;
@@ -521,6 +523,8 @@ export function getFloatingRouteState(
       Math.hypot(state.live.amplitude.mic, state.live.amplitude.speaker),
       1,
     ),
+    elapsedSeconds: Math.max(0, Math.floor(state.live.seconds)),
+    wordCount: getFloatingWordCount(state.liveSegments),
     status: state.live.degraded || state.live.lastError ? "error" : "recording",
     colorScheme,
     opacity: settings.floatingBarOpacity,
@@ -624,6 +628,26 @@ function getFloatingSegmentText(
     .replace(/\s+([,.?!;:])/g, "$1");
 
   return (wordText || segment.text).trim().replace(/\s+/g, " ");
+}
+
+/**
+ * Running word count across the live segments.
+ *
+ * Counts `words` when the provider supplies word-level data and falls back to
+ * whitespace-splitting `segment.text` when it does not (the same fallback
+ * `getFloatingSegmentText` makes), so the count does not silently read zero on
+ * a provider that only emits segment text.
+ */
+export function getFloatingWordCount(segments: ListenerState["liveSegments"]) {
+  return segments.reduce((total, segment) => {
+    const words = segment.words.filter((word) => word.text.trim().length > 0);
+    if (words.length > 0) {
+      return total + words.length;
+    }
+
+    const text = segment.text.trim();
+    return total + (text ? text.split(/\s+/).length : 0);
+  }, 0);
 }
 
 function getFloatingSpeakerLabel(
@@ -762,6 +786,8 @@ function isSameFloatingRouteState(
   return (
     left?.sessionId === right?.sessionId &&
     left?.amplitude === right?.amplitude &&
+    left?.elapsedSeconds === right?.elapsedSeconds &&
+    left?.wordCount === right?.wordCount &&
     left?.status === right?.status &&
     left?.colorScheme === right?.colorScheme &&
     left?.opacity === right?.opacity &&
@@ -860,6 +886,8 @@ async function showFloatingMeetingWindow(
   const updateResult = await windowsCommands.floatingBarUpdate({
     amplitude: routeState.amplitude,
     title: routeState.title,
+    elapsedSeconds: routeState.elapsedSeconds,
+    wordCount: routeState.wordCount,
     status: routeState.status,
     colorScheme: routeState.colorScheme,
     opacity: routeState.opacity,

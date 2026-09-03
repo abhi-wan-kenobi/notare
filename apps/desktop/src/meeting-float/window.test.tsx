@@ -47,6 +47,8 @@ function makeState(
   return {
     amplitude: 0.4,
     title: "Weekly sync",
+    elapsedSeconds: 0,
+    wordCount: 0,
     status: "recording",
     colorScheme: "dark",
     opacity: 0.78,
@@ -288,6 +290,58 @@ describe("FloatingBarContent orb variant", () => {
     expect(
       screen.getByTestId("dictation-orb").getAttribute("data-dictation-phase"),
     ).toBe("error");
+  });
+});
+
+describe("FloatingBarContent recording meter", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.config = {};
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("renders the weighted timer with the seconds emphasised", () => {
+    render(<FloatingBarContent state={makeState({ elapsedSeconds: 75 })} />);
+
+    const meter = screen.getByTestId("recording-meter");
+    // Weighted per §104: dim `mm:`, bold `ss`. Asserted as separate nodes so a
+    // regression that flattens the emphasis fails here rather than passing on
+    // the concatenated text.
+    expect(meter.textContent).toBe("01:15");
+    expect(meter.querySelector(".font-semibold")?.textContent).toBe("15");
+  });
+
+  it("rolls over into hours", () => {
+    render(<FloatingBarContent state={makeState({ elapsedSeconds: 3725 })} />);
+
+    expect(screen.getByTestId("recording-meter").textContent).toBe("1:02:05");
+  });
+
+  it("shows the word count once there are words, and hides it at zero", () => {
+    const { rerender } = render(
+      <FloatingBarContent state={makeState({ wordCount: 0 })} />,
+    );
+    expect(screen.queryByTestId("recording-word-count")).toBeNull();
+
+    rerender(<FloatingBarContent state={makeState({ wordCount: 128 })} />);
+    expect(screen.getByTestId("recording-word-count").textContent).toBe("128");
+  });
+
+  it("renders the meter on the Classic bar too", () => {
+    mocks.config["meeting_bar_theme"] = "classic";
+
+    render(
+      <FloatingBarContent
+        state={makeState({ elapsedSeconds: 62, wordCount: 9 })}
+      />,
+    );
+
+    const meter = screen.getByTestId("classic-recording-meter");
+    expect(meter.textContent).toBe("01:029");
+    expect(screen.getByTestId("classic-recording-dot")).toBeTruthy();
   });
 });
 

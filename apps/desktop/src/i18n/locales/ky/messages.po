@@ -2331,6 +2331,10 @@ msgstr ""
 msgid "Record"
 msgstr ""
 
+#: src/meeting-float/window.tsx
+msgid "Recording time"
+msgstr ""
+
 #: src/settings/general/app-settings.tsx
 msgid "Reduce background noise on your microphone before transcription. Applies to new sessions only; recordings are always saved unprocessed."
 msgstr ""
