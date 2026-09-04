@@ -12,11 +12,11 @@
     "@hypr/db-runtime": "workspace:*"
   },
   "devDependencies": {
-    "@testing-library/react": "^16.3.2",
-    "@types/react": "^19.2.14",
+    "@testing-library/react": "^16.3.3",
+    "@types/react": "^19.2.18",
     "jsdom": "^26.1.0",
-    "typescript": "~5.8.3",
-    "vitest": "^4.1.4"
+    "typescript": "~5.9.3",
+    "vitest": "^4.1.11"
   },
   "peerDependencies": {
     "react": "^19.2.3"
