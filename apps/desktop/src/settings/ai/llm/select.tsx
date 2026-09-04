@@ -1,7 +1,14 @@
 import { Trans, useLingui } from "@lingui/react/macro";
-import { useQueryClient } from "@tanstack/react-query";
-import { useMemo, useRef } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Channel } from "@tauri-apps/api/core";
+import { Check, DownloadIcon, Loader2, Trash2, XIcon } from "lucide-react";
+import { useCallback, useMemo, useRef, useState } from "react";
 
+import {
+  commands as localLlmCommands,
+  type GgufLlmModel,
+} from "@hypr/plugin-local-llm";
+import { Button } from "@hypr/ui/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -252,6 +259,205 @@ export function SelectProviderAndModel() {
           />
         </div>
       </div>
+
+      {current_llm_provider === "notare-local" && (
+        <LocalModelManager
+          onModelDownloaded={() => {
+            queryClient.invalidateQueries({
+              queryKey: ["models", "notare-local"],
+            });
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes >= 1_000_000_000) {
+    return `${(bytes / 1_000_000_000).toFixed(1)} GB`;
+  }
+  return `${(bytes / 1_000_000).toFixed(0)} MB`;
+}
+
+function LocalModelManager({
+  onModelDownloaded,
+}: {
+  onModelDownloaded: () => void;
+}) {
+  const queryClient = useQueryClient();
+
+  const supportedQuery = useQuery({
+    queryKey: ["local-llm", "supported-models"],
+    queryFn: async () => {
+      const result = await localLlmCommands.listSupportedModel();
+      if (result.status !== "ok") {
+        throw new Error(result.error);
+      }
+      return result.data;
+    },
+  });
+
+  const downloadedQuery = useQuery({
+    queryKey: ["local-llm", "downloaded-models"],
+    queryFn: async () => {
+      const result = await localLlmCommands.listDownloadedModel();
+      if (result.status !== "ok") {
+        throw new Error(result.error);
+      }
+      return result.data;
+    },
+  });
+
+  const downloadedSet = useMemo(
+    () => new Set<string>(downloadedQuery.data ?? []),
+    [downloadedQuery.data],
+  );
+
+  const [downloading, setDownloading] = useState<Map<GgufLlmModel, number>>(
+    new Map(),
+  );
+
+  const handleDownload = useCallback(
+    async (model: GgufLlmModel) => {
+      setDownloading((prev) => new Map(prev).set(model, 0));
+      try {
+        const channel = new Channel<number>();
+        channel.onmessage = (progress) => {
+          setDownloading((prev) => new Map(prev).set(model, progress));
+        };
+        const result = await localLlmCommands.downloadModel(model, channel);
+        if (result.status !== "ok") {
+          throw new Error(result.error);
+        }
+        queryClient.invalidateQueries({
+          queryKey: ["local-llm", "downloaded-models"],
+        });
+        onModelDownloaded();
+      } finally {
+        setDownloading((prev) => {
+          const next = new Map(prev);
+          next.delete(model);
+          return next;
+        });
+      }
+    },
+    [queryClient, onModelDownloaded],
+  );
+
+  const handleCancel = useCallback(async (model: GgufLlmModel) => {
+    await localLlmCommands.cancelDownload(model);
+    setDownloading((prev) => {
+      const next = new Map(prev);
+      next.delete(model);
+      return next;
+    });
+  }, []);
+
+  const handleDelete = useCallback(
+    async (model: GgufLlmModel) => {
+      await localLlmCommands.deleteModel(model);
+      queryClient.invalidateQueries({
+        queryKey: ["local-llm", "downloaded-models"],
+      });
+      onModelDownloaded();
+    },
+    [queryClient, onModelDownloaded],
+  );
+
+  if (supportedQuery.isLoading) {
+    return (
+      <div className="flex items-center gap-2 py-2">
+        <Loader2 className="text-muted-foreground size-4 animate-spin" />
+        <span className="text-muted-foreground text-sm">
+          <Trans>Loading available models…</Trans>
+        </span>
+      </div>
+    );
+  }
+
+  const models = supportedQuery.data ?? [];
+
+  return (
+    <div className="flex flex-col gap-2">
+      <h4 className="text-sm font-medium">
+        <Trans>Local models</Trans>
+      </h4>
+      <p className="text-muted-foreground -mt-1 text-xs">
+        <Trans>
+          Download a model to run the LLM entirely on your device. No API key
+          needed.
+        </Trans>
+      </p>
+      <div className="divide-border/60 divide-y">
+        {models.map((model) => {
+          const isDownloaded = downloadedSet.has(model.key);
+          const progress = downloading.get(model.key);
+          const isDownloading = progress !== undefined;
+
+          return (
+            <div key={model.key} className="flex items-center gap-3 py-2.5">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium">{model.name}</span>
+                  <span className="text-muted-foreground text-xs">
+                    {formatBytes(model.size_bytes)}
+                  </span>
+                  {isDownloaded && (
+                    <Check className="text-ok size-3.5 shrink-0" />
+                  )}
+                </div>
+                <p className="text-muted-foreground text-xs">
+                  {model.description}
+                </p>
+                {isDownloading && (
+                  <div className="mt-1 flex items-center gap-2">
+                    <div className="bg-muted h-1.5 flex-1 overflow-hidden rounded-full">
+                      <div
+                        className="bg-primary h-full rounded-full transition-all duration-300"
+                        style={{ width: `${Math.min(progress, 100)}%` }}
+                      />
+                    </div>
+                    <span className="text-muted-foreground w-9 text-right font-mono text-xs">
+                      {Math.round(progress)}%
+                    </span>
+                  </div>
+                )}
+              </div>
+              <div className="flex shrink-0 items-center gap-1">
+                {isDownloading ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleCancel(model.key)}
+                  >
+                    <XIcon className="size-3.5" />
+                    <Trans>Cancel</Trans>
+                  </Button>
+                ) : isDownloaded ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDelete(model.key)}
+                  >
+                    <Trash2 className="size-3.5" />
+                    <Trans>Delete</Trans>
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleDownload(model.key)}
+                  >
+                    <DownloadIcon className="size-3.5" />
+                    <Trans>Download</Trans>
+                  </Button>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -302,6 +508,17 @@ export function getLlmProviderStatus({
       },
     };
     return { configured: true, listModels: async () => result };
+  }
+
+  if (provider.id === "notare-local") {
+    return {
+      configured: true,
+      listModels: async () => {
+        const result = await localLlmCommands.listDownloadedModel();
+        const models = result.status === "ok" ? result.data.map((m) => m) : [];
+        return { models, ignored: [], metadata: {} };
+      },
+    };
   }
 
   let listModelsFunc: () => Promise<ListModelsResult>;

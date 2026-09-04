@@ -157,6 +157,14 @@ const _PROVIDERS = [
     requirements: [{ kind: "requires_config", fields: ["api_key"] }],
   },
   {
+    id: "notare-local",
+    displayName: "Notare Local",
+    badge: "Built-in",
+    icon: <NotareProviderIcon />,
+    baseUrl: undefined,
+    requirements: [],
+  },
+  {
     id: "custom",
     displayName: "Custom",
     badge: null,

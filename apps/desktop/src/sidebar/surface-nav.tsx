@@ -115,7 +115,7 @@ export function SidebarSurfaceNav() {
       aria-label={t`Switch view`}
       data-testid="sidebar-surface-nav"
       data-tauri-drag-region="false"
-      className="border-border/80 flex shrink-0 items-center justify-between border-t px-3 py-1.5"
+      className="border-border/80 grid shrink-0 grid-cols-4 place-items-center border-t px-3 py-1"
     >
       {items.map((item) => {
         const isActive = activeSurface === item.id;
