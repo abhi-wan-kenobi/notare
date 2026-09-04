@@ -82,7 +82,7 @@ jobs:
       # above — this download is large (~3GB) and this is a manual/rare
       # workflow, so cache misses are expected and fine, not a regression.
       - if: inputs.os == 'windows' && inputs.gpu == 'voxtral-cuda'
-        uses: Jimver/cuda-toolkit@c35baa1a18fd1fc9dcf47c5bd839bf30559c0bc3 # v0.2.24
+        uses: Jimver/cuda-toolkit@b8bf9c6c28f8a92fbb04dcfcaee872e60c57462d # v0.2.36
         id: cuda-toolkit
         with:
           cuda: "12.4.1"
