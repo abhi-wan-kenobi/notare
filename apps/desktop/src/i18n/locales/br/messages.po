@@ -438,6 +438,7 @@ msgid "Can transcribe while the meeting is happening."
 msgstr ""
 
 #: src/onboarding/transcription.tsx
+#: src/settings/ai/llm/select.tsx
 #: src/settings/general/account.tsx
 #: src/settings/general/storage/legacy-cleanup.tsx
 #: src/settings/general/storage/notes-location.tsx
@@ -813,6 +814,7 @@ msgid "Date and time are required"
 msgstr ""
 
 #: src/session/components/outer-header/overflow/delete.tsx
+#: src/settings/ai/llm/select.tsx
 #: src/snippets/entry-row.tsx
 #: src/templates/sections-editor.tsx
 #: src/templates/template-form.tsx
@@ -946,9 +948,14 @@ msgid "Don't show notifications when Do-Not-Disturb is enabled on your system"
 msgstr ""
 
 #: src/onboarding/transcription.tsx
+#: src/settings/ai/llm/select.tsx
 #: src/settings/ai/stt/select.tsx
 #: src/settings/general/app-settings.tsx
 msgid "Download"
+msgstr ""
+
+#: src/settings/ai/llm/select.tsx
+msgid "Download a model to run the LLM entirely on your device. No API key needed."
 msgstr ""
 
 #: src/onboarding/index.tsx
@@ -1592,6 +1599,7 @@ msgid "Loading action items…"
 msgstr ""
 
 #: src/onboarding/transcription.tsx
+#: src/settings/ai/llm/select.tsx
 msgid "Loading available models…"
 msgstr ""
 
@@ -1616,6 +1624,10 @@ msgstr ""
 #: src/calendar/components/ics/content.tsx
 #: src/settings/sync/index.tsx
 msgid "Loading…"
+msgstr ""
+
+#: src/settings/ai/llm/select.tsx
+msgid "Local models"
 msgstr ""
 
 #: src/settings/ai/llm/routing.tsx
