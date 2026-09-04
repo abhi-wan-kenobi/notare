@@ -6,12 +6,12 @@
     "./storage": "./src/storage.ts"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.103.0",
-    "jose": "^6.2.2",
+    "@supabase/supabase-js": "^2.112.4",
+    "jose": "^6.2.10",
     "tus-js-client": "^4.3.1"
   },
   "devDependencies": {
-    "@types/node": "^22.19.17"
+    "@types/node": "^22.20.1"
   },
   "peerDependencies": {
     "hono": "^4.0.0"

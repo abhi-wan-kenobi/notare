@@ -11,7 +11,7 @@
     "@hypr/utils": "workspace:^"
   },
   "devDependencies": {
-    "@types/react": "^19.2.14"
+    "@types/react": "^19.2.18"
   },
   "peerDependencies": {
     "lucide-react": ">=0.400.0",

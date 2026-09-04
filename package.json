@@ -8,18 +8,18 @@
     "plugin:hello-world:install": "pnpm --dir examples/plugins/hello-world install:dev"
   },
   "devDependencies": {
-    "@dotenvx/dotenvx": "^1.61.0",
-    "@infisical/cli": "^0.43.72",
-    "@tanstack/eslint-plugin-query": "^5.99.0",
-    "dprint": "^0.51.1",
+    "@dotenvx/dotenvx": "^1.75.1",
+    "@infisical/cli": "^0.43.128",
+    "@tanstack/eslint-plugin-query": "^5.102.8",
+    "dprint": "^0.57.0",
     "eslint": "^9.39.4",
     "lint-staged": "^16.4.0",
-    "oxfmt": "^0.45.0",
-    "oxlint": "^1.60.0",
-    "oxlint-tsgolint": "^0.21.1",
-    "supabase": "^2.89.1",
-    "turbo": "2.9.14",
-    "typescript-eslint": "^8.58.1"
+    "oxfmt": "^0.65.0",
+    "oxlint": "^1.80.0",
+    "oxlint-tsgolint": "^0.25.0",
+    "supabase": "^2.116.0",
+    "turbo": "2.10.12",
+    "typescript-eslint": "^8.69.0"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx,json,css,md}": "dprint fmt"
