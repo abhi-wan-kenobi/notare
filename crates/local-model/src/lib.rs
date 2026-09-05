@@ -35,6 +35,10 @@ pub enum GgufLlmModel {
     Llama3p2_3bQ4,
     Gemma3_4bQ4,
     HyprLLM,
+    Qwen3_4bQ4,
+    Llama3p1_8bQ4,
+    Phi4Mini_Q4,
+    Mistral7b_v03_Q4,
 }
 
 impl GgufLlmModel {
@@ -63,10 +67,10 @@ impl GgufLlmModel {
     /// underlying crate legitimately have different platform gates.
     pub fn is_available_on_current_platform(&self) -> bool {
         match self {
-            GgufLlmModel::HyprLLM => true,
-            GgufLlmModel::Llama3p2_3bQ4 | GgufLlmModel::Gemma3_4bQ4 => {
-                cfg!(target_arch = "aarch64")
-            }
+            // Legacy models: aarch64-only for backward compatibility.
+            GgufLlmModel::Llama3p2_3bQ4 => cfg!(target_arch = "aarch64"),
+            // All other models run on every desktop target llama-cpp-2 builds on.
+            _ => true,
         }
     }
 
@@ -80,11 +84,20 @@ impl GgufLlmModel {
     /// unverified constant.
     pub fn model_sha256(&self) -> Option<&'static str> {
         match self {
-            // Computed 2026-09-02 against a fresh download of `model_url()`
-            // (`sha256sum`, independently cross-checked against this crate's
-            // own streaming hasher) — not a value taken on faith.
             GgufLlmModel::HyprLLM => {
                 Some("d772bf66eceef53ea28adaf3929df0a479606c358facd26c9f33396399f96863")
+            }
+            GgufLlmModel::Qwen3_4bQ4 => {
+                Some("7485fe6f11af29433bc51cab58009521f205840f5b4ae3a32fa7f92e8534fdf5")
+            }
+            GgufLlmModel::Llama3p1_8bQ4 => {
+                Some("7b064f5842bf9532c91456deda288a1b672397a54fa729aa665952863033557c")
+            }
+            GgufLlmModel::Phi4Mini_Q4 => {
+                Some("3c4d3cbdf3006d81444f6c7a5a56eb93d8e0f0e2ba5963b8ab62f9fd42604233")
+            }
+            GgufLlmModel::Mistral7b_v03_Q4 => {
+                Some("1270d22c0fbb3d092fb725d4d96c457b7b687a5f5a715abe1e818da303e562b6")
             }
             GgufLlmModel::Llama3p2_3bQ4 | GgufLlmModel::Gemma3_4bQ4 => None,
         }
@@ -95,6 +108,10 @@ impl GgufLlmModel {
             GgufLlmModel::Llama3p2_3bQ4 => "llm.gguf",
             GgufLlmModel::HyprLLM => "hypr-llm.gguf",
             GgufLlmModel::Gemma3_4bQ4 => "gemma-3-4b-it-Q4_K_M.gguf",
+            GgufLlmModel::Qwen3_4bQ4 => "Qwen3-4B-Q4_K_M.gguf",
+            GgufLlmModel::Llama3p1_8bQ4 => "Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf",
+            GgufLlmModel::Phi4Mini_Q4 => "Phi-4-mini-instruct-Q4_K_M.gguf",
+            GgufLlmModel::Mistral7b_v03_Q4 => "Mistral-7B-Instruct-v0.3-Q4_K_M.gguf",
         }
     }
 
@@ -109,6 +126,18 @@ impl GgufLlmModel {
             GgufLlmModel::Gemma3_4bQ4 => {
                 "https://hyprnote.s3.us-east-1.amazonaws.com/v0/unsloth/gemma-3-4b-it-GGUF/gemma-3-4b-it-Q4_K_M.gguf"
             }
+            GgufLlmModel::Qwen3_4bQ4 => {
+                "https://huggingface.co/Qwen/Qwen3-4B-GGUF/resolve/main/Qwen3-4B-Q4_K_M.gguf"
+            }
+            GgufLlmModel::Llama3p1_8bQ4 => {
+                "https://huggingface.co/bartowski/Meta-Llama-3.1-8B-Instruct-GGUF/resolve/main/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf"
+            }
+            GgufLlmModel::Phi4Mini_Q4 => {
+                "https://huggingface.co/lmstudio-community/Phi-4-mini-instruct-GGUF/resolve/main/Phi-4-mini-instruct-Q4_K_M.gguf"
+            }
+            GgufLlmModel::Mistral7b_v03_Q4 => {
+                "https://huggingface.co/bartowski/Mistral-7B-Instruct-v0.3-GGUF/resolve/main/Mistral-7B-Instruct-v0.3-Q4_K_M.gguf"
+            }
         }
     }
 
@@ -117,14 +146,20 @@ impl GgufLlmModel {
             GgufLlmModel::Llama3p2_3bQ4 => 2019377440,
             GgufLlmModel::HyprLLM => 1107409056,
             GgufLlmModel::Gemma3_4bQ4 => 2489894016,
+            GgufLlmModel::Qwen3_4bQ4 => 2497280256,
+            GgufLlmModel::Llama3p1_8bQ4 => 4920739232,
+            GgufLlmModel::Phi4Mini_Q4 => 2491874400,
+            GgufLlmModel::Mistral7b_v03_Q4 => 4372812000,
         }
     }
 
-    pub fn model_checksum(&self) -> u32 {
+    pub fn model_checksum(&self) -> Option<u32> {
         match self {
-            GgufLlmModel::Llama3p2_3bQ4 => 2831308098,
-            GgufLlmModel::HyprLLM => 4037351144,
-            GgufLlmModel::Gemma3_4bQ4 => 2760830291,
+            GgufLlmModel::Llama3p2_3bQ4 => Some(2831308098),
+            GgufLlmModel::HyprLLM => Some(4037351144),
+            GgufLlmModel::Gemma3_4bQ4 => Some(2760830291),
+            // New models rely on SHA-256 verification only.
+            _ => None,
         }
     }
 
@@ -133,6 +168,10 @@ impl GgufLlmModel {
             GgufLlmModel::Llama3p2_3bQ4 => "Llama 3.2 3B Q4",
             GgufLlmModel::HyprLLM => "HyprLLM",
             GgufLlmModel::Gemma3_4bQ4 => "Gemma 3 4B Q4",
+            GgufLlmModel::Qwen3_4bQ4 => "Qwen 3 4B Q4",
+            GgufLlmModel::Llama3p1_8bQ4 => "Llama 3.1 8B Q4",
+            GgufLlmModel::Phi4Mini_Q4 => "Phi-4 Mini Q4",
+            GgufLlmModel::Mistral7b_v03_Q4 => "Mistral 7B v0.3 Q4",
         }
     }
 
@@ -213,6 +252,10 @@ impl LocalModel {
             LocalModel::GgufLlm(GgufLlmModel::Llama3p2_3bQ4),
             LocalModel::GgufLlm(GgufLlmModel::HyprLLM),
             LocalModel::GgufLlm(GgufLlmModel::Gemma3_4bQ4),
+            LocalModel::GgufLlm(GgufLlmModel::Qwen3_4bQ4),
+            LocalModel::GgufLlm(GgufLlmModel::Llama3p1_8bQ4),
+            LocalModel::GgufLlm(GgufLlmModel::Phi4Mini_Q4),
+            LocalModel::GgufLlm(GgufLlmModel::Mistral7b_v03_Q4),
         ]);
 
         models
@@ -258,6 +301,10 @@ impl LocalModel {
             LocalModel::GgufLlm(GgufLlmModel::Llama3p2_3bQ4) => "llm-llama3-2-3b-q4",
             LocalModel::GgufLlm(GgufLlmModel::HyprLLM) => "llm-hypr-llm",
             LocalModel::GgufLlm(GgufLlmModel::Gemma3_4bQ4) => "llm-gemma3-4b-q4",
+            LocalModel::GgufLlm(GgufLlmModel::Qwen3_4bQ4) => "llm-qwen3-4b-q4",
+            LocalModel::GgufLlm(GgufLlmModel::Llama3p1_8bQ4) => "llm-llama3-1-8b-q4",
+            LocalModel::GgufLlm(GgufLlmModel::Phi4Mini_Q4) => "llm-phi4-mini-q4",
+            LocalModel::GgufLlm(GgufLlmModel::Mistral7b_v03_Q4) => "llm-mistral-7b-v03-q4",
         }
     }
 
@@ -330,7 +377,7 @@ impl DownloadableModel for GgufLlmModel {
     }
 
     fn download_checksum(&self) -> Option<u32> {
-        Some(self.model_checksum())
+        self.model_checksum()
     }
 
     fn expected_size(&self) -> Option<u64> {
@@ -752,21 +799,27 @@ mod tests {
     }
 
     #[test]
-    fn deprecated_gguf_models_have_no_pinned_sha256() {
+    fn legacy_gguf_models_have_no_pinned_sha256() {
         assert_eq!(GgufLlmModel::Llama3p2_3bQ4.model_sha256(), None);
         assert_eq!(GgufLlmModel::Gemma3_4bQ4.model_sha256(), None);
+        // All new models have SHA-256 pinned.
         assert!(GgufLlmModel::HyprLLM.model_sha256().is_some());
+        assert!(GgufLlmModel::Qwen3_4bQ4.model_sha256().is_some());
+        assert!(GgufLlmModel::Llama3p1_8bQ4.model_sha256().is_some());
+        assert!(GgufLlmModel::Phi4Mini_Q4.model_sha256().is_some());
+        assert!(GgufLlmModel::Mistral7b_v03_Q4.model_sha256().is_some());
     }
 
     #[test]
-    fn only_hypr_llm_is_available_off_aarch64() {
-        // This assertion is only meaningful when actually run off-aarch64
-        // (e.g. the x86_64 Linux CI job); on aarch64 all three are available
-        // and the assertion is vacuously true for the deprecated pair too.
+    fn only_llama3p2_is_aarch64_gated() {
         if !cfg!(target_arch = "aarch64") {
             assert!(GgufLlmModel::HyprLLM.is_available_on_current_platform());
+            assert!(GgufLlmModel::Qwen3_4bQ4.is_available_on_current_platform());
+            assert!(GgufLlmModel::Gemma3_4bQ4.is_available_on_current_platform());
+            assert!(GgufLlmModel::Phi4Mini_Q4.is_available_on_current_platform());
+            assert!(GgufLlmModel::Llama3p1_8bQ4.is_available_on_current_platform());
+            assert!(GgufLlmModel::Mistral7b_v03_Q4.is_available_on_current_platform());
             assert!(!GgufLlmModel::Llama3p2_3bQ4.is_available_on_current_platform());
-            assert!(!GgufLlmModel::Gemma3_4bQ4.is_available_on_current_platform());
         }
     }
 
