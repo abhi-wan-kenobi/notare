@@ -99,7 +99,7 @@ async serverUrl() : Promise<Result<string | null, string>> {
 /** user-defined types **/
 
 export type CustomModelInfo = { path: string; name: string }
-export type GgufLlmModel = "Llama3p2_3bQ4" | "Gemma3_4bQ4" | "HyprLLM"
+export type GgufLlmModel = "Llama3p2_3bQ4" | "Gemma3_4bQ4" | "HyprLLM" | "Qwen3_4bQ4" | "Llama3p1_8bQ4" | "Phi4Mini_Q4" | "Mistral7b_v03_Q4"
 export type ModelInfo = { key: GgufLlmModel; name: string; description: string; size_bytes: number }
 export type TAURI_CHANNEL<TSend> = null
 
