@@ -33,16 +33,53 @@
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
-use sqlx::sqlite::{
-    SqliteConnectOptions, SqlitePool, SqliteTypeInfo, SqliteValueRef,
-};
-use sqlx::ValueRef;
-use sqlx::{Column, Row, Sqlite, TypeInfo};
+use sqlx::sqlite::{SqliteConnectOptions, SqlitePool};
+
+// The codec/row types the spike tests use moved to their permanent home in
+// `crate::changes` (PR C-B); pull/apply stay here as pool-level wrappers
+// over that API.
+pub use crate::changes::{Change, SqlValue};
+
+/// The spike's whole-history pull — every change with `db_version >
+/// after_db_version`, excluding `exclude_site`'s own — expressed over the
+/// transport's [`crate::changes::pull_changes`] Cursor API. The `seq:
+/// i64::MAX` sentinel consumes all of `after_db_version`'s positions, so
+/// only strictly newer db_versions are returned (the spike's original
+/// `db_version > ?` semantics).
+pub async fn pull_changes(
+    pool: &SqlitePool,
+    after_db_version: i64,
+    exclude_site: &[u8],
+) -> Result<Vec<Change>> {
+    let mut changes = Vec::new();
+    let mut cursor = crate::Cursor {
+        db_version: after_db_version,
+        seq: i64::MAX,
+    };
+    loop {
+        let page =
+            crate::changes::pull_changes(pool, cursor, exclude_site, usize::MAX).await?;
+        changes.extend(page.changes);
+        if !page.more {
+            return Ok(changes);
+        }
+        cursor = page.next;
+    }
+}
+
+/// The spike's pool-level apply: one connection, one transaction (the
+/// original spike's shape; the production shape composes the transport's
+/// transaction around [`crate::changes::apply_changes`]).
+pub async fn apply_changes(pool: &SqlitePool, changes: &[Change]) -> Result<()> {
+    let mut tx = sqlx::Acquire::begin(pool).await?;
+    crate::changes::apply_changes(&mut *tx, changes).await?;
+    tx.commit().await?;
+    Ok(())
+}
 
 /// The six tables enabled for sync (`SYNCED_TABLES` in
 /// `crates/db-app/src/cloudsync.rs`), re-declared here: the const is private
 /// to db-app, and the duplication is pinned by an assertion against the
-/// registry in `strict_roundtrip.rs`.
 pub const SYNCED_TABLES: &[&str] = &[
     "sessions",
     "session_documents",
@@ -84,12 +121,6 @@ pub const REGISTRY_TABLES: &[&str] = &[
 /// adds or drops a STRICT table re-trips the spike).
 pub const EXPECTED_STRICT_TABLE_COUNT: usize = 21;
 
-/// cr-sqlite v0.16.3 `crsql_changes` column list, as bound by
-/// [`pull_changes`] and [`apply_changes`]. `cl` exists in 0.16.3 but is
-/// unused (always 1 in probes); `ts` does **not** exist (that is the
-/// superfly fork's schema change).
-pub(crate) const CHANGES_COLUMNS: &str =
-    r#""table", pk, cid, val, col_version, db_version, site_id, cl, seq"#;
 
 /// Absolute path to the prebuilt cr-sqlite loadable extension, from
 /// `CRSQLITE_SPIKE_EXTENSION`. `None` → tests print "skipped" and return
@@ -121,6 +152,12 @@ impl std::error::Error for SpikeError {}
 
 impl From<sqlx::Error> for SpikeError {
     fn from(error: sqlx::Error) -> Self {
+        Self(error.to_string())
+    }
+}
+
+impl From<crate::Error> for SpikeError {
+    fn from(error: crate::Error) -> Self {
         Self(error.to_string())
     }
 }
@@ -268,166 +305,6 @@ impl Node {
     }
 }
 
-/// The value codec the 0.7 transport will ship. Decoding goes through
-/// `SqliteValueRef::type_info()` (which reports the *actual* storage class
-/// of the underlying sqlite3_value, not the column's declared affinity) so
-/// the transport never textualises or re-scores a value.
-///
-/// The public sqlx surface (`ValueRef::type_info()` + `Decode` impls for
-/// `i64`/`f64`/`String`/`Vec<u8>`) is exactly enough: sqlx-sqlite's
-/// `DataType` enum is `pub(crate)`, so dispatch is on the public
-/// `TypeInfo::name()` string ("NULL" | "INTEGER" | "REAL" | "TEXT" |
-/// "BLOB").
-#[derive(Clone, Debug, PartialEq)]
-pub enum SqlValue {
-    Null,
-    Integer(i64),
-    Real(f64),
-    Text(String),
-    Blob(Vec<u8>),
-}
-
-impl SqlValue {
-    /// Decode one sqlite value by its runtime storage class.
-    ///
-    /// # Panics
-    /// On an unexpected storage class or on invalid UTF-8 in a TEXT value
-    /// (the app schema guarantees TEXT columns hold UTF-8).
-    pub fn decode(value: SqliteValueRef<'_>) -> Self {
-        use sqlx::Decode;
-
-        let info: std::borrow::Cow<'_, SqliteTypeInfo> = value.type_info();
-        match info.name() {
-            "NULL" => Self::Null,
-            "INTEGER" => {
-                Self::Integer(i64::decode(value).expect("decode INTEGER storage class as i64"))
-            }
-            "REAL" => {
-                Self::Real(f64::decode(value).expect("decode REAL storage class as f64"))
-            }
-            "TEXT" => Self::Text(
-                String::decode(value).expect("decode TEXT storage class as String"),
-            ),
-            "BLOB" => Self::Blob(
-                Vec::<u8>::decode(value).expect("decode BLOB storage class as Vec<u8>"),
-            ),
-            other => panic!("unexpected storage class in crsql_changes.val: {other}"),
-        }
-    }
-
-    /// Bind this value as the next query argument.
-    pub fn bind<'q>(
-        self,
-        query: sqlx::query::Query<'q, Sqlite, sqlx::sqlite::SqliteArguments>,
-    ) -> sqlx::query::Query<'q, Sqlite, sqlx::sqlite::SqliteArguments> {
-        match self {
-            Self::Null => query.bind(None::<i64>),
-            Self::Integer(v) => query.bind(v),
-            Self::Real(v) => query.bind(v),
-            Self::Text(v) => query.bind(v),
-            Self::Blob(v) => query.bind(v),
-        }
-    }
-
-    /// The SQL `typeof()` string for this value, for cross-node typeof
-    /// equality assertions.
-    pub fn typeof_name(&self) -> &'static str {
-        match self {
-            Self::Null => "null",
-            Self::Integer(_) => "integer",
-            Self::Real(_) => "real",
-            Self::Text(_) => "text",
-            Self::Blob(_) => "blob",
-        }
-    }
-}
-
-/// A `crsql_changes` row, as the transport will ship it.
-#[derive(Clone, Debug, PartialEq)]
-pub struct Change {
-    pub table: String,
-    /// cr-sqlite packs the PK into a blob; all six synced tables and the
-    /// probe table are single-column TEXT PKs, so the spike keeps one
-    /// `SqlValue` and asserts the storage class stays TEXT.
-    pub pk: SqlValue,
-    pub cid: String,
-    pub val: SqlValue,
-    pub col_version: i64,
-    pub db_version: i64,
-    pub site_id: Vec<u8>,
-    pub cl: i64,
-    pub seq: i64,
-}
-
-impl Change {
-    /// Bind all nine columns of an `INSERT INTO crsql_changes` row.
-    pub fn bind_into<'q>(
-        &self,
-        query: sqlx::query::Query<'q, Sqlite, sqlx::sqlite::SqliteArguments>,
-    ) -> sqlx::query::Query<'q, Sqlite, sqlx::sqlite::SqliteArguments> {
-        let query = query.bind(self.table.clone());
-        let query = self.pk.clone().bind(query);
-        let query = query.bind(self.cid.clone());
-        let query = self.val.clone().bind(query);
-        query
-            .bind(self.col_version)
-            .bind(self.db_version)
-            .bind(self.site_id.clone())
-            .bind(self.cl)
-            .bind(self.seq)
-    }
-}
-
-/// Pull all changes with `db_version > after_db_version`, excluding
-/// `exclude_site`'s own changes — the exact query shape from the plan.
-pub async fn pull_changes(
-    pool: &SqlitePool,
-    after_db_version: i64,
-    exclude_site: &[u8],
-) -> Result<Vec<Change>> {
-    let rows = sqlx::query(
-        r#"SELECT "table", pk, cid, val, col_version, db_version, site_id, cl, seq
-           FROM crsql_changes
-           WHERE db_version > ? AND site_id IS NOT ?
-           ORDER BY db_version, seq"#
-    )
-    .bind(after_db_version)
-    .bind(exclude_site)
-    .fetch_all(pool)
-    .await?;
-
-    let mut changes = Vec::with_capacity(rows.len());
-    for row in rows {
-        let pk = SqlValue::decode(row.try_get_raw(1).expect("raw pk"));
-        let val = SqlValue::decode(row.try_get_raw(3).expect("raw val"));
-        changes.push(Change {
-            table: row.try_get(0)?,
-            pk,
-            cid: row.try_get(2)?,
-            val,
-            col_version: row.try_get(4)?,
-            db_version: row.try_get(5)?,
-            site_id: row.try_get(6)?,
-            cl: row.try_get(7)?,
-            seq: row.try_get(8)?,
-        });
-    }
-    Ok(changes)
-}
-
-/// Apply a batch of changes on one pooled connection in a single transaction.
-pub async fn apply_changes(pool: &SqlitePool, changes: &[Change]) -> Result<()> {
-    let mut tx = pool.begin().await?;
-    for change in changes {
-        let query = sqlx::query(
-            r#"INSERT INTO crsql_changes ("table", pk, cid, val, col_version, db_version, site_id, cl, seq)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"#
-        );
-        change.bind_into(query).execute(&mut *tx).await?;
-    }
-    tx.commit().await?;
-    Ok(())
-}
 
 /// `PRAGMA integrity_check` must report `ok`.
 pub async fn assert_integrity_ok(pool: &SqlitePool, label: &str) {
