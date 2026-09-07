@@ -78,7 +78,23 @@ async listCustomModels() : Promise<Result<CustomModelInfo[], string>> {
     else return { status: "error", error: e  as any };
 }
 },
-async serverUrl() : Promise<Result<string | null, string>> {
+async startServer(model: GgufLlmModel) : Promise<Result<ServerInfo, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:local-llm|start_server", { model }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async stopServer() : Promise<Result<boolean, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:local-llm|stop_server") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async serverUrl() : Promise<Result<ServerInfo | null, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("plugin:local-llm|server_url") };
 } catch (e) {
@@ -99,8 +115,9 @@ async serverUrl() : Promise<Result<string | null, string>> {
 /** user-defined types **/
 
 export type CustomModelInfo = { path: string; name: string }
-export type GgufLlmModel = "Llama3p2_3bQ4" | "Gemma3_4bQ4" | "HyprLLM"
+export type GgufLlmModel = "Llama3p2_3bQ4" | "Gemma3_4bQ4" | "HyprLLM" | "Qwen3_4bQ4" | "Llama3p1_8bQ4" | "Phi4MiniQ4" | "Mistral7bV03Q4"
 export type ModelInfo = { key: GgufLlmModel; name: string; description: string; size_bytes: number }
+export type ServerInfo = { url: string; model: GgufLlmModel }
 export type TAURI_CHANNEL<TSend> = null
 
 /** tauri-specta globals **/

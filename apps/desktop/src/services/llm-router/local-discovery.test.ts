@@ -1,6 +1,18 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { listLmStudioModels, probeStructuredOutputs } from "./local-discovery";
+const localLlmMocks = vi.hoisted(() => ({
+  serverUrl: vi.fn(),
+}));
+
+vi.mock("@hypr/plugin-local-llm", () => ({
+  commands: localLlmMocks,
+}));
+
+import {
+  discoverEmbeddedModel,
+  listLmStudioModels,
+  probeStructuredOutputs,
+} from "./local-discovery";
 
 /** Builds a minimal OpenAI-shaped chat-completions success response. */
 function chatResponse(content: unknown) {
@@ -207,5 +219,34 @@ describe("listLmStudioModels", () => {
       await listLmStudioModels("", fetchImpl as unknown as typeof fetch),
     ).toEqual([]);
     expect(fetchImpl).not.toHaveBeenCalled();
+  });
+});
+
+describe("discoverEmbeddedModel", () => {
+  it("reports the model identity paired with the running server URL", async () => {
+    localLlmMocks.serverUrl.mockResolvedValue({
+      status: "ok",
+      data: {
+        model: "Qwen3_4bQ4",
+        url: "http://127.0.0.1:12345/v1",
+      },
+    });
+
+    await expect(discoverEmbeddedModel()).resolves.toEqual([
+      {
+        providerId: "notare-local",
+        modelId: "Qwen3_4bQ4",
+        baseUrl: "http://127.0.0.1:12345/v1",
+      },
+    ]);
+  });
+
+  it("returns no candidate while the embedded server is stopped", async () => {
+    localLlmMocks.serverUrl.mockResolvedValue({
+      status: "ok",
+      data: null,
+    });
+
+    await expect(discoverEmbeddedModel()).resolves.toEqual([]);
   });
 });

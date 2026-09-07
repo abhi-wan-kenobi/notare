@@ -53,7 +53,7 @@ pub struct LlamaLlmModel {
     model: LlamaModel,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ChatMessage {
     pub role: String,
     pub content: String,
@@ -86,6 +86,35 @@ pub struct GenerateOutcome {
     pub finish_reason: FinishReason,
     pub prompt_tokens: usize,
     pub completion_tokens: usize,
+}
+
+fn to_llama_messages(messages: &[ChatMessage]) -> Result<Vec<LlamaChatMessage>, LlmError> {
+    messages
+        .iter()
+        .map(|message| {
+            LlamaChatMessage::new(message.role.clone(), message.content.clone())
+                .map_err(|error| LlmError::ChatTemplate(error.to_string()))
+        })
+        .collect()
+}
+
+fn fold_leading_system_messages(messages: &[ChatMessage]) -> Option<Vec<ChatMessage>> {
+    let system_count = messages
+        .iter()
+        .take_while(|message| message.role == "system")
+        .count();
+    if system_count == 0 || messages.get(system_count)?.role != "user" {
+        return None;
+    }
+
+    let system = messages[..system_count]
+        .iter()
+        .map(|message| message.content.as_str())
+        .collect::<Vec<_>>()
+        .join("\n\n");
+    let mut folded = messages[system_count..].to_vec();
+    folded[0].content = format!("System instructions:\n{system}\n\n{}", folded[0].content);
+    Some(folded)
 }
 
 impl LlamaLlmModel {
@@ -141,23 +170,36 @@ impl LlamaLlmModel {
             .new_context(backend, ctx_params)
             .map_err(|e| LlmError::ContextCreate(e.to_string()))?;
 
-        let messages: Vec<LlamaChatMessage> = request
-            .messages
-            .iter()
-            .map(|m| LlamaChatMessage::new(m.role.clone(), m.content.clone()))
-            .collect::<Result<_, _>>()
-            .map_err(|e| LlmError::ChatTemplate(e.to_string()))?;
-
+        let messages = to_llama_messages(&request.messages)?;
         let template = self
             .model
             .chat_template(None)
             .map_err(|e| LlmError::ChatTemplate(e.to_string()))?;
-        let mut prompt = self
-            .model
-            .apply_chat_template(&template, &messages, true)
-            .map_err(|e| LlmError::ChatTemplate(e.to_string()))?;
+        let mut prompt = match self.model.apply_chat_template(&template, &messages, true) {
+            Ok(prompt) => prompt,
+            Err(primary_error) => {
+                let Some(folded) = fold_leading_system_messages(&request.messages) else {
+                    return Err(LlmError::ChatTemplate(primary_error.to_string()));
+                };
+                let folded = to_llama_messages(&folded)?;
+                let prompt = self
+                    .model
+                    .apply_chat_template(&template, &folded, true)
+                    .map_err(|fallback_error| {
+                        LlmError::ChatTemplate(format!(
+                            "{primary_error}; system-message fallback failed: {fallback_error}"
+                        ))
+                    })?;
+                tracing::debug!("local_llm_chat_template_folded_system_message");
+                prompt
+            }
+        };
 
-        if request.json_schema.is_some() {
+        if request.json_schema.is_some()
+            && template
+                .to_str()
+                .is_ok_and(|template| template.contains("<think>"))
+        {
             // Empirically required for HyprLLM (a Qwen3-architecture model,
             // confirmed via its GGUF `general.architecture` metadata):
             // Qwen3's template gives the model room to open a `<think>...`
@@ -305,6 +347,48 @@ mod tests {
         let b = a;
         assert_eq!(a, b);
         assert_ne!(FinishReason::Stop, FinishReason::Length);
+    }
+
+    #[test]
+    fn folds_leading_system_messages_into_first_user_message() {
+        let messages = vec![
+            ChatMessage {
+                role: "system".into(),
+                content: "Be concise.".into(),
+            },
+            ChatMessage {
+                role: "user".into(),
+                content: "Summarize this.".into(),
+            },
+            ChatMessage {
+                role: "assistant".into(),
+                content: "Summary.".into(),
+            },
+        ];
+
+        let folded = fold_leading_system_messages(&messages).unwrap();
+        assert_eq!(
+            folded,
+            vec![
+                ChatMessage {
+                    role: "user".into(),
+                    content: "System instructions:\nBe concise.\n\nSummarize this.".into(),
+                },
+                ChatMessage {
+                    role: "assistant".into(),
+                    content: "Summary.".into(),
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn leaves_messages_without_a_leading_system_role_unchanged() {
+        let messages = [ChatMessage {
+            role: "user".into(),
+            content: "Hello.".into(),
+        }];
+        assert_eq!(fold_leading_system_messages(&messages), None);
     }
 
     #[test]

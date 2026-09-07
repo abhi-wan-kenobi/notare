@@ -22,10 +22,21 @@ const PLUGIN_NAME: &str = "local-llm";
 
 pub type SharedState = std::sync::Arc<TokioMutex<State>>;
 
+#[derive(Clone, serde::Serialize, serde::Deserialize, specta::Type)]
+pub struct ServerInfo {
+    pub url: String,
+    pub model: SupportedModel,
+}
+
+pub(crate) struct RunningServer {
+    pub model: SupportedModel,
+    pub server: hypr_local_llm_core::LlmServer,
+}
+
 pub struct State {
     pub model_downloader: ModelDownloadManager<SupportedModel>,
     pub download_channels: Arc<Mutex<HashMap<String, tauri::ipc::Channel<i8>>>>,
-    pub server: Option<hypr_local_llm_core::LlmServer>,
+    pub(crate) server: Option<RunningServer>,
 }
 
 fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
@@ -41,6 +52,8 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
             commands::delete_model::<Wry>,
             commands::list_downloaded_model::<Wry>,
             commands::list_custom_models::<Wry>,
+            commands::start_server::<Wry>,
+            commands::stop_server::<Wry>,
             commands::server_url::<Wry>,
         ])
         .error_handling(tauri_specta::ErrorHandlingMode::Result)

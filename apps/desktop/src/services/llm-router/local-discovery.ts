@@ -191,16 +191,9 @@ export async function probeStructuredOutputs(
 export const EMBEDDED_PROVIDER_ID = "notare-local";
 
 /**
- * The built-in local LLM's candidate, if it's currently running. Unlike
- * ollama/LM Studio (external processes, discovered by probing a port over
- * HTTP), this server is in-process and Tauri already knows its exact
- * address — asking the plugin (`server_url()`) is authoritative, not a
- * probe, so there's no false-negative/false-positive class of bug to guard
- * against here the way there is for `discoverLocalModels`.
- *
- * Returns `[]` (no candidate) whenever the server isn't running yet — the
- * ordinary state before its one model has been downloaded, or before
- * `start_server()` has finished loading it — never throws.
+ * Returns the exact model and loopback URL of the running embedded server.
+ * The plugin owns this identity atomically, so a model switch can never make
+ * the router label one model while sending requests to another.
  */
 export async function discoverEmbeddedModel(): Promise<Candidate[]> {
   try {
@@ -211,13 +204,8 @@ export async function discoverEmbeddedModel(): Promise<Candidate[]> {
     return [
       {
         providerId: EMBEDDED_PROVIDER_ID,
-        // The server always answers with whatever single model it loaded,
-        // regardless of this id (see `LlmServer::start_with_model_path`'s
-        // doc comment) — "HyprLLM" names the model the caps heuristics
-        // (`inferParamsB`) can't size from the id alone, same as any other
-        // custom/unlisted model id.
-        modelId: "HyprLLM",
-        baseUrl: result.data,
+        modelId: result.data.model,
+        baseUrl: result.data.url,
       },
     ];
   } catch {

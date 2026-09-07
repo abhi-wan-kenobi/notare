@@ -2,28 +2,18 @@ use std::path::{Path, PathBuf};
 
 pub use hypr_local_model::GgufLlmModel as SupportedModel;
 
-/// The models this build can actually download and run. Previously this was
-/// hardcoded to all three models under `#[cfg(target_arch = "aarch64")]` and
-/// **empty on every other architecture** — even though `HyprLLM`, the one
-/// non-deprecated model and the one the embedded local LLM server ships,
-/// runs anywhere `llama-cpp-2` builds (every desktop target this workspace
-/// targets; GPU offload is a separate `cuda`/`vulkan` build-feature
-/// concern). `Llama3p2_3bQ4` and `Gemma3_4bQ4` are self-described as
-/// "Deprecated. Exists only for backward compatibility." (see
-/// `supported_model_info`) and keep their original aarch64-only gate rather
-/// than being newly widened — this mirrors
-/// `GgufLlmModel::is_available_on_current_platform()`, which is the same
-/// per-model decision `LocalModel::is_available_on_current_platform` uses
-/// elsewhere in the workspace.
-#[cfg(target_arch = "aarch64")]
+/// The models this build can download and run. Models gated on
+/// `is_available_on_current_platform()` are excluded on non-matching
+/// architectures (currently only `Llama3p2_3bQ4` is aarch64-only).
 pub static SUPPORTED_MODELS: &[SupportedModel] = &[
+    SupportedModel::Qwen3_4bQ4,
+    SupportedModel::Gemma3_4bQ4,
+    SupportedModel::Phi4MiniQ4,
+    SupportedModel::Llama3p1_8bQ4,
+    SupportedModel::Mistral7bV03Q4,
     SupportedModel::HyprLLM,
     SupportedModel::Llama3p2_3bQ4,
-    SupportedModel::Gemma3_4bQ4,
 ];
-
-#[cfg(not(target_arch = "aarch64"))]
-pub static SUPPORTED_MODELS: &[SupportedModel] = &[SupportedModel::HyprLLM];
 
 #[derive(serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "specta", derive(specta::Type))]
@@ -51,15 +41,24 @@ pub fn llm_models_dir(models_base: &Path) -> PathBuf {
 /// match anything in an empty `SUPPORTED_MODELS`). Deriving from
 /// `SUPPORTED_MODELS` makes "listed" and "actually supported" the same set.
 pub fn list_supported_models() -> Vec<ModelInfo> {
-    SUPPORTED_MODELS.iter().map(supported_model_info).collect()
+    SUPPORTED_MODELS
+        .iter()
+        .filter(|m| m.is_available_on_current_platform())
+        .map(supported_model_info)
+        .collect()
 }
 
 pub fn supported_model_info(model: &SupportedModel) -> ModelInfo {
     let description = match model {
-        SupportedModel::HyprLLM => "Experimental model trained by the Char team.",
-        SupportedModel::Gemma3_4bQ4 | SupportedModel::Llama3p2_3bQ4 => {
-            "Deprecated. Exists only for backward compatibility."
+        SupportedModel::Qwen3_4bQ4 => {
+            "Recommended for most devices. Strong multilingual summaries and chat."
         }
+        SupportedModel::Gemma3_4bQ4 => "Fast general-purpose model from Google.",
+        SupportedModel::Phi4MiniQ4 => "Compact Microsoft model with strong reasoning.",
+        SupportedModel::Llama3p1_8bQ4 => "Best general quality. Suited to higher-memory devices.",
+        SupportedModel::Mistral7bV03Q4 => "Reliable summaries and instruction following.",
+        SupportedModel::HyprLLM => "Experimental legacy model trained by the Char team.",
+        SupportedModel::Llama3p2_3bQ4 => "Legacy model kept for backward compatibility.",
     };
 
     ModelInfo {
