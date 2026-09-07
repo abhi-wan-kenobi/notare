@@ -561,6 +561,83 @@ jobs:
       - name: cargo check -p cloudsync --features from-source (aarch64-unknown-linux-gnu, native)
         run: cargo check --locked -p cloudsync --features from-source
 
+  # 0.7 engine gate: `cargo test -p crsqlite` EXECUTES the vendored cr-sqlite
+  # engine (vlcn-io v0.16.3 prebuilt binaries, embedded via include_bytes!
+  # and extracted to the cache dir) with the real API surface on every
+  # `sync_platform` OS — the 0.7 release gate §B row ("engine tests execute
+  # on {linux,macos,windows}") that has never been true before. The un-gated
+  # tests (tests/engine_load.rs, tests/engine_changes.rs) load the binary
+  # exactly as the app will (crsqlite::apply); the env-gated Phase 0 spike
+  # tests print "skipped" without CRSQLITE_SPIKE_EXTENSION, so this job
+  # exercises the vendored path only. Also settles the macOS Gatekeeper
+  # unknown (does an unsigned extracted dylib load) and the Windows dll
+  # load, on real runners.
+  #
+  # No Vulkan/MSVC/llm machinery: the crate depends only on sqlx/sqlite +
+  # the dev-side db crates, so a bare runner + rust toolchain suffices.
+  crsqlite_gate_linux:
+    if: ${{ !startsWith(github.head_ref || '', 'blog/') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - uses: ./.github/actions/rust_install
+        with:
+          platform: linux
+      - name: cargo test -p crsqlite
+        run: cargo test --locked -p crsqlite
+
+  # macOS gate — same proof on macos-15 (aarch64). PROVISIONAL/NON-BLOCKING
+  # until observed green across a few PRs (the promotion bar every other
+  # provisional job here uses), because the extracted unsigned dylib's load
+  # under Gatekeeper on a real runner is exactly the kind of claim §21
+  # exists to prevent making on inference.
+  crsqlite_gate_macos:
+    if: ${{ !startsWith(github.head_ref || '', 'blog/') }}
+    runs-on: macos-15
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - uses: ./.github/actions/rust_install
+        with:
+          platform: macos
+      - name: cargo test -p crsqlite
+        run: cargo test --locked -p crsqlite
+
+  # Windows gate — same proof on windows-latest (x86_64). Same provisional
+  # policy as crsqlite_gate_macos. No MSVC machinery needed: the crate's
+  # build.rs only hashes vendored files, and the tests link the ordinary
+  # sqlite-unbundled stack.
+  crsqlite_gate_windows:
+    if: ${{ !startsWith(github.head_ref || '', 'blog/') }}
+    runs-on: windows-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - uses: ./.github/actions/rust_install
+        with:
+          platform: windows
+      - name: cargo test -p crsqlite
+        run: cargo test --locked -p crsqlite
+
   # App-gate widening (docs/internal/sync-p2p.md §22): the two
   # `cloudsync_from_source_*` jobs above only prove the standalone `cloudsync`
   # crate compiles+links off Linux. `plugins/db/Cargo.toml` and
