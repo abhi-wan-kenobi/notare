@@ -1,10 +1,9 @@
-//! End-to-end test against the real downloaded `HyprLLM` model (CPU).
+//! End-to-end test against the real downloaded `Qwen3-4B-Q4_K_M` model (CPU).
 //!
-//! Ignored by default (needs `hypr-llm.gguf`, ~1GB, downloaded from
-//! `GgufLlmModel::HyprLLM::model_url()`). Run with:
+//! Ignored by default (needs `Qwen3-4B-Q4_K_M.gguf`, ~2.5GB). Run with:
 //!
 //! ```sh
-//! HYPR_LLM_GGUF_PATH=/path/to/hypr-llm.gguf \
+//! NOTARE_LLM_GGUF_PATH=/path/to/qwen.gguf \
 //!   cargo test -p local-llm-core --features llama --test real_model -- --ignored --nocapture
 //! ```
 #![cfg(feature = "llama")]
@@ -14,11 +13,11 @@ use local_llm_core::LlmServer;
 #[tokio::test]
 #[ignore]
 async fn starts_serves_a_chat_completion_and_a_grammar_constrained_one() {
-    let model_path = std::env::var("HYPR_LLM_GGUF_PATH")
-        .expect("set HYPR_LLM_GGUF_PATH to a downloaded hypr-llm.gguf");
+    let model_path = std::env::var("NOTARE_LLM_GGUF_PATH")
+        .expect("set NOTARE_LLM_GGUF_PATH to a downloaded Qwen3-4B-Q4_K_M.gguf");
 
     let load_started = std::time::Instant::now();
-    let server = LlmServer::start_with_model_path("HyprLLM".to_string(), &model_path)
+    let server = LlmServer::start_with_model_path("Qwen3_4bQ4".to_string(), &model_path)
         .await
         .expect("server starts");
     println!(

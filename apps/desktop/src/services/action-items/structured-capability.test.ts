@@ -51,12 +51,15 @@ describe("checkStructuredCapability", () => {
     const r = await checkStructuredCapability(
       {
         providerId: "notare-local",
-        modelId: "HyprLLM",
+        modelId: "Qwen3_4bQ4",
         baseUrl: "http://127.0.0.1:54213/v1",
       },
       probe,
     );
-    expect(probe).toHaveBeenCalledWith("http://127.0.0.1:54213/v1", "HyprLLM");
+    expect(probe).toHaveBeenCalledWith(
+      "http://127.0.0.1:54213/v1",
+      "Qwen3_4bQ4",
+    );
     expect(r.ok).toBe(true);
   });
 
@@ -64,7 +67,7 @@ describe("checkStructuredCapability", () => {
     const r = await checkStructuredCapability(
       {
         providerId: "notare-local",
-        modelId: "HyprLLM",
+        modelId: "Qwen3_4bQ4",
         baseUrl: "http://127.0.0.1:54213/v1",
       },
       async () => false,
