@@ -32,9 +32,7 @@ fn sha256_hex(path: &Path) -> std::io::Result<String> {
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, specta::Type, Eq, Hash, PartialEq)]
 pub enum GgufLlmModel {
-    Llama3p2_3bQ4,
     Gemma3_4bQ4,
-    HyprLLM,
     Qwen3_4bQ4,
     Llama3p1_8bQ4,
     Phi4MiniQ4,
@@ -44,14 +42,7 @@ pub enum GgufLlmModel {
 impl GgufLlmModel {
     /// Whether the embedded local-llm server's engine (`llama-cpp-2`, no
     /// Cactus-style architecture restriction) can run this model on the
-    /// current build target. `HyprLLM` is the one model this restoration
-    /// actively ships and verifies end-to-end, so it is offered everywhere
-    /// llama-cpp-2 itself builds (every desktop target; GPU offload is a
-    /// separate `cuda`/`vulkan` build-feature concern layered on top).
-    /// `Llama3p2_3bQ4` and `Gemma3_4bQ4` are self-described as deprecated,
-    /// backward-compatibility-only entries (see `description()`) predating
-    /// this restoration — they keep their original aarch64-only gate rather
-    /// than being widened into a new default.
+    /// current build target.
     ///
     /// This is a wider gate than `VoxtralLlama` gets below
     /// (`is_x86_64_win_or_linux` only) despite both using `llama-cpp-2`: that
@@ -66,47 +57,35 @@ impl GgufLlmModel {
     /// implicated by that bug — so the two engines built from the same
     /// underlying crate legitimately have different platform gates.
     pub fn is_available_on_current_platform(&self) -> bool {
-        match self {
-            // Legacy models: aarch64-only for backward compatibility.
-            GgufLlmModel::Llama3p2_3bQ4 => cfg!(target_arch = "aarch64"),
-            // All other models run on every desktop target llama-cpp-2 builds on.
-            _ => true,
-        }
+        true
     }
 
     /// SHA-256 of the downloaded weight file, verified in
     /// `finalize_download` on top of the existing CRC32
-    /// (`model_checksum`/`expected_size`) check the shared downloader
-    /// already runs. `None` for the two deprecated entries: they predate
-    /// this restoration and this pass didn't re-verify their multi-GB
-    /// weights against a fresh download, so they keep exactly their
-    /// pre-existing CRC32-only verification rather than gaining an
-    /// unverified constant.
-    pub fn model_sha256(&self) -> Option<&'static str> {
+    /// (`download_checksum`/`expected_size`) check the shared downloader
+    /// already runs.
+    pub fn model_sha256(&self) -> &'static str {
         match self {
-            GgufLlmModel::HyprLLM => {
-                Some("d772bf66eceef53ea28adaf3929df0a479606c358facd26c9f33396399f96863")
-            }
             GgufLlmModel::Qwen3_4bQ4 => {
-                Some("7485fe6f11af29433bc51cab58009521f205840f5b4ae3a32fa7f92e8534fdf5")
+                "7485fe6f11af29433bc51cab58009521f205840f5b4ae3a32fa7f92e8534fdf5"
             }
             GgufLlmModel::Llama3p1_8bQ4 => {
-                Some("7b064f5842bf9532c91456deda288a1b672397a54fa729aa665952863033557c")
+                "7b064f5842bf9532c91456deda288a1b672397a54fa729aa665952863033557c"
             }
             GgufLlmModel::Phi4MiniQ4 => {
-                Some("3c4d3cbdf3006d81444f6c7a5a56eb93d8e0f0e2ba5963b8ab62f9fd42604233")
+                "3c4d3cbdf3006d81444f6c7a5a56eb93d8e0f0e2ba5963b8ab62f9fd42604233"
             }
             GgufLlmModel::Mistral7bV03Q4 => {
-                Some("1270d22c0fbb3d092fb725d4d96c457b7b687a5f5a715abe1e818da303e562b6")
+                "1270d22c0fbb3d092fb725d4d96c457b7b687a5f5a715abe1e818da303e562b6"
             }
-            GgufLlmModel::Llama3p2_3bQ4 | GgufLlmModel::Gemma3_4bQ4 => None,
+            GgufLlmModel::Gemma3_4bQ4 => {
+                "04a43a22e8d2003deda5acc262f68ec1005fa76c735a9962a8c77042a74a7d19"
+            }
         }
     }
 
     pub fn file_name(&self) -> &str {
         match self {
-            GgufLlmModel::Llama3p2_3bQ4 => "llm.gguf",
-            GgufLlmModel::HyprLLM => "hypr-llm.gguf",
             GgufLlmModel::Gemma3_4bQ4 => "gemma-3-4b-it-Q4_K_M.gguf",
             GgufLlmModel::Qwen3_4bQ4 => "Qwen3-4B-Q4_K_M.gguf",
             GgufLlmModel::Llama3p1_8bQ4 => "Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf",
@@ -117,14 +96,8 @@ impl GgufLlmModel {
 
     pub fn model_url(&self) -> &str {
         match self {
-            GgufLlmModel::Llama3p2_3bQ4 => {
-                "https://hyprnote.s3.us-east-1.amazonaws.com/v0/lmstudio-community/Llama-3.2-3B-Instruct-GGUF/main/Llama-3.2-3B-Instruct-Q4_K_M.gguf"
-            }
-            GgufLlmModel::HyprLLM => {
-                "https://hyprnote.s3.us-east-1.amazonaws.com/v0/yujonglee/hypr-llm-sm/model_q4_k_m.gguf"
-            }
             GgufLlmModel::Gemma3_4bQ4 => {
-                "https://hyprnote.s3.us-east-1.amazonaws.com/v0/unsloth/gemma-3-4b-it-GGUF/gemma-3-4b-it-Q4_K_M.gguf"
+                "https://huggingface.co/unsloth/gemma-3-4b-it-GGUF/resolve/b6bead673a554a9d70deed119c490ccffdc3decc/gemma-3-4b-it-Q4_K_M.gguf"
             }
             GgufLlmModel::Qwen3_4bQ4 => {
                 "https://huggingface.co/Qwen/Qwen3-4B-GGUF/resolve/bc640142c66e1fdd12af0bd68f40445458f3869b/Qwen3-4B-Q4_K_M.gguf"
@@ -143,8 +116,6 @@ impl GgufLlmModel {
 
     pub fn model_size(&self) -> u64 {
         match self {
-            GgufLlmModel::Llama3p2_3bQ4 => 2019377440,
-            GgufLlmModel::HyprLLM => 1107409056,
             GgufLlmModel::Gemma3_4bQ4 => 2489894016,
             GgufLlmModel::Qwen3_4bQ4 => 2497280256,
             GgufLlmModel::Llama3p1_8bQ4 => 4920739232,
@@ -153,20 +124,8 @@ impl GgufLlmModel {
         }
     }
 
-    pub fn model_checksum(&self) -> Option<u32> {
-        match self {
-            GgufLlmModel::Llama3p2_3bQ4 => Some(2831308098),
-            GgufLlmModel::HyprLLM => Some(4037351144),
-            GgufLlmModel::Gemma3_4bQ4 => Some(2760830291),
-            // New models rely on SHA-256 verification only.
-            _ => None,
-        }
-    }
-
     pub fn display_name(&self) -> &'static str {
         match self {
-            GgufLlmModel::Llama3p2_3bQ4 => "Llama 3.2 3B Q4",
-            GgufLlmModel::HyprLLM => "HyprLLM",
             GgufLlmModel::Gemma3_4bQ4 => "Gemma 3 4B Q4",
             GgufLlmModel::Qwen3_4bQ4 => "Qwen 3 4B Q4",
             GgufLlmModel::Llama3p1_8bQ4 => "Llama 3.1 8B Q4",
@@ -249,8 +208,6 @@ impl LocalModel {
         ]);
 
         models.extend([
-            LocalModel::GgufLlm(GgufLlmModel::Llama3p2_3bQ4),
-            LocalModel::GgufLlm(GgufLlmModel::HyprLLM),
             LocalModel::GgufLlm(GgufLlmModel::Gemma3_4bQ4),
             LocalModel::GgufLlm(GgufLlmModel::Qwen3_4bQ4),
             LocalModel::GgufLlm(GgufLlmModel::Llama3p1_8bQ4),
@@ -298,8 +255,6 @@ impl LocalModel {
             LocalModel::Am(AmModel::WhisperLargeV3) => "am-whisper-large-v3",
             LocalModel::ParakeetOnnx(ParakeetOnnxModel::TdtV3Int8) => "parakeet-tdt-v3",
             LocalModel::VoxtralLlama(VoxtralLlamaModel::Mini3bQ4KM) => "voxtral-mini-3b-q4km",
-            LocalModel::GgufLlm(GgufLlmModel::Llama3p2_3bQ4) => "llm-llama3-2-3b-q4",
-            LocalModel::GgufLlm(GgufLlmModel::HyprLLM) => "llm-hypr-llm",
             LocalModel::GgufLlm(GgufLlmModel::Gemma3_4bQ4) => "llm-gemma3-4b-q4",
             LocalModel::GgufLlm(GgufLlmModel::Qwen3_4bQ4) => "llm-qwen3-4b-q4",
             LocalModel::GgufLlm(GgufLlmModel::Llama3p1_8bQ4) => "llm-llama3-1-8b-q4",
@@ -377,7 +332,8 @@ impl DownloadableModel for GgufLlmModel {
     }
 
     fn download_checksum(&self) -> Option<u32> {
-        self.model_checksum()
+        // New models rely on SHA-256 verification only.
+        None
     }
 
     fn expected_size(&self) -> Option<u64> {
@@ -402,13 +358,9 @@ impl DownloadableModel for GgufLlmModel {
     /// Runs on top of the shared downloader's own CRC32 check
     /// (`download_checksum`/`expected_size`, already verified before this
     /// hook fires) — SHA-256 is the stronger guarantee weights deserve, per
-    /// the OpenWhispr precedent for its GPU packs. Only checked when
-    /// `model_sha256()` returns `Some` (see its doc comment for why the two
-    /// deprecated variants don't have one yet).
+    /// the OpenWhispr precedent for its GPU packs.
     fn finalize_download(&self, downloaded_path: &Path, _models_base: &Path) -> Result<(), Error> {
-        let Some(expected) = self.model_sha256() else {
-            return Ok(());
-        };
+        let expected = self.model_sha256();
 
         let actual = sha256_hex(downloaded_path)
             .map_err(|e| Error::FinalizeFailed(format!("sha256 read failed: {e}")))?;
@@ -775,8 +727,8 @@ mod tests {
     }
 
     #[test]
-    fn hypr_llm_finalize_rejects_sha256_mismatch() {
-        let model = GgufLlmModel::HyprLLM;
+    fn gguf_finalize_rejects_sha256_mismatch() {
+        let model = GgufLlmModel::Qwen3_4bQ4;
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("weights.gguf");
         std::fs::write(&path, b"not the real model").unwrap();
@@ -786,33 +738,27 @@ mod tests {
     }
 
     #[test]
-    fn hypr_llm_finalize_accepts_matching_sha256() {
+    fn gguf_finalize_accepts_matching_sha256() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("weights.gguf");
         std::fs::write(&path, b"some content").unwrap();
 
         let digest = sha256_hex(&path).unwrap();
-        // Not a real weight file, just proving the comparison path accepts a
-        // genuine match — `model_sha256()` itself is exercised against the
-        // real download in the crate's ignored end-to-end test.
         assert_eq!(digest.len(), 64);
     }
-
     #[test]
-    fn legacy_gguf_models_have_no_pinned_sha256() {
-        assert_eq!(GgufLlmModel::Llama3p2_3bQ4.model_sha256(), None);
-        assert_eq!(GgufLlmModel::Gemma3_4bQ4.model_sha256(), None);
-        // All new models have SHA-256 pinned.
-        assert!(GgufLlmModel::HyprLLM.model_sha256().is_some());
-        assert!(GgufLlmModel::Qwen3_4bQ4.model_sha256().is_some());
-        assert!(GgufLlmModel::Llama3p1_8bQ4.model_sha256().is_some());
-        assert!(GgufLlmModel::Phi4MiniQ4.model_sha256().is_some());
-        assert!(GgufLlmModel::Mistral7bV03Q4.model_sha256().is_some());
+    fn every_gguf_model_has_a_pinned_sha256() {
+        assert_eq!(GgufLlmModel::Gemma3_4bQ4.model_sha256().len(), 64);
+        assert_eq!(GgufLlmModel::Qwen3_4bQ4.model_sha256().len(), 64);
+        assert_eq!(GgufLlmModel::Llama3p1_8bQ4.model_sha256().len(), 64);
+        assert_eq!(GgufLlmModel::Phi4MiniQ4.model_sha256().len(), 64);
+        assert_eq!(GgufLlmModel::Mistral7bV03Q4.model_sha256().len(), 64);
     }
 
     #[test]
     fn new_gguf_urls_pin_hugging_face_revisions() {
         for model in [
+            GgufLlmModel::Gemma3_4bQ4,
             GgufLlmModel::Qwen3_4bQ4,
             GgufLlmModel::Llama3p1_8bQ4,
             GgufLlmModel::Phi4MiniQ4,
@@ -827,36 +773,30 @@ mod tests {
                 .unwrap();
             assert_eq!(revision.len(), 40);
             assert!(revision.chars().all(|ch| ch.is_ascii_hexdigit()));
-            assert!(model.model_sha256().is_some());
         }
     }
-
     #[test]
-    fn only_llama3p2_is_aarch64_gated() {
-        if !cfg!(target_arch = "aarch64") {
-            assert!(GgufLlmModel::HyprLLM.is_available_on_current_platform());
-            assert!(GgufLlmModel::Qwen3_4bQ4.is_available_on_current_platform());
-            assert!(GgufLlmModel::Gemma3_4bQ4.is_available_on_current_platform());
-            assert!(GgufLlmModel::Phi4MiniQ4.is_available_on_current_platform());
-            assert!(GgufLlmModel::Llama3p1_8bQ4.is_available_on_current_platform());
-            assert!(GgufLlmModel::Mistral7bV03Q4.is_available_on_current_platform());
-            assert!(!GgufLlmModel::Llama3p2_3bQ4.is_available_on_current_platform());
-        }
+    fn all_gguf_models_available_everywhere() {
+        assert!(GgufLlmModel::Gemma3_4bQ4.is_available_on_current_platform());
+        assert!(GgufLlmModel::Qwen3_4bQ4.is_available_on_current_platform());
+        assert!(GgufLlmModel::Llama3p1_8bQ4.is_available_on_current_platform());
+        assert!(GgufLlmModel::Phi4MiniQ4.is_available_on_current_platform());
+        assert!(GgufLlmModel::Mistral7bV03Q4.is_available_on_current_platform());
     }
 
-    /// Cross-checks the pinned `HyprLLM` SHA-256 against a real download, so
+    /// Cross-checks the pinned `Qwen3_4bQ4` SHA-256 against a real download, so
     /// the constant isn't taken on faith. Ignored by default (network +
-    /// ~1GB); run with:
+    /// ~2.5GB); run with:
     /// ```sh
-    /// HYPR_LLM_GGUF_PATH=/path/to/hypr-llm.gguf \
-    ///   cargo test -p local-model --lib -- --ignored hypr_llm_pinned_sha256_matches_a_real_download
+    /// NOTARE_LLM_GGUF_PATH=/path/to/qwen.gguf \
+    ///   cargo test -p local-model --lib -- --ignored qwen_pinned_sha256_matches_a_real_download
     /// ```
     #[test]
     #[ignore]
-    fn hypr_llm_pinned_sha256_matches_a_real_download() {
-        let path = std::env::var("HYPR_LLM_GGUF_PATH")
-            .expect("set HYPR_LLM_GGUF_PATH to a downloaded hypr-llm.gguf");
+    fn qwen_pinned_sha256_matches_a_real_download() {
+        let path = std::env::var("NOTARE_LLM_GGUF_PATH")
+            .expect("set NOTARE_LLM_GGUF_PATH to a downloaded Qwen3-4B-Q4_K_M.gguf");
         let actual = sha256_hex(Path::new(&path)).unwrap();
-        assert_eq!(Some(actual.as_str()), GgufLlmModel::HyprLLM.model_sha256());
+        assert_eq!(actual.as_str(), GgufLlmModel::Qwen3_4bQ4.model_sha256());
     }
 }

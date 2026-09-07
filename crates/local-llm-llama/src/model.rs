@@ -200,8 +200,8 @@ impl LlamaLlmModel {
                 .to_str()
                 .is_ok_and(|template| template.contains("<think>"))
         {
-            // Empirically required for HyprLLM (a Qwen3-architecture model,
-            // confirmed via its GGUF `general.architecture` metadata):
+            // Empirically required: first observed on the since-removed HyprLLM,
+            // a Qwen3 fine-tune; `Qwen3_4bQ4` has the same template.
             // Qwen3's template gives the model room to open a `<think>...`
             // reasoning block before its answer. Grammar-constrained
             // decoding forces JSON-object syntax from the very first
@@ -211,7 +211,7 @@ impl LlamaLlmModel {
             // observed directly against the real model — *stops enforcing
             // the grammar for the rest of the generation* rather than
             // failing closed, which would have silently broken Requirement
-            // 3's guarantee. Appending an already-closed, empty `<think>`
+            // D1.6's strict JSON rule. Pre-appending an empty `<think>`
             // block to the prompt is Qwen3's own documented mechanism for
             // skipping reasoning (the model sees its own turn as having
             // already "thought" and answers directly), so the grammar never

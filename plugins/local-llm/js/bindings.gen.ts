@@ -115,7 +115,7 @@ async serverUrl() : Promise<Result<ServerInfo | null, string>> {
 /** user-defined types **/
 
 export type CustomModelInfo = { path: string; name: string }
-export type GgufLlmModel = "Llama3p2_3bQ4" | "Gemma3_4bQ4" | "HyprLLM" | "Qwen3_4bQ4" | "Llama3p1_8bQ4" | "Phi4MiniQ4" | "Mistral7bV03Q4"
+export type GgufLlmModel = "Gemma3_4bQ4" | "Qwen3_4bQ4" | "Llama3p1_8bQ4" | "Phi4MiniQ4" | "Mistral7bV03Q4"
 export type ModelInfo = { key: GgufLlmModel; name: string; description: string; size_bytes: number }
 export type ServerInfo = { url: string; model: GgufLlmModel }
 export type TAURI_CHANNEL<TSend> = null

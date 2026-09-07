@@ -164,8 +164,8 @@ mod tests {
     fn test_chat_format() {
         let test_path = dirs::data_dir()
             .unwrap()
-            .join("hyprnote")
-            .join("models/llm/hypr-llm.gguf");
+            .join("notare")
+            .join("models/llm/Qwen3-4B-Q4_K_M.gguf");
 
         assert!(test_path.exists());
         println!("{:?}", test_path.chat_format().unwrap().unwrap());
