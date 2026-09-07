@@ -610,7 +610,47 @@ mod tests {
         assert!(cloudsync_alter_guard_required("action_items"));
         assert!(cloudsync_alter_guard_required("tags"));
         assert!(cloudsync_alter_guard_required("session_tags"));
+
+        // §25 and §26 proved these four are unsafe to enable, not merely
+        // unproven: each duplicates the entity under concurrent creation,
+        // because the primary key is a locally-minted random UUID while the
+        // real identity lives elsewhere (an email, a (session, human) pair,
+        // or a provider tracking id). This pins those verdicts so a later
+        // batch cannot enable them by pattern-matching "it has a proof
+        // example" without reading what the proof concluded.
+        assert!(!cloudsync_alter_guard_required("humans"));
+        assert!(!cloudsync_alter_guard_required("session_participants"));
         assert!(!cloudsync_alter_guard_required("calendars"));
+        assert!(!cloudsync_alter_guard_required("events"));
+
+        // The three verdict sets — enabled (proven under sqlite-sync, to
+        // be re-proved under cr-sqlite), eligible once a proof lands, and
+        // the four NO-GOs — must be pairwise disjoint, and no NO-GO table
+        // may appear in either of the other two. Any overlap means a table
+        // was enabled before its proof or a NO-GO verdict was flipped.
+        let eligible: std::collections::BTreeSet<&str> =
+            ELIGIBLE_PENDING_PROOF.iter().copied().collect();
+        let no_go: std::collections::BTreeSet<&str> = std::collections::BTreeSet::from([
+            "humans",
+            "session_participants",
+            "calendars",
+            "events",
+        ]);
+        assert!(
+            enabled.is_disjoint(&eligible),
+            "enabled and eligible-pending-proof tables must not overlap: {:?}",
+            enabled.intersection(&eligible).collect::<Vec<_>>()
+        );
+        assert!(
+            enabled.is_disjoint(&no_go),
+            "a NO-GO table was enabled: {:?}",
+            enabled.intersection(&no_go).collect::<Vec<_>>()
+        );
+        assert!(
+            eligible.is_disjoint(&no_go),
+            "a NO-GO table was marked eligible: {:?}",
+            eligible.intersection(&no_go).collect::<Vec<_>>()
+        );
     }
 
     #[tokio::test]
