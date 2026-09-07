@@ -134,13 +134,14 @@ describe("session SQLite operations", () => {
     await addSessionParticipant("session-1", "human-1");
 
     const statements = mocks.executeTransaction.mock.calls[0][0];
+    expect(statements).toHaveLength(1);
+    expect(statements[0].sql).toContain("INSERT INTO session_participants");
+    expect(statements[0].sql).toContain("ON CONFLICT(id) DO UPDATE SET");
     expect(statements[0].sql).toContain("source = 'excluded'");
-    expect(statements[0].sql).toContain("? <> 'auto'");
-    expect(statements[1].sql).toContain("INSERT INTO session_participants");
-    expect(statements[1].sql).toContain("NOT EXISTS");
-    expect(statements[1].params).toContain("session-1");
-    expect(statements[1].params).toContain("human-1");
-    expect(statements[1].params).toContain("manual");
+    expect(statements[0].sql).toContain("excluded.source <> 'auto'");
+    expect(statements[0].params).toContain("session-1");
+    expect(statements[0].params).toContain("human-1");
+    expect(statements[0].params).toContain("manual");
   });
 
   it("excludes auto participants and tombstones manual participants", async () => {
@@ -216,14 +217,16 @@ describe("session SQLite operations", () => {
     }>;
     expect(statements[0].sql).toContain("WHERE NOT EXISTS");
     expect(statements[0].params).toContain("external-event-1");
-    expect(
-      statements.some((statement) => statement.sql.includes("humans")),
-    ).toBe(true);
-    expect(
-      statements.some((statement) =>
-        statement.sql.includes("session_participants"),
-      ),
-    ).toBe(true);
+    const humanStatement = statements.find((statement) =>
+      statement.sql.includes("INSERT INTO humans"),
+    );
+    const participantStatement = statements.find((statement) =>
+      statement.sql.includes("INSERT INTO session_participants"),
+    );
+    // Both mint a deterministic id, so both must resurrect a soft-deleted
+    // row on conflict instead of throwing a UNIQUE constraint error.
+    expect(humanStatement?.sql).toContain("ON CONFLICT(id) DO UPDATE");
+    expect(participantStatement?.sql).toContain("ON CONFLICT(id) DO UPDATE");
   });
 
   it("tombstones the session and every owned child with one timestamp", async () => {

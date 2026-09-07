@@ -122,7 +122,7 @@ async function runForConnection(
   );
   if (isAborted(options.signal)) return;
 
-  const participants = syncSessionParticipants({
+  const participants = await syncSessionParticipants({
     incomingParticipants,
     snapshot: participantSnapshot,
   });

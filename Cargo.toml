@@ -428,6 +428,7 @@ objc2-user-notifications = "0.3.2"
 
 hmac = "0.13"
 sha2 = "0.11"
+unicode-normalization = "0.1"
 
 # default-features disabled to drop `esaxx_fast` (→ esaxx-rs/cpp), whose build.rs
 # hardcodes `.static_crt(true)` (/MT) regardless of the workspace's -crt-static

@@ -7,6 +7,9 @@ const mocks = vi.hoisted(() => ({
     (_statements: Array<{ sql: string; params: unknown[] }>) =>
       Promise.resolve([1]),
   ),
+  enqueueDatabaseWrite: vi.fn((_key: string, write: () => Promise<unknown>) =>
+    write(),
+  ),
   rows: [] as Array<Record<string, unknown>>,
 }));
 
@@ -16,6 +19,10 @@ vi.mock("~/db", () => ({
   useLiveQuery: (options: {
     mapRows: (rows: Array<Record<string, unknown>>) => unknown;
   }) => ({ data: options.mapRows(mocks.rows) }),
+}));
+
+vi.mock("~/db/write-queue", () => ({
+  enqueueDatabaseWrite: mocks.enqueueDatabaseWrite,
 }));
 
 vi.mock("~/shared/utils", () => ({
@@ -85,18 +92,28 @@ describe("contact SQLite queries", () => {
   });
 
   it("returns the durable id after inserting a human", async () => {
+    // Deterministic id for "alice@example.com" (shared test vector, see
+    // ~/shared/ids.test.ts), not the random `id()` fallback.
     await expect(
       createHuman({
         ownerUserId: "user-1",
         name: "Alice",
         email: "alice@example.com",
       }),
-    ).resolves.toBe("human-new");
+    ).resolves.toBe("h_4fa1d59c20dd48d285b666b890067c7f");
 
     const statement = mocks.executeTransaction.mock.calls[0][0][0];
     expect(statement.sql).toContain("INSERT INTO humans");
-    expect(statement.params).toContain("human-new");
+    expect(statement.params).toContain("h_4fa1d59c20dd48d285b666b890067c7f");
     expect(statement.params).toContain("alice@example.com");
+
+    // Queued under the resolved id, not a generic "human:create" key, so a
+    // create that resurrects an existing row serializes with every other
+    // writer of that row (updateHuman, applyContactEnhancement, ...).
+    expect(mocks.enqueueDatabaseWrite).toHaveBeenCalledWith(
+      "human:h_4fa1d59c20dd48d285b666b890067c7f",
+      expect.any(Function),
+    );
   });
 
   it("maps canonical organization rows", () => {
@@ -320,6 +337,9 @@ describe("contact SQLite queries", () => {
     expect(statements).toHaveLength(2);
     expect(statements[0]?.sql).toContain("INSERT INTO organizations");
     expect(statements[0]?.sql).toContain("NOT EXISTS");
+    // Resurrects a soft-deleted org sitting on the same deterministic id
+    // instead of throwing a UNIQUE constraint error.
+    expect(statements[0]?.sql).toContain("ON CONFLICT(id) DO UPDATE");
     expect(statements[1]?.sql).toContain("UPDATE humans");
     expect(statements[1]?.sql).toContain("organization_id = CASE");
     expect(statements[1]?.params).toContain("human-1");
