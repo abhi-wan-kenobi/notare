@@ -3,6 +3,7 @@ import { useCallback } from "react";
 
 import { commands as analyticsCommands } from "@hypr/plugin-analytics";
 import { commands as detectCommands } from "@hypr/plugin-detect";
+import { commands as localLlmCommands } from "@hypr/plugin-local-llm";
 import {
   commands as localSttCommands,
   type LocalModel,
@@ -474,6 +475,13 @@ function applySettingSideEffects(values: SettingValues): void {
     void syncLocalSttServer().catch(console.error);
   }
   if (
+    values.current_llm_provider !== undefined ||
+    values.current_llm_model !== undefined
+  ) {
+    void syncLocalLlmServer().catch(console.error);
+  }
+
+  if (
     values.spoken_languages !== undefined ||
     values.current_stt_provider !== undefined ||
     values.current_stt_model !== undefined ||
@@ -513,6 +521,32 @@ async function syncLocalSttServer(): Promise<void> {
     await localSttCommands.startServer(model);
   } else {
     await localSttCommands.stopServer(null);
+  }
+}
+
+async function syncLocalLlmServer(): Promise<void> {
+  const { values } = await getStoredSettingValues();
+  const provider = values.current_llm_provider;
+  const model = values.current_llm_model;
+
+  if (provider === "notare-local" && model) {
+    const supported = await localLlmCommands.listSupportedModel();
+    if (supported.status !== "ok") {
+      throw new Error(supported.error);
+    }
+    const selected = supported.data.find((entry) => entry.key === model)?.key;
+    if (selected) {
+      const started = await localLlmCommands.startServer(selected);
+      if (started.status !== "ok") {
+        throw new Error(started.error);
+      }
+      return;
+    }
+  }
+
+  const stopped = await localLlmCommands.stopServer();
+  if (stopped.status !== "ok") {
+    throw new Error(stopped.error);
   }
 }
 

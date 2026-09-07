@@ -96,11 +96,14 @@ impl<'a, R: Runtime, M: Manager<R>> LocalLlmExt<'a, R, M> {
     }
 
     #[tracing::instrument(skip_all)]
-    pub async fn server_url(&self) -> Result<Option<String>, crate::Error> {
+    pub async fn server_url(&self) -> Result<Option<crate::ServerInfo>, crate::Error> {
         let state = self.manager.state::<crate::SharedState>();
         let guard = state.lock().await;
 
-        Ok(guard.server.as_ref().map(|server| server.url().to_string()))
+        Ok(guard.server.as_ref().map(|running| crate::ServerInfo {
+            url: running.server.url().to_string(),
+            model: running.model.clone(),
+        }))
     }
 
     #[tracing::instrument(skip_all)]
@@ -153,6 +156,17 @@ impl<'a, R: Runtime, M: Manager<R>> LocalLlmExt<'a, R, M> {
 
     #[tracing::instrument(skip_all)]
     pub async fn delete_model(&self, model: &crate::SupportedModel) -> Result<(), crate::Error> {
+        let state = self.manager.state::<crate::SharedState>();
+        let is_running = state
+            .lock()
+            .await
+            .server
+            .as_ref()
+            .is_some_and(|running| running.model == *model);
+        if is_running {
+            self.stop_server().await;
+        }
+
         downloader(self.manager).await.delete(model).await?;
         Ok(())
     }
@@ -169,73 +183,63 @@ impl<'a, R: Runtime, M: Manager<R>> LocalLlmExt<'a, R, M> {
         Ok(hypr_local_llm_core::list_custom_models()?)
     }
 
-    /// Starts the embedded local LLM server if its one shipped model
-    /// (`HyprLLM` — see `hypr_local_llm_core`'s `SUPPORTED_MODELS` doc
-    /// comment for why that's the deliberate choice) is already downloaded.
-    /// A no-op otherwise: this is the "download on first use" model, so
-    /// "not downloaded yet" is the ordinary first-run state, not a failure.
-    ///
-    /// Also a no-op — logged, not surfaced, and callers must poll
-    /// `server_url()` rather than expect a return value here (the same
-    /// fire-and-forget-plus-poll shape `download_model`/
-    /// `is_model_downloading` already use in this plugin) — when this build
-    /// doesn't compile in the `llama` engine (`hypr-local-llm-core`'s
-    /// default-OFF feature): `start_with_model_path` fails fast with a
-    /// clear "not enabled" error in that case, so calling this
-    /// unconditionally at startup is safe regardless of which build this is.
-    ///
-    /// Safe to call more than once (e.g. a future "restart server" action):
-    /// checks for an already-running server both before and after the
-    /// (slow, several-second) model load, so a concurrent or repeated call
-    /// can't silently drop and leak a running server's listener and
-    /// background tasks by overwriting it in `SharedState` — the loser of
-    /// the race shuts its own redundant server down instead.
-    #[tracing::instrument(skip_all)]
-    pub async fn start_server(&self) {
+    /// Starts the embedded server with `model`, replacing a running server
+    /// only when the selected model changed. Server transitions are serialized
+    /// through `SharedState` so concurrent settings effects cannot load two
+    /// multi-gigabyte models at once.
+    #[tracing::instrument(skip_all, fields(model = ?model))]
+    pub async fn start_server(
+        &self,
+        model: crate::SupportedModel,
+    ) -> Result<crate::ServerInfo, crate::Error> {
+        if !model.is_available_on_current_platform() {
+            return Err(crate::Error::Other(format!(
+                "{} is not available on this platform",
+                model.display_name()
+            )));
+        }
+        if !self.is_model_downloaded(&model).await? {
+            return Err(hypr_local_llm_core::Error::ModelNotDownloaded.into());
+        }
+
         let state = self.manager.state::<crate::SharedState>();
+        let mut guard = state.lock().await;
 
-        if state.lock().await.server.is_some() {
-            tracing::debug!("local_llm_start_server_skipped: already running");
-            return;
-        }
-
-        let model = crate::SupportedModel::HyprLLM;
-
-        let downloaded = match self.is_model_downloaded(&model).await {
-            Ok(downloaded) => downloaded,
-            Err(error) => {
-                tracing::warn!(%error, "local_llm_start_server_check_failed");
-                return;
-            }
-        };
-
-        if !downloaded {
-            tracing::info!("local_llm_start_server_skipped: model not downloaded");
-            return;
-        }
-
-        let model_path = self.models_dir().join(model.file_name());
-
-        match hypr_local_llm_core::LlmServer::start_with_model_path(
-            model.display_name().to_string(),
-            model_path,
-        )
-        .await
+        if let Some(running) = guard.server.as_ref()
+            && running.model == model
         {
-            Ok(server) => {
-                let mut guard = state.lock().await;
-                if guard.server.is_some() {
-                    tracing::debug!("local_llm_start_server_race: stopping redundant server");
-                    drop(guard);
-                    server.stop().await;
-                } else {
-                    guard.server = Some(server);
-                }
-            }
-            Err(error) => {
-                tracing::warn!(%error, "local_llm_start_server_failed");
-            }
+            return Ok(crate::ServerInfo {
+                url: running.server.url().to_string(),
+                model,
+            });
         }
+
+        if let Some(running) = guard.server.take() {
+            running.server.stop().await;
+        }
+
+        let server = hypr_local_llm_core::LlmServer::start_with_model_path(
+            model.display_name().to_string(),
+            self.models_dir().join(model.file_name()),
+        )
+        .await?;
+        let info = crate::ServerInfo {
+            url: server.url().to_string(),
+            model: model.clone(),
+        };
+        guard.server = Some(crate::RunningServer { model, server });
+        Ok(info)
+    }
+
+    #[tracing::instrument(skip_all)]
+    pub async fn stop_server(&self) -> bool {
+        let state = self.manager.state::<crate::SharedState>();
+        let mut guard = state.lock().await;
+        let Some(running) = guard.server.take() else {
+            return false;
+        };
+        running.server.stop().await;
+        true
     }
 }
 

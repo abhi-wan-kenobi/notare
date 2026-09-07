@@ -4,7 +4,7 @@ import { useEffect } from "react";
 
 import { Spinner } from "@hypr/ui/components/ui/spinner";
 
-import { useLanguageModel } from "~/ai/hooks";
+import { useTaskModel } from "~/services/llm-router";
 
 export type LlmHealthStatus = {
   status: "pending" | "error" | "success" | null;
@@ -22,8 +22,7 @@ export function HealthStatusIndicator() {
 }
 
 export function useConnectionHealth(): LlmHealthStatus {
-  const model = useLanguageModel();
-
+  const { model } = useTaskModel("chat");
   const text = useQuery({
     enabled: !!model,
     queryKey: ["llm-health-check", model],

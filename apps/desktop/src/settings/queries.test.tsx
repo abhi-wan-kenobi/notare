@@ -18,6 +18,12 @@ const mocks = vi.hoisted(() => ({
   })),
 }));
 
+const localLlmMocks = vi.hoisted(() => ({
+  listSupportedModel: vi.fn(),
+  startServer: vi.fn(),
+  stopServer: vi.fn(),
+}));
+
 vi.mock("@hypr/plugin-analytics", () => ({
   commands: {
     setDisabled: vi.fn(async () => undefined),
@@ -38,6 +44,10 @@ vi.mock("@hypr/plugin-local-stt", () => ({
     startServer: vi.fn(async () => ({ status: "ok", data: null })),
     stopServer: vi.fn(async () => ({ status: "ok", data: null })),
   },
+}));
+
+vi.mock("@hypr/plugin-local-llm", () => ({
+  commands: localLlmMocks,
 }));
 
 vi.mock("~/db", () => ({
@@ -69,6 +79,21 @@ describe("SQLite settings", () => {
     });
     mocks.listSupportedModels.mockResolvedValue({ status: "ok", data: [] });
     mocks.isModelDownloaded.mockResolvedValue({ status: "ok", data: false });
+    localLlmMocks.listSupportedModel.mockResolvedValue({
+      status: "ok",
+      data: [{ key: "Qwen3_4bQ4" }],
+    });
+    localLlmMocks.startServer.mockResolvedValue({
+      status: "ok",
+      data: {
+        model: "Qwen3_4bQ4",
+        url: "http://127.0.0.1:12345/v1",
+      },
+    });
+    localLlmMocks.stopServer.mockResolvedValue({
+      status: "ok",
+      data: false,
+    });
   });
 
   it("maps the imported settings document into typed values", () => {
@@ -182,6 +207,46 @@ describe("SQLite settings", () => {
         ["current_stt_provider", JSON.stringify("hyprnote")],
       ],
     );
+  });
+
+  it("restores the selected local LLM model on startup", async () => {
+    mocks.execute.mockResolvedValue([
+      {
+        id: "current_llm_provider",
+        value_json: JSON.stringify("notare-local"),
+      },
+      {
+        id: "current_llm_model",
+        value_json: JSON.stringify("Qwen3_4bQ4"),
+      },
+    ]);
+
+    await initializeApplicationSettings();
+
+    await vi.waitFor(() => {
+      expect(localLlmMocks.startServer).toHaveBeenCalledWith("Qwen3_4bQ4");
+    });
+    expect(localLlmMocks.stopServer).not.toHaveBeenCalled();
+  });
+
+  it("stops the embedded LLM when another provider is selected", async () => {
+    mocks.execute.mockResolvedValue([
+      {
+        id: "current_llm_provider",
+        value_json: JSON.stringify("openai"),
+      },
+      {
+        id: "current_llm_model",
+        value_json: JSON.stringify("gpt-5"),
+      },
+    ]);
+
+    await initializeApplicationSettings();
+
+    await vi.waitFor(() => {
+      expect(localLlmMocks.stopServer).toHaveBeenCalledOnce();
+    });
+    expect(localLlmMocks.startServer).not.toHaveBeenCalled();
   });
 
   it("repairs a selected external transcription provider with no model", async () => {

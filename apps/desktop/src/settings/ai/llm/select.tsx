@@ -262,6 +262,8 @@ export function SelectProviderAndModel() {
 
       {current_llm_provider === "notare-local" && (
         <LocalModelManager
+          selectedModelId={current_llm_model}
+          onSelectModel={handleModelChange}
           onModelDownloaded={() => {
             queryClient.invalidateQueries({
               queryKey: ["models", "notare-local"],
@@ -281,8 +283,12 @@ function formatBytes(bytes: number): string {
 }
 
 function LocalModelManager({
+  selectedModelId,
+  onSelectModel,
   onModelDownloaded,
 }: {
+  selectedModelId?: string;
+  onSelectModel: (model: string) => void;
   onModelDownloaded: () => void;
 }) {
   const queryClient = useQueryClient();
@@ -360,9 +366,12 @@ function LocalModelManager({
       queryClient.invalidateQueries({
         queryKey: ["local-llm", "downloaded-models"],
       });
+      if (selectedModelId === model) {
+        onSelectModel("");
+      }
       onModelDownloaded();
     },
-    [queryClient, onModelDownloaded],
+    [queryClient, onModelDownloaded, selectedModelId, onSelectModel],
   );
 
   if (supportedQuery.isLoading) {

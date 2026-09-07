@@ -247,14 +247,9 @@ export type TaskModel = {
 };
 
 /**
- * Builds the AI-SDK model directly for a fallback-discovered candidate
- * (currently only the embedded local LLM). `useLanguageModel` can't be
- * reused here — it always builds from the user's explicit `conn`, and the
- * embedded provider's `baseUrl` is neither persisted settings nor a static
- * `PROVIDERS` entry (it's an OS-assigned port that only exists once the
- * in-process server has actually started). No auth, no thinking-middleware
- * special-casing (that's only for `hyprnote`) — a plain OpenAI-compatible
- * client against the embedded server's own `/v1`.
+ * Builds the AI-SDK model for the embedded server. Its loopback URL and loaded
+ * model identity come from the plugin at runtime, not persisted provider
+ * configuration.
  */
 function embeddedLanguageModel(modelId: string, baseUrl: string) {
   return createOpenAICompatible({
@@ -266,18 +261,9 @@ function embeddedLanguageModel(modelId: string, baseUrl: string) {
 
 /**
  * React binding: resolve `task` against the user's current selection and
- * construct the AI-SDK model (same construction path as before — this hook
- * wraps `useLanguageModel`, it does not reimplement providers or touch
- * secrets). Returns `model: null` whenever resolution fails, with the
- * structured `resolution` explaining why.
- *
- * The embedded local LLM participates as a `localFallbacks` candidate
- * (discovered via `server_url()`, not a port probe — see
- * `discoverEmbeddedModel`'s doc comment), the same extension point
- * `ResolveContext` already had for ollama/LM Studio-style discovery. It is
- * never explicit, so invariant 1 (no silent cloud fallback) is unaffected;
- * when the server isn't running, `embeddedCandidates` is empty and
- * resolution behaves exactly as it did before this candidate existed.
+ * construct the AI-SDK model. The embedded provider may be selected explicitly
+ * or discovered as a local fallback; either path uses the plugin-reported URL
+ * only when the running model matches the resolved model.
  */
 export function useTaskModel(task: LlmTask): TaskModel {
   const { conn } = useLLMConnection();
@@ -320,34 +306,41 @@ export function useTaskModel(task: LlmTask): TaskModel {
       capsUserOverride: llm_caps_override === true,
     });
 
-    const embeddedMatch =
+    const isEmbeddedResolution =
       resolution.status === "ok" &&
-      resolution.providerId === EMBEDDED_PROVIDER_ID
-        ? embeddedCandidates.find((c) => c.providerId === EMBEDDED_PROVIDER_ID)
-        : undefined;
+      resolution.providerId === EMBEDDED_PROVIDER_ID;
+    const embeddedMatch = isEmbeddedResolution
+      ? embeddedCandidates.find(
+          (candidate) =>
+            candidate.providerId === EMBEDDED_PROVIDER_ID &&
+            candidate.modelId === resolution.modelId,
+        )
+      : undefined;
 
-    const target: ModelTarget | null =
-      resolution.status === "ok" &&
-      conn &&
-      resolution.providerId === conn.providerId
+    const target: ModelTarget | null = embeddedMatch
+      ? {
+          providerId: embeddedMatch.providerId,
+          modelId: embeddedMatch.modelId,
+          baseUrl: embeddedMatch.baseUrl ?? "",
+        }
+      : !isEmbeddedResolution &&
+          resolution.status === "ok" &&
+          conn &&
+          resolution.providerId === conn.providerId
         ? {
             providerId: conn.providerId,
             modelId: conn.modelId,
             baseUrl: conn.baseUrl ?? providerDef?.baseUrl ?? "",
           }
-        : embeddedMatch
-          ? {
-              providerId: embeddedMatch.providerId,
-              modelId: embeddedMatch.modelId,
-              baseUrl: embeddedMatch.baseUrl ?? "",
-            }
-          : null;
+        : null;
 
-    const resolvedModel = embeddedMatch
-      ? embeddedLanguageModel(
-          embeddedMatch.modelId,
-          embeddedMatch.baseUrl ?? "",
-        )
+    const resolvedModel = isEmbeddedResolution
+      ? embeddedMatch
+        ? embeddedLanguageModel(
+            embeddedMatch.modelId,
+            embeddedMatch.baseUrl ?? "",
+          )
+        : null
       : model;
 
     return {

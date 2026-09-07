@@ -8,6 +8,8 @@ const COMMANDS: &[&str] = &[
     "list_downloaded_model",
     "list_supported_model",
     "list_custom_models",
+    "start_server",
+    "stop_server",
     "server_url",
 ];
 

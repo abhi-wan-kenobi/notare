@@ -96,9 +96,27 @@ pub async fn list_custom_models<R: tauri::Runtime>(
 
 #[tauri::command]
 #[specta::specta]
+pub async fn start_server<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    model: crate::SupportedModel,
+) -> Result<crate::ServerInfo, String> {
+    app.local_llm()
+        .start_server(model)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn stop_server<R: tauri::Runtime>(app: tauri::AppHandle<R>) -> Result<bool, String> {
+    Ok(app.local_llm().stop_server().await)
+}
+
+#[tauri::command]
+#[specta::specta]
 pub async fn server_url<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
-) -> Result<Option<String>, String> {
+) -> Result<Option<crate::ServerInfo>, String> {
     app.local_llm()
         .server_url()
         .await

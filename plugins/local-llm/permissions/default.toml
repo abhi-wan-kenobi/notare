@@ -10,5 +10,7 @@ permissions = [
     "allow-list-downloaded-model",
     "allow-list-supported-model",
     "allow-list-custom-models",
+    "allow-start-server",
+    "allow-stop-server",
     "allow-server-url",
 ]

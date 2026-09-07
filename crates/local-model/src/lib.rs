@@ -37,8 +37,8 @@ pub enum GgufLlmModel {
     HyprLLM,
     Qwen3_4bQ4,
     Llama3p1_8bQ4,
-    Phi4Mini_Q4,
-    Mistral7b_v03_Q4,
+    Phi4MiniQ4,
+    Mistral7bV03Q4,
 }
 
 impl GgufLlmModel {
@@ -93,10 +93,10 @@ impl GgufLlmModel {
             GgufLlmModel::Llama3p1_8bQ4 => {
                 Some("7b064f5842bf9532c91456deda288a1b672397a54fa729aa665952863033557c")
             }
-            GgufLlmModel::Phi4Mini_Q4 => {
+            GgufLlmModel::Phi4MiniQ4 => {
                 Some("3c4d3cbdf3006d81444f6c7a5a56eb93d8e0f0e2ba5963b8ab62f9fd42604233")
             }
-            GgufLlmModel::Mistral7b_v03_Q4 => {
+            GgufLlmModel::Mistral7bV03Q4 => {
                 Some("1270d22c0fbb3d092fb725d4d96c457b7b687a5f5a715abe1e818da303e562b6")
             }
             GgufLlmModel::Llama3p2_3bQ4 | GgufLlmModel::Gemma3_4bQ4 => None,
@@ -110,8 +110,8 @@ impl GgufLlmModel {
             GgufLlmModel::Gemma3_4bQ4 => "gemma-3-4b-it-Q4_K_M.gguf",
             GgufLlmModel::Qwen3_4bQ4 => "Qwen3-4B-Q4_K_M.gguf",
             GgufLlmModel::Llama3p1_8bQ4 => "Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf",
-            GgufLlmModel::Phi4Mini_Q4 => "Phi-4-mini-instruct-Q4_K_M.gguf",
-            GgufLlmModel::Mistral7b_v03_Q4 => "Mistral-7B-Instruct-v0.3-Q4_K_M.gguf",
+            GgufLlmModel::Phi4MiniQ4 => "Phi-4-mini-instruct-Q4_K_M.gguf",
+            GgufLlmModel::Mistral7bV03Q4 => "Mistral-7B-Instruct-v0.3-Q4_K_M.gguf",
         }
     }
 
@@ -127,16 +127,16 @@ impl GgufLlmModel {
                 "https://hyprnote.s3.us-east-1.amazonaws.com/v0/unsloth/gemma-3-4b-it-GGUF/gemma-3-4b-it-Q4_K_M.gguf"
             }
             GgufLlmModel::Qwen3_4bQ4 => {
-                "https://huggingface.co/Qwen/Qwen3-4B-GGUF/resolve/main/Qwen3-4B-Q4_K_M.gguf"
+                "https://huggingface.co/Qwen/Qwen3-4B-GGUF/resolve/bc640142c66e1fdd12af0bd68f40445458f3869b/Qwen3-4B-Q4_K_M.gguf"
             }
             GgufLlmModel::Llama3p1_8bQ4 => {
-                "https://huggingface.co/bartowski/Meta-Llama-3.1-8B-Instruct-GGUF/resolve/main/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf"
+                "https://huggingface.co/bartowski/Meta-Llama-3.1-8B-Instruct-GGUF/resolve/bf5b95e96dac0462e2a09145ec66cae9a3f12067/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf"
             }
-            GgufLlmModel::Phi4Mini_Q4 => {
-                "https://huggingface.co/lmstudio-community/Phi-4-mini-instruct-GGUF/resolve/main/Phi-4-mini-instruct-Q4_K_M.gguf"
+            GgufLlmModel::Phi4MiniQ4 => {
+                "https://huggingface.co/lmstudio-community/Phi-4-mini-instruct-GGUF/resolve/009f2b81869a0afd6b9aae23d29fa7b7ee2dcac9/Phi-4-mini-instruct-Q4_K_M.gguf"
             }
-            GgufLlmModel::Mistral7b_v03_Q4 => {
-                "https://huggingface.co/bartowski/Mistral-7B-Instruct-v0.3-GGUF/resolve/main/Mistral-7B-Instruct-v0.3-Q4_K_M.gguf"
+            GgufLlmModel::Mistral7bV03Q4 => {
+                "https://huggingface.co/bartowski/Mistral-7B-Instruct-v0.3-GGUF/resolve/61fd4167fff3ab01ee1cfe0da183fa27a944db48/Mistral-7B-Instruct-v0.3-Q4_K_M.gguf"
             }
         }
     }
@@ -148,8 +148,8 @@ impl GgufLlmModel {
             GgufLlmModel::Gemma3_4bQ4 => 2489894016,
             GgufLlmModel::Qwen3_4bQ4 => 2497280256,
             GgufLlmModel::Llama3p1_8bQ4 => 4920739232,
-            GgufLlmModel::Phi4Mini_Q4 => 2491874400,
-            GgufLlmModel::Mistral7b_v03_Q4 => 4372812000,
+            GgufLlmModel::Phi4MiniQ4 => 2491874400,
+            GgufLlmModel::Mistral7bV03Q4 => 4372812000,
         }
     }
 
@@ -170,8 +170,8 @@ impl GgufLlmModel {
             GgufLlmModel::Gemma3_4bQ4 => "Gemma 3 4B Q4",
             GgufLlmModel::Qwen3_4bQ4 => "Qwen 3 4B Q4",
             GgufLlmModel::Llama3p1_8bQ4 => "Llama 3.1 8B Q4",
-            GgufLlmModel::Phi4Mini_Q4 => "Phi-4 Mini Q4",
-            GgufLlmModel::Mistral7b_v03_Q4 => "Mistral 7B v0.3 Q4",
+            GgufLlmModel::Phi4MiniQ4 => "Phi-4 Mini Q4",
+            GgufLlmModel::Mistral7bV03Q4 => "Mistral 7B v0.3 Q4",
         }
     }
 
@@ -254,8 +254,8 @@ impl LocalModel {
             LocalModel::GgufLlm(GgufLlmModel::Gemma3_4bQ4),
             LocalModel::GgufLlm(GgufLlmModel::Qwen3_4bQ4),
             LocalModel::GgufLlm(GgufLlmModel::Llama3p1_8bQ4),
-            LocalModel::GgufLlm(GgufLlmModel::Phi4Mini_Q4),
-            LocalModel::GgufLlm(GgufLlmModel::Mistral7b_v03_Q4),
+            LocalModel::GgufLlm(GgufLlmModel::Phi4MiniQ4),
+            LocalModel::GgufLlm(GgufLlmModel::Mistral7bV03Q4),
         ]);
 
         models
@@ -303,8 +303,8 @@ impl LocalModel {
             LocalModel::GgufLlm(GgufLlmModel::Gemma3_4bQ4) => "llm-gemma3-4b-q4",
             LocalModel::GgufLlm(GgufLlmModel::Qwen3_4bQ4) => "llm-qwen3-4b-q4",
             LocalModel::GgufLlm(GgufLlmModel::Llama3p1_8bQ4) => "llm-llama3-1-8b-q4",
-            LocalModel::GgufLlm(GgufLlmModel::Phi4Mini_Q4) => "llm-phi4-mini-q4",
-            LocalModel::GgufLlm(GgufLlmModel::Mistral7b_v03_Q4) => "llm-mistral-7b-v03-q4",
+            LocalModel::GgufLlm(GgufLlmModel::Phi4MiniQ4) => "llm-phi4-mini-q4",
+            LocalModel::GgufLlm(GgufLlmModel::Mistral7bV03Q4) => "llm-mistral-7b-v03-q4",
         }
     }
 
@@ -806,8 +806,29 @@ mod tests {
         assert!(GgufLlmModel::HyprLLM.model_sha256().is_some());
         assert!(GgufLlmModel::Qwen3_4bQ4.model_sha256().is_some());
         assert!(GgufLlmModel::Llama3p1_8bQ4.model_sha256().is_some());
-        assert!(GgufLlmModel::Phi4Mini_Q4.model_sha256().is_some());
-        assert!(GgufLlmModel::Mistral7b_v03_Q4.model_sha256().is_some());
+        assert!(GgufLlmModel::Phi4MiniQ4.model_sha256().is_some());
+        assert!(GgufLlmModel::Mistral7bV03Q4.model_sha256().is_some());
+    }
+
+    #[test]
+    fn new_gguf_urls_pin_hugging_face_revisions() {
+        for model in [
+            GgufLlmModel::Qwen3_4bQ4,
+            GgufLlmModel::Llama3p1_8bQ4,
+            GgufLlmModel::Phi4MiniQ4,
+            GgufLlmModel::Mistral7bV03Q4,
+        ] {
+            let url = model.model_url();
+            assert!(url.contains("/resolve/"));
+            assert!(!url.contains("/resolve/main/"));
+            let revision = url
+                .split_once("/resolve/")
+                .and_then(|(_, suffix)| suffix.split('/').next())
+                .unwrap();
+            assert_eq!(revision.len(), 40);
+            assert!(revision.chars().all(|ch| ch.is_ascii_hexdigit()));
+            assert!(model.model_sha256().is_some());
+        }
     }
 
     #[test]
@@ -816,9 +837,9 @@ mod tests {
             assert!(GgufLlmModel::HyprLLM.is_available_on_current_platform());
             assert!(GgufLlmModel::Qwen3_4bQ4.is_available_on_current_platform());
             assert!(GgufLlmModel::Gemma3_4bQ4.is_available_on_current_platform());
-            assert!(GgufLlmModel::Phi4Mini_Q4.is_available_on_current_platform());
+            assert!(GgufLlmModel::Phi4MiniQ4.is_available_on_current_platform());
             assert!(GgufLlmModel::Llama3p1_8bQ4.is_available_on_current_platform());
-            assert!(GgufLlmModel::Mistral7b_v03_Q4.is_available_on_current_platform());
+            assert!(GgufLlmModel::Mistral7bV03Q4.is_available_on_current_platform());
             assert!(!GgufLlmModel::Llama3p2_3bQ4.is_available_on_current_platform());
         }
     }
