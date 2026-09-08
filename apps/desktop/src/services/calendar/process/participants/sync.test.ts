@@ -7,6 +7,13 @@ vi.mock("~/shared/utils", () => ({
   id: () => "human-new",
 }));
 
+vi.mock("~/shared/ids", () => ({
+  humanIdForEmail: async (email: string) => {
+    const normalized = email.trim().toLowerCase();
+    return normalized ? `h_${normalized}` : null;
+  },
+}));
+
 function createSnapshot(
   overrides: Partial<ParticipantSyncSnapshot> = {},
 ): ParticipantSyncSnapshot {
@@ -26,8 +33,8 @@ const session = {
 };
 
 describe("syncSessionParticipants", () => {
-  test("returns empty output when no events are provided", () => {
-    const result = syncSessionParticipants({
+  test("returns empty output when no events are provided", async () => {
+    const result = await syncSessionParticipants({
       incomingParticipants: new Map(),
       snapshot: createSnapshot(),
     });
@@ -37,8 +44,8 @@ describe("syncSessionParticipants", () => {
     expect(result.humansToCreate).toEqual([]);
   });
 
-  test("skips events without an associated session", () => {
-    const result = syncSessionParticipants({
+  test("skips events without an associated session", async () => {
+    const result = await syncSessionParticipants({
       incomingParticipants: new Map([
         ["tracking-1", [{ email: "test@example.com", name: "Test" }]],
       ]),
@@ -49,8 +56,8 @@ describe("syncSessionParticipants", () => {
     expect(result.humansToCreate).toEqual([]);
   });
 
-  test("creates a human when the participant email is new", () => {
-    const result = syncSessionParticipants({
+  test("creates a human when the participant email is new", async () => {
+    const result = await syncSessionParticipants({
       incomingParticipants: new Map([
         ["tracking-1", [{ email: "new@example.com", name: "New Person" }]],
       ]),
@@ -59,7 +66,7 @@ describe("syncSessionParticipants", () => {
 
     expect(result.humansToCreate).toEqual([
       {
-        id: "human-new",
+        id: "h_new@example.com",
         ownerUserId: "user-1",
         email: "new@example.com",
         name: "New Person",
@@ -68,14 +75,14 @@ describe("syncSessionParticipants", () => {
     expect(result.toAdd).toEqual([
       {
         sessionId: "session-1",
-        humanId: "human-new",
+        humanId: "h_new@example.com",
         email: "new@example.com",
       },
     ]);
   });
 
-  test("uses an existing human when email matches case-insensitively", () => {
-    const result = syncSessionParticipants({
+  test("uses an existing human when email matches case-insensitively", async () => {
+    const result = await syncSessionParticipants({
       incomingParticipants: new Map([
         ["tracking-1", [{ email: "Existing@Example.com", name: "Existing" }]],
       ]),
@@ -89,8 +96,8 @@ describe("syncSessionParticipants", () => {
     expect(result.toAdd[0]).toMatchObject({ humanId: "human-1" });
   });
 
-  test("deletes auto mappings when a participant is removed", () => {
-    const result = syncSessionParticipants({
+  test("deletes auto mappings when a participant is removed", async () => {
+    const result = await syncSessionParticipants({
       incomingParticipants: new Map([["tracking-1", []]]),
       snapshot: createSnapshot({
         sessions: [session],
@@ -109,8 +116,8 @@ describe("syncSessionParticipants", () => {
     expect(result.toDelete).toEqual(["mapping-1"]);
   });
 
-  test("preserves excluded mappings", () => {
-    const result = syncSessionParticipants({
+  test("preserves excluded mappings", async () => {
+    const result = await syncSessionParticipants({
       incomingParticipants: new Map([["tracking-1", []]]),
       snapshot: createSnapshot({
         sessions: [session],

@@ -587,6 +587,11 @@ pub async fn finish_legacy_import_run(
     .execute(pool)
     .await?;
 
+    // Imported rows mint UUIDs (import-only, ON CONFLICT DO NOTHING); converge
+    // them onto the deterministic id scheme right away so a later backfill
+    // marker on another device never disagrees. No-op when already applied.
+    crate::id_backfill::backfill_deterministic_ids(pool).await?;
+
     Ok(status.to_string())
 }
 

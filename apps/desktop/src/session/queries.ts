@@ -7,6 +7,7 @@ import type { EventParticipant, SessionEvent } from "@hypr/store";
 
 import { executeTransaction, liveQueryClient, useLiveQuery } from "~/db";
 import { enqueueDatabaseWrite } from "~/db/write-queue";
+import { humanIdForEmail, participantId } from "~/shared/ids";
 import { DEFAULT_USER_ID, id } from "~/shared/utils";
 import type { DeletedSessionData } from "~/store/zustand/undo-delete";
 
@@ -408,27 +409,12 @@ export function addSessionParticipant(
   source = "manual",
 ): Promise<void> {
   return enqueueDatabaseWrite("session-participants", async () => {
-    const participantId = id();
     const now = new Date().toISOString();
+    // Deterministic id for (session, human): two devices adding the same
+    // participant converge on one row. The single upsert replaces the old
+    // update-then-insert pair and preserves "auto must not un-exclude".
+    const mappingId = (await participantId(sessionId, humanId, "")) ?? id();
     await executeTransaction([
-      {
-        sql: `
-          UPDATE session_participants
-          SET source = ?, updated_at = ?
-          WHERE id = (
-            SELECT id
-            FROM session_participants
-            WHERE session_id = ?
-              AND human_id = ?
-              AND source = 'excluded'
-              AND deleted_at IS NULL
-              AND ? <> 'auto'
-            ORDER BY created_at, id
-            LIMIT 1
-          )
-        `,
-        params: [source, now, sessionId, humanId, source],
-      },
       {
         sql: `
           INSERT INTO session_participants (
@@ -442,15 +428,24 @@ export function addSessionParticipant(
           JOIN humans AS human ON human.id = ? AND human.deleted_at IS NULL
           WHERE session.id = ?
             AND session.deleted_at IS NULL
-            AND NOT EXISTS (
-              SELECT 1
-              FROM session_participants AS existing
-              WHERE existing.session_id = session.id
-                AND existing.human_id = human.id
-                AND existing.deleted_at IS NULL
-            )
+          ON CONFLICT(id) DO UPDATE SET
+            source = CASE
+              WHEN session_participants.source = 'excluded' AND excluded.source <> 'auto'
+                THEN excluded.source
+              ELSE session_participants.source
+            END,
+            display_name = CASE
+              WHEN session_participants.display_name = '' THEN excluded.display_name
+              ELSE session_participants.display_name
+            END,
+            email = CASE
+              WHEN session_participants.email = '' THEN excluded.email
+              ELSE session_participants.email
+            END,
+            deleted_at = NULL,
+            updated_at = excluded.updated_at
         `,
-        params: [participantId, source, now, now, humanId, sessionId],
+        params: [mappingId, source, now, now, humanId, sessionId],
       },
     ]);
   });
@@ -670,7 +665,9 @@ export async function createSession(
   initial?: Pick<SessionChanges, "event_json" | "raw_md">,
 ): Promise<string> {
   const sessionId = id();
-  const participantId = id();
+  // Deterministic: (session, self-human) always hashes to the same id on
+  // every device.
+  const selfMappingId = (await participantId(sessionId, userId, "")) ?? id();
   const now = new Date().toISOString();
 
   await executeTransaction([
@@ -707,7 +704,7 @@ export async function createSession(
           updated_at, deleted_at
         ) VALUES (?, ?, ?, ?, 'manual', ?, ?, NULL)
       `,
-      params: [participantId, userId, sessionId, userId, now, now],
+      params: [selfMappingId, userId, sessionId, userId, now, now],
     },
   ]);
 
@@ -803,7 +800,10 @@ export async function getOrCreateSessionForEventId(
     if (seenEmails.has(emailKey)) continue;
     seenEmails.add(emailKey);
 
-    const humanId = humansByEmail.get(emailKey) ?? id();
+    // Deterministic ids: the same event participant lands on the same
+    // human and mapping row on every device.
+    const humanId =
+      humansByEmail.get(emailKey) ?? (await humanIdForEmail(email)) ?? id();
     if (!humansByEmail.has(emailKey)) {
       statements.push({
         sql: `
@@ -814,6 +814,11 @@ export async function getOrCreateSessionForEventId(
           WHERE EXISTS (
             SELECT 1 FROM sessions WHERE id = ? AND deleted_at IS NULL
           )
+          ON CONFLICT(id) DO UPDATE SET
+            deleted_at = NULL,
+            updated_at = excluded.updated_at,
+            name = CASE WHEN humans.name = '' THEN excluded.name ELSE humans.name END,
+            email = CASE WHEN humans.email = '' THEN excluded.email ELSE humans.email END
         `,
         params: [
           humanId,
@@ -837,14 +842,20 @@ export async function getOrCreateSessionForEventId(
         WHERE EXISTS (
           SELECT 1 FROM sessions WHERE id = ? AND deleted_at IS NULL
         )
-          AND NOT EXISTS (
-            SELECT 1
-            FROM session_participants
-            WHERE session_id = ? AND human_id = ? AND deleted_at IS NULL
-          )
+        ON CONFLICT(id) DO UPDATE SET
+          deleted_at = NULL,
+          updated_at = excluded.updated_at,
+          display_name = CASE
+            WHEN session_participants.display_name = '' THEN excluded.display_name
+            ELSE session_participants.display_name
+          END,
+          email = CASE
+            WHEN session_participants.email = '' THEN excluded.email
+            ELSE session_participants.email
+          END
       `,
       params: [
-        id(),
+        (await participantId(sessionId, humanId, email)) ?? id(),
         userId,
         sessionId,
         humanId,
@@ -853,8 +864,6 @@ export async function getOrCreateSessionForEventId(
         now,
         now,
         sessionId,
-        sessionId,
-        humanId,
       ],
     });
   }

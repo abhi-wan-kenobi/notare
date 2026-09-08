@@ -6,12 +6,13 @@ import type {
   ParticipantsSyncOutput,
 } from "./types";
 
+import { humanIdForEmail } from "~/shared/ids";
 import { id } from "~/shared/utils";
 
-export function syncSessionParticipants({
+export async function syncSessionParticipants({
   incomingParticipants,
   snapshot,
-}: ParticipantsSyncInput): ParticipantsSyncOutput {
+}: ParticipantsSyncInput): Promise<ParticipantsSyncOutput> {
   const output: ParticipantsSyncOutput = {
     toDelete: [],
     toAdd: [],
@@ -51,7 +52,7 @@ export function syncSessionParticipants({
     const session = sessionsByTrackingId.get(trackingId);
     if (!session) continue;
 
-    const changes = computeSessionParticipantChanges({
+    const changes = await computeSessionParticipantChanges({
       sessionId: session.id,
       ownerUserId: session.ownerUserId,
       eventParticipants,
@@ -69,7 +70,7 @@ export function syncSessionParticipants({
   return output;
 }
 
-function computeSessionParticipantChanges({
+async function computeSessionParticipantChanges({
   sessionId,
   ownerUserId,
   eventParticipants,
@@ -86,7 +87,7 @@ function computeSessionParticipantChanges({
     string,
     { id: string; humanId: string; source: string }
   >;
-}): { toDelete: string[]; toAdd: ParticipantMappingToAdd[] } {
+}): Promise<{ toDelete: string[]; toAdd: ParticipantMappingToAdd[] }> {
   const eventHumans = new Map<string, { humanId: string; email: string }>();
 
   for (const participant of eventParticipants) {
@@ -96,7 +97,9 @@ function computeSessionParticipantChanges({
     const emailKey = email.toLowerCase();
     let humanId = humansByEmail.get(emailKey);
     if (!humanId) {
-      humanId = id();
+      // Deterministic id keyed on the normalized email, so the same event
+      // participant lands on the same human on every device.
+      humanId = (await humanIdForEmail(email)) ?? id();
       humansByEmail.set(emailKey, humanId);
       humansToCreate.set(emailKey, {
         id: humanId,
