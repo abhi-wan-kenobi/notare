@@ -15,6 +15,7 @@ on:
       - apps/web/public/llms.txt
       - crates/agent-access/**
       - crates/cloudsync/**
+      - crates/crsqlite/**
       - crates/cli-docs/**
       - crates/db-app/**
       - crates/db-change/**
@@ -39,6 +40,7 @@ on:
       - apps/web/public/llms.txt
       - crates/agent-access/**
       - crates/cloudsync/**
+      - crates/crsqlite/**
       - crates/cli-docs/**
       - crates/db-app/**
       - crates/db-change/**
