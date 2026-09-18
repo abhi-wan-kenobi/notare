@@ -15,8 +15,8 @@
   },
   "devDependencies": {
     "drizzle-kit": "^0.31.3",
-    "typescript": "~5.8.3",
-    "vitest": "^4.1.4"
+    "typescript": "~5.9.3",
+    "vitest": "^4.1.11"
   },
   "scripts": {
     "introspect": "drizzle-kit introspect",
