@@ -49,7 +49,7 @@ pub use api::{
     as_crr, begin_alter, commit_alter, db_version, finalize, is_crr, load_probe, site_id,
 };
 pub use bundle::bundled_extension_path;
-pub use changes::{apply_changes, pull_changes, Change, ChangesPage, Cursor, SqlValue};
+pub use changes::{Change, ChangesPage, Cursor, SqlValue, apply_changes, pull_changes};
 pub use error::{Error, ErrorKind};
 
 /// Pinned upstream release the vendored binaries are from
@@ -67,6 +67,11 @@ pub const CRSQLITE_VERSION: &str = "0.16.3";
 /// extension.
 pub fn apply(options: SqliteConnectOptions) -> Result<(SqliteConnectOptions, PathBuf), Error> {
     let extension_path = bundled_extension_path()?;
+    let extension_path_str = extension_path
+        .clone()
+        .into_os_string()
+        .into_string()
+        .map_err(|raw| Error::NonUtf8ExtensionPath(raw.to_string_lossy().into_owned()))?;
 
     // SAFETY: the extension is the vendored vlcn-io v0.16.3 prebuilt
     // release binary — a first-party file this crate ships, verified
@@ -76,7 +81,7 @@ pub fn apply(options: SqliteConnectOptions) -> Result<(SqliteConnectOptions, Pat
     // cannot be violated from this function without the allow below being
     // deleted in review, which is the point of keeping it explicit.
     #[allow(unsafe_code)]
-    let options = unsafe { options.extension(extension_path.to_string_lossy().into_owned()) };
+    let options = unsafe { options.extension(extension_path_str) };
 
     Ok((options, extension_path))
 }

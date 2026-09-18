@@ -32,8 +32,8 @@
 #![allow(clippy::too_many_lines)]
 
 use crsqlite::spike::{
-    apply_changes, assert_integrity_ok, connect_options, pull_changes, Change, Node,
-    SqlValue, Timer, REGISTRY_TABLES, SYNCED_TABLES,
+    Change, Node, REGISTRY_TABLES, SYNCED_TABLES, SqlValue, Timer, apply_changes,
+    assert_integrity_ok, connect_options, pull_changes,
 };
 use sqlx::{Row, SqlitePool};
 
@@ -155,8 +155,7 @@ async fn insert_probe_matrix(pool: &SqlitePool) {
         ("any-null", SqlValue::Null),
     ];
     for (id, v) in anys {
-        let query = sqlx::query("INSERT INTO strict_probe (id, c_any) VALUES (?, ?)")
-            .bind(id);
+        let query = sqlx::query("INSERT INTO strict_probe (id, c_any) VALUES (?, ?)").bind(id);
         let query = match v {
             SqlValue::Null => query.bind(None::<i64>),
             SqlValue::Integer(x) => query.bind(x),
@@ -200,19 +199,19 @@ fn realistic_words_json(word_count: usize) -> String {
 /// cross-node comparison: `SELECT *` plus `typeof()` per column, ordered by
 /// the PK so row order is stable across nodes.
 async fn snapshot(pool: &SqlitePool, table: &str) -> Vec<String> {
-    let columns: Vec<String> = sqlx::query_scalar(
-        "SELECT name FROM pragma_table_info(?) WHERE pk = 0 ORDER BY cid",
-    )
-    .bind(table)
-    .fetch_all(pool)
-    .await
-    .unwrap();
-    let pk: String =
-        sqlx::query_scalar("SELECT name FROM pragma_table_info(?) WHERE pk > 0 ORDER BY pk LIMIT 1")
+    let columns: Vec<String> =
+        sqlx::query_scalar("SELECT name FROM pragma_table_info(?) WHERE pk = 0 ORDER BY cid")
             .bind(table)
-            .fetch_one(pool)
+            .fetch_all(pool)
             .await
             .unwrap();
+    let pk: String = sqlx::query_scalar(
+        "SELECT name FROM pragma_table_info(?) WHERE pk > 0 ORDER BY pk LIMIT 1",
+    )
+    .bind(table)
+    .fetch_one(pool)
+    .await
+    .unwrap();
 
     let mut select_cols: Vec<String> = Vec::with_capacity(columns.len() * 2);
     for c in &columns {
@@ -241,7 +240,9 @@ async fn snapshot(pool: &SqlitePool, table: &str) -> Vec<String> {
 }
 
 async fn sync_a_to_b(a: &Node, b: &Node, after: i64) -> i64 {
-    let changes = pull_changes(&a.pool, after, &b.site_id().await).await.unwrap();
+    let changes = pull_changes(&a.pool, after, &b.site_id().await)
+        .await
+        .unwrap();
     let max_db_version = changes.iter().map(|c| c.db_version).max().unwrap_or(after);
     apply_changes(&b.pool, &changes).await.unwrap();
     max_db_version
@@ -276,12 +277,13 @@ async fn strict_roundtrip_all_types_and_app_schema() {
     // The registry tables all exist (guarded by db-app's own tests upstream,
     // re-asserted here because the spike's as_crr sweep depends on it).
     for table in REGISTRY_TABLES {
-        let count: i64 =
-            sqlx::query_scalar("SELECT COUNT(*) FROM sqlite_master WHERE name = ? AND type = 'table'")
-                .bind(table)
-                .fetch_one(&a.pool)
-                .await
-                .unwrap();
+        let count: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM sqlite_master WHERE name = ? AND type = 'table'",
+        )
+        .bind(table)
+        .fetch_one(&a.pool)
+        .await
+        .unwrap();
         assert_eq!(count, 1, "{table} must exist after migrations");
     }
 
@@ -319,10 +321,12 @@ async fn strict_roundtrip_all_types_and_app_schema() {
     .execute(&mut *conn)
     .await
     .unwrap();
-    sqlx::query("INSERT INTO session_documents (id, session_id, title) VALUES ('doc-1', 'sess-1', 'Note')")
-        .execute(&mut *conn)
-        .await
-        .unwrap();
+    sqlx::query(
+        "INSERT INTO session_documents (id, session_id, title) VALUES ('doc-1', 'sess-1', 'Note')",
+    )
+    .execute(&mut *conn)
+    .await
+    .unwrap();
     sqlx::query("INSERT INTO transcripts (id, session_id, source, provider, words_json, ended_at_ms) VALUES ('tr-1', 'sess-1', 'stt', 'voxtral', ?, 123000)")
         .bind(&words_json)
         .execute(&mut *conn)
@@ -336,10 +340,12 @@ async fn strict_roundtrip_all_types_and_app_schema() {
         .execute(&mut *conn)
         .await
         .unwrap();
-    sqlx::query("INSERT INTO session_tags (id, session_id, tag_id) VALUES ('st-1', 'sess-1', 'tag-1')")
-        .execute(&mut *conn)
-        .await
-        .unwrap();
+    sqlx::query(
+        "INSERT INTO session_tags (id, session_id, tag_id) VALUES ('st-1', 'sess-1', 'tag-1')",
+    )
+    .execute(&mut *conn)
+    .await
+    .unwrap();
     drop(conn);
 
     // --- A → B: pull with the plan's query, decode through the codec,
@@ -366,11 +372,10 @@ async fn strict_roundtrip_all_types_and_app_schema() {
     }
 
     // The 800 KB row must be byte-identical on B.
-    let got: String =
-        sqlx::query_scalar("SELECT words_json FROM transcripts WHERE id = 'tr-1'")
-            .fetch_one(&b.pool)
-            .await
-            .unwrap();
+    let got: String = sqlx::query_scalar("SELECT words_json FROM transcripts WHERE id = 'tr-1'")
+        .fetch_one(&b.pool)
+        .await
+        .unwrap();
     assert_eq!(got, words_json, "800 KB words_json must be byte-identical");
 
     // The codec must not have textualised anything: spot-check the decoded
@@ -423,16 +428,14 @@ async fn strict_roundtrip_all_types_and_app_schema() {
     apply_changes(&a.pool, &b_changes).await.unwrap();
     apply_changes(&b.pool, &a_changes).await.unwrap();
 
-    let a_title: String =
-        sqlx::query_scalar("SELECT title FROM sessions WHERE id = 'sess-1'")
-            .fetch_one(&a.pool)
-            .await
-            .unwrap();
-    let b_title: String =
-        sqlx::query_scalar("SELECT title FROM sessions WHERE id = 'sess-1'")
-            .fetch_one(&b.pool)
-            .await
-            .unwrap();
+    let a_title: String = sqlx::query_scalar("SELECT title FROM sessions WHERE id = 'sess-1'")
+        .fetch_one(&a.pool)
+        .await
+        .unwrap();
+    let b_title: String = sqlx::query_scalar("SELECT title FROM sessions WHERE id = 'sess-1'")
+        .fetch_one(&b.pool)
+        .await
+        .unwrap();
     assert_eq!(
         a_title, b_title,
         "concurrent UPDATE must converge (LWW, site_id tie-break)"
@@ -497,11 +500,10 @@ async fn strict_roundtrip_all_types_and_app_schema() {
         .await
         .unwrap();
     apply_changes(&a.pool, &changes).await.unwrap();
-    let count: i64 =
-        sqlx::query_scalar("SELECT COUNT(*) FROM tags WHERE id = 'tag-from-b'")
-            .fetch_one(&a.pool)
-            .await
-            .unwrap();
+    let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM tags WHERE id = 'tag-from-b'")
+        .fetch_one(&a.pool)
+        .await
+        .unwrap();
     assert_eq!(count, 1, "B→A direction must work");
 
     // Final convergence + integrity over the whole run.
@@ -545,7 +547,8 @@ async fn as_crr_covers_the_full_registry() {
         .await
         .unwrap_err();
     assert!(
-        err.to_string().contains("NOT NULL column without a DEFAULT"),
+        err.to_string()
+            .contains("NOT NULL column without a DEFAULT"),
         "voice_profiles rejection reason, got: {err}"
     );
     // - embedding_vector_map: unique index besides the PK.
@@ -563,18 +566,22 @@ async fn as_crr_covers_the_full_registry() {
     // tables that are NOT in SYNCED_TABLES are enabled here only to prove
     // as_crr compatibility, not data round-trip.
     for table in REGISTRY_TABLES {
-        let pk: String =
-            sqlx::query_scalar("SELECT name FROM pragma_table_info(?) WHERE pk > 0 ORDER BY pk LIMIT 1")
-                .bind(table)
-                .fetch_one(&node.pool)
-                .await
-                .unwrap();
+        let pk: String = sqlx::query_scalar(
+            "SELECT name FROM pragma_table_info(?) WHERE pk > 0 ORDER BY pk LIMIT 1",
+        )
+        .bind(table)
+        .fetch_one(&node.pool)
+        .await
+        .unwrap();
         let sql = format!("INSERT INTO {table} ({pk}) VALUES ('spike-{table}')");
         // Some registry tables have extra NOT NULL columns with defaults
         // only; a PK-only insert relies on all defaults, which the schema
         // guarantees. `templates` is pre-seeded by the migrations but has a
         // TEXT PK namespace that cannot collide with 'spike-'.
-        if let Err(e) = sqlx::query(sqlx::AssertSqlSafe(sql.as_str())).execute(&node.pool).await {
+        if let Err(e) = sqlx::query(sqlx::AssertSqlSafe(sql.as_str()))
+            .execute(&node.pool)
+            .await
+        {
             panic!("PK-only insert into {table} failed: {e}");
         }
     }
@@ -627,11 +634,10 @@ async fn remote_apply_update_hook_probe() {
     // The local sanity check: B's own apply is a crsql_changes vtab write.
     // Whether that fires update_hook is the open question — record either
     // way; assert no panic and the row landed.
-    let count: i64 =
-        sqlx::query_scalar("SELECT COUNT(*) FROM sessions WHERE id = 'hook-1'")
-            .fetch_one(&b.pool)
-            .await
-            .unwrap();
+    let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM sessions WHERE id = 'hook-1'")
+        .fetch_one(&b.pool)
+        .await
+        .unwrap();
     assert_eq!(count, 1, "remote apply must land the row");
 
     if saw_sessions {

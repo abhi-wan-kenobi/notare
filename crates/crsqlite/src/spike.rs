@@ -57,8 +57,7 @@ pub async fn pull_changes(
         seq: i64::MAX,
     };
     loop {
-        let page =
-            crate::changes::pull_changes(pool, cursor, exclude_site, usize::MAX).await?;
+        let page = crate::changes::pull_changes(pool, cursor, exclude_site, usize::MAX).await?;
         changes.extend(page.changes);
         if !page.more {
             return Ok(changes);
@@ -120,7 +119,6 @@ pub const REGISTRY_TABLES: &[&str] = &[
 /// `strict_roundtrip.rs` via `PRAGMA table_list`, so a schema change that
 /// adds or drops a STRICT table re-trips the spike).
 pub const EXPECTED_STRICT_TABLE_COUNT: usize = 21;
-
 
 /// Absolute path to the prebuilt cr-sqlite loadable extension, from
 /// `CRSQLITE_SPIKE_EXTENSION`. `None` → tests print "skipped" and return
@@ -219,11 +217,7 @@ impl Node {
     /// connection, no extension) before the node's own pool opens — the
     /// extension is not needed to migrate, and migrating through the real
     /// `Db::open` path is exactly what the plan asks for.
-    pub async fn open(
-        label: &'static str,
-        extension: &Path,
-        max_connections: u32,
-    ) -> Result<Self> {
+    pub async fn open(label: &'static str, extension: &Path, max_connections: u32) -> Result<Self> {
         let dir = tempfile::tempdir()?;
         let db_path = dir.path().join(format!("{label}.db"));
 
@@ -304,7 +298,6 @@ impl Node {
         count > 0
     }
 }
-
 
 /// `PRAGMA integrity_check` must report `ok`.
 pub async fn assert_integrity_ok(pool: &SqlitePool, label: &str) {

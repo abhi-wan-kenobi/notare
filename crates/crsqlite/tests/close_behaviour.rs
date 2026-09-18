@@ -36,7 +36,7 @@ use std::path::{Path, PathBuf};
 use std::sync::mpsc;
 use std::time::Duration;
 
-use crsqlite::spike::{connect_options, Node};
+use crsqlite::spike::{Node, connect_options};
 use sqlx::sqlite::{SqlitePool, SqlitePoolOptions};
 
 fn extension_path() -> Option<PathBuf> {
