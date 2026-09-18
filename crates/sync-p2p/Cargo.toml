@@ -2,23 +2,10 @@
 name = "sync-p2p"
 version = "0.1.0"
 edition = "2024"
-description = "P2P sync transport — iroh/QUIC + device identity + peer allowlist for notare's v0.6 CRDT sync."
-
-[features]
-# Build the cloudsync extension from source with the custom P2P network layer
-# wired in (linux/x86_64 only, until SYNC-9 adds the other targets).
-#
-# OFF by default, and it must stay that way. cloudsync's prebuilt
-# `include_bytes!` artifacts are `cfg(not(feature = "from-source"))`, so this is
-# an either/or rather than an addition — and Cargo unifies features across the
-# whole workspace, so forcing it in one crate forces it everywhere, on every
-# platform. That is exactly what broke `cargo test --workspace` on macOS: the
-# dev-dependency below used to hard-enable `cloudsync/from-source`, so a macOS
-# workspace build reached cloudsync's build.rs and panicked on an unsupported
-# target. Keep this opt-in, and keep the proof examples behind it.
-from-source = ["cloudsync/from-source"]
+description = "P2P sync transport — iroh/QUIC + device identity + peer allowlist + protocol v2 for notare's 0.7 cr-sqlite sync."
 
 [dependencies]
+async-trait = "0.1"
 base64 = { workspace = true }
 chacha20poly1305 = { version = "0.11", default-features = false, features = ["alloc"] }
 data-encoding = "2.10"
@@ -35,54 +22,6 @@ thiserror = { workspace = true }
 tokio = { workspace = true, features = ["rt", "rt-multi-thread", "net", "io-util", "sync", "macros", "time"] }
 tracing = { workspace = true }
 
-[build-dependencies]
-cc = "1.2"
-
 [dev-dependencies]
-cloudsync = { path = "../cloudsync" }
-sqlx = { workspace = true, features = ["runtime-tokio", "sqlite", "sqlite-unbundled"] }
 tempfile = { workspace = true }
 tokio = { workspace = true, features = ["rt", "rt-multi-thread", "macros", "time"] }
-
-# The proofs below drive the real cloudsync core through the custom P2P network
-# layer, which only exists in the from-source build — so they are gated on that
-# feature rather than compiled on every platform during `cargo test --workspace`.
-#
-#   cargo run -p sync-p2p --example sync_three_nodes --features from-source
-[[example]]
-name = "sync_two_nodes"
-path = "examples/sync_two_nodes.rs"
-required-features = ["from-source"]
-
-[[example]]
-name = "sync_three_nodes"
-path = "examples/sync_three_nodes.rs"
-required-features = ["from-source"]
-
-# Same gate as the convergence examples: drives the real cloudsync core
-# through the from-source P2P network layer (linux/x86_64 only).
-[[test]]
-name = "drain_regression"
-path = "tests/drain_regression.rs"
-required-features = ["from-source"]
-
-# SYNC-6: same harness, but the schema under test is the real app schema
-# (sessions + session_documents — TEXT-PK, STRICT, deleted_at, FK).
-[[example]]
-name = "sync_sessions_schema"
-path = "examples/sync_sessions_schema.rs"
-required-features = ["from-source"]
-
-# table-proofs lane: transcripts + action_items — the two most user-visible
-# tables in the registry that do not sync today.
-[[example]]
-name = "sync_transcripts_action_items_schema"
-path = "examples/sync_transcripts_action_items_schema.rs"
-required-features = ["from-source"]
-
-# table-proofs lane: tags + session_tags (a join table — concurrent add/remove
-# of the same association is a different CRDT case from row-update convergence).
-[[example]]
-name = "sync_tags_schema"
-path = "examples/sync_tags_schema.rs"
-required-features = ["from-source"]

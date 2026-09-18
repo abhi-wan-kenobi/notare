@@ -18958,10 +18958,9 @@ dependencies = [
 name = "sync-p2p"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "base64 0.22.1",
- "cc",
  "chacha20poly1305",
- "cloudsync",
  "data-encoding",
  "dirs 6.0.0",
  "ed25519-dalek 3.0.0",
@@ -18971,7 +18970,6 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.11.0",
- "sqlx",
  "subtle",
  "tempfile",
  "thiserror 2.0.18",

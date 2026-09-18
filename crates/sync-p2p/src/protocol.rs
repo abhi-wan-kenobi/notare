@@ -1,129 +1,82 @@
-//! Framed length-prefixed TCP protocol between a cloudsync site (the C FFI
-//! bridge) and the in-process [`crate::broker::Broker`] / [`crate::agent::P2pAgent`].
+//! Protocol v2 — the wire format between two notare sync peers.
 //!
-//! Every frame is: 4-byte big-endian length, then `len` bytes of JSON.
-//! Blob bodies (upload PUT, check/download GET) are base64 inside the JSON so
-//! the whole frame stays a single JSON object — keeping the protocol a pair of
-//! plain `serde_json::Value` round-trips and avoiding a second framing channel.
+//! The 0.7 engine swap (cr-sqlite) retires the old CloudSync broker flow
+//! (upload/apply/check object-store round trips over HTTP-shaped
+//! `Request`/`Response` frames). Protocol v2 speaks sync **directly**: a
+//! pull-only, symmetric session between two allowlisted peers over one iroh
+//! bi-stream, whole-frame encrypted with [`crate::crypto::encrypt`].
 //!
-//! ## SYNC-5: bearer-token auth on the C↔agent socket
+//! ## Framing
 //!
-//! The localhost TCP port the agent binds for the C `network_p2p.c` layer is
-//! not otherwise gated (any local process that can reach the port can read/write
-//! sync data). SYNC-5 adds a bearer token: every frame from the C side carries
-//! a `token` field, and the agent rejects any frame whose token mismatches the
-//! one it minted at start. The token is **process-local only** — it is never sent
-//! over the iroh peer link (the inbound iroh path is already gated by the
-//! Ed25519-authenticated EndpointId + allowlist, see `agent.rs`); it exists solely
-//! to stop a *different* local process from talking to *this* device's agent.
+//! Unchanged from v1 at the byte level: 4-byte big-endian length prefix, then
+//! `len` bytes of JSON, hard-capped at [`MAX_FRAME_BYTES`] (64 MiB). The JSON
+//! shape is wire-incompatible with v1 (the ALPN bump to
+//! [`crate::agent::SYNC_ALPN`] makes old and new peers refuse each other
+//! cleanly at the TLS layer rather than misparse frames).
 //!
-//! `token` is `#[serde(default)]` so a peer-side frame (which never carries one)
-//! still deserializes over the iroh path — the token is checked only in
-//! `handle_c_connection`, never in `serve_peer_stream`.
+//! ## Session (pull-only, symmetric)
+//!
+//! Each device is *client* toward every allowlisted peer each tick, and
+//! *server* for accepted streams — same protocol, same frames, mirrored
+//! roles. Client: [`SyncMessage::Hello`] → [`SyncMessage::Pull`] with the
+//! cursor persisted for that peer → apply each
+//! [`SyncMessage::Changes`] page → [`SyncMessage::Ack`] when `more == false`.
+//! There is no push; both sides pulling makes idempotency trivial (cr-sqlite
+//! apply is a no-op for a losing `(col_version, site_id)`) and removes the
+//! broker's ordering log entirely. Three-node transitivity is free: B's
+//! `crsql_changes` carries C's rows under C's `site_id`.
+//!
+//! ## Backpressure
+//!
+//! The client controls pacing: one page in flight, next `Pull` starting at
+//! the previous page's `next` cursor and capped at [`DEFAULT_MAX_BYTES`] (4
+//! MiB, always at least one row), so the receiver's apply speed throttles the
+//! sender. The 64 MiB frame cap stays as the hard guard.
 
 use std::io;
 
 use serde::{Deserialize, Serialize};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::TcpStream;
 
-/// One request from a site (the C FFI bridge) to the broker.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Request {
-    /// Bearer token for the local C↔agent socket (SYNC-5). `default` so an
-    /// iroh-peer-side frame (which never carries one) still deserializes; the
-    /// token is only enforced in `handle_c_connection`, not on the peer path.
-    #[serde(default, skip_serializing_if = "String::is_empty")]
-    pub token: String,
-    /// The full endpoint URL the cloudsync core handed us, e.g.
-    /// `p2p://127.0.0.1:38321/<dbId>/<siteId>/upload`.
-    pub endpoint: String,
-    /// `is_post_request` from `network_receive_buffer`; false ⇒ GET semantics.
-    pub is_post: bool,
-    /// POST body (the JSON payload), base64 of the raw bytes, or null for GET.
-    #[serde(
-        default,
-        with = "serde_opt_bytes_base64",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub body: Option<Vec<u8>>,
+use crate::source::{Change, ChangesPage, Cursor};
+
+/// Hard cap on one wire frame: 4-byte BE length prefix, 64 MiB max.
+pub const MAX_FRAME_BYTES: usize = 64 * 1024 * 1024;
+
+/// Default page budget for a `Pull`, in serialized-change bytes (4 MiB).
+pub const DEFAULT_MAX_BYTES: usize = 4 * 1024 * 1024;
+
+/// One protocol v2 message. See the module docs for the session shape.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum SyncMessage {
+    /// Session opener from the client. `schema_version` is the peer's highest
+    /// applied migration; a mismatch is answered with `Error` so a peer on an
+    /// older schema is never handed a `cid` it lacks.
+    Hello {
+        site_id: Vec<u8>,
+        db_version: i64,
+        schema_version: i64,
+    },
+    /// Request the next page of changes after `after` (the cursor persisted
+    /// for the serving peer), excluding `exclude_site`'s own changes, with a
+    /// byte budget.
+    Pull {
+        after: Cursor,
+        exclude_site: Vec<u8>,
+        max_bytes: usize,
+    },
+    /// One page of changes. `more == false` means the session can move on
+    /// (`Ack`); the client's next `Pull` starts at `next`.
+    Changes { page: ChangesPage },
+    /// Client confirmation that it applied through `applied_through` — the
+    /// server records this as the `served` cursor for that peer.
+    Ack { applied_through: Cursor },
+    /// Terminal error from either side.
+    Error { message: String },
 }
 
-/// One response from the broker back to the site.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Response {
-    /// HTTP-ish status: 200 = OK with a body, 204 = OK no body, 4xx/5xx = error.
-    pub status: u16,
-    /// Response body bytes (base64). For `receive`, this is the JSON the core
-    /// parses (e.g. `{"url":"mem://..."}` or `{"lastOptimisticVersion":...}`).
-    /// `None` is serialized as `"body":null` (not skipped) so the C side's
-    /// manual `"body"` lookup always finds the key.
-    #[serde(default, with = "serde_opt_bytes_base64")]
-    pub body: Option<Vec<u8>>,
-    /// Diagnostic message on error.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub error: Option<String>,
-}
-
-/// `send_buffer` (PUT) is a separate frame shape: raw blob upload to a `mem://`
-/// URL the broker handed back from the upload step.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PutRequest {
-    /// Bearer token for the local C↔agent socket (SYNC-5). See [`Request::token`].
-    #[serde(default, skip_serializing_if = "String::is_empty")]
-    pub token: String,
-    /// The `mem://<id>` URL returned by the broker's upload endpoint.
-    pub url: String,
-    #[serde(with = "serde_bytes_base64")]
-    pub blob: Vec<u8>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PutResponse {
-    pub ok: bool,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub error: Option<String>,
-}
-
-mod serde_bytes_base64 {
-    use base64::{Engine as _, engine::general_purpose::STANDARD};
-    use serde::{Deserialize, Deserializer, Serialize, Serializer};
-
-    pub fn serialize<S: Serializer>(bytes: &Vec<u8>, s: S) -> Result<S::Ok, S::Error> {
-        STANDARD.encode(bytes).serialize(s)
-    }
-
-    pub fn deserialize<'de, D: Deserializer<'de>>(d: D) -> Result<Vec<u8>, D::Error> {
-        let s = String::deserialize(d)?;
-        STANDARD.decode(s).map_err(serde::de::Error::custom)
-    }
-}
-
-/// serde helper for `Option<Vec<u8>>` base64 fields.
-mod serde_opt_bytes_base64 {
-    use base64::{Engine as _, engine::general_purpose::STANDARD};
-    use serde::{Deserialize, Deserializer, Serialize, Serializer};
-
-    pub fn serialize<S: Serializer>(bytes: &Option<Vec<u8>>, s: S) -> Result<S::Ok, S::Error> {
-        match bytes {
-            Some(b) => STANDARD.encode(b).serialize(s),
-            None => s.serialize_none(),
-        }
-    }
-
-    pub fn deserialize<'de, D: Deserializer<'de>>(d: D) -> Result<Option<Vec<u8>>, D::Error> {
-        let opt: Option<String> = Option::deserialize(d)?;
-        match opt {
-            Some(s) => STANDARD
-                .decode(s)
-                .map(Some)
-                .map_err(serde::de::Error::custom),
-            None => Ok(None),
-        }
-    }
-}
-
-/// Write a length-prefixed JSON frame.
+/// Write one length-prefixed JSON frame.
 pub async fn write_frame<W: AsyncWriteExt + Unpin, T: Serialize>(
     w: &mut W,
     value: &T,
@@ -136,14 +89,14 @@ pub async fn write_frame<W: AsyncWriteExt + Unpin, T: Serialize>(
     Ok(())
 }
 
-/// Read a length-prefixed JSON frame.
+/// Read one length-prefixed JSON frame.
 pub async fn read_frame<R: AsyncReadExt + Unpin, T: for<'de> Deserialize<'de>>(
     r: &mut R,
 ) -> io::Result<T> {
     let mut len_buf = [0u8; 4];
     r.read_exact(&mut len_buf).await?;
     let len = u32::from_be_bytes(len_buf) as usize;
-    if len > 64 * 1024 * 1024 {
+    if len > MAX_FRAME_BYTES {
         return Err(io::Error::new(
             io::ErrorKind::InvalidData,
             format!("frame too large: {len} bytes"),
@@ -154,18 +107,71 @@ pub async fn read_frame<R: AsyncReadExt + Unpin, T: for<'de> Deserialize<'de>>(
     serde_json::from_slice(&buf).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
 }
 
-/// Convenience: one-shot request/response over a fresh TCP connection.
-pub async fn roundtrip(addr: &str, req: &Request) -> io::Result<Response> {
-    let mut stream = TcpStream::connect(addr).await?;
-    write_frame(&mut stream, req).await?;
-    let resp = read_frame::<_, Response>(&mut stream).await?;
-    Ok(resp)
-}
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-/// One-shot PUT (send_buffer) over a fresh TCP connection.
-pub async fn put(addr: &str, req: &PutRequest) -> io::Result<PutResponse> {
-    let mut stream = TcpStream::connect(addr).await?;
-    write_frame(&mut stream, req).await?;
-    let resp = read_frame::<_, PutResponse>(&mut stream).await?;
-    Ok(resp)
+    fn hello() -> SyncMessage {
+        SyncMessage::Hello {
+            site_id: vec![1, 2, 3, 4],
+            db_version: 7,
+            schema_version: 20260907,
+        }
+    }
+
+    /// A frame must round-trip through the real framing helpers and must not
+    /// exceed the 64 MiB cap.
+    #[tokio::test]
+    async fn frames_roundtrip() {
+        let mut buf = Vec::new();
+        write_frame(&mut buf, &hello()).await.unwrap();
+        // One frame: 4-byte prefix + payload, nothing more.
+        let len = u32::from_be_bytes(buf[..4].try_into().unwrap()) as usize;
+        assert_eq!(buf.len(), 4 + len);
+
+        let back: SyncMessage = read_frame(&mut buf.as_slice()).await.unwrap();
+        assert_eq!(back, hello());
+    }
+
+    /// The wire format is JSON with a `type` discriminator — pinned so an
+    /// accidental serde reshuffle (e.g. dropping the tag) cannot silently
+    /// change the protocol.
+    #[test]
+    fn message_tag_is_snake_case_json() {
+        let json = serde_json::to_value(hello()).unwrap();
+        assert_eq!(json["type"], "hello");
+        assert_eq!(json["site_id"], serde_json::json!([1, 2, 3, 4]));
+
+        let pull = SyncMessage::Pull {
+            after: Cursor {
+                db_version: 5,
+                seq: 0,
+            },
+            exclude_site: vec![9, 9],
+            max_bytes: DEFAULT_MAX_BYTES,
+        };
+        let json = serde_json::to_value(&pull).unwrap();
+        assert_eq!(json["type"], "pull");
+        assert_eq!(json["after"]["db_version"], 5);
+    }
+
+    /// Frames over the cap are refused by the reader, never buffered.
+    #[tokio::test]
+    async fn oversized_frame_is_refused() {
+        let mut buf: &[u8] = &(MAX_FRAME_BYTES as u32 + 1).to_be_bytes();
+        let err = read_frame::<_, SyncMessage>(&mut buf).await.unwrap_err();
+        assert_eq!(err.kind(), std::io::ErrorKind::InvalidData);
+        assert!(err.to_string().contains("frame too large"));
+    }
+
+    /// A garbage payload must fail deserialization, not panic or hang.
+    #[tokio::test]
+    async fn garbage_frame_fails_cleanly() {
+        let payload = b"not json at all";
+        let mut buf = Vec::with_capacity(4 + payload.len());
+        buf.extend_from_slice(&(payload.len() as u32).to_be_bytes());
+        buf.extend_from_slice(payload);
+        let mut reader = buf.as_slice();
+        assert!(read_frame::<_, SyncMessage>(&mut reader).await.is_err());
+    }
 }

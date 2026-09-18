@@ -1,40 +1,42 @@
-//! P2P sync transport for notare's v0.6 CRDT sync — iroh/QUIC + device
-//! identity + a peer allowlist, building on the S1 convergence spike.
+//! P2P sync transport for notare's 0.7 cr-sqlite sync — iroh/QUIC + device
+//! identity + peer allowlist + protocol v2.
 //!
 //! This crate owns:
-//! - the **broker** ([`broker`]) — the CloudSync control plane + in-memory
-//!   object store that collapses the HTTP-S3 3-step upload/apply flow (a peer
-//!   serves the CloudSync protocol directly, no S3);
-//! - the **P2P agent** ([`agent`]) — the bridge between the synchronous C
-//!   network layer and the asynchronous iroh/QUIC transport, which enforces
-//!   the peer allowlist at dial + accept;
+//! - the **P2P agent** ([`agent`]) — the iroh endpoint that runs pull-only,
+//!   symmetric protocol v2 sessions against allowlisted peers, backed by a
+//!   [`source::ChangeSource`];
 //! - **device identity** ([`identity`]) — a persistent Ed25519 keypair whose
 //!   public key is the device id / iroh `EndpointId`;
-//! - the **peer allowlist** ([`peers`]) — the local, non-CRDT-synced set of
-//!   paired devices that this device will sync with (closes the §12 SSRF
-//!   finding).
+//! - the **peer allowlist** ([`peers`]) — the local, non-synced set of
+//!   paired devices this device will sync with;
+//! - the **DB seam** ([`source`]) — the trait between the wire protocol and
+//!   the CRDT engine; the concrete `DbChangeSource` lives in the plugin
+//!   crate, and this crate's tests drive an in-memory `FakeSource`;
+//! - the **round driver** ([`engine`]) — `P2pSyncDriver`, one pull session
+//!   against every allowlisted peer per round.
 //!
-//! The actual CloudSync network layer — the two C functions the sqlite-sync
-//! core calls — lives in `crates/cloudsync/build/network_p2p.c`, compiled
-//! into the loadable `cloudsync.so` under the `from-source` feature. The C
-//! layer is deliberately dumb and **local**: it speaks the framed TCP
-//! protocol ([`protocol`]) to the in-process [`agent::P2pAgent`] on
-//! `127.0.0.1`, and the agent relays each request to the addressed peer over
-//! an iroh bi-stream. iroh/QUIC lives entirely in Rust — C never speaks QUIC.
-//!
-//! See `docs/internal/sync-p2p.md` (§1–§6 for the C contract, §11 for the S1
-//! call graph, §12 for the audit, §13 for the SYNC-3 architecture) for the
-//! verbatim core call sequence this transport must satisfy.
+//! Protocol v2 (0.7 engine swap to cr-sqlite) deleted the v1 broker, the
+//! localhost TCP listener for the C network layer, the C↔agent bearer token,
+//! and the HTTP-shaped request/relay flow: cr-sqlite has no in-process C
+//! network layer to bridge. What remains is a direct peer-to-peer pull
+//! protocol — whole-frame encrypted with [`crypto`] — plus the unchanged
+//! identity/allowlist/crypto/iroh plumbing. See `docs/internal/sync-p2p.md`
+//! (§1–§16 describe the retired architecture; §30 the v2 swap).
 
 pub mod agent;
-pub mod broker;
 pub mod crypto;
+pub mod engine;
 pub mod identity;
 pub mod peers;
 pub mod protocol;
+pub mod source;
 
-pub use agent::{AgentError, AgentTransport, P2pAgent, register_direct_addr, self_address};
-pub use broker::Broker;
+pub use agent::{AgentError, AgentTransport, P2pAgent, SYNC_ALPN, register_direct_addr};
+pub use engine::{P2pSyncDriver, SyncDriverError, SyncRoundOutcome};
 pub use identity::{Fingerprint, FingerprintError, Identity, IdentityError};
 pub use peers::{Peer, PeerStore, PeersError};
-pub use protocol::{Request, Response};
+pub use protocol::{DEFAULT_MAX_BYTES, MAX_FRAME_BYTES, SyncMessage};
+pub use source::{
+    Change, ChangeSource, ChangeSourceError, ChangesPage, Cursor, FakeSource, PeerSyncOutcome,
+    SqlValue,
+};
