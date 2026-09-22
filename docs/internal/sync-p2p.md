@@ -3437,3 +3437,563 @@ this test.
   teardown panic after their final `===` success line — the same benign
   ordering issue, not a failure. Confirmed both runs printed every `[conv]`
   PASS line before the panic.
+
+## 24. CI promotion — reverted on main (stub; numbering kept)
+
+This section existed on the branch: the last three provisional sync CI jobs
+(`desktop_sync_gate_macos`, `desktop_sync_gate_windows`,
+`cloudsync_from_source_linux_arm`) were promoted into the `ci` aggregate's
+`needs:` list, with run-by-run green evidence. It was **deliberately reverted
+on main** by `56f75bc8d` (2026-09-02): the promotion landed at the same moment
+sync itself was deferred from 0.6, so the jobs went back to non-blocking and
+the section was deleted with them. The evidence tables are preserved in the
+branch history (`feat/sync-table-proofs-b1`, commit `0c0997aac`) if the
+promotion is ever re-taken. The numbering is kept so later sections — and the
+gate doc's citations — continue to resolve.
+
+<!-- Engine banner — applies to §25–§29 below, ported from the branch 2026-09-07. -->
+
+> **Engine note (2026-09-07).** Sections 25–29 were written against
+> **sqlite-sync 1.0.12** (the vendored CloudSync engine), and every measured
+> transcript in them is historical evidence about that engine's `cls` merge
+> semantics. That engine is now retired: the upstream licence added a
+> "Network Layer" carve-out on 2026-09-02 (see `docs/LICENSE-NOTE.md`), and
+> 0.7 swaps to **cr-sqlite** (vlcn-io, MIT). What these sections carry to the
+> new engine is the **id-provenance analysis** — which write paths mint
+> locally-random `crypto.randomUUID()` primary keys where the real identity
+> lives elsewhere, and therefore fork the entity under concurrent offline
+> creation on any CRDT. That analysis is about application id minting, not
+> engine merge semantics, and survives the swap unchanged. The per-table
+> convergence *measurements* do not carry; they must be re-proven under
+> cr-sqlite via the `tests/table_proofs/` harness (0.7 gate §A rows).
+> Everything engine-specific the sections name — the example harness's
+> `cloudsync_init`/`cls` calls, `network_p2p.c`, the from-source build —
+> describes the retired architecture.
+
+## 25. Table-proofs lane, batch 2 — the contacts family, and the first NO-GO (2026-09-02)
+
+`organizations`, `humans`, `session_participants`. On the branch this batch
+grew `SYNCED_TABLES` from 6 to **7** (adding `organizations`); **on main the
+enabled set stays at 6** until the cr-sqlite re-proofs land (0.7 gate §A).
+The other two tables are the first in this effort proven **unsafe to enable**
+rather than merely unproven, and that verdict is the substance of this
+section.
+
+Proof: `crates/sync-p2p/examples/sync_contacts_schema.rs`
+Run: `cargo run -p sync-p2p --example sync_contacts_schema --features from-source`
+*(retired harness — see the engine note above; kept as the scenario reference
+for the cr-sqlite fixtures)*
+
+### 25.1 Why this batch, and the write-path triage that produced it
+
+Before writing any fixture, all 11 remaining tables were triaged for
+whether the app writes them at all, by grepping for real `INSERT` sites
+outside tests:
+
+| Table | Live write sites | Note |
+|---|---|---|
+| `templates` | 12 | live |
+| `humans` | 8 | live |
+| `session_participants` | 8 | live |
+| `events` | 7 | live |
+| `calendars` | 6 | live |
+| `organizations` | 4 | live |
+| `chat_groups` | 2 | live |
+| `chat_messages` | 2 | live |
+| `daily_notes` | 1 | **import-only** — `crates/db-app/src/legacy_import.rs:930` |
+| `session_attachments` | 1 | **import-only** — `legacy_import.rs:868` |
+| `entity_mentions` | 0 | **never written anywhere** |
+
+Two consequences worth recording. `daily_notes` and `session_attachments`
+have no live app write path — only the legacy importer populates them, so
+there is no "real app write pattern" to model for either, and a §17-style
+proof of them would be proving a fixture of our own invention. And
+`entity_mentions` is written by nothing at all. Those three should be
+handled as a documentation batch, not a proof batch.
+
+The contacts family was taken first among the live tables because it is
+the only group whose uniqueness is enforced by something other than a
+deterministic primary key — which turned out to matter.
+
+### 25.2 The finding: a local `NOT EXISTS` guard is not a uniqueness constraint
+
+§23.4 established that `tags`/`session_tags` derive their primary keys from
+content, so two devices doing "the same" thing write the *same row* and CLS
+merges it per column. `humans` and `session_participants` are the inverse.
+The id is `crypto.randomUUID()` (`apps/desktop/src/shared/utils.ts:9`) and
+uniqueness is enforced by a subquery evaluated **on the writing device at
+write time**:
+
+- `humans`, calendar path
+  (`apps/desktop/src/services/calendar/storage.ts:586-609`) — inserts
+  `WHERE NOT EXISTS (SELECT 1 FROM humans WHERE deleted_at IS NULL AND
+  lower(email) = lower(?))`, id from
+  `humanId = id()` (`services/calendar/process/participants/sync.ts:99`).
+- `humans`, manual path (`apps/desktop/src/contacts/queries.ts:273-278`) —
+  a plain INSERT with `id()` and **no guard at all**.
+- `session_participants` (`apps/desktop/src/session/queries.ts:434-452`,
+  `services/calendar/storage.ts:628-683`) — `id()` guarded by
+  `NOT EXISTS (... session_id = ? AND human_id = ? AND deleted_at IS NULL)`.
+
+A guard evaluated locally cannot see a concurrent insert on another device.
+Two offline devices each pass their own guard, each mint a different random
+primary key, and after the merge **both rows exist permanently**. CLS has
+nothing to merge: two distinct primary keys are two distinct rows, each
+internally consistent. This is not a convergence failure — the nodes agree
+precisely — it is a *duplicate entity* that the CRDT is structurally unable
+to resolve.
+
+Measured on the retired sqlite-sync harness, reproduced across two
+consecutive runs (historical evidence; the defect class is engine-independent — see the engine note):
+
+```
+[FINDING] humans DID NOT dedup: "alice@example.com" exists TWICE after merge
+          on both nodes (["human-uuid-from-device-a", "human-uuid-from-device-b"])
+[FINDING] humans manual-contact path (no guard at all) duplicates identically
+[FINDING] session_participants DID NOT dedup: human-dave appears TWICE in
+          sess-m after merge on both nodes
+```
+
+The user-visible outcome, had these been enabled: every contact added on
+two devices while offline becomes two contacts, and the same person is
+listed twice in a meeting's participant list. Scenario 4 isolates the cause
+— a `humans` row created on **one** device and then edited concurrently on
+both merges correctly per column (`job_title="CTO"`, `phone="+1-555-0100"`,
+both survived) — so the defect is duplicate *creation*, not a merge failure.
+
+### 25.3 Verdicts
+
+| Table | Verdict | Basis |
+|---|---|---|
+| `organizations` | **GO — enabled on the branch, eligible pending re-proof on main** | A→B, B→A, concurrent per-column merge on the same row (rename vs memo, both survived), multi-row catch-up. Created on one device with a locally-minted id and then replicated, so the branch's verdict reasoned there is no concurrent-creation ambiguity. |
+| `humans` | **NO-GO** | Duplicates by email under concurrent offline creation, on both write paths. |
+| `session_participants` | **NO-GO** | Duplicates by (session, human) under concurrent offline creation. |
+
+`session_participants` also could not be enabled independently of `humans`
+even if it were safe: its rows carry `human_id`, so duplicated humans
+produce duplicated participants downstream regardless.
+
+**Correction (2026-09-07), carried from the 0.7 plan.** The branch's GO for
+`organizations` rested on the premise that "the app has no
+find-or-create-by-name path". That is false. `updateHuman` with a
+`companyName` (`apps/desktop/src/contacts/queries.ts:548-560`) inserts a new
+`organizations` row with a locally-minted `id()` behind a `NOT EXISTS
+lower(name)` guard — the exact shape that forks in §25.2, on the
+`organizations` table itself. Same defect class as `humans`, milder
+consequence (duplicates a company, not a person, and only when the same
+contact's company is set on two offline devices). The GO verdict is
+therefore **downgraded to eligible-pending-fix**: before `organizations`
+can be enabled, its id must be made deterministic (`lower(trim(name))`,
+same as the `humans` fix) — 0.7 plan B4. The measured convergence itself is
+unaffected: a singly-created row still replicates and merges correctly.
+
+### 25.4 The fix these tables need before they can be enabled
+
+Give all three a deterministic primary key, exactly as `tags`/`session_tags`
+already do:
+
+- `humans.id` derived from `lower(email)` — the field the guard already
+  treats as the identity. Two devices then write the same row, and the CRDT
+  merges `name`/`phone`/`job_title` per column instead of forking the
+  entity. Needs a decision for humans with **no** email (the calendar path
+  skips them — `sync.ts:93` `if (!email) continue` — but the manual path
+  permits one, so `contacts/queries.ts` would need a rule).
+- `session_participants.id` derived from `(session_id, human_id)` — the pair
+  the guard already treats as the identity, and the same shape
+  `session_tags.id` uses.
+- `organizations.id` derived from `lower(trim(name))` — see the §25.3
+  correction.
+
+Either change is a migration plus a backfill for existing rows, which is
+why it is named here rather than attempted in a proof lane. Scenarios 3 and
+5 assert the *current* duplicate outcome deliberately, so whoever makes
+ids deterministic will see those assertions fail and be forced back to this
+section rather than silently changing the conclusion.
+
+Rules for the deterministic-id scheme (2026-09-07, from the 0.7 plan —
+these supersede the branch's open questions):
+
+- **`humans.email` is never NULL** (`TEXT NOT NULL DEFAULT ''`,
+  `20260710223922_canonical_data_model.sql:21`). The email-less cases are:
+  `createHuman` with `""` (`contacts/queries.ts:266`), and the **self-human**
+  inserted by `createSession` with `id = userId` = the `DEFAULT_USER_ID`
+  constant (`shared/utils.ts:47`), which is identical on every device and
+  already converges. **Empty email keeps a random UUID**; **rows with
+  `id == owner_user_id` (the self-human) are never rewritten**.
+- **`session_participants` rows exist with `human_id = ''`** —
+  display-name/email-only participants (fixture at
+  `crates/db-app/src/session_ops.rs:375-380`). For those the identity key
+  falls back to the participant's own `email` field, else keeps a random
+  UUID.
+- **`humans.id` is embedded in JSON inside a synced table**:
+  `transcripts.speaker_hints_json`. The `user_speaker_assignment` hint
+  carries a `human_id` (`stt/live-segment.ts:34`) and the renderer reads it
+  back out (`stt/render-transcript.ts:309-345`). An id rewrite must also
+  cover `action_items.assignee_human_id`, `voice_profiles.human_id`,
+  `session_participants.human_id`, and
+  `entity_mentions.target_id WHERE target_type='human'` — a dangling
+  reference after the backfill would be a silent data bug.
+- The hash, not concatenation: `humans.id` = `"h_" +
+  hex(sha256("notare:human:v1:" + norm_email))[0..32]` shape — fixed
+  length, no PII in ids (ids surface in tab URLs, `speaker_hints_json`,
+  exports, logs), no delimiter concerns. Identity is fixed at creation
+  (editing email/name does not change the id); the `NOT EXISTS` guards stay
+  as belt-and-braces — the same trade `tags` already makes.
+
+### 25.5 What this batch does not establish
+
+- Only `organizations` was enabled on the branch; on main **11 tables remain
+  disabled** — 4 proven unsafe (§25.2/§26.2), 4 eligible pending a fix and
+  re-proof (§25.3 correction, §27.4, §29.1), 3 unused (§28). Every live
+  table is adjudicated; nothing is disabled merely for want of a proof, and
+  the enabled 6 are re-proved under cr-sqlite via the 0.7 gate §A rows.
+- The `sessions` table appears in this proof's fixture only because the
+  real `session_participants` INSERT is a `SELECT ... FROM sessions JOIN
+  humans` and will not run without it. It is not under test here (§17
+  already proved it).
+- Same known noise as §17/§23: the example exits with the
+  `sqlx-sqlite-worker` "unable to close due to unfinalized statements"
+  teardown panic after its final `===` line. Benign, and both runs printed
+  every `[conv]`/`[FINDING]` line before it. (The unfinalized-statements
+  teardown class is also what motivates the close-behaviour probe in the
+  cr-sqlite Phase 0 spike — see the 0.7 plan.)
+- Nothing here runs off linux/x86_64, unchanged from §22.8.
+
+## 26. Table-proofs lane, batch 3a — `calendars` + `events`: NO-GO (2026-09-02)
+
+Proof: `crates/sync-p2p/examples/sync_calendar_schema.rs`
+Run: `cargo run -p sync-p2p --example sync_calendar_schema --features from-source`
+*(retired harness — see the engine note above §25)*
+
+Same defect class as §25, but it will fire far more often, because the
+duplicating write is not a user action — it is the calendar poller, and it
+runs automatically on every device.
+
+### 26.1 The identity is in a non-primary column
+
+Both tables are a **local cache of provider state**. The provider's real
+identity lives in a non-PK column while the primary key is a locally-minted
+`crypto.randomUUID()`:
+
+| Table | Real identity | Primary key |
+|---|---|---|
+| `calendars` | `tracking_id_calendar` | `stored?.id ?? id()` — `services/calendar/storage.ts:222` |
+| `events` | `tracking_id_event` | `const eventId = id()` — `services/calendar/storage.ts:509` |
+
+In both cases the lookup that would reuse an existing id (`stored`, and the
+`eventKey(calendarId, tracking_id_event)` diff behind `events.toAdd`)
+consults **local** rows only. A second device polling the same account
+finds nothing locally for that tracking id and mints its own key.
+
+### 26.2 Measured
+
+A laptop and a desktop both signed into one Google account, disconnected
+from each other, both polling — the ordinary case:
+
+```
+[FINDING] calendars DID NOT dedup: provider calendar "provider-cal-personal"
+          exists TWICE after merge on both nodes (["cal-uuid-a", "cal-uuid-b"])
+[FINDING] events DID NOT dedup: provider event "provider-evt-review" exists
+          TWICE after merge on both nodes (["evt-uuid-a", "evt-uuid-b"])
+```
+
+The user would see the same meeting twice in their agenda, permanently, and
+once per additional device.
+
+As in §25, the cause is isolated rather than assumed: scenario 3 shows a
+singly-ingested event edited concurrently on both devices merges correctly
+per column (`title="Standup (moved)"`, `location="Room 4"`, both survived),
+and scenario 4 shows the tombstone column added by
+`20260711000000_calendar_event_tombstones.sql` converges without
+resurrection. The rows are fine. The *ingest* is what duplicates.
+
+### 26.3 Verdict and the deeper reason
+
+**NO-GO for both.** The narrow fix is the same as §25.4 — derive the PK
+from the provider tracking id (plus `connection_id`, since the same
+provider id can appear under two accounts). `connection_id` is
+cross-device stable (`"apple"`, `GOOGLE_DIRECT_CONNECTION_ID`,
+`ICS_CONNECTION_ID`, Outlook account ids; `crates/calendar/src/lib.rs:72-110`),
+so `(provider, connection_id, tracking_id)` is a valid deterministic input
+for the hash.
+
+**Disconnect hazard (2026-09-07, carried from the 0.7 plan).** Beyond the
+id problem, `calendars` and `events` carry **per-device connection state**:
+`calendars.enabled`, and the poller's disconnect sweep — when a connection
+is no longer in the requested set, the poller tombstones every live
+calendar for that `connection_id` (`services/calendar/storage.ts:177-189`:
+`disconnected || missingFromSuccessfulRefresh` → `UPDATE calendars SET
+deleted_at = …`). Synced, a disconnect on one device would tombstone events
+on **every** device, including the devices still connected to that
+account. So even with deterministic ids (which fix `sessions.event_id`
+portability — a synced column pointing at unsynced rows today,
+`20260710223922_canonical_data_model.sql:47`), **both tables stay disabled
+in 0.7**. Deterministic ids for them land in 0.7 plan B5; the enable
+decision is explicitly deferred beyond that.
+
+The design point worth recording before anyone implements the fix: **this
+data is already replicated by the calendar provider.** Every device
+independently pulls the same feed from Google or Outlook. Syncing these two
+tables device-to-device duplicates a replication path that already exists,
+rather than adding one that is missing — and it is the reason the defect
+exists at all, since two independent ingests of the same upstream object is
+precisely the situation the local id-minting cannot handle. The columns
+that are *genuinely* local (`events.note`, `calendars.enabled`) are the only
+part with a real case for syncing, and they would be better served by a
+separate table keyed by tracking id than by syncing the provider cache.
+
+## 27. Table-proofs lane, batch 3b — `templates`: GO, and §23.7's DELETE gap closed (2026-09-02)
+
+Proof: `crates/sync-p2p/examples/sync_templates_schema.rs`
+Run: `cargo run -p sync-p2p --example sync_templates_schema --features from-source`
+*(retired harness — see the engine note above §25)*
+
+On the branch this grew `SYNCED_TABLES` 7 → **8**; on main `templates`
+stays disabled until the cr-sqlite re-proofs (0.7 gate §A).
+
+### 27.1 The first real hard DELETE in this suite
+
+Every table proven before this one soft-deletes: it carries `deleted_at`
+and "removal" is an UPDATE, so CLS resolves it by ordinary per-column LWW.
+§23.7 recorded that as a limitation and named the missing case in as many
+words — *"give `session_tags` a real removal path (a SQL `DELETE`) once one
+exists in the app."*
+
+`templates` is that table. It has **no `deleted_at` column at all**
+(`20260413020000_templates.sql`) and removal is
+`DELETE FROM templates WHERE id = ?` (`crates/db-app/src/template_ops.rs:75`).
+
+Result: **a real hard DELETE propagates to the peer and stays deleted**
+across further sync rounds, on both nodes. That closes the §23.7 gap for
+real DELETEs generally, not just for this table. (Under cr-sqlite, hard
+DELETEs propagate as tombstones in `crsql_changes`; the re-proof must cover
+the same scenario — 0.7 gate §A.)
+
+### 27.2 Why it does not duplicate, unlike §25/§26
+
+Two different reasons, both worth stating because they are the general
+lesson of batches 2 and 3:
+
+- **Built-in templates** are seeded by
+  `20260524000000_default_templates.sql` with **fixed, content-derived ids**
+  (`default-board-meeting`, `default-daily-standup`, ...) via
+  `INSERT OR IGNORE`. Every device that runs migrations produces the *same*
+  primary keys, so independent seeding on two devices converges to one row
+  per template. Measured: both nodes independently seeded, then converged to
+  exactly `["default-board-meeting", "default-daily-standup"]` — not a
+  duplicate pair. This is the direct contrast with §26, where independent
+  creation of the same object forks.
+- **User templates** go through `upsert_template` — `INSERT ... ON
+  CONFLICT(id) DO UPDATE` with a caller-supplied id — and the app has no
+  find-or-create-by-title path, so a user template is minted on one device
+  and replicated. The singly-created shape, unlike the locally-guarded
+  shape that forks in §25/§26 (see the §25.3 correction for the one
+  organization-minting path that *is* locally guarded).
+
+Per-column merge also holds: A retitled while B rewrote the description,
+and both edits survived.
+
+### 27.3 The `icon_json` ALTER is load-bearing
+
+`20260712170000_template_icons.sql` adds `icon_json TEXT NOT NULL DEFAULT
+'{...}'`. That is not cosmetic for sync:
+`registered_tables_match_cloudsync_schema_requirements` requires every
+non-PK `NOT NULL` column to declare a DEFAULT, and this one only satisfies
+it because the ALTER supplies one. The proof replays create-then-ALTER in
+migration order rather than hand-merging, per the §23.2 convention. The
+same DEFAULT rule holds for cr-sqlite's `is_table_compatible` (checked
+against the source in the 0.7 gate doc's contingency pass), so the ALTER
+stays load-bearing after the swap.
+
+### 27.4 Caveat — a fresh device's re-seed resurrects a deleted default
+
+This one has product consequences and is **not** a CRDT failure, so it is a
+caveat on enabling rather than a blocker.
+
+Scenario 5: A deletes `default-daily-standup` (a real DELETE), both nodes
+agree it is gone. Then B replays the default-template seed — which is
+exactly what a **fresh device** does on first launch, since
+`INSERT OR IGNORE` is evaluated per id against a database that has never
+seen that row. Measured:
+
+```
+[RESULT] re-seed vs prior hard DELETE converged to present=true on BOTH nodes
+```
+
+The nodes converge — this is not divergence — but the template is **back**.
+So once `templates` is synced, deleting a built-in template is undone the
+first time the user pairs a new device, and the resurrection propagates to
+every device.
+
+Today, without sync, this quirk is invisible: each install seeds its own
+copy and they are independent. Enabling this table is what makes it
+cross-device, so enabling it is what creates the user-visible bug.
+
+**The fix, updated 2026-09-07 (0.7 plan B3).** The branch recorded "seed
+once per database behind a marker" as the follow-up. The 0.7 plan
+sharpened it after re-checking the seeder's call sites: the seed is run by
+the **migration** `20260524000000_default_templates.sql` and is then
+**re-run by Rust** in `repair_missing_core_tables`
+(`crates/db-app/src/lib.rs:178-184`) whenever the `templates` table is
+missing after migration. A marker alone therefore cannot fix this — a
+fresh device cannot know at seed time that it will later join a sync set.
+The real fix is two parts: (1) the `templates_seed_marker` migration +
+repair-only-if-marker-absent, exactly as the branch said, **plus** (2) a
+`templates.deleted_at` tombstone column so the fresh seed collides with the
+remote tombstone and LWW resolves it. Part (2) is an **engine claim** —
+that a tombstone out-versions a fresh insert under cr-sqlite's LWW — and
+carries its own 0.7 gate row (**T-5**: fresh seed vs remote tombstone under
+cr-sqlite, proof row in the re-proof matrix). Fallback if T-5 fails: seed
+lazily in the app after first sync, not in a migration.
+
+## 28. Table-proofs lane — the three dormant tables (2026-09-02)
+
+`daily_notes`, `session_attachments` and `entity_mentions` are registered
+in `CLOUDSYNC_TABLE_REGISTRY` and migrated, but they are **not written by
+the running app**. From the §25.1 triage, confirmed by grepping every
+`INSERT` site outside tests (re-verified on main 2026-09-07: the only other
+`daily_notes` INSERT, `crates/db-reactive/src/runtime.rs:604`, sits inside
+the crate's `mod tests`):
+
+| Table | Only writer |
+|---|---|
+| `daily_notes` | `crates/db-app/src/legacy_import.rs:930` |
+| `session_attachments` | `crates/db-app/src/legacy_import.rs:868` |
+| `entity_mentions` | nothing, anywhere |
+
+Consequences for this effort:
+
+- There is **no real app write pattern to model** for any of them, so a
+  §17-style proof would be testing a fixture of our own invention. Every
+  finding in §23–§27 came from matching the app's actual SQL and id
+  provenance; without a write path there is nothing to match, and a proof
+  would establish only that CLS converges rows in general — which §17
+  already established.
+- They stay **disabled**, but for a third reason distinct from the other
+  two: not "unproven" (§23) and not "proven unsafe" (§25/§26), simply
+  **unused**. Enabling them would sync a table nothing writes.
+- `session_attachments` carries a further caveat if it is ever revived: it
+  references attachment files on disk. Syncing the table without syncing
+  the blobs would replicate rows pointing at files the peer does not have.
+  That is a separate design problem. (The §20.10 blob-log GC item it was
+  adjacent to was a broker artefact and is moot after the engine swap.)
+
+The honest verdict is that these three should be resolved by deciding
+whether the features that write them are coming back, not by writing
+proofs. If `daily_notes` gains a real UI write path, it needs a proof at
+that point, and the write pattern it lands with — deterministic id or
+random — is what will decide whether it can be enabled at all.
+
+## 29. Table-proofs lane, batch 4 — the chat tables, and every live table adjudicated (2026-09-02)
+
+Proof: `crates/sync-p2p/examples/sync_chat_schema.rs`
+Run: `cargo run -p sync-p2p --example sync_chat_schema --features from-source`
+*(retired harness — see the engine note above §25)*
+
+On the branch this grew `SYNCED_TABLES` 8 → **10**. With this batch
+**every table the app actually writes had a verdict** on the branch; on
+main the counts are re-stated below with the enable set held at 6.
+
+### 29.1 Why they are safe
+
+Both use `INSERT ... ON CONFLICT(id) DO UPDATE` with a caller-supplied id
+minted by `id()` — `chat/store/use-chat-actions.ts:76` for `messageId`,
+`:88` for `currentGroupId` — and **no dedup guard**. There is no
+find-or-create-by-title path for a chat, so a group and a message are each
+minted once on the creating device and replicated. That is the singly-
+created shape, not the locally-guarded shape that forks in §25/§26.
+
+Verified: group + first message A→B, reply B→A with order preserved,
+concurrent per-column merge on one message row (A rewrote `content` while B
+flipped `status` to `streaming` — both survived), group tombstone with no
+resurrection, multi-row catch-up.
+
+### 29.2 Concurrent appends: two messages correctly stay two messages
+
+The chat-specific case worth more than row convergence. Both devices append
+a new message to the same conversation while disconnected. These are
+genuinely two different messages, so both surviving is *correct* — the
+question is whether the two devices then render the same conversation,
+since a chat is read as an ordered sequence (`ORDER BY created_at, id`).
+
+They do:
+
+```
+[conv] concurrent appends both survived and BOTH nodes agree on the
+       transcript order (["msg-1", "msg-2", "msg-3a", "msg-3b"])
+```
+
+This is the distinction §25 and §26 turn on, stated positively: forking is
+only a defect when the two rows are meant to be *one entity*. Two messages
+are two messages.
+
+### 29.3 Caveat — a regenerate cannot prune what it has never seen
+
+`deleteChatMessagesExcept` (`apps/desktop/src/chat/store/queries.ts:214-232`)
+is the regenerate / edit-and-resubmit path. It bulk-tombstones every live
+message in a group whose id is `NOT IN` a retained set:
+
+```sql
+UPDATE chat_messages SET deleted_at = ?, updated_at = ?
+WHERE chat_group_id = ? AND deleted_at IS NULL
+  AND id NOT IN (SELECT value FROM json_each(?))
+```
+
+That retained set is computed from the writing device's **local** view of
+the conversation — the same local-view assumption behind §25's `NOT EXISTS`
+defect, in a different disguise. A message another device appended
+concurrently was never in that view, so it is neither retained nor
+tombstoned, and it survives the prune.
+
+Measured. Baseline: both nodes agree on a 4-message transcript. Then,
+disconnected, A appends `msg-4a` (an assistant reply) while B regenerates
+from `msg-1`:
+
+```
+[RESULT] after regenerate-vs-concurrent-append, BOTH nodes agree on:
+         ["msg-1", "msg-4a"]
+```
+
+Both nodes converge — this is not divergence — but the surviving
+transcript is incoherent: the user re-asked their question and now sees it
+followed by a stray answer belonging to the branch they discarded.
+
+**Why this is a caveat and not a NO-GO.** Nothing is duplicated and nothing
+diverges; the two tables satisfy every convergence property tested. The
+defect is in a `NOT IN`-over-a-local-snapshot predicate in app logic, and
+it is *already* wrong on a single device in the presence of any concurrent
+writer. Unlike §25/§26 there is no id scheme that fixes it, because the
+operation is inherently "discard a branch" and the schema has no notion of
+a branch.
+
+The fix, if it is wanted, is to make the prune predicate positive rather
+than exclusionary — give messages a parent/branch id and delete *that*
+branch, or at minimum scope the delete to `created_at <= ` the newest
+message the writer had actually seen, so a message from the future is left
+alone instead of silently inherited. Recorded as a follow-up, not attempted
+here: it is a chat-feature design change, not a sync change. It carries to
+cr-sqlite unchanged — the defect is in app logic, not merge semantics.
+
+### 29.4 The registry, complete
+
+Counts on the branch were "10 enabled, 4 unsafe, 3 unused". Corrected for
+the engine swap (2026-09-07): main stays at 6 enabled pending cr-sqlite
+re-proofs, `organizations` is eligible rather than GO, and the chat tables
+are eligible pending their own re-proof:
+
+| Verdict | Count | Tables |
+|---|---|---|
+| **Enabled** | 6 | `sessions`, `session_documents`, `transcripts`, `action_items`, `tags`, `session_tags` — each with a §17-style proof against sqlite-sync; **all ▫️ re-prove under cr-sqlite** (0.7 gate §A) |
+| **Eligible, pending re-proof** | 4 | `organizations` (GO on the branch, downgraded by the §25.3 correction: needs deterministic id — 0.7 plan B4), `templates` (GO on the branch, needs the §27.4 seeder fix + T-5 — plan B3), `chat_groups`, `chat_messages` (§29.1) |
+| **Proven unsafe** (§25, §26) | 4 | `humans`, `session_participants`, `calendars`, `events` — deterministic-id fixes in plans B4/B5; `calendars`/`events` additionally gated by the §26.3 disconnect hazard |
+| **Unused — no live write path** (§28) | 3 | `daily_notes`, `session_attachments`, `entity_mentions` |
+
+17 registered, all adjudicated. The four unsafe ones each need a
+deterministic primary key before they can be reconsidered (§25.4, §26.3);
+the three unused ones need a decision about whether their features are
+coming back, not a proof (§28).
+
+Same known noise as §17/§23/§25/§27: the example exits with the
+`sqlx-sqlite-worker` teardown panic after its final `===` line, benign, and
+every `[conv]`/`[FINDING]` line printed before it. (Retired harness — see
+the engine note above §25.)
