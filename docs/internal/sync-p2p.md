@@ -1,4 +1,7 @@
-# CloudSync P2P sync — C network-layer contract
+# Notare Sync (P2P + sqlite-sync/cr-sqlite)
+
+> **Note:** As of 0.7, the engine was swapped to `cr-sqlite`. Sections §1–§16
+> describe the retired `sqlite-sync` architecture and are kept for historical context.
 
 Spike **S0b** deliverable. This documents the verbatim C contract between the
 vendored sqlite-sync (CloudSync) extension v1.0.12 and the custom network
@@ -3437,3 +3440,29 @@ this test.
   teardown panic after their final `===` success line — the same benign
   ordering issue, not a failure. Confirmed both runs printed every `[conv]`
   PASS line before the panic.
+
+
+## 30. Engine swap to cr-sqlite (STRICT spike)
+
+As of 0.7, the CRDT engine is swapped to `vlcn-io/cr-sqlite` (v0.16.3). A STRICT roundtrip
+spike was executed to prove schema fidelity and performance before migrating the app layer.
+
+### 30.1 Engine Probes & Fidelity
+
+- **typeof matrix:** Pull/apply roundtrip preserves SQLite types on all storage classes,
+  including `i64::MIN/MAX`, `-0.0`, `1e300`, embedded `NUL`s in TEXT, and 1 MiB blobs.
+- **Convergence:** Re-applying a changeset is idempotent; Last-Writer-Wins (LWW) converges smoothly in both directions.
+- **Deletions:** Hard `DELETE`s are correctly propagated as tombstones natively by the engine.
+- **Timings:** A massive ~800 KB `words_json` payload was successfully pulled and applied in just **~4 ms**, byte-identical.
+
+### 30.2 Schema Conversion & Load Probes
+
+- `as_crr` works on all 17 registry tables plus the probe table (and is idempotent).
+- `voice_profiles` and `embedding_vector_map` were rejected by `cr-sqlite` as expected, since they use non-standard extensions.
+- `crsql_version()` does **not** exist in v0.16.3. As suspected, `crsql_site_id()` serves as the load probe.
+
+### 30.3 Next Steps for Protocol v2
+
+- The `(db_version, seq)` cursor drives the sync state (`sync_peer_cursors` table).
+- Pull-only full mesh topology (no hub, no broker).
+- Pool Finalize Policy: The spike uses `idle_timeout(None).max_lifetime(None)` + a finalize-all sweep to prevent the unfinalized statements panic.
