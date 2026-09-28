@@ -1406,7 +1406,9 @@ mod tests {
             ("daily_notes", "SELECT COUNT(*) FROM daily_notes", 1),
             ("chat_groups", "SELECT COUNT(*) FROM chat_groups", 1),
             ("chat_messages", "SELECT COUNT(*) FROM chat_messages", 1),
-            ("app_settings", "SELECT COUNT(*) FROM app_settings", 1),
+            // 1 imported "general" settings row + the id_scheme_v1_applied
+            // marker `prepare_schema` writes via the deterministic-id backfill.
+            ("app_settings", "SELECT COUNT(*) FROM app_settings", 2),
             ("calendars", "SELECT COUNT(*) FROM calendars", 1),
             ("events", "SELECT COUNT(*) FROM events", 1),
             ("templates", "SELECT COUNT(*) FROM templates", 18),

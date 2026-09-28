@@ -2,17 +2,13 @@ use std::path::{Path, PathBuf};
 
 pub use hypr_local_model::GgufLlmModel as SupportedModel;
 
-/// The models this build can download and run. Models gated on
-/// `is_available_on_current_platform()` are excluded on non-matching
-/// architectures (currently only `Llama3p2_3bQ4` is aarch64-only).
+/// The models this build can download and run.
 pub static SUPPORTED_MODELS: &[SupportedModel] = &[
     SupportedModel::Qwen3_4bQ4,
     SupportedModel::Gemma3_4bQ4,
     SupportedModel::Phi4MiniQ4,
     SupportedModel::Llama3p1_8bQ4,
     SupportedModel::Mistral7bV03Q4,
-    SupportedModel::HyprLLM,
-    SupportedModel::Llama3p2_3bQ4,
 ];
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -57,8 +53,6 @@ pub fn supported_model_info(model: &SupportedModel) -> ModelInfo {
         SupportedModel::Phi4MiniQ4 => "Compact Microsoft model with strong reasoning.",
         SupportedModel::Llama3p1_8bQ4 => "Best general quality. Suited to higher-memory devices.",
         SupportedModel::Mistral7bV03Q4 => "Reliable summaries and instruction following.",
-        SupportedModel::HyprLLM => "Experimental legacy model trained by the Char team.",
-        SupportedModel::Llama3p2_3bQ4 => "Legacy model kept for backward compatibility.",
     };
 
     ModelInfo {

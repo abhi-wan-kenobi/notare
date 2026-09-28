@@ -1,5 +1,6 @@
 import { executeTransaction, liveQueryClient, useLiveQuery } from "~/db";
 import { enqueueDatabaseWrite } from "~/db/write-queue";
+import { humanIdForEmail, organizationIdForName } from "~/shared/ids";
 import { DEFAULT_USER_ID, id } from "~/shared/utils";
 
 type HumanSqlRow = {
@@ -254,7 +255,7 @@ export async function searchContacts(
   }));
 }
 
-export function createHuman({
+export async function createHuman({
   ownerUserId = DEFAULT_USER_ID,
   name,
   email = "",
@@ -263,8 +264,14 @@ export function createHuman({
   name: string;
   email?: string;
 }): Promise<string> {
-  const humanId = id();
   const now = new Date().toISOString();
+  // Deterministic id keyed on the normalized email, so two devices creating
+  // the same contact converge on one row. Email-less contacts keep a random
+  // UUID (no stable identity input). Resolved before entering the write
+  // queue so a create that resurrects an existing row serializes against
+  // every other writer of that row (`updateHuman`, `applyContactEnhancement`,
+  // ... all key on `human:${id}`), not just against other creates.
+  const humanId = (await humanIdForEmail(email)) ?? id();
 
   return enqueueDatabaseWrite(`human:${humanId}`, async () => {
     await executeTransaction([
@@ -275,6 +282,11 @@ export function createHuman({
             phone, job_title, linkedin_username, memo, pinned, pin_order,
             metadata_json, created_at, updated_at, deleted_at
           ) VALUES (?, '', ?, '', ?, ?, '', '', '', '', 0, NULL, '{}', ?, ?, NULL)
+          ON CONFLICT(id) DO UPDATE SET
+            deleted_at = NULL,
+            updated_at = excluded.updated_at,
+            name = CASE WHEN humans.name = '' THEN excluded.name ELSE humans.name END,
+            email = CASE WHEN humans.email = '' THEN excluded.email ELSE humans.email END
         `,
         params: [humanId, ownerUserId, name, email, now, now],
       },
@@ -283,15 +295,19 @@ export function createHuman({
   });
 }
 
-export function createOrganization({
+export async function createOrganization({
   ownerUserId = DEFAULT_USER_ID,
   name,
 }: {
   ownerUserId?: string;
   name: string;
 }): Promise<string> {
-  const organizationId = id();
   const now = new Date().toISOString();
+  // Deterministic id keyed on the normalized name, so two devices creating
+  // the same company converge on one row. Resolved before entering the
+  // write queue so a create that resurrects an existing row serializes
+  // against every other writer of that row (see `createHuman`).
+  const organizationId = (await organizationIdForName(name)) ?? id();
 
   return enqueueDatabaseWrite(`organization:${organizationId}`, async () => {
     await executeTransaction([
@@ -301,6 +317,10 @@ export function createOrganization({
             id, workspace_id, owner_user_id, name, memo, pinned, pin_order,
             metadata_json, created_at, updated_at, deleted_at
           ) VALUES (?, '', ?, ?, '', 0, NULL, '{}', ?, ?, NULL)
+          ON CONFLICT(id) DO UPDATE SET
+            deleted_at = NULL,
+            updated_at = excluded.updated_at,
+            name = CASE WHEN organizations.name = '' THEN excluded.name ELSE organizations.name END
         `,
         params: [organizationId, ownerUserId, name, now, now],
       },
@@ -545,7 +565,11 @@ export function applyContactEnhancement({
     const statements: Array<{ sql: string; params: unknown[] }> = [];
 
     if (changes.companyName) {
-      const organizationId = id();
+      // Deterministic id keyed on the normalized company name; the
+      // NOT EXISTS guard stays as belt-and-braces for legacy UUID rows
+      // minted before the id scheme.
+      const organizationId =
+        (await organizationIdForName(changes.companyName)) ?? id();
       statements.push({
         sql: `
           INSERT INTO organizations (
@@ -558,6 +582,10 @@ export function applyContactEnhancement({
             FROM organizations
             WHERE lower(name) = lower(?) AND deleted_at IS NULL
           )
+          ON CONFLICT(id) DO UPDATE SET
+            deleted_at = NULL,
+            updated_at = excluded.updated_at,
+            name = CASE WHEN organizations.name = '' THEN excluded.name ELSE organizations.name END
         `,
         params: [
           organizationId,

@@ -11,6 +11,7 @@ import type { ParticipantsSyncOutput } from "./process/participants/types";
 
 import { getCalendarTrackingKey } from "~/calendar/utils";
 import { executeTransaction, liveQueryClient } from "~/db";
+import { participantId } from "~/shared/ids";
 import { DEFAULT_USER_ID, id } from "~/shared/utils";
 
 type CalendarSqlRow = {
@@ -598,6 +599,10 @@ export async function applyConnectionSync({
           FROM humans
           WHERE deleted_at IS NULL AND lower(email) = lower(?)
         )
+        ON CONFLICT(id) DO UPDATE SET
+          deleted_at = NULL,
+          updated_at = excluded.updated_at,
+          name = CASE WHEN humans.name = '' THEN excluded.name ELSE humans.name END
       `,
       params: [
         human.id,
@@ -672,9 +677,18 @@ export async function applyConnectionSync({
               AND existing.human_id = human.id
               AND existing.deleted_at IS NULL
           )
+        ON CONFLICT(id) DO UPDATE SET
+          deleted_at = NULL,
+          updated_at = excluded.updated_at
       `,
       params: [
-        id(),
+        // Deterministic id for (session, human): two devices syncing the
+        // same event participant converge on one mapping row.
+        (await participantId(
+          mapping.sessionId,
+          mapping.humanId,
+          mapping.email,
+        )) ?? id(),
         now,
         now,
         mapping.humanId,

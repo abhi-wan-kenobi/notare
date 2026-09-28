@@ -5,6 +5,7 @@ mod calendar_types;
 mod cloudsync;
 mod event_ops;
 mod event_types;
+mod id_backfill;
 mod legacy_import;
 mod session_ops;
 mod session_types;
@@ -17,6 +18,11 @@ pub use calendar_types::*;
 pub use cloudsync::*;
 pub use event_ops::*;
 pub use event_types::*;
+pub use id_backfill::{
+    backfill_deterministic_ids, human_id_for_email, normalize_email, organization_id_for_name,
+    participant_id,
+};
+
 pub use legacy_import::*;
 pub use session_ops::*;
 pub use session_types::*;
@@ -137,6 +143,7 @@ pub async fn prepare_schema(db: &hypr_db_core::Db) -> Result<(), AppSchemaError>
     let templates_missing_before_migration = !templates_table_exists(db.pool()).await?;
     hypr_db_migrate::migrate(db, schema()).await?;
     repair_missing_core_tables(db.pool(), templates_missing_before_migration).await?;
+    id_backfill::backfill_deterministic_ids(db.pool()).await?;
     Ok(())
 }
 
