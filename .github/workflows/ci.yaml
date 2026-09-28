@@ -1,6 +1,13 @@
 on:
   pull_request:
-
+    paths-ignore:
+      - .github/workflows/desktop_ci.yaml
+      - apps/cli/**
+      - apps/desktop/**
+      - plugins/**
+      - crates/**
+      - Cargo.toml
+      - Cargo.lock
 permissions:
   contents: read
 
