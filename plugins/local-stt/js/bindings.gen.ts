@@ -130,7 +130,7 @@ downloadProgressPayload: "plugin:local-stt:download-progress-payload"
 export type AmModel = "am-parakeet-v2" | "am-parakeet-v3" | "am-whisper-large-v3"
 export type DownloadProgressPayload = { model: LocalModel; status: DownloadStatus }
 export type DownloadStatus = { downloading: number } | "completed" | { failed: string }
-export type GgufLlmModel = "Llama3p2_3bQ4" | "Gemma3_4bQ4" | "HyprLLM"
+export type GgufLlmModel = "Gemma3_4bQ4" | "Qwen3_4bQ4" | "Llama3p1_8bQ4" | "Phi4MiniQ4" | "Mistral7bV03Q4"
 export type LocalModel = SoniqoModel | WhisperModel | AmModel | ParakeetOnnxModel | VoxtralLlamaModel | GgufLlmModel
 export type ParakeetOnnxModel = "parakeet-tdt-v3-int8"
 export type ServerInfo = { url: string | null; status: ServerStatus; model: LocalModel | null }
