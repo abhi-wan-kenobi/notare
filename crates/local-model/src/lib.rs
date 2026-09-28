@@ -61,9 +61,9 @@ impl GgufLlmModel {
     }
 
     /// SHA-256 of the downloaded weight file, verified in
-    /// `finalize_download` on top of the existing CRC32
-    /// (`download_checksum`/`expected_size`) check the shared downloader
-    /// already runs.
+    /// `finalize_download`. GGUF LLMs carry no CRC32 (`download_checksum`
+    /// is `None`), so the shared downloader only checks `expected_size`
+    /// before this hook runs; SHA-256 is the integrity check.
     pub fn model_sha256(&self) -> &'static str {
         match self {
             GgufLlmModel::Qwen3_4bQ4 => {
@@ -97,7 +97,7 @@ impl GgufLlmModel {
     pub fn model_url(&self) -> &str {
         match self {
             GgufLlmModel::Gemma3_4bQ4 => {
-                "https://huggingface.co/unsloth/gemma-3-4b-it-GGUF/resolve/b6bead673a554a9d70deed119c490ccffdc3decc/gemma-3-4b-it-Q4_K_M.gguf"
+                "https://huggingface.co/unsloth/gemma-3-4b-it-GGUF/resolve/5a3566e716d80f709ed7b79817eaf7733d2a1fce/gemma-3-4b-it-Q4_K_M.gguf"
             }
             GgufLlmModel::Qwen3_4bQ4 => {
                 "https://huggingface.co/Qwen/Qwen3-4B-GGUF/resolve/bc640142c66e1fdd12af0bd68f40445458f3869b/Qwen3-4B-Q4_K_M.gguf"
@@ -355,10 +355,10 @@ impl DownloadableModel for GgufLlmModel {
         Ok(actual == self.model_size())
     }
 
-    /// Runs on top of the shared downloader's own CRC32 check
-    /// (`download_checksum`/`expected_size`, already verified before this
-    /// hook fires) — SHA-256 is the stronger guarantee weights deserve, per
-    /// the OpenWhispr precedent for its GPU packs.
+    /// Runs after the shared downloader's `expected_size` check (there is no
+    /// CRC32 for GGUF LLMs — `download_checksum` is `None`). SHA-256 is the
+    /// stronger guarantee weights deserve, per the OpenWhispr precedent for
+    /// its GPU packs.
     fn finalize_download(&self, downloaded_path: &Path, _models_base: &Path) -> Result<(), Error> {
         let expected = self.model_sha256();
 
