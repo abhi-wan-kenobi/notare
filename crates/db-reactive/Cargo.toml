@@ -19,8 +19,8 @@ tokio = { workspace = true, features = ["macros", "sync", "time"] }
 uuid = { workspace = true, features = ["v4"] }
 
 [dev-dependencies]
-hypr-db-change = { workspace = true, features = ["test-support"] }
 hypr-cloudsync = { workspace = true }
+hypr-db-change = { workspace = true, features = ["test-support"] }
 hypr-db-migrate = { workspace = true }
 
 anyhow = { workspace = true }
