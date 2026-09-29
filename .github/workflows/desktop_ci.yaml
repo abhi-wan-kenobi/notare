@@ -6,28 +6,48 @@ on:
       - main
     paths:
       - .github/workflows/desktop_ci.yaml
+      - .github/actions/**
       - apps/cli/**
       - apps/desktop/**
       - plugins/**
       - crates/**
       - Cargo.toml
       - Cargo.lock
+  # Every PR runs this workflow so the required `ci` check below is the only
+  # one and exists for every commit; `changes` decides what actually runs.
   pull_request:
-    paths:
-      - .github/workflows/desktop_ci.yaml
-      - apps/cli/**
-      - apps/desktop/**
-      - plugins/**
-      - crates/**
-      - Cargo.toml
-      - Cargo.lock
 
 permissions:
   contents: read
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      # Push/dispatch are already path-filtered by their triggers.
+      code: ${{ github.event_name != 'pull_request' || steps.filter.outputs.code == 'true' }}
+    steps:
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        if: github.event_name == 'pull_request'
+        id: filter
+        with:
+          filters: |
+            code:
+              - '.github/workflows/desktop_ci.yaml'
+              - '.github/actions/**'
+              - 'apps/cli/**'
+              - 'apps/desktop/**'
+              - 'plugins/**'
+              - 'crates/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+
   desktop_ci:
-    if: ${{ !startsWith(github.head_ref || '', 'blog/') }}
+    needs: changes
+    if: ${{ needs.changes.outputs.code == 'true' }}
     defaults:
       run:
         shell: bash
@@ -158,7 +178,8 @@ jobs:
             plugins/local-stt/js/bindings.gen.ts
 
   desktop_i18n:
-    if: ${{ !startsWith(github.head_ref || '', 'blog/') }}
+    needs: changes
+    if: ${{ needs.changes.outputs.code == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -170,7 +191,8 @@ jobs:
       - run: pnpm -F desktop i18n:check
 
   desktop_swift:
-    if: ${{ !startsWith(github.head_ref || '', 'blog/') }}
+    needs: changes
+    if: ${{ needs.changes.outputs.code == 'true' }}
     runs-on: macos-15
     defaults:
       run:
@@ -196,7 +218,8 @@ jobs:
   #   pyannote-local/transcribe-whisper-local): probed green locally but kept
   #   out of the per-PR path for runner cost; candidates for a scheduled job.
   linux_crate_check:
-    if: ${{ !startsWith(github.head_ref || '', 'blog/') }}
+    needs: changes
+    if: ${{ needs.changes.outputs.code == 'true' }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -289,7 +312,8 @@ jobs:
   #      the `cargo test` step to the `cargo check` step and keep testing the
   #      genuinely pure crates (owhisper-interface, vad-masking).
   windows_stt:
-    if: ${{ !startsWith(github.head_ref || '', 'blog/') }}
+    needs: changes
+    if: ${{ needs.changes.outputs.code == 'true' }}
     runs-on: windows-latest
     timeout-minutes: 60
     defaults:
@@ -399,7 +423,8 @@ jobs:
   # and cross-compiles the x86_64 check via `--target`, using the same clang
   # driver — both targets `supported()` now admits.
   cloudsync_from_source_macos:
-    if: ${{ !startsWith(github.head_ref || '', 'blog/') }}
+    needs: changes
+    if: ${{ needs.changes.outputs.code == 'true' }}
     runs-on: macos-15
     timeout-minutes: 60
     defaults:
@@ -435,7 +460,8 @@ jobs:
   # `cloudsync_from_source_macos`, once likewise observed) to the `ci` job's
   # `needs:` array below.
   cloudsync_from_source_windows:
-    if: ${{ !startsWith(github.head_ref || '', 'blog/') }}
+    needs: changes
+    if: ${{ needs.changes.outputs.code == 'true' }}
     runs-on: windows-latest
     timeout-minutes: 60
     defaults:
@@ -549,7 +575,8 @@ jobs:
   # Cargo.toml tables that mirror it to admit linux/aarch64 — do NOT widen
   # them on the strength of this job's existence alone.
   cloudsync_from_source_linux_arm:
-    if: ${{ !startsWith(github.head_ref || '', 'blog/') }}
+    needs: changes
+    if: ${{ needs.changes.outputs.code == 'true' }}
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 60
     defaults:
@@ -593,7 +620,8 @@ jobs:
   # C build is genuinely exercised as a dependency of the full desktop crate,
   # not just standalone).
   desktop_sync_gate_macos:
-    if: ${{ !startsWith(github.head_ref || '', 'blog/') }}
+    needs: changes
+    if: ${{ needs.changes.outputs.code == 'true' }}
     runs-on: macos-15
     timeout-minutes: 60
     defaults:
@@ -643,7 +671,8 @@ jobs:
   # runner, so it cannot be proven green from a Linux dev box. Promote
   # alongside the other provisional jobs once observed green across a few PRs.
   desktop_sync_gate_windows:
-    if: ${{ !startsWith(github.head_ref || '', 'blog/') }}
+    needs: changes
+    if: ${{ needs.changes.outputs.code == 'true' }}
     runs-on: windows-latest
     timeout-minutes: 60
     defaults:
@@ -704,7 +733,8 @@ jobs:
   # `voxtral-cuda` above: requires the CUDA toolkit + a matching driver,
   # which no CI runner here has, so it's manual-validation-only.
   local_llm_gate_linux:
-    if: ${{ !startsWith(github.head_ref || '', 'blog/') }}
+    needs: changes
+    if: ${{ needs.changes.outputs.code == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     defaults:
@@ -745,7 +775,8 @@ jobs:
   # platform; see apps/desktop/src-tauri/Cargo.toml's
   # `local-llm-vulkan`/`voxtral-cuda` doc comments).
   local_llm_gate_macos:
-    if: ${{ !startsWith(github.head_ref || '', 'blog/') }}
+    needs: changes
+    if: ${{ needs.changes.outputs.code == 'true' }}
     runs-on: macos-15
     timeout-minutes: 60
     defaults:
@@ -774,7 +805,8 @@ jobs:
   # proven for `windows_stt`/`desktop_sync_gate_windows` (see that job's
   # comments for why each step is ordered the way it is).
   local_llm_gate_windows:
-    if: ${{ !startsWith(github.head_ref || '', 'blog/') }}
+    needs: changes
+    if: ${{ needs.changes.outputs.code == 'true' }}
     runs-on: windows-latest
     timeout-minutes: 60
     defaults:
@@ -850,6 +882,7 @@ jobs:
     # (sync deferred), not for lack of runs.
     needs:
       [
+        changes,
         desktop_ci,
         desktop_i18n,
         desktop_swift,
@@ -863,5 +896,17 @@ jobs:
       ]
     runs-on: ubuntu-latest
     steps:
-      - run: exit 1
-        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+      - name: Path detection must succeed
+        if: needs.changes.result != 'success'
+        run: exit 1
+      # When code changed, a skipped required job is a failure too: nothing
+      # may pass this check without having run.
+      - name: Every required job must succeed
+        if: >-
+          needs.changes.outputs.code == 'true' && (
+            contains(needs.*.result, 'failure') ||
+            contains(needs.*.result, 'cancelled') ||
+            contains(needs.*.result, 'skipped')
+          )
+        run: exit 1
+      - run: echo "required checks satisfied"
