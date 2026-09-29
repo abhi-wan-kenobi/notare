@@ -267,13 +267,12 @@ async fn unrelated_unsubscribe_is_not_blocked_by_another_subscriptions_delivery(
 
     send_block.wait_until_started().await;
 
-    tokio::time::timeout(
-        Duration::from_millis(50),
-        runtime.unsubscribe(&other_registration.id),
-    )
-    .await
-    .expect("unsubscribe should not wait for another subscription's blocked send")
-    .unwrap();
+    // The blocked send is only released after this returns, so an unsubscribe
+    // that waited on it would hang; the timeout is purely a deadlock guard.
+    tokio::time::timeout(EVENT_TIMEOUT, runtime.unsubscribe(&other_registration.id))
+        .await
+        .expect("unsubscribe should not wait for another subscription's blocked send")
+        .unwrap();
 
     insert_daily_summary(
         &pool,
@@ -294,6 +293,52 @@ async fn unrelated_unsubscribe_is_not_blocked_by_another_subscriptions_delivery(
     expect_no_event(&other_events, 1).await;
 
     runtime.unsubscribe(&blocked_registration.id).await.unwrap();
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn refresh_waits_for_notified_commit_to_become_visible() {
+    let (_dir, pool, runtime) = common::setup_runtime().await;
+    let (sink, events) = TestSink::capture();
+
+    subscribe_all_daily_notes(&runtime, sink).await.unwrap();
+    expect_empty_result(&events, 0).await;
+
+    // Hold the writer inside SQLite's commit hook, after the change has been
+    // broadcast but before the commit is visible to other connections.
+    let (notified_tx, notified_rx) = tokio::sync::oneshot::channel();
+    let (release_tx, release_rx) = std::sync::mpsc::channel::<()>();
+    runtime
+        .db()
+        .change_notifier()
+        .on_next_commit_notified(move || {
+            let _ = notified_tx.send(());
+            let _ = release_rx.recv();
+        });
+
+    let writer_pool = pool.clone();
+    let writer = tokio::spawn(async move {
+        insert_daily_note(&writer_pool, "note-visible", "2026-04-26", "user-1").await;
+    });
+
+    tokio::time::timeout(EVENT_TIMEOUT, notified_rx)
+        .await
+        .expect("commit should be notified")
+        .unwrap();
+
+    // A refresh started now would read the pre-commit snapshot and deliver an
+    // empty result that no later change ever corrects.
+    expect_no_event(&events, 1).await;
+
+    release_tx.send(()).unwrap();
+    writer.await.unwrap();
+
+    expect_result(
+        &events,
+        1,
+        vec![json!({ "id": "note-visible", "date": "2026-04-26" })],
+    )
+    .await;
+    expect_no_event(&events, 2).await;
 }
 
 #[tokio::test]
