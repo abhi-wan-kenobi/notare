@@ -65,6 +65,8 @@ impl<S: QueryEventSink> LiveQueryRuntime<S> {
                             continue;
                         }
 
+                        wait_for_notified_commits(dispatcher_db.as_ref()).await;
+
                         for job in jobs {
                             dispatcher_subscriptions
                                 .refresh(&dispatcher_executor, job, None)
@@ -212,6 +214,7 @@ impl<S: QueryEventSink> LiveQueryRuntime<S> {
             .await;
 
         if latest_dependency_seq > baseline_seq {
+            wait_for_notified_commits(self.db.as_ref()).await;
             self.subscriptions
                 .refresh(
                     &self.executor,
@@ -224,6 +227,28 @@ impl<S: QueryEventSink> LiveQueryRuntime<S> {
                 )
                 .await;
         }
+    }
+}
+
+/// Change notifications are broadcast from SQLite's commit hook, which runs
+/// *before* the commit is visible to other connections. The committing
+/// connection holds the database write lock until the commit is complete, so
+/// taking (and immediately releasing) the write lock orders every refresh read
+/// after all commits that have already been notified. Without this, a refresh
+/// can read the pre-commit snapshot and the subscription never sees the write.
+///
+/// A single-connection pool needs no barrier: the refresh cannot acquire the
+/// connection until the writer's statement has returned.
+async fn wait_for_notified_commits(db: &Db) {
+    let pool = db.pool();
+    if pool.options().get_max_connections() <= 1 {
+        return;
+    }
+
+    // On failure (e.g. busy timeout) fall through and refresh anyway: a
+    // possibly-stale refresh is no worse than skipping it.
+    if let Ok(tx) = pool.begin_with("BEGIN IMMEDIATE").await {
+        let _ = tx.commit().await;
     }
 }
 
