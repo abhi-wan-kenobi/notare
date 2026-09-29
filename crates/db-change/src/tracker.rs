@@ -40,6 +40,9 @@ impl HookState {
         for (table, kind) in pending {
             let _ = self.tx.send(TableChange { table, kind, seq });
         }
+
+        #[cfg(feature = "test-support")]
+        self.change_tracker.run_after_notify_hook();
     }
 
     pub(crate) fn clear(&self) {
@@ -51,6 +54,18 @@ impl HookState {
 pub(crate) struct ChangeTracker {
     current_seq: AtomicU64,
     latest_by_table: std::sync::Mutex<HashMap<String, u64>>,
+    #[cfg(feature = "test-support")]
+    after_notify_hook: std::sync::Mutex<Option<AfterNotifyHook>>,
+}
+
+#[cfg(feature = "test-support")]
+pub(crate) struct AfterNotifyHook(pub(crate) Box<dyn FnOnce() + Send>);
+
+#[cfg(feature = "test-support")]
+impl std::fmt::Debug for AfterNotifyHook {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("AfterNotifyHook")
+    }
 }
 
 impl ChangeTracker {
@@ -64,6 +79,19 @@ impl ChangeTracker {
 
     pub(crate) fn latest_table_seq(&self, table: &str) -> Option<u64> {
         self.latest_by_table.lock().unwrap().get(table).copied()
+    }
+
+    #[cfg(feature = "test-support")]
+    pub(crate) fn set_after_notify_hook(&self, hook: AfterNotifyHook) {
+        *self.after_notify_hook.lock().unwrap() = Some(hook);
+    }
+
+    #[cfg(feature = "test-support")]
+    fn run_after_notify_hook(&self) {
+        let hook = self.after_notify_hook.lock().unwrap().take();
+        if let Some(AfterNotifyHook(hook)) = hook {
+            hook();
+        }
     }
 
     fn record_committed(&self, pending: &HashMap<String, TableChangeKind>, seq: u64) {

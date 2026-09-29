@@ -71,6 +71,15 @@ impl ChangeNotifier {
         self.change_tracker.current_seq()
     }
 
+    /// Run `hook` once, on the committing connection's thread, right after the
+    /// next commit's changes are broadcast — i.e. while that commit is still in
+    /// SQLite's commit hook and not yet visible to other connections.
+    #[cfg(feature = "test-support")]
+    pub fn on_next_commit_notified(&self, hook: impl FnOnce() + Send + 'static) {
+        self.change_tracker
+            .set_after_notify_hook(crate::tracker::AfterNotifyHook(Box::new(hook)));
+    }
+
     pub fn latest_table_seq(&self, table: &str) -> Option<u64> {
         self.change_tracker.latest_table_seq(table)
     }
