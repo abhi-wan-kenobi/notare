@@ -5,7 +5,18 @@
 set -euo pipefail
 
 sudo apt update
-sudo add-apt-repository -y ppa:pipewire-debian/pipewire-upstream
+# add-apt-repository queries the Launchpad API, which intermittently drops
+# connections mid-response and would otherwise fail every Linux CI job.
+for attempt in 1 2 3 4; do
+  if sudo add-apt-repository -y ppa:pipewire-debian/pipewire-upstream; then
+    break
+  fi
+  if [ "$attempt" -eq 4 ]; then
+    echo "add-apt-repository failed after $attempt attempts" >&2
+    exit 1
+  fi
+  sleep $((attempt * 10))
+done
 sudo apt update
 sudo apt-get install -y \
   libgtk-3-dev \
