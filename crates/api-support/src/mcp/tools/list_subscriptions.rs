@@ -60,7 +60,7 @@ pub(crate) async fn list_subscriptions(
         })
         .collect();
 
-    Ok(CallToolResult::success(vec![Content::text(
+    Ok(CallToolResult::success(vec![ContentBlock::text(
         serde_json::to_string(&subscriptions)
             .map_err(|e| McpError::internal_error(e.to_string(), None))?,
     )]))

@@ -40,7 +40,7 @@ async fn require_confirmation(
 ) -> Option<CallToolResult> {
     match context.peer.elicit::<Confirmation>(message.into()).await {
         Ok(Some(c)) if c.confirmed => None,
-        _ => Some(CallToolResult::success(vec![Content::text(
+        _ => Some(CallToolResult::success(vec![ContentBlock::text(
             "Action cancelled by user.",
         )])),
     }

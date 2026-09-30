@@ -39,7 +39,7 @@ pub(crate) async fn create_billing_portal_session(
         .await
         .map_err(|e| McpError::internal_error(e.to_string(), None))?;
 
-    Ok(CallToolResult::success(vec![Content::text(
+    Ok(CallToolResult::success(vec![ContentBlock::text(
         serde_json::json!({ "url": session.url }).to_string(),
     )]))
 }
