@@ -34,7 +34,7 @@ pub(crate) async fn search_issues(
         .await
         .map_err(|e| McpError::internal_error(e.to_string(), None))?;
 
-    Ok(CallToolResult::success(vec![Content::text(
+    Ok(CallToolResult::success(vec![ContentBlock::text(
         serde_json::json!({
             "total_results": items.len(),
             "issues": items,
