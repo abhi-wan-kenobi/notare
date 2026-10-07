@@ -1,0 +1,21 @@
+[package]
+name = "crsqlite"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+# Phase 0 spike shell (see src/lib.rs for the crate's posture): the lib is a
+# small `spike` harness module consumed by tests/strict_roundtrip.rs and
+# tests/close_behaviour.rs. It needs the real schema (db-app + db-migrate),
+# the real open path (db-core: Db::open + sqlite-vec registration) and the
+# real update-hook wiring (db-change: ChangeNotifier) to run the plan's
+# probes — hence regular dependencies, not dev ones: `spike::Node` uses all
+# of them.
+hypr-db-app = { workspace = true }
+hypr-db-change = { workspace = true }
+hypr-db-core = { workspace = true }
+hypr-db-migrate = { workspace = true }
+
+sqlx = { workspace = true, features = ["runtime-tokio", "sqlite", "sqlite-unbundled"] }
+tempfile = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt", "time"] }
