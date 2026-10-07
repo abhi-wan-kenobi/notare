@@ -42,12 +42,11 @@ fn decode_embedding(bytes: &[u8]) -> Result<Vec<f32>, String> {
         ));
     }
 
-    let mut values = Vec::with_capacity(bytes.len() / 4);
-    for chunk in bytes.chunks_exact(4) {
-        let array: [u8; 4] = chunk.try_into().expect("chunk length is exactly 4");
-        values.push(f32::from_le_bytes(array));
-    }
-    Ok(values)
+    let (chunks, _) = bytes.as_chunks::<4>();
+    Ok(chunks
+        .iter()
+        .map(|chunk| f32::from_le_bytes(*chunk))
+        .collect())
 }
 
 fn decode_error(message: String) -> sqlx::Error {

@@ -2,7 +2,7 @@ use std::sync::OnceLock;
 
 use chrono::{Datelike, Timelike};
 use typst::diag::{FileError, FileResult};
-use typst::foundations::{Bytes, Datetime};
+use typst::foundations::{Bytes, Datetime, Duration};
 use typst::syntax::{FileId, Source};
 use typst::text::{Font, FontBook};
 use typst::utils::LazyHash;
@@ -64,19 +64,19 @@ impl World for TypstWorld {
         if id == self.source.id() {
             Ok(self.source.clone())
         } else {
-            Err(FileError::NotFound(id.vpath().as_rootless_path().into()))
+            Err(FileError::NotFound(id.vpath().get_without_slash().into()))
         }
     }
 
     fn file(&self, id: FileId) -> FileResult<Bytes> {
-        Err(FileError::NotFound(id.vpath().as_rootless_path().into()))
+        Err(FileError::NotFound(id.vpath().get_without_slash().into()))
     }
 
     fn font(&self, index: usize) -> Option<Font> {
         fonts().0.get(index).cloned()
     }
 
-    fn today(&self, _offset: Option<i64>) -> Option<Datetime> {
+    fn today(&self, _offset: Option<Duration>) -> Option<Datetime> {
         let now = chrono::Local::now();
         Datetime::from_ymd_hms(
             now.year(),

@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 mod errors;
 pub use errors::*;
 
@@ -10,14 +8,12 @@ pub const MIGRATION_TABLE_SQL: &str = include_str!("./migration.sql");
 #[derive(Clone)]
 pub enum Database {
     StaticConnection(libsql::Connection),
-    DynamicConnection(Arc<libsql::Database>),
 }
 
 impl Database {
     pub fn conn(&self) -> Result<libsql::Connection, crate::Error> {
         match self {
             Database::StaticConnection(conn) => Ok(conn.clone()),
-            Database::DynamicConnection(db) => db.connect().map_err(Into::into),
         }
     }
 
@@ -30,7 +26,6 @@ impl Database {
 struct DatabaseConfig {
     memory: Option<bool>,
     local_path: Option<std::path::PathBuf>,
-    remote_config: Option<(String, String)>,
 }
 
 #[derive(Default)]
@@ -49,41 +44,20 @@ impl DatabaseBuilder {
         self
     }
 
-    pub fn remote(mut self, url: impl Into<String>, token: impl Into<String>) -> Self {
-        self.config.remote_config = Some((url.into(), token.into()));
-        self
-    }
-
     pub async fn build(self) -> Result<Database, crate::Error> {
-        let db = match (
-            self.config.memory,
-            self.config.local_path,
-            self.config.remote_config,
-        ) {
-            (Some(true), _, _) => {
+        let db = match (self.config.memory, self.config.local_path) {
+            (Some(true), _) => {
                 let db = libsql::Builder::new_local(":memory:").build().await?;
                 let conn = db.connect()?;
                 Database::StaticConnection(conn)
             }
-            (_, Some(path), None) => {
+            (_, Some(path)) => {
                 let db = libsql::Builder::new_local(path).build().await?;
                 let conn = db.connect()?;
                 Database::StaticConnection(conn)
             }
-            (_, None, Some((url, token))) => {
-                let db = libsql::Builder::new_remote(url, token).build().await?;
-                Database::DynamicConnection(Arc::new(db))
-            }
-            (_, Some(path), Some((url, token))) => {
-                let db = libsql::Builder::new_remote_replica(path, url, token)
-                    .read_your_writes(true)
-                    .sync_interval(std::time::Duration::from_secs(300))
-                    .build()
-                    .await?;
-                Database::DynamicConnection(Arc::new(db))
-            }
-            (_, None, None) => Err(crate::Error::InvalidDatabaseConfig(
-                "either '.memory()' or '.local()' or '.remote()' must be called".to_string(),
+            (_, None) => Err(crate::Error::InvalidDatabaseConfig(
+                "either '.memory()' or '.local()' must be called".to_string(),
             ))?,
         };
 
