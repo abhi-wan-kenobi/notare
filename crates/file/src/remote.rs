@@ -94,7 +94,7 @@ mod tests {
             .build()
             .await;
 
-        let _ = admin_s3.create_bucket().await.unwrap();
+        admin_s3.create_bucket().await.unwrap();
 
         let user_s3 = admin_s3.for_user("test-user");
 

@@ -299,12 +299,7 @@ fn rerun_all_batch(
 }
 
 fn clear_lagged_changes(change_rx: &mut tokio::sync::broadcast::Receiver<TableChange>) {
-    loop {
-        match change_rx.try_recv() {
-            Ok(_) | Err(TryRecvError::Lagged(_)) => {}
-            Err(TryRecvError::Empty) | Err(TryRecvError::Closed) => break,
-        }
-    }
+    while let Ok(_) | Err(TryRecvError::Lagged(_)) = change_rx.try_recv() {}
 }
 
 async fn collect_refresh_jobs<S>(

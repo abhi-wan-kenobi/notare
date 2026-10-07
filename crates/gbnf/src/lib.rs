@@ -108,14 +108,14 @@ mod tests {
     fn test_title_grammar() {
         let gbnf = gbnf_validator::Validator::new().unwrap();
 
-        for (input, expected) in vec![
+        for (input, expected) in [
             ("Meeting Summary", true),
             ("2024 Budget Review", true),
             ("API Design Meeting", true),
             ("", false),
             ("   ", false),
         ] {
-            let result = gbnf.validate(&build_title_grammar(), input).unwrap();
+            let result = gbnf.validate(build_title_grammar(), input).unwrap();
             assert_eq!(result, expected, "failed: {}", input);
         }
     }
@@ -125,7 +125,7 @@ mod tests {
     fn test_tags_grammar() {
         let gbnf = gbnf_validator::Validator::new().unwrap();
 
-        for (input, expected) in vec![
+        for (input, expected) in [
             (
                 serde_json::to_string(&vec!["meeting", "summary"]).unwrap(),
                 true,
@@ -146,7 +146,7 @@ mod tests {
                 false,
             ),
         ] {
-            let result = gbnf.validate(&build_tags_grammar(), &input).unwrap();
+            let result = gbnf.validate(build_tags_grammar(), &input).unwrap();
             assert_eq!(result, expected, "failed: {}", input);
         }
     }
@@ -156,7 +156,7 @@ mod tests {
     fn test_email_to_name_grammar() {
         let gbnf = gbnf_validator::Validator::new().unwrap();
 
-        for (input, expected) in vec![
+        for (input, expected) in [
             (
                 serde_json::json!({"first_name": "John", "last_name": "Doe"}).to_string(),
                 true,
@@ -164,7 +164,7 @@ mod tests {
             (serde_json::json!({"first_name": "John"}).to_string(), false),
         ] {
             let result = gbnf
-                .validate(&build_email_to_name_grammar(), &input)
+                .validate(build_email_to_name_grammar(), &input)
                 .unwrap();
             assert_eq!(result, expected, "failed: {}", input);
         }

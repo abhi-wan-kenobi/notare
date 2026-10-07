@@ -2,28 +2,16 @@ use base64::{Engine as _, engine::general_purpose::STANDARD};
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
+#[derive(Default)]
 pub struct WindowContextImagePolicy {
     pub max_long_side: Option<u32>,
 }
 
-impl Default for WindowContextImagePolicy {
-    fn default() -> Self {
-        Self {
-            max_long_side: None,
-        }
-    }
-}
-
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
+#[derive(Default)]
 pub struct WindowContextCaptureOptions {
     pub image_policy: Option<WindowContextImagePolicy>,
-}
-
-impl Default for WindowContextCaptureOptions {
-    fn default() -> Self {
-        Self { image_policy: None }
-    }
 }
 
 #[derive(Debug, Clone, Copy, serde::Serialize, specta::Type)]

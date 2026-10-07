@@ -78,7 +78,7 @@ pub async fn handle_ws<R: Runtime>(socket: WebSocket, app: AppHandle<R>, pending
     }
 
     let subs = event_subs.lock().await;
-    for (_, event_id) in subs.iter() {
+    for event_id in subs.values() {
         app.unlisten(*event_id);
     }
     tracing::info!(

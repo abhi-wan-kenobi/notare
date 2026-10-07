@@ -60,13 +60,12 @@ async fn record_live_fixture<A: RealtimeSttAdapter>(
                         }
                     }
 
-                    if let StreamResponse::TranscriptResponse { channel, .. } = &response {
-                        if let Some(alt) = channel.alternatives.first() {
-                            if !alt.transcript.is_empty() {
-                                println!("[{}] {}", provider_name, alt.transcript);
-                                saw_transcript = true;
-                            }
-                        }
+                    if let StreamResponse::TranscriptResponse { channel, .. } = &response
+                        && let Some(alt) = channel.alternatives.first()
+                        && !alt.transcript.is_empty()
+                    {
+                        println!("[{}] {}", provider_name, alt.transcript);
+                        saw_transcript = true;
                     }
                 }
                 Err(e) => {
@@ -79,14 +78,14 @@ async fn record_live_fixture<A: RealtimeSttAdapter>(
     let _ = tokio::time::timeout(timeout, test_future).await;
     handle.finalize().await;
 
-    if let Some(session) = recording_session {
-        if let Some(ref output_dir) = recording_opts.output_dir {
-            std::fs::create_dir_all(output_dir).expect("failed to create fixtures directory");
-            session
-                .save_to_file(output_dir, &recording_opts.suffix)
-                .expect("failed to save recording");
-            println!("[{}] Recording saved to {:?}", provider_name, output_dir);
-        }
+    if let Some(session) = recording_session
+        && let Some(ref output_dir) = recording_opts.output_dir
+    {
+        std::fs::create_dir_all(output_dir).expect("failed to create fixtures directory");
+        session
+            .save_to_file(output_dir, &recording_opts.suffix)
+            .expect("failed to save recording");
+        println!("[{}] Recording saved to {:?}", provider_name, output_dir);
     }
 
     assert!(

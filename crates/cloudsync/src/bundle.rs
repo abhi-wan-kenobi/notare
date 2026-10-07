@@ -284,7 +284,7 @@ pub fn bundled_extension_path() -> Result<PathBuf, Error> {
                 }
             }
 
-            return Ok(extension_path);
+            Ok(extension_path)
         }
     }
 }

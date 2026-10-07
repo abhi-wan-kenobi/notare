@@ -70,10 +70,11 @@ fn is_localhost_dev_origin(origin: &str) -> bool {
         if rest.is_empty() {
             return true;
         }
-        if let Some(port) = rest.strip_prefix(':') {
-            if !port.is_empty() && port.bytes().all(|b| b.is_ascii_digit()) {
-                return true;
-            }
+        if let Some(port) = rest.strip_prefix(':')
+            && !port.is_empty()
+            && port.bytes().all(|b| b.is_ascii_digit())
+        {
+            return true;
         }
     }
     false

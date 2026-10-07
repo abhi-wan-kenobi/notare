@@ -370,10 +370,10 @@ pub async fn access_token<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Resul
     let state = app.state::<GoogleAuthState>();
     let mut guard = state.token.lock().await;
 
-    if let Some(cached) = guard.as_ref() {
-        if cached.expires_at.saturating_duration_since(Instant::now()) > EXPIRY_MARGIN {
-            return Ok(cached.access_token.clone());
-        }
+    if let Some(cached) = guard.as_ref()
+        && cached.expires_at.saturating_duration_since(Instant::now()) > EXPIRY_MARGIN
+    {
+        return Ok(cached.access_token.clone());
     }
 
     let token =
@@ -386,14 +386,14 @@ pub async fn access_token<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Resul
             })?;
 
     // Google occasionally rotates the refresh token.
-    if let Some(new_refresh) = token.refresh_token.clone() {
-        if new_refresh != refresh_token {
-            let mut updated = creds.clone();
-            updated.refresh_token = Some(new_refresh);
-            drop(guard);
-            store(app, updated).await?;
-            guard = state.token.lock().await;
-        }
+    if let Some(new_refresh) = token.refresh_token.clone()
+        && new_refresh != refresh_token
+    {
+        let mut updated = creds.clone();
+        updated.refresh_token = Some(new_refresh);
+        drop(guard);
+        store(app, updated).await?;
+        guard = state.token.lock().await;
     }
 
     let access_token = token.access_token.clone();

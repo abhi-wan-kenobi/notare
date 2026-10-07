@@ -142,10 +142,9 @@ mod tests {
     fn soniqo_batch_accepts_documented_european_languages_for_parakeet() {
         let languages = vec!["fr".parse().unwrap()];
 
-        assert_eq!(
+        assert!(
             is_supported_languages_batch("soniqo", Some("soniqo-parakeet-batch"), &languages)
-                .unwrap(),
-            true
+                .unwrap()
         );
     }
 
@@ -153,10 +152,9 @@ mod tests {
     fn hyprnote_soniqo_batch_rejects_unsupported_parakeet_languages() {
         let languages = vec!["ko".parse().unwrap()];
 
-        assert_eq!(
-            is_supported_languages_batch("hyprnote", Some("soniqo-parakeet-batch"), &languages)
-                .unwrap(),
-            false
+        assert!(
+            !is_supported_languages_batch("hyprnote", Some("soniqo-parakeet-batch"), &languages)
+                .unwrap()
         );
     }
 
@@ -180,10 +178,9 @@ mod tests {
     fn hyprnote_soniqo_live_rejects_unsupported_parakeet_languages() {
         let languages = vec!["ko".parse().unwrap()];
 
-        assert_eq!(
-            is_supported_languages_live("hyprnote", Some("soniqo-parakeet-streaming"), &languages)
-                .unwrap(),
-            false
+        assert!(
+            !is_supported_languages_live("hyprnote", Some("soniqo-parakeet-streaming"), &languages)
+                .unwrap()
         );
     }
 

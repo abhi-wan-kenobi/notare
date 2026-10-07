@@ -261,7 +261,7 @@ mod tests {
     #[test]
     fn test_default_params() {
         run_url_test_cases(
-            &ElevenLabsAdapter::default(),
+            &ElevenLabsAdapter,
             API_BASE,
             &[UrlTestCase {
                 name: "default_params",
@@ -282,7 +282,7 @@ mod tests {
     #[test]
     fn test_language_urls() {
         run_url_test_cases(
-            &ElevenLabsAdapter::default(),
+            &ElevenLabsAdapter,
             API_BASE,
             &[
                 UrlTestCase {

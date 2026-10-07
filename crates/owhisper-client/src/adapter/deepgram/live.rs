@@ -81,7 +81,7 @@ mod tests {
     #[test]
     fn test_single_language_urls() {
         run_url_test_cases(
-            &DeepgramAdapter::default(),
+            &DeepgramAdapter,
             API_BASE,
             &[
                 UrlTestCase {
@@ -112,7 +112,7 @@ mod tests {
     #[test]
     fn test_multi_language_urls() {
         run_url_test_cases(
-            &DeepgramAdapter::default(),
+            &DeepgramAdapter,
             API_BASE,
             &[
                 UrlTestCase {
@@ -143,7 +143,7 @@ mod tests {
     #[test]
     fn test_unsupported_multi_language_fallback() {
         run_url_test_cases(
-            &DeepgramAdapter::default(),
+            &DeepgramAdapter,
             API_BASE,
             &[
                 UrlTestCase {
@@ -167,7 +167,7 @@ mod tests {
     #[test]
     fn test_detect_language_never_in_live() {
         run_url_test_cases(
-            &DeepgramAdapter::default(),
+            &DeepgramAdapter,
             API_BASE,
             &[
                 UrlTestCase {
@@ -197,7 +197,7 @@ mod tests {
 
     #[test]
     fn test_invalid_regional_variant_falls_back_to_iso_language() {
-        let adapter = DeepgramAdapter::default();
+        let adapter = DeepgramAdapter;
         let params = owhisper_interface::ListenParams {
             model: Some("nova-3-general".to_string()),
             languages: vec!["en-KR".parse().unwrap()],
@@ -213,7 +213,7 @@ mod tests {
 
     #[test]
     fn test_supported_regional_variant_is_preserved() {
-        let adapter = DeepgramAdapter::default();
+        let adapter = DeepgramAdapter;
         let params = owhisper_interface::ListenParams {
             model: Some("nova-3-medical".to_string()),
             languages: vec!["en-CA".parse().unwrap()],
@@ -228,7 +228,7 @@ mod tests {
 
     #[test]
     fn test_custom_query_params() {
-        let adapter = DeepgramAdapter::default();
+        let adapter = DeepgramAdapter;
         let params = owhisper_interface::ListenParams {
             model: Some("nova-3".to_string()),
             languages: vec![ISO639::En.into()],
@@ -248,7 +248,7 @@ mod tests {
 
     #[test]
     fn test_proxy_preserves_provider_param() {
-        let adapter = DeepgramAdapter::default();
+        let adapter = DeepgramAdapter;
         let params = owhisper_interface::ListenParams {
             model: Some("nova-3".to_string()),
             languages: vec![ISO639::En.into()],
@@ -263,7 +263,7 @@ mod tests {
 
     #[test]
     fn test_basic_url_params() {
-        let adapter = DeepgramAdapter::default();
+        let adapter = DeepgramAdapter;
         let params = owhisper_interface::ListenParams {
             model: Some("nova-3".to_string()),
             languages: vec![ISO639::En.into()],

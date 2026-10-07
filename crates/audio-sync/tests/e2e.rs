@@ -23,9 +23,7 @@ fn load_wav(bytes: &'static [u8]) -> Vec<f32> {
 
 fn delay_signal(input: &[f32], delay_samples: usize) -> Vec<f32> {
     let mut out = vec![0.0; input.len()];
-    for idx in delay_samples..input.len() {
-        out[idx] = input[idx - delay_samples];
-    }
+    out[delay_samples..].copy_from_slice(&input[..input.len() - delay_samples]);
     out
 }
 
@@ -223,7 +221,7 @@ fn median_lag_values(lags: &[isize]) -> Option<f32> {
     lags.sort_unstable();
 
     let mid = lags.len() / 2;
-    Some(if lags.len() % 2 == 0 {
+    Some(if lags.len().is_multiple_of(2) {
         (lags[mid - 1] as f32 + lags[mid] as f32) / 2.0
     } else {
         lags[mid] as f32

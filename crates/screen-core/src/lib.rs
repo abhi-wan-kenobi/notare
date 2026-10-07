@@ -46,7 +46,7 @@ pub enum CaptureSubject {
     Display(DisplayMetadata),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct WindowContextCaptureOptions {
     pub image_policy: WindowContextImagePolicy,
 }
@@ -54,14 +54,6 @@ pub struct WindowContextCaptureOptions {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WindowContextImagePolicy {
     pub max_long_side: u32,
-}
-
-impl Default for WindowContextCaptureOptions {
-    fn default() -> Self {
-        Self {
-            image_policy: WindowContextImagePolicy::default(),
-        }
-    }
 }
 
 impl Default for WindowContextImagePolicy {

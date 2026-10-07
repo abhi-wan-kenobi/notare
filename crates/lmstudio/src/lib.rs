@@ -35,7 +35,7 @@ pub fn list_models(app_data_dir: PathBuf) -> Result<Vec<String>, Error> {
             })
             .filter(|(f, _)| !f.contains("mmproj") && !f.contains("embedding"))
             .collect::<Vec<_>>();
-        files.sort_by(|a, b| b.1.cmp(&a.1));
+        files.sort_by_key(|f| std::cmp::Reverse(f.1));
         files.into_iter().map(|(path, _)| path).collect()
     };
 

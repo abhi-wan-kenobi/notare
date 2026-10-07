@@ -1,3 +1,7 @@
+// `ApiError` wraps the AWS SDK errors by value; boxing it would change the
+// public `Result<_, ApiError>` signatures of every client method.
+#![allow(clippy::result_large_err)]
+
 use std::ops::Deref;
 
 use aws_sdk_s3::error::SdkError;
@@ -314,7 +318,7 @@ mod tests {
             .build()
             .await;
 
-        let _ = s3.create_bucket().await.unwrap();
+        s3.create_bucket().await.unwrap();
         assert!(s3.get_bucket().await);
     }
 }

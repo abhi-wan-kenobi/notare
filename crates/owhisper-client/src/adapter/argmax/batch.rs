@@ -300,7 +300,7 @@ mod tests {
     #[ignore]
     async fn test_argmax_batch_transcription() {
         let client = create_client();
-        let adapter = ArgmaxAdapter::default();
+        let adapter = ArgmaxAdapter;
         let params = ListenParams::default();
 
         let audio_path = std::path::PathBuf::from(hypr_data::english_1::AUDIO_PATH);

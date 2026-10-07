@@ -575,10 +575,10 @@ mod tests {
                             );
                         }
                     }
-                } else if path.is_dir() {
-                    if let Err(e) = walk_dir(&path) {
-                        eprintln!("Error walking directory {}: {}", path.display(), e);
-                    }
+                } else if path.is_dir()
+                    && let Err(e) = walk_dir(&path)
+                {
+                    eprintln!("Error walking directory {}: {}", path.display(), e);
                 }
             }
             Ok(())

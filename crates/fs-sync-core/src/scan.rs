@@ -111,7 +111,7 @@ mod tests {
 
     #[test]
     fn matches_files_by_pattern() {
-        let env = TestEnv::new()
+        let env = TestEnv::builder()
             .file("note.txt", "hello")
             .file("data.json", "{}")
             .build();
@@ -124,7 +124,7 @@ mod tests {
 
     #[test]
     fn recursive_finds_nested_files() {
-        let env = TestEnv::new()
+        let env = TestEnv::builder()
             .file("root.txt", "root")
             .folder("sub")
             .file("nested.txt", "nested")
@@ -140,7 +140,7 @@ mod tests {
 
     #[test]
     fn non_recursive_skips_nested_files() {
-        let env = TestEnv::new()
+        let env = TestEnv::builder()
             .file("root.txt", "root")
             .folder("sub")
             .file("nested.txt", "nested")
@@ -155,7 +155,7 @@ mod tests {
 
     #[test]
     fn collects_non_uuid_directories() {
-        let env = TestEnv::new()
+        let env = TestEnv::builder()
             .folder("work")
             .done()
             .folder("personal")
@@ -170,7 +170,7 @@ mod tests {
 
     #[test]
     fn uuid_dirs_not_in_dirs_list_but_files_are_scanned() {
-        let env = TestEnv::new()
+        let env = TestEnv::builder()
             .folder(UUID_1)
             .file("note.txt", "inside uuid")
             .done()
@@ -187,7 +187,7 @@ mod tests {
 
     #[test]
     fn paths_relative_to_different_base() {
-        let env = TestEnv::new()
+        let env = TestEnv::builder()
             .folder(&format!("sessions/{UUID_1}"))
             .file("_meta.json", "{}")
             .done()

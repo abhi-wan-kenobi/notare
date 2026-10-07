@@ -285,7 +285,7 @@ mod tests {
     async fn test_deepgram_batch_transcription() {
         let api_key = std::env::var("DEEPGRAM_API_KEY").expect("DEEPGRAM_API_KEY not set");
         let client = create_client();
-        let adapter = DeepgramAdapter::default();
+        let adapter = DeepgramAdapter;
         let params = ListenParams {
             model: Some("nova-2".to_string()),
             ..Default::default()

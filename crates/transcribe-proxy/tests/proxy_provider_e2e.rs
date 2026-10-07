@@ -84,13 +84,12 @@ async fn run_live_stream_test<A: RealtimeSttAdapter>(
         while let Some(result) = stream.next().await {
             match result {
                 Ok(response) => {
-                    if let StreamResponse::TranscriptResponse { channel, .. } = &response {
-                        if let Some(alt) = channel.alternatives.first() {
-                            if !alt.transcript.is_empty() {
-                                println!("[{}] {}", provider_name, alt.transcript);
-                                saw_transcript = true;
-                            }
-                        }
+                    if let StreamResponse::TranscriptResponse { channel, .. } = &response
+                        && let Some(alt) = channel.alternatives.first()
+                        && !alt.transcript.is_empty()
+                    {
+                        println!("[{}] {}", provider_name, alt.transcript);
+                        saw_transcript = true;
                     }
                 }
                 Err(e) => {

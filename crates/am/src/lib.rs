@@ -21,6 +21,5 @@ mod tests {
             .init(InitRequest::new("").with_model(AmModel::ParakeetV2, "/tmp"))
             .await
             .unwrap();
-        assert!(true);
     }
 }

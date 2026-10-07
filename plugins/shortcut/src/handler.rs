@@ -156,17 +156,17 @@ mod global {
             // accelerator would otherwise collide with itself) - but a failed
             // new registration restores it so the id is never left unbound.
             let previous = guard.remove(&id);
-            if let Some((prev, prev_shortcut)) = &previous {
-                if let Err(e) = app.global_shortcut().unregister(*prev) {
-                    // The old accelerator is still live at the OS - binding
-                    // the new one may collide, and reporting THAT error would
-                    // point at the wrong cause. Keep the old entry and fail
-                    // with the real reason.
-                    guard.insert(id, (*prev, prev_shortcut.clone()));
-                    return Err(Error::GlobalShortcut(format!(
-                        "could not release the previous binding: {e}"
-                    )));
-                }
+            if let Some((prev, prev_shortcut)) = &previous
+                && let Err(e) = app.global_shortcut().unregister(*prev)
+            {
+                // The old accelerator is still live at the OS - binding
+                // the new one may collide, and reporting THAT error would
+                // point at the wrong cause. Keep the old entry and fail
+                // with the real reason.
+                guard.insert(id, (*prev, prev_shortcut.clone()));
+                return Err(Error::GlobalShortcut(format!(
+                    "could not release the previous binding: {e}"
+                )));
             }
 
             match bind(&app, &id, &shortcut, parsed) {
@@ -175,10 +175,10 @@ mod global {
                     Ok(())
                 }
                 Err(error) => {
-                    if let Some((prev, prev_shortcut)) = previous {
-                        if bind(&app, &id, &prev_shortcut, prev).is_ok() {
-                            guard.insert(id, (prev, prev_shortcut));
-                        }
+                    if let Some((prev, prev_shortcut)) = previous
+                        && bind(&app, &id, &prev_shortcut, prev).is_ok()
+                    {
+                        guard.insert(id, (prev, prev_shortcut));
                     }
                     Err(error)
                 }
@@ -187,13 +187,13 @@ mod global {
 
         pub fn unregister<R: Runtime>(&self, app: AppHandle<R>, id: String) -> Result<(), Error> {
             let mut guard = self.current.lock().unwrap_or_else(|e| e.into_inner());
-            if let Some((previous, shortcut)) = guard.remove(&id) {
-                if let Err(e) = app.global_shortcut().unregister(previous) {
-                    // The OS still fires this binding - keep tracking it so a
-                    // later re-register can still replace it.
-                    guard.insert(id, (previous, shortcut));
-                    return Err(Error::GlobalShortcut(e.to_string()));
-                }
+            if let Some((previous, shortcut)) = guard.remove(&id)
+                && let Err(e) = app.global_shortcut().unregister(previous)
+            {
+                // The OS still fires this binding - keep tracking it so a
+                // later re-register can still replace it.
+                guard.insert(id, (previous, shortcut));
+                return Err(Error::GlobalShortcut(e.to_string()));
             }
             Ok(())
         }

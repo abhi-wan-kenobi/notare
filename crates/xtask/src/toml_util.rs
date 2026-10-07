@@ -76,7 +76,7 @@ pub(crate) fn toml_set(args: &[String]) -> Result<()> {
         .parse()
         .with_context(|| format!("parse {path_str}"))?;
 
-    for chunk in pairs.chunks_exact(2) {
+    for chunk in pairs.as_chunks::<2>().0 {
         let (key, val_str) = (&chunk[0], &chunk[1]);
         let value = format!("x={val_str}")
             .parse::<toml::Table>()

@@ -290,7 +290,7 @@ impl ClaudeExec {
                 "--setting-sources",
                 sources
                     .iter()
-                    .map(|source| serde_variant(source))
+                    .map(serde_variant)
                     .collect::<Vec<_>>()
                     .join(","),
             );

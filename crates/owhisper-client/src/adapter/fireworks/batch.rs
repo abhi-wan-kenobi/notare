@@ -158,7 +158,7 @@ mod tests {
     async fn test_fireworks_batch_transcription() {
         let api_key = std::env::var("FIREWORKS_API_KEY").expect("FIREWORKS_API_KEY not set");
         let client = create_client();
-        let adapter = FireworksAdapter::default();
+        let adapter = FireworksAdapter;
         let params = ListenParams::default();
 
         let audio_path = std::path::PathBuf::from(hypr_data::english_1::AUDIO_PATH);

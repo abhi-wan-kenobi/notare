@@ -133,10 +133,11 @@ fn test_gzip_decompression_multiple_files() {
     ];
 
     for file in &files {
-        let data = fs::read(file).expect(&format!("Failed to read {}", file));
+        let data = fs::read(file).unwrap_or_else(|_| panic!("Failed to read {}", file));
         assert!(is_gzip(&data), "{} should be detected as gzip", file);
 
-        let decompressed = decompress_gzip(&data).expect(&format!("Failed to decompress {}", file));
+        let decompressed =
+            decompress_gzip(&data).unwrap_or_else(|_| panic!("Failed to decompress {}", file));
         assert!(
             !decompressed.is_empty(),
             "{} should decompress to non-empty data",

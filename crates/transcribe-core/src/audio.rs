@@ -48,10 +48,10 @@ where
     C: Chunker,
 {
     // Never exceed the engine's own limit nor the universal ceiling. The
-    // `.max(1)` mirrors the streaming path (`TranscribeChannelStream`): a cap of
-    // 0 would reach `slice::chunks(0)` in the split pass below and panic. No
-    // engine returns 0 today, but the two cap sites must defend identically.
-    let max_chunk_samples = engine_max_samples.min(MAX_CHUNK_SAMPLES).max(1);
+    // lower bound of 1 mirrors the streaming path (`TranscribeChannelStream`): a
+    // cap of 0 would reach `slice::chunks(0)` in the split pass below and panic.
+    // No engine returns 0 today, but the two cap sites must defend identically.
+    let max_chunk_samples = engine_max_samples.clamp(1, MAX_CHUNK_SAMPLES);
     let chunks = chunker.chunk(samples, TARGET_SAMPLE_RATE)?;
     let total = samples.len();
 
@@ -274,7 +274,7 @@ mod tests {
                 sample_end: 3,
             }],
         };
-        let chunks = chunk_channel_audio_with(&vec![0.0; 3], &mut chunker, 0).unwrap();
+        let chunks = chunk_channel_audio_with(&[0.0; 3], &mut chunker, 0).unwrap();
         assert!(chunks.iter().all(|c| !c.samples.is_empty()));
         assert_eq!(chunks.iter().map(|c| c.samples.len()).sum::<usize>(), 3);
     }

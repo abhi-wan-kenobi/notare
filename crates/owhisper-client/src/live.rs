@@ -239,11 +239,15 @@ impl FinalizeHandle for DualHandle {
 
 fn interleave_audio(mic: &[u8], speaker: &[u8]) -> Vec<u8> {
     let mic_samples: Vec<i16> = mic
-        .chunks_exact(2)
+        .as_chunks::<2>()
+        .0
+        .iter()
         .map(|chunk| i16::from_le_bytes([chunk[0], chunk[1]]))
         .collect();
     let speaker_samples: Vec<i16> = speaker
-        .chunks_exact(2)
+        .as_chunks::<2>()
+        .0
+        .iter()
         .map(|chunk| i16::from_le_bytes([chunk[0], chunk[1]]))
         .collect();
 
@@ -743,7 +747,7 @@ mod tests {
     async fn test_proxy_deepgram_single() {
         let client = ListenClient::builder()
             .adapter::<DeepgramAdapter>()
-            .api_base(&format!("http://{}", proxy_base()))
+            .api_base(format!("http://{}", proxy_base()))
             .params(owhisper_interface::ListenParams {
                 model: Some("nova-3".to_string()),
                 languages: vec![hypr_language::ISO639::En.into()],
@@ -760,7 +764,7 @@ mod tests {
     async fn test_proxy_deepgram_dual() {
         let client = ListenClient::builder()
             .adapter::<DeepgramAdapter>()
-            .api_base(&format!("http://{}", proxy_base()))
+            .api_base(format!("http://{}", proxy_base()))
             .params(owhisper_interface::ListenParams {
                 model: Some("nova-3".to_string()),
                 languages: vec![hypr_language::ISO639::En.into()],
@@ -777,7 +781,7 @@ mod tests {
     async fn test_proxy_soniox_single() {
         let client = ListenClient::builder()
             .adapter::<SonioxAdapter>()
-            .api_base(&format!("http://{}", proxy_base()))
+            .api_base(format!("http://{}", proxy_base()))
             .params(owhisper_interface::ListenParams {
                 model: Some("stt-v3".to_string()),
                 languages: vec![hypr_language::ISO639::En.into()],
@@ -794,7 +798,7 @@ mod tests {
     async fn test_proxy_soniox_dual() {
         let client = ListenClient::builder()
             .adapter::<SonioxAdapter>()
-            .api_base(&format!("http://{}", proxy_base()))
+            .api_base(format!("http://{}", proxy_base()))
             .params(owhisper_interface::ListenParams {
                 model: Some("stt-v3".to_string()),
                 languages: vec![hypr_language::ISO639::En.into()],
@@ -811,7 +815,7 @@ mod tests {
     async fn test_proxy_assemblyai_single() {
         let client = ListenClient::builder()
             .adapter::<AssemblyAIAdapter>()
-            .api_base(&format!("http://{}", proxy_base()))
+            .api_base(format!("http://{}", proxy_base()))
             .params(owhisper_interface::ListenParams {
                 model: Some("u3-rt-pro".to_string()),
                 languages: vec![hypr_language::ISO639::En.into()],
@@ -828,7 +832,7 @@ mod tests {
     async fn test_proxy_assemblyai_dual() {
         let client = ListenClient::builder()
             .adapter::<AssemblyAIAdapter>()
-            .api_base(&format!("http://{}", proxy_base()))
+            .api_base(format!("http://{}", proxy_base()))
             .params(owhisper_interface::ListenParams {
                 model: Some("u3-rt-pro".to_string()),
                 languages: vec![hypr_language::ISO639::En.into()],

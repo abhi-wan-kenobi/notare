@@ -115,7 +115,7 @@ mod tests {
 
     #[test]
     fn scan_directory_detects_sessions_with_meta() {
-        let env = TestEnv::new()
+        let env = TestEnv::builder()
             .session(UUID_1)
             .done()
             .session(UUID_2)
@@ -136,7 +136,7 @@ mod tests {
 
     #[test]
     fn scan_directory_tracks_folders_with_sessions() {
-        let env = TestEnv::new()
+        let env = TestEnv::builder()
             .folder("work")
             .session(UUID_1)
             .done_folder()
@@ -155,7 +155,7 @@ mod tests {
 
     #[test]
     fn collect_session_updates_tracks_nested_sessions() {
-        let env = TestEnv::new()
+        let env = TestEnv::builder()
             .folder("work")
             .session(UUID_1)
             .done_folder()

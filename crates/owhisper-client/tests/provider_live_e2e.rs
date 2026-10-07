@@ -5,8 +5,8 @@ use futures_util::{Stream, StreamExt};
 use hypr_audio_utils::AudioFormatExt;
 use owhisper_client::{
     AssemblyAIAdapter, DashScopeAdapter, DeepgramAdapter, ElevenLabsAdapter, FinalizeHandle,
-    FireworksAdapter, GladiaAdapter, ListenClient, MistralAdapter, OpenAIAdapter, Provider,
-    RealtimeSttAdapter, SonioxAdapter,
+    FireworksAdapter, GladiaAdapter, ListenClient, MistralAdapter, Provider, RealtimeSttAdapter,
+    SonioxAdapter,
 };
 use owhisper_interface::{ControlMessage, MixedMessage, stream::StreamResponse};
 
@@ -76,11 +76,11 @@ async fn run_direct_live_single_e2e<A: RealtimeSttAdapter>(provider: Provider) {
         while let Some(result) = stream.next().await {
             match result {
                 Ok(StreamResponse::TranscriptResponse { channel, .. }) => {
-                    if let Some(alt) = channel.alternatives.first() {
-                        if !alt.transcript.is_empty() {
-                            println!("[{provider}] {}", alt.transcript);
-                            saw_transcript = true;
-                        }
+                    if let Some(alt) = channel.alternatives.first()
+                        && !alt.transcript.is_empty()
+                    {
+                        println!("[{provider}] {}", alt.transcript);
+                        saw_transcript = true;
                     }
                 }
                 Ok(_) => {}
@@ -130,15 +130,15 @@ async fn run_direct_live_dual_e2e<A: RealtimeSttAdapter>(provider: Provider) {
                     channel_index,
                     ..
                 }) => {
-                    if let Some(alt) = channel.alternatives.first() {
-                        if !alt.transcript.is_empty() {
-                            println!(
-                                "[{provider}] ch{}: {}",
-                                channel_index.first().unwrap_or(&0),
-                                alt.transcript
-                            );
-                            saw_transcript = true;
-                        }
+                    if let Some(alt) = channel.alternatives.first()
+                        && !alt.transcript.is_empty()
+                    {
+                        println!(
+                            "[{provider}] ch{}: {}",
+                            channel_index.first().unwrap_or(&0),
+                            alt.transcript
+                        );
+                        saw_transcript = true;
                     }
                 }
                 Ok(_) => {}

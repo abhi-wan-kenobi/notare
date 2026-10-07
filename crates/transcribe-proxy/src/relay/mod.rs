@@ -271,6 +271,9 @@ impl StreamingProxy {
         .with_client_binary_message_mapper(client_binary_message_mapper)
     }
 
+    // Public constructor mirroring `split`; grouping the arguments into a
+    // struct would change its signature for every caller.
+    #[allow(clippy::too_many_arguments)]
     pub fn split_with_requests(
         mic_request: ClientRequestBuilder,
         spk_request: ClientRequestBuilder,

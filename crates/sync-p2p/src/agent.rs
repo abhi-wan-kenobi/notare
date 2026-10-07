@@ -257,24 +257,17 @@ impl P2pAgent {
         // the C layer includes it in every frame and we reject mismatches.
         let token = generate_token();
 
-        let tcp_state = Arc::clone(&broker);
-        let tcp_peers = peers.clone();
-        let tcp_endpoint = endpoint.clone();
-        let tcp_identity = identity.clone();
-        let tcp_self_label = self_label.clone();
-        let tcp_token = token.clone();
+        let tcp_ctx = Ctx {
+            broker: Arc::clone(&broker),
+            peers: peers.clone(),
+            endpoint: endpoint.clone(),
+            identity: identity.clone(),
+            self_label: self_label.clone(),
+            token: token.clone(),
+            transport,
+        };
         let tcp_handle = tokio::spawn(async move {
-            accept_c_tcp(
-                tcp_listener,
-                tcp_state,
-                tcp_peers,
-                tcp_endpoint,
-                tcp_identity,
-                tcp_self_label,
-                tcp_token,
-                transport,
-            )
-            .await;
+            accept_c_tcp(tcp_listener, tcp_ctx).await;
         });
 
         // iroh inbound accept loop: remote peers dial us to pull our changes.
@@ -343,16 +336,7 @@ impl P2pAgent {
 /// Accept connections from the local C `network_p2p.c` layer. Each connection
 /// carries one framed request (a `Request` or a `PutRequest`); route it to the
 /// local broker or relay it to a peer over iroh, then write one framed reply.
-async fn accept_c_tcp(
-    listener: TcpListener,
-    broker: Arc<BrokerState>,
-    peers: PeerStore,
-    endpoint: Endpoint,
-    identity: Identity,
-    self_label: String,
-    token: String,
-    transport: AgentTransport,
-) {
+async fn accept_c_tcp(listener: TcpListener, base: Ctx) {
     loop {
         // AUDIT (2026-08-28, gpt-oss): a transient accept error (EMFILE,
         // ECONNABORTED, EINTR) must not kill the listener — breaking here would
@@ -366,15 +350,7 @@ async fn accept_c_tcp(
                 continue;
             }
         };
-        let ctx = Ctx {
-            broker: Arc::clone(&broker),
-            peers: peers.clone(),
-            endpoint: endpoint.clone(),
-            identity: identity.clone(),
-            self_label: self_label.clone(),
-            token: token.clone(),
-            transport,
-        };
+        let ctx = base.clone();
         tokio::spawn(async move {
             // A connection that errors is just a dropped/short C call; nothing
             // to do — the C layer surfaces the failure as a network error.
@@ -383,6 +359,7 @@ async fn accept_c_tcp(
     }
 }
 
+#[derive(Clone)]
 struct Ctx {
     broker: Arc<BrokerState>,
     peers: PeerStore,

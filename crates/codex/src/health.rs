@@ -169,7 +169,7 @@ fn detail_from_output(output: &Output) -> String {
 fn parse_version(output: &str) -> Option<String> {
     output
         .split(|c: char| c.is_whitespace())
-        .find_map(|token| normalize_semver_token(token))
+        .find_map(normalize_semver_token)
 }
 
 fn normalize_semver_token(token: &str) -> Option<String> {
@@ -255,10 +255,10 @@ fn extract_auth_boolean_from_value(value: &serde_json::Value) -> Option<bool> {
             }
 
             for key in ["auth", "status", "session", "account"] {
-                if let Some(value) = map.get(key) {
-                    if let Some(nested) = extract_auth_boolean_from_value(value) {
-                        return Some(nested);
-                    }
+                if let Some(value) = map.get(key)
+                    && let Some(nested) = extract_auth_boolean_from_value(value)
+                {
+                    return Some(nested);
                 }
             }
 
@@ -290,10 +290,10 @@ fn uses_custom_model_provider(options: &CodexOptions) -> bool {
 }
 
 fn resolve_codex_config_path(options: &CodexOptions) -> PathBuf {
-    if let Some(env) = &options.env {
-        if let Some(home) = env.get("CODEX_HOME") {
-            return PathBuf::from(home).join("config.toml");
-        }
+    if let Some(env) = &options.env
+        && let Some(home) = env.get("CODEX_HOME")
+    {
+        return PathBuf::from(home).join("config.toml");
     }
 
     config_path()

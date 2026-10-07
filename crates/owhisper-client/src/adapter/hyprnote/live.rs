@@ -109,7 +109,7 @@ mod tests {
     #[test]
     fn test_url_structure() {
         run_url_test_cases(
-            &HyprnoteAdapter::default(),
+            &HyprnoteAdapter,
             API_BASE,
             &[
                 UrlTestCase {
@@ -132,7 +132,7 @@ mod tests {
 
     #[test]
     fn test_url_with_keywords() {
-        let adapter = HyprnoteAdapter::default();
+        let adapter = HyprnoteAdapter;
         let params = owhisper_interface::ListenParams {
             model: Some("nova-3".to_string()),
             languages: vec![ISO639::En.into()],
@@ -149,7 +149,7 @@ mod tests {
 
     #[test]
     fn test_url_with_speaker_counts() {
-        let adapter = HyprnoteAdapter::default();
+        let adapter = HyprnoteAdapter;
         let params = owhisper_interface::ListenParams {
             num_speakers: Some(3),
             min_speakers: Some(2),
@@ -167,7 +167,7 @@ mod tests {
 
     #[test]
     fn test_url_with_custom_query() {
-        let adapter = HyprnoteAdapter::default();
+        let adapter = HyprnoteAdapter;
         let params = owhisper_interface::ListenParams {
             model: Some("nova-3".to_string()),
             languages: vec![ISO639::En.into()],
@@ -185,7 +185,7 @@ mod tests {
 
     #[test]
     fn test_auth_header() {
-        let adapter = HyprnoteAdapter::default();
+        let adapter = HyprnoteAdapter;
         let header = adapter.build_auth_header(Some("test-key"));
         assert_eq!(
             header,
@@ -195,7 +195,7 @@ mod tests {
 
     #[test]
     fn test_localhost_uses_ws_scheme() {
-        let adapter = HyprnoteAdapter::default();
+        let adapter = HyprnoteAdapter;
         let params = owhisper_interface::ListenParams {
             model: Some("nova-3".to_string()),
             languages: vec![ISO639::En.into()],
@@ -216,7 +216,7 @@ mod tests {
     /// coruscant (192.168.0.91:8383) during this change.
     #[test]
     fn test_lan_server_explicit_http_stays_plaintext() {
-        let adapter = HyprnoteAdapter::default();
+        let adapter = HyprnoteAdapter;
         let params = owhisper_interface::ListenParams {
             model: Some("QuantizedLargeTurbo".to_string()),
             languages: vec![ISO639::En.into()],
@@ -235,7 +235,7 @@ mod tests {
 
     #[test]
     fn test_meta_model_passed_through_without_resolution() {
-        let adapter = HyprnoteAdapter::default();
+        let adapter = HyprnoteAdapter;
         let params = owhisper_interface::ListenParams {
             model: Some("cloud".to_string()),
             languages: vec![ISO639::En.into(), ISO639::De.into()],
@@ -255,7 +255,7 @@ mod tests {
 
     #[test]
     fn test_provider_param_preserved_in_url() {
-        let adapter = HyprnoteAdapter::default();
+        let adapter = HyprnoteAdapter;
         let base_with_provider = "https://api.hyprnote.com/stt?provider=hyprnote";
         let params = owhisper_interface::ListenParams {
             model: Some("cloud".to_string()),
@@ -272,7 +272,7 @@ mod tests {
 
     #[test]
     fn parse_response_accepts_single_response() {
-        let adapter = HyprnoteAdapter::default();
+        let adapter = HyprnoteAdapter;
         let raw = serde_json::to_string(&sample_response("hello", false)).unwrap();
 
         let responses = adapter.parse_response(&raw);
@@ -288,7 +288,7 @@ mod tests {
 
     #[test]
     fn parse_response_accepts_response_arrays() {
-        let adapter = HyprnoteAdapter::default();
+        let adapter = HyprnoteAdapter;
         let raw = serde_json::to_string(&vec![
             sample_response("final", true),
             sample_response("partial", false),

@@ -31,13 +31,12 @@ pub(crate) fn normalize_identifier(token: &str) -> String {
 }
 
 pub(crate) fn strip_identifier_quotes(token: &str) -> &str {
-    if token.len() >= 2 {
-        if (token.starts_with('"') && token.ends_with('"'))
+    if token.len() >= 2
+        && ((token.starts_with('"') && token.ends_with('"'))
             || (token.starts_with('`') && token.ends_with('`'))
-            || (token.starts_with('[') && token.ends_with(']'))
-        {
-            return &token[1..token.len() - 1];
-        }
+            || (token.starts_with('[') && token.ends_with(']')))
+    {
+        return &token[1..token.len() - 1];
     }
 
     token

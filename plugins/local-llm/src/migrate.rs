@@ -6,10 +6,10 @@ pub fn legacy_gguf_files(data_dir: &Path, models_dir: &Path) {
     if let Ok(entries) = std::fs::read_dir(data_dir) {
         for entry in entries.flatten() {
             let path = entry.path();
-            if path.extension().and_then(|ext| ext.to_str()) == Some("gguf") {
-                if let Some(name) = path.file_name() {
-                    let _ = std::fs::rename(&path, models_dir.join(name));
-                }
+            if path.extension().and_then(|ext| ext.to_str()) == Some("gguf")
+                && let Some(name) = path.file_name()
+            {
+                let _ = std::fs::rename(&path, models_dir.join(name));
             }
         }
     }

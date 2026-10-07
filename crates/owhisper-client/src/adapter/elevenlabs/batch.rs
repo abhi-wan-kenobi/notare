@@ -241,7 +241,7 @@ mod tests {
     async fn test_elevenlabs_batch_transcription() {
         let api_key = std::env::var("ELEVENLABS_API_KEY").expect("ELEVENLABS_API_KEY not set");
         let client = create_client();
-        let adapter = ElevenLabsAdapter::default();
+        let adapter = ElevenLabsAdapter;
         let params = ListenParams::default();
 
         let audio_path = std::path::PathBuf::from(hypr_data::english_1::AUDIO_PATH);

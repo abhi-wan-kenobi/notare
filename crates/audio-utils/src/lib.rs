@@ -99,7 +99,9 @@ where
 }
 
 pub fn bytes_to_f32_samples(data: &[u8]) -> Vec<f32> {
-    data.chunks_exact(2)
+    data.as_chunks::<2>()
+        .0
+        .iter()
         .map(|chunk| {
             let sample = i16::from_le_bytes([chunk[0], chunk[1]]);
             sample as f32 / I16_SCALE
@@ -111,7 +113,7 @@ pub fn deinterleave_stereo_bytes(data: &[u8]) -> (Vec<f32>, Vec<f32>) {
     let num_frames = data.len() / 4;
     let mut ch0 = Vec::with_capacity(num_frames);
     let mut ch1 = Vec::with_capacity(num_frames);
-    for frame in data.chunks_exact(4) {
+    for frame in data.as_chunks::<4>().0 {
         ch0.push(i16::from_le_bytes([frame[0], frame[1]]) as f32 / I16_SCALE);
         ch1.push(i16::from_le_bytes([frame[2], frame[3]]) as f32 / I16_SCALE);
     }

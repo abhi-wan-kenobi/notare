@@ -5,7 +5,9 @@ use vad::{
 
 fn pcm_bytes_to_i16(bytes: &[u8]) -> Vec<i16> {
     bytes
-        .chunks_exact(2)
+        .as_chunks::<2>()
+        .0
+        .iter()
         .map(|c| i16::from_le_bytes([c[0], c[1]]))
         .collect()
 }
@@ -20,9 +22,7 @@ fn earshot_mask(audio: &[u8]) -> Vec<bool> {
         if frame.len() == frame_size {
             let speech = detector.predict_16khz(frame).unwrap();
             let start = i * frame_size;
-            for j in start..start + frame_size {
-                mask[j] = speech;
-            }
+            mask[start..start + frame_size].fill(speech);
         }
     }
     mask
@@ -42,9 +42,7 @@ fn silero_onnx_mask(audio: &[u8]) -> (Vec<bool>, f32) {
             max_prob = max_prob.max(prob);
             let speech = prob > 0.5;
             let start = i * CHUNK_SIZE_16KHZ;
-            for j in start..start + CHUNK_SIZE_16KHZ {
-                mask[j] = speech;
-            }
+            mask[start..start + CHUNK_SIZE_16KHZ].fill(speech);
         }
     }
     (mask, max_prob)

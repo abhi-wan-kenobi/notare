@@ -45,7 +45,7 @@ pub async fn delete_account(
     let user_id = &auth.claims.sub;
 
     if let Err(response) = try_delete_stripe_customer(&state, user_id).await {
-        return response;
+        return *response;
     }
 
     let _ = (|| {
@@ -101,7 +101,7 @@ pub async fn delete_account(
     }
 }
 
-async fn try_delete_stripe_customer(state: &AppState, user_id: &str) -> Result<(), Response> {
+async fn try_delete_stripe_customer(state: &AppState, user_id: &str) -> Result<(), Box<Response>> {
     let customer_id = match (|| state.supabase.admin_get_stripe_customer_id(user_id))
         .retry(retry_policy())
         .sleep(tokio::time::sleep)
@@ -146,14 +146,16 @@ async fn try_delete_stripe_customer(state: &AppState, user_id: &str) -> Result<(
                 &format!("stripe customer deletion failed for {}: {}", user_id, e),
                 sentry::Level::Error,
             );
-            Err((
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(DeleteAccountResponse {
-                    deleted: false,
-                    error: Some("stripe_customer_deletion_failed".to_string()),
-                }),
-            )
-                .into_response())
+            Err(Box::new(
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(DeleteAccountResponse {
+                        deleted: false,
+                        error: Some("stripe_customer_deletion_failed".to_string()),
+                    }),
+                )
+                    .into_response(),
+            ))
         }
     }
 }

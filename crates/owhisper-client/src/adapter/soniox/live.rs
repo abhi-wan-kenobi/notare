@@ -266,7 +266,7 @@ mod tests {
     #[test]
     fn test_base_url() {
         run_url_test_cases(
-            &SonioxAdapter::default(),
+            &SonioxAdapter,
             API_BASE,
             &[UrlTestCase {
                 name: "base_url_structure",
@@ -293,7 +293,7 @@ mod tests {
 
     #[test]
     fn test_initial_message_single_language() {
-        let adapter = SonioxAdapter::default();
+        let adapter = SonioxAdapter;
         let params = owhisper_interface::ListenParams {
             languages: vec![hypr_language::ISO639::En.into()],
             ..Default::default()
@@ -304,12 +304,12 @@ mod tests {
         let hints = json["language_hints"].as_array().unwrap();
         assert_eq!(hints.len(), 1);
         assert_eq!(hints[0].as_str().unwrap(), "en");
-        assert_eq!(json["language_hints_strict"].as_bool().unwrap(), true);
+        assert!(json["language_hints_strict"].as_bool().unwrap());
     }
 
     #[test]
     fn test_initial_message_multi_language() {
-        let adapter = SonioxAdapter::default();
+        let adapter = SonioxAdapter;
         let params = owhisper_interface::ListenParams {
             languages: vec![
                 hypr_language::ISO639::En.into(),
@@ -333,7 +333,7 @@ mod tests {
 
     #[test]
     fn test_initial_message_empty_languages() {
-        let adapter = SonioxAdapter::default();
+        let adapter = SonioxAdapter;
         let params = owhisper_interface::ListenParams {
             languages: vec![],
             ..Default::default()
@@ -355,7 +355,7 @@ mod tests {
 
     #[test]
     fn test_initial_message_three_languages() {
-        let adapter = SonioxAdapter::default();
+        let adapter = SonioxAdapter;
         let params = owhisper_interface::ListenParams {
             languages: vec![
                 hypr_language::ISO639::En.into(),

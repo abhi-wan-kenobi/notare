@@ -101,7 +101,7 @@ mod tests {
     #[test]
     fn test_single_language_urls() {
         run_url_test_cases(
-            &ArgmaxAdapter::default(),
+            &ArgmaxAdapter,
             API_BASE,
             &[
                 UrlTestCase {
@@ -125,7 +125,7 @@ mod tests {
     #[test]
     fn test_multi_language_urls() {
         run_url_test_cases(
-            &ArgmaxAdapter::default(),
+            &ArgmaxAdapter,
             API_BASE,
             &[UrlTestCase {
                 name: "multi_lang_picks_first",
@@ -140,7 +140,7 @@ mod tests {
     #[test]
     fn test_parakeet_v2_urls() {
         run_url_test_cases(
-            &ArgmaxAdapter::default(),
+            &ArgmaxAdapter,
             API_BASE,
             &[UrlTestCase {
                 name: "parakeet_v2_always_english",
@@ -155,7 +155,7 @@ mod tests {
     #[test]
     fn test_parakeet_v3_urls() {
         run_url_test_cases(
-            &ArgmaxAdapter::default(),
+            &ArgmaxAdapter,
             API_BASE,
             &[
                 UrlTestCase {

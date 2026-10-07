@@ -81,7 +81,7 @@ impl AmpExec {
         };
         let stream = spawn_streaming_lines(child, Some(prompt), args.cancellation_token, |line| {
             let value = serde_json::from_str::<serde_json::Value>(&line)?;
-            Ok(ThreadEvent::try_from(value)?)
+            ThreadEvent::try_from(value)
         })?;
 
         Ok(AmpExecRun {

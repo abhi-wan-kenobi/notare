@@ -75,10 +75,10 @@ impl hypr_http::HttpClient for PublicGitHubHttpClient {
 }
 
 fn resolve_state(issue: &Issue) -> GitHubIssueState {
-    if let Some(ref pr) = issue.pull_request {
-        if pr.merged_at.is_some() {
-            return GitHubIssueState::Merged;
-        }
+    if let Some(ref pr) = issue.pull_request
+        && pr.merged_at.is_some()
+    {
+        return GitHubIssueState::Merged;
     }
 
     match issue.state.as_str() {

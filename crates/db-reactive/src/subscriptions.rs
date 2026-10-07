@@ -310,12 +310,11 @@ impl<S: QueryEventSink> Registry<S> {
             inner.deps.unregister(watch_id);
         }
 
-        if notify_idle {
-            if let Some(subscription) = inner.subscriptions.get(subscription_id) {
-                if let SubscriptionState::Reactive(reactive) = &subscription.state {
-                    reactive.idle_notify.notify_waiters();
-                }
-            }
+        if notify_idle
+            && let Some(subscription) = inner.subscriptions.get(subscription_id)
+            && let SubscriptionState::Reactive(reactive) = &subscription.state
+        {
+            reactive.idle_notify.notify_waiters();
         }
 
         if remove_now {
@@ -355,11 +354,11 @@ fn remove_subscription<S>(inner: &mut Inner<S>, subscription_id: &str) -> bool {
         return false;
     };
 
-    if let SubscriptionState::Reactive(reactive) = subscription.state {
-        if !reactive.detached {
-            inner.watch_ids.remove(&reactive.watch_id);
-            inner.deps.unregister(reactive.watch_id);
-        }
+    if let SubscriptionState::Reactive(reactive) = subscription.state
+        && !reactive.detached
+    {
+        inner.watch_ids.remove(&reactive.watch_id);
+        inner.deps.unregister(reactive.watch_id);
     }
 
     true

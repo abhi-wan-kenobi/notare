@@ -100,7 +100,7 @@ mod tests {
         let db = setup_db().await;
 
         let humans = db.list_humans(None).await.unwrap();
-        assert!(humans.len() == 0);
+        assert!(humans.is_empty());
 
         let human = Human {
             full_name: Some("test".to_string()),

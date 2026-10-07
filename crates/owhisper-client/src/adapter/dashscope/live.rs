@@ -392,7 +392,7 @@ mod tests {
     #[test]
     fn test_base_url() {
         run_url_test_cases(
-            &DashScopeAdapter::default(),
+            &DashScopeAdapter,
             API_BASE,
             &[UrlTestCase {
                 name: "base_url_structure",

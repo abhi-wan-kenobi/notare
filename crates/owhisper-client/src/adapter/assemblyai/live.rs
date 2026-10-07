@@ -369,7 +369,7 @@ mod tests {
     #[test]
     fn test_english_urls() {
         run_url_test_cases(
-            &AssemblyAIAdapter::default(),
+            &AssemblyAIAdapter,
             API_BASE,
             &[
                 UrlTestCase {
@@ -393,7 +393,7 @@ mod tests {
     #[test]
     fn test_multilingual_urls() {
         run_url_test_cases(
-            &AssemblyAIAdapter::default(),
+            &AssemblyAIAdapter,
             API_BASE,
             &[
                 UrlTestCase {

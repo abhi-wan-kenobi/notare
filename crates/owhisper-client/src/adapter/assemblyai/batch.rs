@@ -557,7 +557,7 @@ mod tests {
     async fn test_assemblyai_batch_transcription() {
         let api_key = std::env::var("ASSEMBLYAI_API_KEY").expect("ASSEMBLYAI_API_KEY not set");
         let client = create_client();
-        let adapter = AssemblyAIAdapter::default();
+        let adapter = AssemblyAIAdapter;
         let params = ListenParams::default();
 
         let audio_path = std::path::PathBuf::from(hypr_data::english_1::AUDIO_PATH);

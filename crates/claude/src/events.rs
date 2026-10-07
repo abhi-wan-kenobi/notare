@@ -95,9 +95,7 @@ impl ClaudeEvent {
     }
 
     pub fn partial_assistant_text(&self) -> Option<String> {
-        let Some(event_type) = self.event_type.as_deref() else {
-            return None;
-        };
+        let event_type = self.event_type.as_deref()?;
 
         let event_type = event_type.to_lowercase();
         if !(event_type.contains("assistant")
@@ -154,16 +152,16 @@ fn first_content_text(value: &serde_json::Value) -> Option<String> {
     match value {
         serde_json::Value::Array(items) => items.iter().find_map(first_content_text),
         serde_json::Value::Object(map) => {
-            if map.get("type").and_then(serde_json::Value::as_str) == Some("text") {
-                if let Some(text) = map.get("text").and_then(serde_json::Value::as_str) {
-                    return Some(text.to_string());
-                }
+            if map.get("type").and_then(serde_json::Value::as_str) == Some("text")
+                && let Some(text) = map.get("text").and_then(serde_json::Value::as_str)
+            {
+                return Some(text.to_string());
             }
 
-            if let Some(items) = map.get("content").and_then(serde_json::Value::as_array) {
-                if let Some(text) = items.iter().find_map(first_content_text) {
-                    return Some(text);
-                }
+            if let Some(items) = map.get("content").and_then(serde_json::Value::as_array)
+                && let Some(text) = items.iter().find_map(first_content_text)
+            {
+                return Some(text);
             }
 
             map.values().find_map(first_content_text)
