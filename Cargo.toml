@@ -402,7 +402,7 @@ macos-accessibility-client = "0.0.1"
 mp3lame-encoder = "0.2.2"
 ratatui = "0.30"
 realfft = "3.5.0"
-ringbuf = "0.4.8"
+ringbuf = "0.5.2"
 rodio = "0.22"
 tachyonfx = "0.25"
 vorbis_rs = "0.5.5"
@@ -410,7 +410,10 @@ vorbis_rs = "0.5.5"
 deepgram = { version = "0.7", default-features = false }
 hf-hub = { git = "https://github.com/huggingface/hf-hub", rev = "5510260", default-features = false, features = ["tokio"] }
 hidapi = { version = "2.6.5", features = ["macos-shared-device"] }
-libsql = "0.9.24"
+# Legacy importer only opens local SQLite files; the default remote/replication/tls
+# features pull hyper 0.14 + h2 0.3 + rustls 0.22 (RUSTSEC-2026-0258, -0049, -0098,
+# -0099, -0104).
+libsql = { version = "0.9.24", default-features = false, features = ["core", "serde"] }
 
 block2 = "0.6"
 core-foundation = "0.10"
@@ -451,3 +454,9 @@ rmcp = "1.4"
 rustls = { version = "0.23", default-features = false }
 sqlx = { version = "=0.9.0-alpha.1", default-features = false }
 sysinfo = "0.38"
+
+[patch.crates-io]
+# citationberg 0.7.0 (via typst → hayagriva) pins quick-xml ^0.38, vulnerable to
+# RUSTSEC-2026-0194/-0195. Upstream main bumped to quick-xml 0.41 (typst/citationberg#44)
+# but has not released it; drop this patch once a citationberg > 0.7.0 is on crates.io.
+citationberg = { git = "https://github.com/typst/citationberg", rev = "8966cf7c17" }

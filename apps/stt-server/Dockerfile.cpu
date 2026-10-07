@@ -15,7 +15,7 @@
 # (docs/stt-server-design.md §7) — not built here.
 
 # --- builder -----------------------------------------------------------
-FROM rust:1.94-bookworm AS builder
+FROM rust:1.99-bookworm AS builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \

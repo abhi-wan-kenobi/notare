@@ -30,8 +30,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Rust toolchain (1.94.0) matching workspace requirement
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.94.0
+# Install Rust toolchain (1.99.0) matching rust-toolchain.toml
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.99.0
 ENV PATH="/root/.cargo/bin:${PATH}"
 
 WORKDIR /workspace
