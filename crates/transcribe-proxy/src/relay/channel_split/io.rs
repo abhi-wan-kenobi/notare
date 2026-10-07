@@ -25,7 +25,7 @@ pub(super) fn deinterleave(interleaved: &[u8]) -> (Vec<u8>, Vec<u8>) {
     let mut ch0 = Vec::with_capacity(num_frames * SAMPLE_BYTES);
     let mut ch1 = Vec::with_capacity(num_frames * SAMPLE_BYTES);
 
-    for frame in interleaved.chunks_exact(FRAME_BYTES) {
+    for frame in interleaved.as_chunks::<FRAME_BYTES>().0 {
         ch0.extend_from_slice(&frame[..SAMPLE_BYTES]);
         ch1.extend_from_slice(&frame[SAMPLE_BYTES..]);
     }

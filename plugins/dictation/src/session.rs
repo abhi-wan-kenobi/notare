@@ -359,7 +359,7 @@ async fn run_session<E: std::fmt::Debug>(
     let mut listen_msgs: u64 = 0;
     let mut last_frame_at = std::time::Instant::now();
     let mut mic_stall_logged = false;
-    let mut end_reason: &'static str = "unknown";
+    let end_reason: &'static str;
     tracing::info!("dictation_session_start");
 
     let finalize_deadline = tokio::time::sleep(Duration::from_secs(86_400));
@@ -374,7 +374,6 @@ async fn run_session<E: std::fmt::Debug>(
     loop {
         tokio::select! {
             _ = &mut stop_rx, if !finalizing => {
-                end_reason = "stop_requested";
                 finalizing = true;
                 emit_state(&app, DictationPhase::Processing, 0.0, mode);
                 ws_handle.finalize().await;
@@ -425,7 +424,6 @@ async fn run_session<E: std::fmt::Debug>(
                                 elapsed_ms = session_started.elapsed().as_millis() as u64,
                                 "dictation audio channel closed; finalizing gracefully"
                             );
-                            end_reason = "audio_channel_closed";
                             finalizing = true;
                             emit_state(&app, DictationPhase::Processing, 0.0, mode);
                             ws_handle.finalize().await;

@@ -160,12 +160,12 @@ fn build_transcription_options(
     let mut options =
         CreateTranscriptionOptions::for_model(model, use_response_format, enable_streaming);
 
-    if let CreateTranscriptionOptions::Whisper(options) = &mut options {
-        if options.response_format.is_some() {
-            options
-                .timestamp_granularities
-                .push(TimestampGranularity::Word);
-        }
+    if let CreateTranscriptionOptions::Whisper(options) = &mut options
+        && options.response_format.is_some()
+    {
+        options
+            .timestamp_granularities
+            .push(TimestampGranularity::Word);
     }
 
     if let Some(lang) = params.languages.first() {
@@ -320,10 +320,10 @@ fn text_response_metadata(
 ) -> serde_json::Value {
     let mut metadata = transcription_usage_metadata(usage);
 
-    if let Some(duration) = duration {
-        if let Some(object) = metadata.as_object_mut() {
-            object.insert("duration".to_string(), serde_json::json!(duration));
-        }
+    if let Some(duration) = duration
+        && let Some(object) = metadata.as_object_mut()
+    {
+        object.insert("duration".to_string(), serde_json::json!(duration));
     }
 
     metadata
@@ -723,7 +723,7 @@ mod tests {
     async fn test_openai_transcribe() {
         let api_key = std::env::var("OPENAI_API_KEY").expect("OPENAI_API_KEY not set");
 
-        let adapter = OpenAIAdapter::default();
+        let adapter = OpenAIAdapter;
         let client = create_client();
         let api_base = "https://api.openai.com/v1";
 

@@ -464,7 +464,9 @@ mod tests {
             .unwrap();
 
         let audio: Vec<f32> = hypr_data::english_1::AUDIO
-            .chunks_exact(2)
+            .as_chunks::<2>()
+            .0
+            .iter()
             .map(|chunk| i16::from_le_bytes([chunk[0], chunk[1]]) as f32 / 32768.0)
             .collect();
 
@@ -473,6 +475,6 @@ mod tests {
         let duration = start.elapsed();
         println!("segments: {:#?}", segments);
         println!("time: {:?}", duration);
-        assert!(segments.len() > 0);
+        assert!(!segments.is_empty());
     }
 }

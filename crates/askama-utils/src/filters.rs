@@ -65,8 +65,8 @@ mod tests {
         assert!(matches!(Language::from_639_1("en"), Some(Language::Eng)));
         assert!(matches!(Language::from_639_1("ko"), Some(Language::Kor)));
 
-        assert!(matches!(Language::from_639_1("EN"), None));
-        assert!(matches!(Language::from_639_1("KO"), None));
+        assert!(Language::from_639_1("EN").is_none());
+        assert!(Language::from_639_1("KO").is_none());
     }
 
     #[derive(Template)]

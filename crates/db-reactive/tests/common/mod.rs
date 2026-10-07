@@ -213,10 +213,10 @@ where
 {
     tokio::time::timeout(timeout, async {
         loop {
-            if let Some(TestEvent::Result(rows)) = events.lock().unwrap().last() {
-                if predicate(rows) {
-                    return rows.clone();
-                }
+            if let Some(TestEvent::Result(rows)) = events.lock().unwrap().last()
+                && predicate(rows)
+            {
+                return rows.clone();
             }
             tokio::time::sleep(Duration::from_millis(5)).await;
         }

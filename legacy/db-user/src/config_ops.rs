@@ -77,6 +77,6 @@ mod tests {
         .unwrap();
 
         let config = db.get_config(human.id).await.unwrap().unwrap();
-        assert_eq!(config.notification.before, false);
+        assert!(!config.notification.before);
     }
 }

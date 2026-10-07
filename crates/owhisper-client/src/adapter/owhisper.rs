@@ -14,7 +14,7 @@ mod tests {
         ))
         .unwrap()
         .to_i16_le_chunks(16000, 512);
-        let input = audio.map(|chunk| ListenClientInput::Audio(chunk));
+        let input = audio.map(ListenClientInput::Audio);
 
         let client = ListenClient::builder()
             .api_base("ws://127.0.0.1:52693/v1")

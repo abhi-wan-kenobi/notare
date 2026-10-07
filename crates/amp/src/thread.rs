@@ -167,10 +167,10 @@ impl Stream for ManagedEventStream {
     ) -> Poll<Option<Self::Item>> {
         match self.inner.as_mut().poll_next(cx) {
             Poll::Ready(Some(Ok(event))) => {
-                if let Some(thread_id) = event.session_id().map(ToOwned::to_owned) {
-                    if let Ok(mut guard) = self.thread_id.lock() {
-                        *guard = Some(thread_id);
-                    }
+                if let Some(thread_id) = event.session_id().map(ToOwned::to_owned)
+                    && let Ok(mut guard) = self.thread_id.lock()
+                {
+                    *guard = Some(thread_id);
                 }
                 Poll::Ready(Some(Ok(event)))
             }

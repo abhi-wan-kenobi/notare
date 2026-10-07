@@ -70,10 +70,7 @@ where
             let mut left_pcm = Vec::with_capacity(RESAMPLE_CHUNK_SIZE);
             let mut right_pcm = Vec::with_capacity(RESAMPLE_CHUNK_SIZE);
 
-            loop {
-                let Some(left) = source_iter.next() else {
-                    break;
-                };
+            while let Some(left) = source_iter.next() {
                 let right = source_iter.next().unwrap_or(0.0);
                 if remaining_frames == 0 {
                     break;
@@ -153,10 +150,7 @@ where
             let mut left_pcm = Vec::with_capacity(MONO_ENCODE_CHUNK_SIZE);
             let mut right_pcm = Vec::with_capacity(MONO_ENCODE_CHUNK_SIZE);
 
-            loop {
-                let Some(left) = source_iter.next() else {
-                    break;
-                };
+            while let Some(left) = source_iter.next() {
                 let right = source_iter.next().unwrap_or(0.0);
                 if remaining_frames == 0 {
                     break;

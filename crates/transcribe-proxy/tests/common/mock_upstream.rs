@@ -1,3 +1,7 @@
+// The `accept_hdr_async` callbacks must return tungstenite's
+// `Result<Response, ErrorResponse>`; its large `Err` type is fixed upstream.
+#![allow(clippy::result_large_err)]
+
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -168,11 +172,7 @@ async fn drain_client_messages(
     duration: Duration,
 ) -> Result<(), MockUpstreamError> {
     let deadline = Instant::now() + duration;
-    loop {
-        let Some(remaining) = deadline.checked_duration_since(Instant::now()) else {
-            break;
-        };
-
+    while let Some(remaining) = deadline.checked_duration_since(Instant::now()) {
         match tokio::time::timeout(remaining, receiver.next()).await {
             Ok(Some(Ok(message))) => record_client_message(captured_client_messages, &message)?,
             Ok(Some(Err(_))) | Ok(None) | Err(_) => break,
@@ -502,11 +502,7 @@ async fn detect_split_channel(
     spk_probe: &[u8],
 ) -> SplitChannel {
     let deadline = Instant::now() + Duration::from_millis(250);
-    loop {
-        let Some(remaining) = deadline.checked_duration_since(Instant::now()) else {
-            break;
-        };
-
+    while let Some(remaining) = deadline.checked_duration_since(Instant::now()) {
         match tokio::time::timeout(remaining, receiver.next()).await {
             Ok(Some(Ok(message))) => {
                 let _ = record_client_message(captured_client_messages, &message);

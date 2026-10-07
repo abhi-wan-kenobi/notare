@@ -4,7 +4,10 @@ use futures_util::Stream;
 #[cfg(any(test, not(target_os = "macos")))]
 use pin_project::pin_project;
 
+// Test builds swap the real backend for `mock::MockInnerStream`.
+#[cfg_attr(test, allow(dead_code))]
 pub(super) const CHUNK_SIZE: usize = 256;
+#[cfg_attr(test, allow(dead_code))]
 pub(super) const BUFFER_SIZE: usize = CHUNK_SIZE * 256;
 
 #[cfg(target_os = "macos")]
@@ -20,6 +23,9 @@ type PlatformSpeakerInput = windows::SpeakerInput;
 type PlatformSpeakerStream = windows::SpeakerStream;
 
 #[cfg(target_os = "linux")]
+// Test builds swap the real capture path for `mock::MockInnerStream`, leaving
+// the PipeWire/PulseAudio stream code unreachable under cfg(test).
+#[cfg_attr(test, allow(dead_code))]
 mod linux;
 #[cfg(target_os = "linux")]
 type PlatformSpeakerInput = linux::SpeakerInput;

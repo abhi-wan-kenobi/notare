@@ -59,8 +59,8 @@ fn test_table_with_formatting() {
         // The table should contain text with formatting markers
         // Note: The Rust implementation extracts plain text, not HTML formatted text
         // So we're just checking that the table parses correctly
-        assert!(table.rows.len() > 0);
-        assert!(table.rows[0].len() > 0);
+        assert!(!table.rows.is_empty());
+        assert!(!table.rows[0].is_empty());
     }
 }
 

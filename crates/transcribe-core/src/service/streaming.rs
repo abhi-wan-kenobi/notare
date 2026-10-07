@@ -198,10 +198,10 @@ impl<E: SttEngine> Service<Request<Body>> for TranscribeService<E> {
                 // coruscant deployment's live desktop clients or the manual
                 // `transcribe-whisper-local::examples::serve` smoke test —
                 // none of them ever set an `Origin` header.
-                if let Some(origin) = req.headers().get(axum::http::header::ORIGIN) {
-                    if !crate::is_allowed_origin(origin) {
-                        return Ok((StatusCode::FORBIDDEN, "invalid_origin").into_response());
-                    }
+                if let Some(origin) = req.headers().get(axum::http::header::ORIGIN)
+                    && !crate::is_allowed_origin(origin)
+                {
+                    return Ok((StatusCode::FORBIDDEN, "invalid_origin").into_response());
                 }
 
                 let model = match manager.get(None).await {

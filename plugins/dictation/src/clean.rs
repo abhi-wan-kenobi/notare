@@ -99,7 +99,7 @@ fn prepare_rules(mappings: &[DictionaryMapping]) -> Vec<PreparedRule> {
 
     // Longest `wrong` first so overlapping terms ("notare" vs "note") resolve to
     // the most specific match at any given position.
-    rules.sort_by(|a, b| b.wrong.len().cmp(&a.wrong.len()));
+    rules.sort_by_key(|rule| std::cmp::Reverse(rule.wrong.len()));
     rules
 }
 

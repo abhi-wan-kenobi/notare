@@ -36,7 +36,7 @@ impl CursorClientBuilder {
         let auth_header =
             HeaderValue::from_str(&format!("Basic {encoded}")).map_err(|_| Error::InvalidApiKey)?;
 
-        let client = self.client.unwrap_or_else(reqwest::Client::new);
+        let client = self.client.unwrap_or_default();
 
         let mut api_base: url::Url = self
             .api_base

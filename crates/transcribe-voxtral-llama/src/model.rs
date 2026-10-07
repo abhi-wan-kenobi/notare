@@ -203,7 +203,7 @@ impl VoxtralModel {
             .tokenize(input_text, &[&bitmap])
             .map_err(|e| VoxtralError::Tokenize(format!("{e:?}")))?;
 
-        let mut n_past = chunks
+        let n_past = chunks
             .eval_chunks(&self.mtmd_ctx, &llama_ctx, 0, 0, N_BATCH as i32, true)
             .map_err(|e| VoxtralError::Eval(format!("{e:?}")))?;
 
@@ -211,7 +211,7 @@ impl VoxtralModel {
         let mut decoder = encoding_rs::UTF_8.new_decoder();
         let mut output = String::new();
 
-        for _ in 0..MAX_PREDICT_TOKENS {
+        for n_past in (n_past..).take(MAX_PREDICT_TOKENS) {
             let token = sampler.sample(&llama_ctx, -1);
 
             if self.model.is_eog_token(token) {
@@ -231,7 +231,6 @@ impl VoxtralModel {
             llama_ctx
                 .decode(&mut batch)
                 .map_err(|e| VoxtralError::Decode(e.to_string()))?;
-            n_past += 1;
         }
 
         Ok(output.trim().to_string())

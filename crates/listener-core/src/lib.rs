@@ -28,15 +28,11 @@ pub struct Snapshot {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
+#[derive(Default)]
 pub enum TranscriptionMode {
+    #[default]
     Live,
     Batch,
-}
-
-impl Default for TranscriptionMode {
-    fn default() -> Self {
-        Self::Live
-    }
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]

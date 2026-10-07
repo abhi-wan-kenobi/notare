@@ -25,7 +25,7 @@ impl LoopClientBuilder {
         let mut headers = reqwest::header::HeaderMap::new();
 
         let api_key = self.api_key.unwrap();
-        let auth_str = format!("Bearer {}", &api_key);
+        let auth_str = format!("Bearer {}", api_key);
         let mut auth_value = reqwest::header::HeaderValue::from_str(&auth_str).unwrap();
         auth_value.set_sensitive(true);
 

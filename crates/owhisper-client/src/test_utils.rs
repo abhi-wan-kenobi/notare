@@ -106,7 +106,7 @@ pub fn test_audio_stream_single_with_rate(
     .to_i16_le_chunks(sample_rate, chunk_samples());
 
     Box::pin(tokio_stream::StreamExt::throttle(
-        audio.map(|chunk| MixedMessage::Audio(chunk)),
+        audio.map(MixedMessage::Audio),
         Duration::from_millis(throttle_ms()),
     ))
 }
@@ -148,11 +148,11 @@ pub async fn run_single_test_with_rate<A: RealtimeSttAdapter>(
         while let Some(result) = stream.next().await {
             match result {
                 Ok(StreamResponse::TranscriptResponse { channel, .. }) => {
-                    if let Some(alt) = channel.alternatives.first() {
-                        if !alt.transcript.is_empty() {
-                            println!("[{}] {}", provider_name, alt.transcript);
-                            saw_transcript = true;
-                        }
+                    if let Some(alt) = channel.alternatives.first()
+                        && !alt.transcript.is_empty()
+                    {
+                        println!("[{}] {}", provider_name, alt.transcript);
+                        saw_transcript = true;
                     }
                 }
                 Ok(_) => {}
@@ -202,16 +202,16 @@ pub async fn run_dual_test_with_rate<A: RealtimeSttAdapter>(
                     channel_index,
                     ..
                 }) => {
-                    if let Some(alt) = channel.alternatives.first() {
-                        if !alt.transcript.is_empty() {
-                            println!(
-                                "[{}] ch{}: {}",
-                                provider_name,
-                                channel_index.first().unwrap_or(&0),
-                                alt.transcript
-                            );
-                            saw_transcript = true;
-                        }
+                    if let Some(alt) = channel.alternatives.first()
+                        && !alt.transcript.is_empty()
+                    {
+                        println!(
+                            "[{}] ch{}: {}",
+                            provider_name,
+                            channel_index.first().unwrap_or(&0),
+                            alt.transcript
+                        );
+                        saw_transcript = true;
                     }
                 }
                 Ok(_) => {}

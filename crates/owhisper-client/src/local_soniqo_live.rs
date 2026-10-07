@@ -419,8 +419,10 @@ async fn finalize_source(
 
 fn i16_bytes_to_f32(bytes: &Bytes) -> Vec<f32> {
     bytes
-        .chunks_exact(2)
-        .map(|chunk| i16::from_le_bytes([chunk[0], chunk[1]]) as f32 / i16::MAX as f32)
+        .as_chunks::<2>()
+        .0
+        .iter()
+        .map(|&chunk| i16::from_le_bytes(chunk) as f32 / i16::MAX as f32)
         .collect()
 }
 
@@ -461,13 +463,12 @@ fn best_echo_score(mic: &[f32], speaker: &[f32]) -> Option<EchoScore> {
 
     while lag <= max_lag {
         for lag in [-lag, lag] {
-            if let Some(score) = echo_score_at_lag(&mic[..len], &speaker[..len], lag) {
-                if best
+            if let Some(score) = echo_score_at_lag(&mic[..len], &speaker[..len], lag)
+                && best
                     .map(|current| score.correlation > current.correlation)
                     .unwrap_or(true)
-                {
-                    best = Some(score);
-                }
+            {
+                best = Some(score);
             }
         }
         lag += ECHO_GATE_LAG_STEP_SAMPLES;

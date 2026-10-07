@@ -1027,7 +1027,8 @@ mod tests {
 
     #[test]
     fn test_build_proxy_ws_url() {
-        let cases: &[(&str, Option<(&str, Vec<(&str, &str)>)>)] = &[
+        type ExpectedUrl<'a> = Option<(&'a str, Vec<(&'a str, &'a str)>)>;
+        let cases: &[(&str, ExpectedUrl)] = &[
             ("", None),
             ("https://api.deepgram.com", None),
             ("https://api.soniox.com", None),

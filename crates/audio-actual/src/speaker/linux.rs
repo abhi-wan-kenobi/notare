@@ -105,11 +105,13 @@ impl SpeakerStream {
             thread::spawn(move || {
                 let result = pipewire_capture_loop(
                     producer,
-                    Arc::clone(&waker),
-                    wake_pending,
-                    Arc::clone(&alive),
-                    current_sample_rate,
-                    dropped_samples,
+                    CaptureSignals {
+                        waker: Arc::clone(&waker),
+                        wake_pending,
+                        alive: Arc::clone(&alive),
+                        current_sample_rate,
+                        dropped_samples,
+                    },
                     shutdown_rx,
                     init_tx,
                 );
@@ -172,12 +174,14 @@ impl SpeakerStream {
             thread::spawn(move || {
                 let result = pulseaudio_capture_loop(
                     producer,
-                    Arc::clone(&waker),
-                    wake_pending,
-                    Arc::clone(&alive),
+                    CaptureSignals {
+                        waker: Arc::clone(&waker),
+                        wake_pending,
+                        alive: Arc::clone(&alive),
+                        current_sample_rate,
+                        dropped_samples,
+                    },
                     running,
-                    current_sample_rate,
-                    dropped_samples,
                     init_tx,
                 );
 
@@ -221,22 +225,35 @@ impl SpeakerStream {
     }
 }
 
-fn pipewire_capture_loop(
-    producer: HeapProd<f32>,
+/// Shared state a capture thread uses to publish samples and liveness to the
+/// async reader.
+struct CaptureSignals {
     waker: Arc<AtomicWaker>,
     wake_pending: Arc<AtomicBool>,
     alive: Arc<AtomicBool>,
     current_sample_rate: Arc<AtomicU32>,
     dropped_samples: Arc<AtomicUsize>,
+}
+
+fn pipewire_capture_loop(
+    producer: HeapProd<f32>,
+    signals: CaptureSignals,
     shutdown_rx: pw::channel::Receiver<()>,
     init_tx: std::sync::mpsc::Sender<Result<()>>,
 ) -> Result<()> {
+    let CaptureSignals {
+        waker,
+        wake_pending,
+        alive,
+        current_sample_rate,
+        dropped_samples,
+    } = signals;
     pw::init();
     let _deinit_guard = PipeWireDeinitGuard;
 
     let mainloop =
         pw::main_loop::MainLoopRc::new(None).context("Failed to create PipeWire main loop")?;
-    let context = pw::context::ContextBox::new(&mainloop.loop_(), None)
+    let context = pw::context::ContextBox::new(mainloop.loop_(), None)
         .context("Failed to create PipeWire context")?;
     let core = context
         .connect(None)
@@ -397,14 +414,17 @@ impl Drop for PipeWireDeinitGuard {
 
 fn pulseaudio_capture_loop(
     mut producer: HeapProd<f32>,
-    waker: Arc<AtomicWaker>,
-    wake_pending: Arc<AtomicBool>,
-    alive: Arc<AtomicBool>,
+    signals: CaptureSignals,
     running: Arc<AtomicBool>,
-    current_sample_rate: Arc<AtomicU32>,
-    dropped_samples: Arc<AtomicUsize>,
     init_tx: std::sync::mpsc::Sender<Result<()>>,
 ) -> Result<()> {
+    let CaptureSignals {
+        waker,
+        wake_pending,
+        alive,
+        current_sample_rate,
+        dropped_samples,
+    } = signals;
     let mut mainloop = Mainloop::new().context("Failed to create PulseAudio mainloop")?;
     let mut context = PaContext::new(&mainloop, "hyprnote-speaker-capture")
         .context("Failed to create PulseAudio context")?;

@@ -54,11 +54,11 @@ async fn e2e_deepgram_with_mock_analytics() {
         while let Some(result) = stream.next().await {
             match result {
                 Ok(StreamResponse::TranscriptResponse { channel, .. }) => {
-                    if let Some(alt) = channel.alternatives.first() {
-                        if !alt.transcript.is_empty() {
-                            println!("[analytics_test] {}", alt.transcript);
-                            saw_transcript = true;
-                        }
+                    if let Some(alt) = channel.alternatives.first()
+                        && !alt.transcript.is_empty()
+                    {
+                        println!("[analytics_test] {}", alt.transcript);
+                        saw_transcript = true;
                     }
                 }
                 Ok(_) => {}
@@ -84,7 +84,7 @@ async fn e2e_deepgram_with_mock_analytics() {
 
     let duration_secs = event.duration.as_secs_f64();
     assert!(
-        duration_secs >= 5.0 && duration_secs <= 35.0,
+        (5.0..=35.0).contains(&duration_secs),
         "expected duration between 5-35 seconds, got {:.2}s",
         duration_secs
     );

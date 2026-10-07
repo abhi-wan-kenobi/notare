@@ -415,7 +415,7 @@ mod tests {
     async fn test_gladia_batch_transcription() {
         let api_key = std::env::var("GLADIA_API_KEY").expect("GLADIA_API_KEY not set");
         let client = create_client();
-        let adapter = GladiaAdapter::default();
+        let adapter = GladiaAdapter;
         let params = ListenParams::default();
 
         let audio_path = std::path::PathBuf::from(hypr_data::english_1::AUDIO_PATH);

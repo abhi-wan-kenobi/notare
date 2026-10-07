@@ -26,6 +26,9 @@ pub(crate) const WINDOW_SIZE: f32 = 0.01;
 const MAX_TOKENS_PER_STEP: usize = 3;
 const TDT_DURATIONS: [usize; 5] = [0, 1, 2, 3, 4];
 
+/// The GPU execution provider an encoder session was built with, if any.
+type SelectedProvider = (&'static str, ExecutionProviderDispatch);
+
 /// Consecutive GPU inference errors tolerated before the encoder/decoder/
 /// preprocessor sessions are rebuilt on the CPU execution provider (D3). The
 /// Windows DirectML backend can surface a *recoverable* ONNX Runtime error as
@@ -163,8 +166,7 @@ impl ParakeetModel {
         let threads = std::thread::available_parallelism()
             .map(|n| n.get())
             .unwrap_or(1)
-            .min(4)
-            .max(1);
+            .clamp(1, 4);
 
         // Probe GPU execution providers (if this build was compiled with
         // any) on the encoder — the biggest of the three model files, and a
@@ -185,7 +187,7 @@ impl ParakeetModel {
             provider.as_ref(),
         )?;
 
-        let (vocab, blank_idx) = Self::load_vocab(&model_dir)?;
+        let (vocab, blank_idx) = Self::load_vocab(model_dir)?;
         let vocab_size = vocab.len();
 
         tracing::info!(vocab_size, blank_idx, "parakeet_vocabulary_loaded");
@@ -293,7 +295,7 @@ impl ParakeetModel {
     fn init_encoder_session(
         model_dir: &Path,
         threads: usize,
-    ) -> Result<(Session, Option<(&'static str, ExecutionProviderDispatch)>), ParakeetError> {
+    ) -> Result<(Session, Option<SelectedProvider>), ParakeetError> {
         let model_path = model_dir.join(ENCODER_FILE);
 
         for (name, ep) in Self::gpu_execution_providers() {

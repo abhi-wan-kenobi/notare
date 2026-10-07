@@ -135,10 +135,10 @@ impl Thread {
                     *id = Some(thread_id);
                 }
                 ThreadEvent::ItemCompleted { item } => {
-                    if item.item_type == "agent_message" {
-                        if let Some(text) = item.text() {
-                            final_response = text.to_string();
-                        }
+                    if item.item_type == "agent_message"
+                        && let Some(text) = item.text()
+                    {
+                        final_response = text.to_string();
                     }
                     items.push(item);
                 }

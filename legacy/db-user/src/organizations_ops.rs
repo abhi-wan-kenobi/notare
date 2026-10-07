@@ -139,6 +139,6 @@ mod tests {
         let db = setup_db().await;
 
         let organizations = db.list_organizations(None).await.unwrap();
-        assert!(organizations.len() == 0);
+        assert!(organizations.is_empty());
     }
 }

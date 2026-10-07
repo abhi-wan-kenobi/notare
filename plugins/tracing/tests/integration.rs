@@ -1,5 +1,5 @@
 use std::fs;
-use std::path::PathBuf;
+use std::path::Path;
 use std::time::Duration;
 
 use tauri_plugin_tracing::redaction::RedactingWriter;
@@ -10,7 +10,7 @@ use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::{fmt, prelude::*};
 
 fn create_test_file_writer(
-    logs_dir: &PathBuf,
+    logs_dir: &Path,
 ) -> (tracing_appender::non_blocking::NonBlocking, WorkerGuard) {
     let log_path = logs_dir.join("app.log");
     let file_appender = FileRotate::new(

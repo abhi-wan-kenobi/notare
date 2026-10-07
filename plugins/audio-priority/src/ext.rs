@@ -231,6 +231,24 @@ fn merge_priorities_preserving_disconnected(
     result
 }
 
+pub trait AudioPriorityPluginExt<R: tauri::Runtime> {
+    fn audio_priority(&self) -> AudioPriority<'_, R, Self>
+    where
+        Self: tauri::Manager<R> + Sized;
+}
+
+impl<R: tauri::Runtime, T: tauri::Manager<R>> AudioPriorityPluginExt<R> for T {
+    fn audio_priority(&self) -> AudioPriority<'_, R, Self>
+    where
+        Self: Sized,
+    {
+        AudioPriority {
+            manager: self,
+            _runtime: std::marker::PhantomData,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -285,23 +303,5 @@ mod tests {
         let new = vec![s("USB_A"), s("BT")];
         let result = merge_priorities_preserving_disconnected(&old, &new);
         assert_eq!(result, vec![s("Built_In"), s("USB_A"), s("USB_B"), s("BT")]);
-    }
-}
-
-pub trait AudioPriorityPluginExt<R: tauri::Runtime> {
-    fn audio_priority(&self) -> AudioPriority<'_, R, Self>
-    where
-        Self: tauri::Manager<R> + Sized;
-}
-
-impl<R: tauri::Runtime, T: tauri::Manager<R>> AudioPriorityPluginExt<R> for T {
-    fn audio_priority(&self) -> AudioPriority<'_, R, Self>
-    where
-        Self: Sized,
-    {
-        AudioPriority {
-            manager: self,
-            _runtime: std::marker::PhantomData,
-        }
     }
 }

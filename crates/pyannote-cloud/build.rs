@@ -9,11 +9,12 @@ fn fix_pyannote_schema(spec: &mut serde_json::Value) {
         .pointer(pattern_path)
         .and_then(|value| value.as_str())
         .map(ToString::to_string)
+        && pattern.starts_with('/')
+        && pattern.ends_with('/')
+        && pattern.len() > 2
     {
-        if pattern.starts_with('/') && pattern.ends_with('/') && pattern.len() > 2 {
-            *spec.pointer_mut(pattern_path).unwrap() =
-                serde_json::Value::String(pattern[1..pattern.len() - 1].to_string());
-        }
+        *spec.pointer_mut(pattern_path).unwrap() =
+            serde_json::Value::String(pattern[1..pattern.len() - 1].to_string());
     }
 }
 

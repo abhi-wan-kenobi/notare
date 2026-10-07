@@ -102,11 +102,11 @@ impl<'a, R: tauri::Runtime, M: tauri::Manager<R>> Webhook<'a, R, M> {
     // --- In-memory delivery log (bounded ring buffer) ---
 
     pub fn record_delivery(&self, record: DeliveryRecord) {
-        if let Some(state) = self.manager.try_state::<crate::State>() {
-            if let Ok(mut log) = state.log.lock() {
-                log.push_front(record);
-                log.truncate(DELIVERY_LOG_CAP);
-            }
+        if let Some(state) = self.manager.try_state::<crate::State>()
+            && let Ok(mut log) = state.log.lock()
+        {
+            log.push_front(record);
+            log.truncate(DELIVERY_LOG_CAP);
         }
     }
 

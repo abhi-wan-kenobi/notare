@@ -56,7 +56,7 @@ mod tests {
         )
         .unwrap()
         .to_i16_le_chunks(16000, 512);
-        let input = audio.map(|chunk| owhisper_interface::MixedMessage::Audio(chunk));
+        let input = audio.map(owhisper_interface::MixedMessage::Audio);
 
         let _ = client.from_realtime_audio(input).await.unwrap();
 

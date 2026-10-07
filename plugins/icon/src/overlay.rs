@@ -12,6 +12,7 @@ use objc2_app_kit::{
 #[cfg(target_os = "macos")]
 use objc2_foundation::{NSCopying, NSDictionary, NSPoint, NSRect, NSSize, NSString};
 
+#[cfg(target_os = "macos")]
 pub enum Overlay {
     Recording,
     Notification(u8),
@@ -90,6 +91,7 @@ fn draw_badge(
     composite_image
 }
 
+#[cfg(any(target_os = "macos", test))]
 pub(crate) fn notification_badge_label(count: u8) -> Option<String> {
     match count {
         0 => None,

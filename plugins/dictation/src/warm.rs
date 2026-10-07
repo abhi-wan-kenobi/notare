@@ -109,8 +109,8 @@ impl WarmMicState {
     /// newest seen (equal is allowed: retries of the same intent). Stale
     /// out-of-order IPCs are dropped so a late `enable` can never override a
     /// newer `disable`.
-    /// Enable warm-mic: spawn a holder if one is not already running. Idempotent
-    /// - a healthy holder is left untouched, and a dead one (its task exited) is
+    /// Enable warm-mic: spawn a holder if one is not already running. Idempotent:
+    /// a healthy holder is left untouched, and a dead one (its task exited) is
     /// replaced. Called on the enable tick from the frontend.
     /// Apply an enable with its IPC sequence number. The gate and the apply
     /// share the slot's lock, so a stale out-of-order call can never override
@@ -121,12 +121,12 @@ impl WarmMicState {
             return false; // stale: a newer set_warm_mic already applied
         }
         guard.last_seq = seq;
-        if let Some(handle) = guard.handle.as_ref() {
-            if !handle.cmd_tx.is_closed() {
-                // A holder is already live; don't restart it (would drop the
-                // open device and re-pay the cold-open we are trying to avoid).
-                return true;
-            }
+        if let Some(handle) = guard.handle.as_ref()
+            && !handle.cmd_tx.is_closed()
+        {
+            // A holder is already live; don't restart it (would drop the
+            // open device and re-pay the cold-open we are trying to avoid).
+            return true;
         }
         let (cmd_tx, cmd_rx) = mpsc::channel(4);
         tauri::async_runtime::spawn(run_warm_holder(opener, cmd_rx));
@@ -355,15 +355,14 @@ async fn run_warm_holder(opener: Opener, mut cmd_rx: mpsc::Receiver<WarmCmd>) {
 
             frame = stream.next() => match frame {
                 Some(Ok(frame)) => {
-                    if let Some(frame_tx) = &forward {
-                        if frame_tx.send(Ok(frame)).await.is_err() {
+                    if let Some(frame_tx) = &forward
+                        && frame_tx.send(Ok(frame)).await.is_err() {
                             // The session dropped its stream: it ended.
                             if close_after_session {
                                 return;
                             }
                             forward = None;
                         }
-                    }
                     // Draining: discard, keeping the OS buffer empty.
                 }
                 // Dead stream: device invalidated / default device changed.

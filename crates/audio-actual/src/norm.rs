@@ -142,7 +142,7 @@ mod tests {
         ))
         .unwrap();
 
-        let sample_rate: u32 = audio.sample_rate().into();
+        let sample_rate: u32 = audio.sample_rate();
         let mut normalized = audio.normalize();
 
         let mut writer = {

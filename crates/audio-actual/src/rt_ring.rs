@@ -165,7 +165,10 @@ where
     }
 }
 
-#[cfg_attr(not(any(target_os = "linux", target_os = "windows")), allow(dead_code))]
+#[cfg_attr(
+    any(test, not(any(target_os = "linux", target_os = "windows"))),
+    allow(dead_code)
+)]
 pub(crate) fn push_f32le_bytes_first_channel_to_ringbuf<P>(
     data: &[u8],
     channels: usize,

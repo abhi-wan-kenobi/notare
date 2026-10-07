@@ -78,7 +78,7 @@ struct SupportContextBlock<'a> {
 #[derive(Clone, serde::Deserialize, serde::Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub enum SupportTemplate {
-    SupportContext(SupportContext),
+    SupportContext(Box<SupportContext>),
     BugReport(BugReport),
     FeatureRequest(FeatureRequest),
     LogAnalysis(LogAnalysis),

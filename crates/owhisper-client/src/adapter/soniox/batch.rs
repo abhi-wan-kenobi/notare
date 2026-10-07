@@ -314,7 +314,7 @@ mod tests {
     async fn test_soniox_batch_transcription() {
         let api_key = std::env::var("SONIOX_API_KEY").expect("SONIOX_API_KEY not set");
         let client = create_client();
-        let adapter = SonioxAdapter::default();
+        let adapter = SonioxAdapter;
         let params = ListenParams::default();
 
         let audio_path = std::path::PathBuf::from(hypr_data::english_1::AUDIO_PATH);

@@ -196,6 +196,8 @@ impl TryFrom<serde_json::Value> for ThreadEvent {
     }
 }
 
+// Boxing `UserInputMessage` would change this public enum's variant type.
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone)]
 pub enum UserInput {
     Text(String),

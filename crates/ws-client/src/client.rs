@@ -137,15 +137,18 @@ impl WebSocketClient {
         T::Output: Send + 'static,
     {
         if let Some(policy) = self.reconnect.clone() {
-            self.from_audio_reconnecting::<T, S>(initial_message, audio_stream, policy)
+            self.stream_audio_reconnecting::<T, S>(initial_message, audio_stream, policy)
                 .await
         } else {
-            self.from_audio_single::<T, S>(initial_message, audio_stream)
+            self.stream_audio_single::<T, S>(initial_message, audio_stream)
                 .await
         }
     }
 
-    async fn from_audio_single<T: WebSocketIO, S: Stream<Item = T::Data> + Send + Unpin + 'static>(
+    async fn stream_audio_single<
+        T: WebSocketIO,
+        S: Stream<Item = T::Data> + Send + Unpin + 'static,
+    >(
         &self,
         initial_message: Option<Message>,
         mut audio_stream: S,
@@ -351,7 +354,7 @@ impl WebSocketClient {
         Ok((Box::pin(output_stream), handle))
     }
 
-    /// Reconnecting wrapper around `from_audio_single`. It owns the caller's
+    /// Reconnecting wrapper around `stream_audio_single`. It owns the caller's
     /// audio stream and forwards it into a fresh single-connection inner client
     /// for each connection cycle. The inner connection's send/keepalive/finalize
     /// semantics are unchanged (this layer never touches the socket directly);
@@ -364,7 +367,7 @@ impl WebSocketClient {
     /// current utterance — is dropped. VAD chunks are independent server-side,
     /// so only that one partial utterance is lost; streaming resumes cleanly on
     /// the next chunk. Logged at `warn`.
-    async fn from_audio_reconnecting<
+    async fn stream_audio_reconnecting<
         T: WebSocketIO,
         S: Stream<Item = T::Data> + Send + Unpin + 'static,
     >(
@@ -391,7 +394,7 @@ impl WebSocketClient {
         // to the caller at call time, exactly like the non-reconnecting path.
         let (first_tx, first_rx) = tokio::sync::mpsc::channel::<T::Data>(AUDIO_FWD_BUFFER);
         let (mut inner_out, mut inner_handle) = initial_client
-            .from_audio_single::<T, _>(
+            .stream_audio_single::<T, _>(
                 initial_message.clone(),
                 tokio_stream::wrappers::ReceiverStream::new(first_rx),
             )
@@ -469,7 +472,7 @@ impl WebSocketClient {
                                 let (tx, rx) =
                                     tokio::sync::mpsc::channel::<T::Data>(AUDIO_FWD_BUFFER);
                                 match reconnect_client
-                                    .from_audio_single::<T, _>(
+                                    .stream_audio_single::<T, _>(
                                         initial_message.clone(),
                                         tokio_stream::wrappers::ReceiverStream::new(rx),
                                     )

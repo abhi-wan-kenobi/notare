@@ -121,18 +121,17 @@ fn downmix_to_mono(samples: &[f32], channels: usize) -> Vec<f32> {
         .collect()
 }
 
-fn run_masking(
-    original: &[f32],
-    frame_hint: usize,
-    cfg: VadConfig,
-) -> (
+/// `(masked, removed, spans, speech_samples, muted_samples, frame_size)`
+type MaskingResult = (
     Vec<f32>,
     Vec<f32>,
     Vec<(usize, usize, bool)>,
     usize,
     usize,
     usize,
-) {
+);
+
+fn run_masking(original: &[f32], frame_hint: usize, cfg: VadConfig) -> MaskingResult {
     let mut masked = original.to_vec();
     let mut removed = vec![0.0; original.len()];
     let mut spans = Vec::new();

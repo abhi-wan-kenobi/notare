@@ -72,7 +72,7 @@ mod tests {
             source.poll_count += 1;
             if source.pending_yield {
                 source.pending_yield = false;
-            } else if source.poll_count % 1000 == 0 {
+            } else if source.poll_count.is_multiple_of(1000) {
                 let waker = cx.waker().clone();
                 source.pending_yield = true;
                 tokio::spawn(async move {

@@ -111,12 +111,12 @@ impl VadChunkerConfig {
             ));
         }
 
-        if let Some(max_chunk) = self.max_chunk_duration {
-            if max_chunk < self.min_chunk_duration {
-                return Err(crate::Error::InvalidConfig(
-                    "max_chunk_duration must be >= min_chunk_duration".into(),
-                ));
-            }
+        if let Some(max_chunk) = self.max_chunk_duration
+            && max_chunk < self.min_chunk_duration
+        {
+            return Err(crate::Error::InvalidConfig(
+                "max_chunk_duration must be >= min_chunk_duration".into(),
+            ));
         }
 
         Ok(())
@@ -367,29 +367,25 @@ impl VadSession {
                 // live cursor with no trailing silence, then continues the same
                 // utterance in a fresh confirmed chunk starting at the cut point
                 // so no audio is dropped and no spurious SpeechStart is emitted.
-                if confirmed {
-                    if let Some(max_chunk_samples) = self
+                if confirmed
+                    && let Some(max_chunk_samples) = self
                         .config
                         .max_chunk_duration
                         .map(Self::duration_to_samples)
-                    {
-                        let span = self.cursor_sample.saturating_sub(start_sample);
-                        if span >= max_chunk_samples {
-                            let cut_sample = self.cursor_sample;
-                            let transition = self.speech_end_transition(
-                                start_sample,
-                                cut_sample,
-                                speech_samples,
-                            );
-                            self.state = VadState::Speech {
-                                start_sample: cut_sample,
-                                confirmed: true,
-                                speech_samples: 0,
-                            };
-                            self.silent_samples = 0;
-                            self.trim_buffer();
-                            return Some(transition);
-                        }
+                {
+                    let span = self.cursor_sample.saturating_sub(start_sample);
+                    if span >= max_chunk_samples {
+                        let cut_sample = self.cursor_sample;
+                        let transition =
+                            self.speech_end_transition(start_sample, cut_sample, speech_samples);
+                        self.state = VadState::Speech {
+                            start_sample: cut_sample,
+                            confirmed: true,
+                            speech_samples: 0,
+                        };
+                        self.silent_samples = 0;
+                        self.trim_buffer();
+                        return Some(transition);
                     }
                 }
 

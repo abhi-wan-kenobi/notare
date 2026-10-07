@@ -74,9 +74,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         &args.mode,
         args.chunk_size,
         len_audio,
-        &mic,
-        &processed,
-        &removed,
+        [rms(&mic), rms(&processed), rms(&removed)],
     )?;
 
     let bundle = Project::new()
@@ -211,9 +209,7 @@ fn write_summary(
     mode: &Mode,
     chunk_size: usize,
     total_samples: usize,
-    mic: &[f32],
-    processed: &[f32],
-    removed: &[f32],
+    [mic_rms, aec_rms, removed_rms]: [f32; 3],
 ) -> Result<(), Box<dyn Error>> {
     let body = format!(
         "mic={}\nlpb={}\nmode={}\nchunk_size={}\nsample_rate={}\nduration_sec={:.3}\nmic_rms={:.6}\naec_rms={:.6}\nremoved_rms={:.6}\n",
@@ -226,9 +222,9 @@ fn write_summary(
         chunk_size,
         TARGET_SAMPLE_RATE,
         total_samples as f64 / TARGET_SAMPLE_RATE as f64,
-        rms(mic),
-        rms(processed),
-        rms(removed),
+        mic_rms,
+        aec_rms,
+        removed_rms,
     );
 
     fs::write(path, body)?;

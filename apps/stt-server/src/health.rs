@@ -204,7 +204,7 @@ mod tests {
     #[test]
     fn higher_fail_streak_needs_more_lows() {
         let mut s = 0;
-        let mut degraded = false;
+        let mut degraded;
         for _ in 0..4 {
             (s, degraded) = update_streak(s, Some(2.0), 5.0, 5);
             assert!(!degraded, "should not trip before 5 consecutive lows");
@@ -217,7 +217,7 @@ mod tests {
     /// Streak saturates instead of overflowing on a long run of lows.
     #[test]
     fn streak_saturates() {
-        let mut s = u32::MAX - 1;
+        let s = u32::MAX - 1;
         let (_, degraded) = update_streak(s, None, 5.0, 2);
         let _ = degraded;
         let (next, _) = update_streak(s, None, 5.0, 2);

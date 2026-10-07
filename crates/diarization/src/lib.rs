@@ -102,9 +102,11 @@ impl Diarizer {
         num_speakers: Option<i32>,
     ) -> Result<Vec<DiarizedSegment>, DiarizeError> {
         let (num_clusters, threshold) = cluster_config(num_speakers);
-        let mut config = DiarizeConfig::default();
-        config.num_clusters = num_clusters;
-        config.threshold = threshold;
+        let config = DiarizeConfig {
+            num_clusters,
+            threshold,
+            ..Default::default()
+        };
 
         let inner = Diarize::new(&self.segmentation_model, &self.embedding_model, config)?;
         self.inner = inner;

@@ -256,7 +256,7 @@ mod tests {
     #[test]
     fn test_default_params() {
         run_url_test_cases(
-            &FireworksAdapter::default(),
+            &FireworksAdapter,
             API_BASE,
             &[UrlTestCase {
                 name: "default_params",
@@ -275,7 +275,7 @@ mod tests {
     #[test]
     fn test_language_urls() {
         run_url_test_cases(
-            &FireworksAdapter::default(),
+            &FireworksAdapter,
             API_BASE,
             &[
                 UrlTestCase {

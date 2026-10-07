@@ -67,7 +67,7 @@ async fn spawn_receiver(statuses: Vec<u16>) -> FakeReceiver {
                     if let Some(v) = lower.strip_prefix("content-length:") {
                         content_length = v.trim().parse().unwrap_or(0);
                     }
-                    if let Some(v) = line.splitn(2, ':').nth(1) {
+                    if let Some(v) = line.split_once(':').map(|x| x.1) {
                         if lower.starts_with("x-notare-signature:") {
                             cap.signature = Some(v.trim().to_string());
                         } else if lower.starts_with("x-notare-event:") {

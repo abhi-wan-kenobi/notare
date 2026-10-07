@@ -142,19 +142,6 @@ pub struct SessionBuilder {
 }
 
 impl SessionBuilder {
-    pub fn note(mut self, id: &str, content: &str) -> Self {
-        self.session.notes.push(Note {
-            id: id.to_string(),
-            content: content.to_string(),
-        });
-        self
-    }
-
-    pub fn memo(mut self, content: &str) -> Self {
-        self.session.memo = Some(content.to_string());
-        self
-    }
-
     pub fn no_meta(mut self) -> Self {
         self.session.has_meta = false;
         self
@@ -217,7 +204,7 @@ pub struct TestEnv {
 }
 
 impl TestEnv {
-    pub fn new() -> TestEnvBuilder {
+    pub fn builder() -> TestEnvBuilder {
         TestEnvBuilder::default()
     }
 
