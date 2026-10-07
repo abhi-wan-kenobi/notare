@@ -140,8 +140,6 @@ impl ServerHandler for NotareMcpServer {
         params: Option<PaginatedRequestParams>,
         _context: RequestContext<RoleServer>,
     ) -> std::result::Result<ListResourcesResult, McpError> {
-        use rmcp::model::AnnotateAble;
-
         let offset = params
             .and_then(|params| params.cursor)
             .map(|cursor| {
@@ -172,10 +170,9 @@ impl ServerHandler for NotareMcpServer {
                 } else {
                     meeting.title
                 };
-                RawResource::new(format!("anarlog://meetings/{}", meeting.id), name)
+                Resource::new(format!("anarlog://meetings/{}", meeting.id), name)
                     .with_description("Notare meeting context")
                     .with_mime_type("text/markdown")
-                    .no_annotation()
             })
             .collect();
 
@@ -191,24 +188,19 @@ impl ServerHandler for NotareMcpServer {
         _params: Option<PaginatedRequestParams>,
         _context: RequestContext<RoleServer>,
     ) -> std::result::Result<ListResourceTemplatesResult, McpError> {
-        use rmcp::model::AnnotateAble;
-
         Ok(ListResourceTemplatesResult::with_all_items(vec![
-            RawResourceTemplate::new("anarlog://meetings/{meeting_id}", "Notare meeting")
+            ResourceTemplate::new("anarlog://meetings/{meeting_id}", "Notare meeting")
                 .with_description("Meeting metadata, note, summaries, people, and action items")
-                .with_mime_type("text/markdown")
-                .no_annotation(),
-            RawResourceTemplate::new(
+                .with_mime_type("text/markdown"),
+            ResourceTemplate::new(
                 "anarlog://meetings/{meeting_id}/transcript{?offset,limit}",
                 "Notare meeting transcript",
             )
             .with_description("A bounded page of meeting transcript text")
-            .with_mime_type("text/plain")
-            .no_annotation(),
-            RawResourceTemplate::new("anarlog://series/{series_id}", "Notare meeting series")
+            .with_mime_type("text/plain"),
+            ResourceTemplate::new("anarlog://series/{series_id}", "Notare meeting series")
                 .with_description("Recurring meeting history")
-                .with_mime_type("text/markdown")
-                .no_annotation(),
+                .with_mime_type("text/markdown"),
         ]))
     }
 
@@ -516,8 +508,8 @@ mod tests {
             .iter()
             .map(|template| {
                 (
-                    template.raw.name.clone(),
-                    template.raw.uri_template.clone(),
+                    template.name.clone(),
+                    template.uri_template.clone(),
                     template.annotations.clone(),
                 )
             })
@@ -548,8 +540,8 @@ mod tests {
             assert!(mcp_skill.contains(uri), "Notare skill is missing `{uri}`");
         }
         assert_eq!(resources.len(), 1);
-        assert_eq!(resources[0].raw.name, "Planning");
-        assert_eq!(resources[0].raw.uri, "anarlog://meetings/meeting-1");
+        assert_eq!(resources[0].name, "Planning");
+        assert_eq!(resources[0].uri, "anarlog://meetings/meeting-1");
         assert!(resources[0].annotations.is_none());
 
         client.cancel().await.unwrap();

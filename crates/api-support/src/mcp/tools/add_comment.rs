@@ -29,7 +29,7 @@ pub(crate) async fn add_comment(
         .await
         .map_err(|e| McpError::internal_error(e.to_string(), None))?;
 
-    Ok(CallToolResult::success(vec![Content::text(
+    Ok(CallToolResult::success(vec![ContentBlock::text(
         serde_json::json!({
             "success": true,
             "comment_url": url,

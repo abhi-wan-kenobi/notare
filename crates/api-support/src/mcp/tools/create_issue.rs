@@ -48,7 +48,7 @@ pub(crate) async fn create_issue(
             .await
             .map_err(|e| McpError::internal_error(e.to_string(), None))?;
 
-    Ok(CallToolResult::success(vec![Content::text(
+    Ok(CallToolResult::success(vec![ContentBlock::text(
         serde_json::json!({
             "success": true,
             "issue_url": url,
