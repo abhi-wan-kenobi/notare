@@ -1,0 +1,31 @@
+[package]
+name = "crsqlite"
+version = "0.1.0"
+edition = "2024"
+
+[build-dependencies]
+# Hashes the vendored prebuilt binaries against vendor/SHA256SUMS at build
+# time (the release pin recorded when the vlcn-io v0.16.3 assets were
+# vendored) — a tampered/corrupted vendor file must fail the build, not the
+# app's first run.
+sha2 = { workspace = true }
+[dependencies]
+dirs = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sqlx = { workspace = true, features = ["runtime-tokio", "sqlite", "sqlite-unbundled"] }
+thiserror = { workspace = true }
+
+# The `spike` module (Phase 0 harness, still a lib module because the
+# env-gated integration tests in tests/ reach it through `crsqlite::spike`)
+# drives the real schema (db-app + db-migrate), the real open path
+# (db-core: Db::open + sqlite-vec registration) and the real update-hook
+# wiring (db-change: ChangeNotifier).
+hypr-db-app = { workspace = true }
+hypr-db-change = { workspace = true }
+hypr-db-core = { workspace = true }
+hypr-db-migrate = { workspace = true }
+tempfile = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt", "time"] }
