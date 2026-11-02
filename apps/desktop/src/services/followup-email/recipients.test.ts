@@ -81,4 +81,13 @@ describe("extractExternalAttendees", () => {
     // Both friends are external (gmail is not treated as a private org domain)
     expect(result).toEqual(["friend1@gmail.com", "friend2@gmail.com"]);
   });
+
+  it("returns empty array safely when attendees is not an array", () => {
+    // @ts-expect-error testing runtime defensive check
+    expect(extractExternalAttendees(null)).toEqual([]);
+    // @ts-expect-error testing runtime defensive check
+    expect(extractExternalAttendees(undefined)).toEqual([]);
+    // @ts-expect-error testing runtime defensive check
+    expect(extractExternalAttendees({ "0": "alice@example.com" })).toEqual([]);
+  });
 });

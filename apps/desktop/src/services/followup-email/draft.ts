@@ -59,9 +59,13 @@ export function parseFollowupOutput(
     subject = subjectMatch[1].trim();
   }
 
-  const bodyMatch = trimmed.match(/^BODY:\s*([\s\S]*)$/im);
-  if (bodyMatch) {
-    body = bodyMatch[1].trim();
+  const bodyMarker = trimmed.match(/^BODY:\s*/im);
+  if (bodyMarker && bodyMarker.index !== undefined) {
+    const afterBody = trimmed.slice(bodyMarker.index + bodyMarker[0].length);
+    const fenceIndex = afterBody.search(/\n```/);
+    body = (
+      fenceIndex !== -1 ? afterBody.slice(0, fenceIndex) : afterBody
+    ).trim();
   } else if (subjectMatch) {
     // If SUBJECT was found but no explicit BODY marker, take the rest after the SUBJECT line
     const afterSubject = trimmed.replace(/^SUBJECT:\s*.+$/im, "").trim();

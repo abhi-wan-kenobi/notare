@@ -84,4 +84,49 @@ describe("deliverFollowupEmail", () => {
     expect(clipboardMock).toHaveBeenCalledWith("Here is the recap.");
     expect(openerCommands.openUrl).toHaveBeenCalledWith(result.mailtoUrl, null);
   });
+
+  it("surfaces reason and delivered: mailto when Gmail draft creation fails", async () => {
+    calendarCommands.gmailStatus.mockResolvedValue({
+      status: "ok",
+      data: {
+        has_client: true,
+        connected: true,
+        accounts: ["alice@gmail.com"],
+      },
+    });
+
+    calendarCommands.gmailCreateDraft.mockRejectedValue(
+      new Error("API rate limit exceeded"),
+    );
+
+    const clipboardMock = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal("navigator", {
+      clipboard: {
+        writeText: clipboardMock,
+      },
+    });
+
+    const result = await deliverFollowupEmail({
+      to: ["client@example.com"],
+      subject: "Follow-up",
+      body: "Here is the recap.",
+    });
+
+    expect(result.method).toBe("mailto");
+    expect(result.delivered).toBe("mailto");
+    expect(result.reason).toContain("API rate limit exceeded");
+    expect(result.mailtoUrl).toContain("mailto:client@example.com?");
+    expect(clipboardMock).toHaveBeenCalledWith("Here is the recap.");
+    expect(openerCommands.openUrl).toHaveBeenCalledWith(result.mailtoUrl, null);
+  });
+
+  it("throws an error when recipient list is empty", async () => {
+    await expect(
+      deliverFollowupEmail({
+        to: [],
+        subject: "Follow-up",
+        body: "Here is the recap.",
+      }),
+    ).rejects.toThrow("No recipients specified for follow-up email");
+  });
 });

@@ -7,6 +7,9 @@ pub enum Error {
     #[error("port {0} is already in use")]
     PortInUse(u16),
 
+    #[error("invalid port {0}: port cannot be 0 or a privileged port (< 1024)")]
+    InvalidPort(u16),
+
     #[error("keyring error: {0}")]
     Keyring(String),
 

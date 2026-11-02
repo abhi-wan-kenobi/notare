@@ -5,8 +5,11 @@ import { buildMailtoUrl } from "./mailto";
 
 export interface DeliveryResult {
   method: "gmail" | "mailto";
+  delivered?: "gmail" | "mailto";
   draftId?: string;
   mailtoUrl?: string;
+  reason?: string;
+  fallbackReason?: string;
 }
 
 /**
@@ -26,6 +29,11 @@ export async function deliverFollowupEmail({
   body: string;
   accountEmail?: string | null;
 }): Promise<DeliveryResult> {
+  const recipients = to.filter(Boolean).map((e) => e.trim());
+  if (recipients.length === 0) {
+    throw new Error("No recipients specified for follow-up email");
+  }
+
   let isGmailConnected = false;
 
   try {
@@ -43,21 +51,26 @@ export async function deliverFollowupEmail({
     isGmailConnected = false;
   }
 
+  let gmailFailureReason: string | undefined;
+
   if (isGmailConnected) {
     try {
       const draftResult = await calendarCommands.gmailCreateDraft(
         accountEmail ?? null,
-        to,
+        recipients,
         subject,
         body,
       );
       if (draftResult.status === "ok") {
         return {
           method: "gmail",
+          delivered: "gmail",
           draftId: draftResult.data,
         };
       }
+      gmailFailureReason = draftResult.error ?? "Failed to create Gmail draft";
     } catch (e) {
+      gmailFailureReason = e instanceof Error ? e.message : String(e);
       console.warn("failed to create Gmail draft; falling back to mailto", e);
     }
   }
@@ -71,7 +84,7 @@ export async function deliverFollowupEmail({
     }
   }
 
-  const mailtoUrl = buildMailtoUrl(to, subject, body);
+  const mailtoUrl = buildMailtoUrl(recipients, subject, body);
   try {
     await openerCommands.openUrl(mailtoUrl, null);
   } catch (e) {
@@ -80,6 +93,10 @@ export async function deliverFollowupEmail({
 
   return {
     method: "mailto",
+    delivered: "mailto",
     mailtoUrl,
+    ...(gmailFailureReason
+      ? { reason: gmailFailureReason, fallbackReason: gmailFailureReason }
+      : {}),
   };
 }

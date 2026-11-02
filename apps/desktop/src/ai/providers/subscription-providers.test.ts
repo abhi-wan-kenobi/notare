@@ -6,11 +6,16 @@ import {
 } from "./anthropic-subscription";
 import {
   createGeminiSubscriptionFetch,
+  createGeminiSubscriptionModel,
   rewriteGeminiUrl,
   transformGeminiResponse,
   wrapGeminiRequestBody,
 } from "./gemini-subscription";
 import { createOpenAICodexSubscriptionFetch } from "./openai-codex-subscription";
+import {
+  createSubscriptionFetch,
+  extractVendorErrorMessage,
+} from "./subscription-fetch";
 
 const mocks = vi.hoisted(() => ({
   sonnerToastError: vi.fn(),
@@ -392,6 +397,266 @@ describe("Gemini Subscription Provider", () => {
     expect(headers.get("Authorization")).toBe("Bearer google-oauth-token-xyz");
     const parsedBody = JSON.parse(String(capturedInit?.body));
     expect(parsedBody.model).toBe("gemini-2.5-pro");
+    expect(parsedBody.project).toBe("test-proj-456");
     expect(parsedBody.request).toEqual({ contents: [] });
+  });
+
+  it("strips content-length and content-encoding in transformGeminiResponse", async () => {
+    const initialHeaders = new Headers({
+      "Content-Type": "application/json",
+      "Content-Length": "1234",
+      "Content-Encoding": "gzip",
+    });
+    const jsonResponse = new Response(
+      JSON.stringify({
+        response: { candidates: [] },
+        traceId: "test-trace",
+      }),
+      {
+        status: 200,
+        headers: initialHeaders,
+      },
+    );
+
+    const transformed = await transformGeminiResponse(jsonResponse);
+    expect(transformed.headers.get("content-length")).toBeNull();
+    expect(transformed.headers.get("content-encoding")).toBeNull();
+
+    const sseHeaders = new Headers({
+      "Content-Type": "text/event-stream",
+      "Content-Length": "5678",
+      "Content-Encoding": "deflate",
+    });
+    const sseResponse = new Response(
+      new ReadableStream({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode("data: [DONE]\n\n"));
+          controller.close();
+        },
+      }),
+      {
+        status: 200,
+        headers: sseHeaders,
+      },
+    );
+
+    const transformedSse = await transformGeminiResponse(sseResponse);
+    expect(transformedSse.headers.get("content-length")).toBeNull();
+    expect(transformedSse.headers.get("content-encoding")).toBeNull();
+  });
+
+  it("re-reads project_id from token on each request and on 401 retry", async () => {
+    let attempt = 0;
+    const capturedBodies: Array<Record<string, unknown>> = [];
+
+    const fakeFetch: typeof fetch = async (_url, init) => {
+      attempt++;
+      capturedBodies.push(JSON.parse(String(init?.body)));
+      if (attempt === 1) {
+        return new Response(
+          JSON.stringify({ error: { message: "stale token" } }),
+          {
+            status: 401,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
+      return new Response(JSON.stringify({ response: { candidates: [] } }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    };
+
+    let tokenCall = 0;
+    const geminiFetch = createGeminiSubscriptionFetch("gemini-2.5-pro", {
+      fetchFn: fakeFetch,
+      getToken: async () => {
+        tokenCall++;
+        return {
+          token: `token-${tokenCall}`,
+          extra: { project_id: `proj-${tokenCall}` },
+        };
+      },
+    });
+
+    const res = await geminiFetch(
+      "https://cloudcode-pa.googleapis.com/v1internal:generateContent",
+      {
+        method: "POST",
+        body: JSON.stringify({ contents: [{ text: "hi" }] }),
+        headers: { "Content-Type": "application/json" },
+      },
+    );
+
+    expect(res.status).toBe(200);
+    expect(attempt).toBe(2);
+    expect(capturedBodies[0].project).toBe("proj-1");
+    expect(capturedBodies[1].project).toBe("proj-2");
+  });
+
+  it("creates GoogleGenerativeAI model bound to custom subscription fetch", () => {
+    const model = createGeminiSubscriptionModel("gemini-2.5-pro", {
+      getToken: async () => ({
+        token: "test-token",
+        extra: { project_id: "test-project" },
+      }),
+    });
+    expect(model).toBeDefined();
+    expect(model.modelId).toBe("gemini-2.5-pro");
+    expect(model.provider).toBe("google.generative-ai");
+  });
+});
+
+describe("Subscription Fetch 401 Retry & Error Handling", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("surfaces original vendor error when 401 retry also fails", async () => {
+    let attempt = 0;
+    const fakeFetch: typeof fetch = async () => {
+      attempt++;
+      if (attempt === 1) {
+        return new Response(
+          JSON.stringify({
+            error: { message: "Original token expired or invalid" },
+          }),
+          { status: 401, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      return new Response(
+        JSON.stringify({
+          error: { message: "Retry refresh failed: token revoked" },
+        }),
+        { status: 401, headers: { "Content-Type": "application/json" } },
+      );
+    };
+
+    let tokenCalls = 0;
+    const customFetch = createSubscriptionFetch({
+      provider: "anthropic",
+      fetchFn: fakeFetch,
+      getToken: async () => {
+        tokenCalls++;
+        return { token: `token-${tokenCalls}`, extra: {} };
+      },
+    });
+
+    const res = await customFetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      body: JSON.stringify({ messages: [] }),
+    });
+
+    expect(res.status).toBe(401);
+    expect(attempt).toBe(2);
+    expect(tokenCalls).toBe(2);
+    expect(mocks.sonnerToastError).toHaveBeenCalledWith(
+      "Original token expired or invalid. Please sign in again.",
+    );
+  });
+
+  it("buffers ReadableStream request body before first attempt and reuses it on retry", async () => {
+    let attempt = 0;
+    const capturedBodies: string[] = [];
+
+    const fakeFetch: typeof fetch = async (_url, init) => {
+      attempt++;
+      capturedBodies.push(String(init?.body));
+      if (attempt === 1) {
+        return new Response(JSON.stringify({ error: "401 Unauthorized" }), {
+          status: 401,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    };
+
+    const payloadText = JSON.stringify({
+      prompt: "streamed message to buffer",
+    });
+    const stream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode(payloadText));
+        controller.close();
+      },
+    });
+
+    const customFetch = createSubscriptionFetch({
+      provider: "anthropic",
+      fetchFn: fakeFetch,
+      getToken: async () => ({ token: "dummy-token", extra: {} }),
+    });
+
+    const res = await customFetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      body: stream,
+    });
+
+    expect(res.status).toBe(200);
+    expect(attempt).toBe(2);
+    expect(capturedBodies[0]).toBe(payloadText);
+    expect(capturedBodies[1]).toBe(payloadText);
+  });
+
+  it("runs transformResponse on every returned response path", async () => {
+    const transformTracker = vi.fn((resp: Response) => {
+      const headers = new Headers(resp.headers);
+      headers.set("X-Transformed", "true");
+      return new Response(resp.body, {
+        status: resp.status,
+        statusText: resp.statusText,
+        headers,
+      });
+    });
+
+    // Path 1: 200 OK
+    const fetch200 = createSubscriptionFetch({
+      provider: "anthropic",
+      fetchFn: async () => new Response("ok", { status: 200 }),
+      getToken: async () => ({ token: "tok", extra: {} }),
+      transformResponse: transformTracker,
+    });
+    const res200 = await fetch200("https://api.anthropic.com/v1/messages");
+    expect(res200.status).toBe(200);
+    expect(res200.headers.get("X-Transformed")).toBe("true");
+
+    // Path 2: 403 Forbidden
+    const fetch403 = createSubscriptionFetch({
+      provider: "anthropic",
+      fetchFn: async () => new Response("forbidden", { status: 403 }),
+      getToken: async () => ({ token: "tok", extra: {} }),
+      transformResponse: transformTracker,
+    });
+    const res403 = await fetch403("https://api.anthropic.com/v1/messages");
+    expect(res403.status).toBe(403);
+    expect(res403.headers.get("X-Transformed")).toBe("true");
+
+    // Path 3: 401 retry failure
+    const fetch401Fail = createSubscriptionFetch({
+      provider: "anthropic",
+      fetchFn: async () => new Response("unauthorized", { status: 401 }),
+      getToken: async () => ({ token: "tok", extra: {} }),
+      transformResponse: transformTracker,
+    });
+    const res401 = await fetch401Fail("https://api.anthropic.com/v1/messages");
+    expect(res401.status).toBe(401);
+    expect(res401.headers.get("X-Transformed")).toBe("true");
+  });
+
+  it("extractVendorErrorMessage truncates long error messages with ellipsis", async () => {
+    const longText = "A".repeat(350);
+    const longResponse = new Response(longText, {
+      status: 500,
+      statusText: "Server Error",
+      headers: { "Content-Type": "text/plain" },
+    });
+
+    const msg = await extractVendorErrorMessage(longResponse);
+    expect(msg.length).toBe(303);
+    expect(msg.endsWith("...")).toBe(true);
+    expect(msg.startsWith("A".repeat(300))).toBe(true);
   });
 });

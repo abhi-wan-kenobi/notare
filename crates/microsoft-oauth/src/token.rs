@@ -1,4 +1,8 @@
 use crate::error::Error;
+use std::time::Duration;
+
+/// Default per-request timeout for token endpoint and Graph API calls.
+pub const DEFAULT_REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// Response from Microsoft's token endpoint (code exchange or refresh).
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
@@ -73,6 +77,7 @@ async fn post_token_endpoint(
             "application/x-www-form-urlencoded",
         )
         .body(body)
+        .timeout(DEFAULT_REQUEST_TIMEOUT)
         .send()
         .await?;
 
@@ -99,6 +104,9 @@ pub async fn exchange_code(
     redirect_uri: &str,
     pkce_verifier: &str,
 ) -> Result<TokenResponse, Error> {
+    if code.trim().is_empty() {
+        return Err(Error::Api("empty authorization code".into()));
+    }
     let body = form_encode(&[
         ("client_id", client_id),
         ("grant_type", "authorization_code"),
@@ -117,6 +125,9 @@ pub async fn refresh_access_token(
     refresh_token: &str,
     scopes: Option<&[&str]>,
 ) -> Result<TokenResponse, Error> {
+    if refresh_token.trim().is_empty() {
+        return Err(Error::Api("empty refresh token".into()));
+    }
     let mut pairs = vec![
         ("client_id", client_id),
         ("grant_type", "refresh_token"),
@@ -144,6 +155,7 @@ pub async fn fetch_user_profile(
             reqwest::header::AUTHORIZATION,
             format!("Bearer {access_token}"),
         )
+        .timeout(DEFAULT_REQUEST_TIMEOUT)
         .send()
         .await?;
 
@@ -302,5 +314,27 @@ mod tests {
         .unwrap_err();
 
         assert!(matches!(err, Error::TokenEndpoint { .. }));
+    }
+
+    #[tokio::test]
+    async fn rejects_empty_code_in_exchange() {
+        let http = reqwest::Client::new();
+        let err = exchange_code(
+            &http,
+            "http://127.0.0.1:9999/token",
+            "cid",
+            "  ",
+            "http://localhost:54321",
+            "verifier",
+        )
+        .await;
+        assert!(matches!(err, Err(Error::Api(_))));
+    }
+
+    #[tokio::test]
+    async fn rejects_empty_refresh_token() {
+        let http = reqwest::Client::new();
+        let err = refresh_access_token(&http, "http://127.0.0.1:9999/token", "cid", "", None).await;
+        assert!(matches!(err, Err(Error::Api(_))));
     }
 }

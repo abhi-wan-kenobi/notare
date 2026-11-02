@@ -151,11 +151,16 @@ pub fn open_calendar<R: tauri::Runtime>(
 pub async fn create_event<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
     provider: CalendarProviderType,
+    connection_id: String,
     input: CreateEventInput,
 ) -> Result<String, Error> {
     match provider {
-        CalendarProviderType::Google => crate::google::create_event(&app, input).await,
-        CalendarProviderType::Outlook => crate::outlook::create_event(&app, input).await,
+        CalendarProviderType::Google => {
+            crate::google::create_event(&app, &connection_id, input).await
+        }
+        CalendarProviderType::Outlook => {
+            crate::outlook::create_event(&app, &connection_id, input).await
+        }
         _ => hypr_calendar::create_event(provider, input).map_err(Into::into),
     }
 }

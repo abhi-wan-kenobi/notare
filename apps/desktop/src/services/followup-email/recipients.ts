@@ -4,7 +4,7 @@ export interface AttendeeInput {
   isCurrentUser?: boolean | null;
 }
 
-const PUBLIC_EMAIL_DOMAINS: Record<string, true> = {
+export const PUBLIC_EMAIL_DOMAINS: Record<string, true> = {
   "gmail.com": true,
   "googlemail.com": true,
   "yahoo.com": true,
@@ -46,6 +46,9 @@ export function extractExternalAttendees(
     internalDomain?: string | null;
   },
 ): string[] {
+  if (!Array.isArray(attendees)) {
+    return [];
+  }
   const currentUserEmail =
     options?.currentUserEmail?.trim().toLowerCase() ?? null;
   let internalDomain = options?.internalDomain?.trim().toLowerCase() ?? null;

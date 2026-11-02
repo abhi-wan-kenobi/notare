@@ -17,6 +17,12 @@ export type LlmAuthCatalogProvider = CatalogProvider;
 export type LlmAuthCatalog = CatalogResult;
 export type { Result };
 
+export interface LlmAuthTokenExtra {
+  project_id?: string;
+  chatgpt_account_id?: string;
+  [key: string]: string | undefined;
+}
+
 export type SubscriptionProviderId =
   | "anthropic_subscription"
   | "openai_subscription"

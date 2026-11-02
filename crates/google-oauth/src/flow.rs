@@ -146,8 +146,13 @@ mod tests {
     #[test]
     fn generated_pkce_is_valid() {
         let pkce = generate_pkce();
-        assert_eq!(pkce.verifier.len(), 64);
-        assert!(pkce.verifier.chars().all(|c| c.is_ascii_hexdigit()));
+        // RFC 7636 §4.1: 43..=128 unreserved characters.
+        assert!((43..=128).contains(&pkce.verifier.len()));
+        assert!(pkce.verifier.chars().all(|c| c.is_ascii_alphanumeric()
+            || c == '-'
+            || c == '_'
+            || c == '.'
+            || c == '~'));
         assert_eq!(pkce.challenge, pkce_challenge_s256(&pkce.verifier));
         // Unique per call.
         assert_ne!(generate_pkce().verifier, pkce.verifier);

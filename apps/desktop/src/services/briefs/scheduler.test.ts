@@ -221,6 +221,68 @@ describe("Candidate Selection", () => {
       "event-other",
     ]);
   });
+
+  it("skips events with malformed started_at or ended_at timestamps without throwing", () => {
+    const events: BriefCandidateEvent[] = [
+      {
+        id: "event-bad-start",
+        title: "Bad Start Date",
+        started_at: "not-a-date",
+        ended_at: new Date(baseTime + 2 * 3600 * 1000).toISOString(),
+        participants_json: validAttendeeJson,
+      },
+      {
+        id: "event-empty-start",
+        title: "Empty Start Date",
+        started_at: "",
+        ended_at: new Date(baseTime + 2 * 3600 * 1000).toISOString(),
+        participants_json: validAttendeeJson,
+      },
+      {
+        id: "event-bad-end",
+        title: "Bad End Date",
+        started_at: new Date(baseTime + 2 * 3600 * 1000).toISOString(),
+        ended_at: "garbage-end-time",
+        participants_json: validAttendeeJson,
+      },
+      {
+        id: "event-valid",
+        title: "Valid Event",
+        started_at: new Date(baseTime + 2 * 3600 * 1000).toISOString(),
+        ended_at: new Date(baseTime + 3 * 3600 * 1000).toISOString(),
+        participants_json: validAttendeeJson,
+      },
+    ];
+
+    const candidates = selectCandidateEvents(
+      events,
+      baseTime,
+      leadTimeHours,
+      new Set(),
+    );
+    expect(candidates).toHaveLength(1);
+    expect(candidates[0]?.id).toBe("event-valid");
+  });
+
+  it("skips events with malformed participants_json without throwing", () => {
+    const events: BriefCandidateEvent[] = [
+      {
+        id: "event-bad-json",
+        title: "Bad JSON",
+        started_at: new Date(baseTime + 2 * 3600 * 1000).toISOString(),
+        ended_at: new Date(baseTime + 3 * 3600 * 1000).toISOString(),
+        participants_json: "{not: valid; json}",
+      },
+    ];
+
+    const candidates = selectCandidateEvents(
+      events,
+      baseTime,
+      leadTimeHours,
+      new Set(),
+    );
+    expect(candidates).toHaveLength(0);
+  });
 });
 
 describe("checkAndGenerateBriefs", () => {

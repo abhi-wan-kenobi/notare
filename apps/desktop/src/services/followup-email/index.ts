@@ -1,18 +1,25 @@
 import { generateText } from "ai";
 import { useCallback, useState } from "react";
 
+import { sonnerToast } from "@hypr/ui/components/ui/toast";
+
 import { deliverFollowupEmail, type DeliveryResult } from "./delivery";
 import {
-  FOLLOWUP_SYSTEM_PROMPT,
   assembleFollowupPrompt,
-  parseFollowupOutput,
+  FOLLOWUP_SYSTEM_PROMPT,
   type FollowupDraft,
+  parseFollowupOutput,
 } from "./draft";
-import { extractExternalAttendees } from "./recipients";
+import {
+  extractExternalAttendees,
+  getEmailDomain,
+  PUBLIC_EMAIL_DOMAINS,
+} from "./recipients";
 
 import { useScopedLanguageModel } from "~/ai/hooks/useLLMConnection";
+import { useAuth } from "~/auth";
+import { loadNoteFile } from "~/chat/tools/note-files";
 import { liveQueryClient } from "~/db";
-
 export * from "./recipients";
 export * from "./mailto";
 export * from "./draft";
@@ -25,6 +32,7 @@ interface SessionNoteData {
 }
 
 export function useFollowupEmail(sessionId: string) {
+  const auth = useAuth();
   const model = useScopedLanguageModel("notes");
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -55,7 +63,24 @@ export function useFollowupEmail(sessionId: string) {
         const title = session?.title ?? "Meeting";
         const notesContent = session?.content ?? "";
 
+        // Fetch transcript via the same loader chat tools use
+        let transcriptText: string | null = null;
+        try {
+          const noteFile = await loadNoteFile(sessionId);
+          const transcriptSection = noteFile?.sections.find(
+            (s) => s.title === "Transcript",
+          );
+          transcriptText = transcriptSection?.text ?? null;
+        } catch (e) {
+          console.warn(
+            "[followup-email] failed to load note file transcript",
+            e,
+          );
+        }
+
         let attendees: string[] = [];
+        let currentUserEmail = auth?.session?.user?.email ?? null;
+
         if (session?.event_json) {
           try {
             const parsedEvent = JSON.parse(session.event_json);
@@ -63,13 +88,43 @@ export function useFollowupEmail(sessionId: string) {
               attendees = parsedEvent.attendees.map(
                 (a: { email?: string }) => a.email ?? "",
               );
+              if (!currentUserEmail) {
+                const self = parsedEvent.attendees.find(
+                  (a: {
+                    isCurrentUser?: boolean;
+                    is_current_user?: boolean;
+                    email?: string;
+                  }) =>
+                    Boolean(a.isCurrentUser || a.is_current_user) &&
+                    Boolean(a.email),
+                );
+                if (self?.email) {
+                  currentUserEmail = self.email;
+                }
+              }
             }
           } catch {
             // ignore event_json parse error
           }
         }
 
-        const externalRecipients = extractExternalAttendees(attendees);
+        const userDomain = currentUserEmail
+          ? getEmailDomain(currentUserEmail)
+          : null;
+        const internalDomain =
+          userDomain && !PUBLIC_EMAIL_DOMAINS[userDomain] ? userDomain : null;
+
+        const externalRecipients = extractExternalAttendees(attendees, {
+          currentUserEmail,
+          internalDomain,
+        });
+
+        if (externalRecipients.length === 0) {
+          const msg = "No external recipients found for this meeting.";
+          setError(msg);
+          sonnerToast.error(msg);
+          return null;
+        }
 
         // 2. Generate email draft using the notes model
         let draft: FollowupDraft;
@@ -77,6 +132,7 @@ export function useFollowupEmail(sessionId: string) {
           const prompt = assembleFollowupPrompt({
             sessionTitle: title,
             notesContent,
+            transcriptText,
             attendees: externalRecipients,
           });
 
@@ -102,15 +158,22 @@ export function useFollowupEmail(sessionId: string) {
           body: draft.body,
         });
 
+        if (result.delivered === "mailto" && result.reason) {
+          sonnerToast.error(
+            `Gmail draft creation failed (${result.reason}). Opened in mail client instead.`,
+          );
+        }
+
         return result;
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         setError(msg);
+        sonnerToast.error(msg);
         throw err;
       } finally {
         setIsGenerating(false);
       }
-    }, [sessionId, model]);
+    }, [sessionId, model, auth?.session?.user?.email]);
 
   return {
     generateAndDeliver,

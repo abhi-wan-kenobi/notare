@@ -1,7 +1,29 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { assembleBriefPrompt, resolveAttendees } from "./prompt";
+import {
+  assembleBriefPrompt,
+  resolveAttendees,
+  retrieveBriefContext,
+} from "./prompt";
 import type { BriefCandidateEvent, BriefRetrievalContext } from "./types";
+
+const mocks = vi.hoisted(() => ({
+  searchMeetingContent: vi.fn(async (_params?: unknown) => ({
+    results: [] as unknown[],
+  })),
+  loadSessionContentSnapshot: vi.fn(
+    async (_sessionId?: unknown) => null as unknown,
+  ),
+}));
+
+vi.mock("~/chat/tools/note-files", () => ({
+  searchMeetingContent: (params: unknown) => mocks.searchMeetingContent(params),
+}));
+
+vi.mock("~/session/content-queries", () => ({
+  loadSessionContentSnapshot: (params: unknown) =>
+    mocks.loadSessionContentSnapshot(params),
+}));
 
 vi.mock("~/db", () => ({
   liveQueryClient: {
@@ -128,5 +150,72 @@ describe("Prompt Assembly with Citations", () => {
     expect(sessionIds).toContain("sess-q2-review");
     expect(sessionIds).toContain("sess-tech-sync");
     expect(sessionIds).toContain("sess-strategy");
+  });
+
+  it("formats action items with specific timestampMs if available", () => {
+    const event: BriefCandidateEvent = {
+      id: "event-1",
+      title: "Test",
+      started_at: "2026-11-02T10:00:00.000Z",
+      ended_at: "2026-11-02T11:00:00.000Z",
+    };
+
+    const context: BriefRetrievalContext = {
+      attendees: [],
+      relevantMeetings: [],
+      openActionItems: [
+        {
+          text: "Follow up on invoice",
+          sourceSessionId: "sess-invoice",
+          timestampMs: 42000,
+        },
+      ],
+      orgMentions: [],
+    };
+
+    const { prompt } = assembleBriefPrompt(event, context);
+    expect(prompt).toContain(
+      "- Follow up on invoice [[src:sess-invoice@42000]]",
+    );
+  });
+
+  it("retrieveBriefContext extracts real startMs from search hits and survives transient errors", async () => {
+    const event: BriefCandidateEvent = {
+      id: "event-1",
+      title: "Sync",
+      started_at: "2026-11-02T10:00:00.000Z",
+      ended_at: "2026-11-02T11:00:00.000Z",
+      participants_json: JSON.stringify([
+        {
+          name: "Alice Smith",
+          email: "alice@acme.com",
+          is_current_user: false,
+        },
+      ]),
+    };
+
+    mocks.searchMeetingContent.mockResolvedValueOnce({
+      results: [
+        {
+          sessionId: "sess-trans-hit",
+          title: "Prior Meeting",
+          snippets: [{ text: "Spoke with Alice", startMs: 18500 }],
+        },
+      ],
+    });
+
+    mocks.loadSessionContentSnapshot.mockResolvedValueOnce({
+      sessionId: "sess-trans-hit",
+      title: "Prior Meeting",
+      createdAt: "2026-10-01T12:00:00.000Z",
+      enhancedNotes: [{ markdown: "Decided to proceed with Phase 2." }],
+      rawMarkdown: "",
+      transcripts: [],
+      actionItems: [],
+    });
+
+    const ctx = await retrieveBriefContext(event);
+    expect(ctx.relevantMeetings).toHaveLength(1);
+    expect(ctx.relevantMeetings[0]?.timestampMs).toBe(18500);
   });
 });

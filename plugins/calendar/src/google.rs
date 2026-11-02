@@ -11,6 +11,7 @@
 //!   email drafts (`users.drafts.create`).
 
 use std::collections::HashMap;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use hypr_google_oauth::{ClientCredentials, ClientJsonKind};
@@ -182,10 +183,14 @@ pub struct GoogleAuthState {
     accounts: tokio::sync::Mutex<Option<HashMap<String, StoredGoogleAccount>>>,
     /// In-memory access token cache keyed by account email.
     tokens: tokio::sync::Mutex<HashMap<String, CachedToken>>,
+    /// Per-account refresh locks to prevent double-refresh race.
+    refresh_locks: std::sync::Mutex<HashMap<String, Arc<tokio::sync::Mutex<()>>>>,
     /// Cached map of Gmail accounts.
     gmail_accounts: tokio::sync::Mutex<Option<HashMap<String, StoredGoogleAccount>>>,
     /// In-memory Gmail access token cache keyed by account email.
     gmail_tokens: tokio::sync::Mutex<HashMap<String, CachedToken>>,
+    /// Per-account Gmail refresh locks to prevent double-refresh race.
+    gmail_refresh_locks: std::sync::Mutex<HashMap<String, Arc<tokio::sync::Mutex<()>>>>,
 }
 
 impl Default for GoogleAuthState {
@@ -195,8 +200,10 @@ impl Default for GoogleAuthState {
             client: tokio::sync::Mutex::new(None),
             accounts: tokio::sync::Mutex::new(None),
             tokens: tokio::sync::Mutex::new(HashMap::new()),
+            refresh_locks: std::sync::Mutex::new(HashMap::new()),
             gmail_accounts: tokio::sync::Mutex::new(None),
             gmail_tokens: tokio::sync::Mutex::new(HashMap::new()),
+            gmail_refresh_locks: std::sync::Mutex::new(HashMap::new()),
         }
     }
 }
@@ -591,50 +598,67 @@ pub async fn access_token_for_account<R: tauri::Runtime>(
         .ok_or_else(|| hypr_calendar::Error::NotAuthenticated)?;
 
     let state = app.state::<GoogleAuthState>();
-    let mut tokens_guard = state.tokens.lock().await;
 
-    if let Some(cached) = tokens_guard.get(&account.email)
-        && cached.expires_at.saturating_duration_since(Instant::now()) > EXPIRY_MARGIN
+    // 1. Fast path: check in-memory token cache
     {
-        return Ok(cached.access_token.clone());
+        let tokens_guard = state.tokens.lock().await;
+        if let Some(cached) = tokens_guard.get(&account.email)
+            && cached.expires_at.saturating_duration_since(Instant::now()) > EXPIRY_MARGIN
+        {
+            return Ok(cached.access_token.clone());
+        }
     }
 
-    let token =
-        hypr_google_oauth::refresh_access_token(&state.http, &account.client(), &refresh_token)
-            .await
-            .map_err(|e| {
-                auth_error(format!(
-                    "access-token refresh failed for {}: {e}",
-                    account.email
-                ))
-            })?;
+    // 2. Per-account lock to prevent concurrent double-refresh
+    let refresh_lock = {
+        let mut locks = state.refresh_locks.lock().unwrap();
+        locks.entry(account.email.clone()).or_default().clone()
+    };
+    let _refresh_guard = refresh_lock.lock().await;
+
+    // 3. Re-check cache in case another task refreshed while we waited
+    {
+        let tokens_guard = state.tokens.lock().await;
+        if let Some(cached) = tokens_guard.get(&account.email)
+            && cached.expires_at.saturating_duration_since(Instant::now()) > EXPIRY_MARGIN
+        {
+            return Ok(cached.access_token.clone());
+        }
+    }
+
+    // 4. Refresh token without holding state.tokens
+    let client = account.client();
+    let email = account.email.clone();
+    let token = hypr_google_oauth::refresh_access_token(&state.http, &client, &refresh_token)
+        .await
+        .map_err(|e| auth_error(format!("access-token refresh failed for {email}: {e}")))?;
 
     if let Some(new_refresh) = token.refresh_token.clone()
         && new_refresh != refresh_token
     {
         let mut updated = account.clone();
         updated.refresh_token = Some(new_refresh);
-        drop(tokens_guard);
         write_account_keyring(app, &updated).await?;
         let mut accounts_guard = state.accounts.lock().await;
         if let Some(map) = &mut *accounts_guard {
             map.insert(updated.email.clone(), updated);
         }
-        tokens_guard = state.tokens.lock().await;
     }
 
     let access_token = token.access_token.clone();
-    tokens_guard.insert(
-        account.email.clone(),
-        CachedToken {
-            access_token: token.access_token,
-            expires_at: Instant::now() + Duration::from_secs(token.expires_in.unwrap_or(3600)),
-        },
-    );
+    {
+        let mut tokens_guard = state.tokens.lock().await;
+        tokens_guard.insert(
+            account.email.clone(),
+            CachedToken {
+                access_token: token.access_token,
+                expires_at: Instant::now() + Duration::from_secs(token.expires_in.unwrap_or(3600)),
+            },
+        );
+    }
 
     Ok(access_token)
 }
-
 /// Fallback for single-account callers: returns access token for the first connected account.
 #[allow(dead_code)]
 pub async fn access_token<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Result<String, Error> {
@@ -956,6 +980,16 @@ pub async fn ensure_write_scope<R: tauri::Runtime>(
     )
     .await?;
 
+    if let Some(scope_str) = &token.scope
+        && !scope_str
+            .split_whitespace()
+            .any(|s| s == WRITE_EVENTS_SCOPE)
+    {
+        return Err(auth_error(format!(
+            "write scope was not granted in incremental authorization: granted scopes are '{scope_str}'"
+        )));
+    }
+
     let mut updated = account.clone();
     if let Some(new_rt) = token.refresh_token {
         updated.refresh_token = Some(new_rt);
@@ -1073,54 +1107,90 @@ impl hypr_http::HttpClient for GoogleRestHttp {
     }
 }
 
-/// Create an event on Google Calendar, requesting write scope incrementally if needed.
-fn parse_event_datetime(is_all_day: bool, s: &str) -> hypr_google_calendar::EventDateTime {
+/// Validate that a calendar tracking ID is safe for URL usage and does not contain path traversal.
+pub fn validate_calendar_id(id: &str) -> Result<(), Error> {
+    let trimmed = id.trim();
+    if trimmed.is_empty() {
+        return Err(Error::Api("calendar id cannot be empty".to_string()));
+    }
+    if trimmed.contains('/')
+        || trimmed.contains('\\')
+        || trimmed.contains("..")
+        || trimmed.chars().any(|c| c.is_control())
+    {
+        return Err(Error::Api(format!(
+            "invalid calendar id '{id}': contains forbidden path traversal or control characters"
+        )));
+    }
+    Ok(())
+}
+
+/// Resolve which Google account owns the target calendar based on connection_id.
+pub fn resolve_target_account<'a>(
+    accounts: &'a HashMap<String, StoredGoogleAccount>,
+    connection_id: &str,
+) -> Result<&'a StoredGoogleAccount, Error> {
+    match parse_google_connection_id(connection_id) {
+        Some(email) => accounts
+            .get(email)
+            .ok_or_else(|| auth_error(format!("Google account {email} is not connected"))),
+        None => accounts
+            .values()
+            .next()
+            .ok_or_else(|| hypr_calendar::Error::NotAuthenticated.into()),
+    }
+}
+
+/// Parse an ISO or RFC 3339 string into an EventDateTime without discarding parse errors.
+pub fn parse_event_datetime(
+    is_all_day: bool,
+    s: &str,
+) -> Result<hypr_google_calendar::EventDateTime, Error> {
     if is_all_day {
         let date = chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d")
             .or_else(|_| chrono::DateTime::parse_from_rfc3339(s).map(|dt| dt.date_naive()))
-            .ok();
-        hypr_google_calendar::EventDateTime {
-            date,
+            .map_err(|e| Error::Api(format!("failed to parse all-day event date '{s}': {e}")))?;
+        Ok(hypr_google_calendar::EventDateTime {
+            date: Some(date),
             date_time: None,
             time_zone: None,
-        }
+        })
     } else {
         let date_time = chrono::DateTime::parse_from_rfc3339(s)
             .or_else(|_| {
                 chrono::NaiveDateTime::parse_from_str(s, "%Y-%m-%dT%H:%M:%S")
                     .map(|ndt| ndt.and_utc().fixed_offset())
             })
-            .ok();
-        hypr_google_calendar::EventDateTime {
+            .map_err(|e| Error::Api(format!("failed to parse event datetime '{s}': {e}")))?;
+        Ok(hypr_google_calendar::EventDateTime {
             date: None,
-            date_time,
+            date_time: Some(date_time),
             time_zone: None,
-        }
+        })
     }
 }
 
 pub async fn create_event<R: tauri::Runtime>(
     app: &tauri::AppHandle<R>,
+    connection_id: &str,
     input: hypr_calendar_interface::CreateEventInput,
 ) -> Result<String, Error> {
+    validate_calendar_id(&input.calendar_tracking_id)?;
+
     let accounts = load_accounts(app).await?;
     if accounts.is_empty() {
         return Err(hypr_calendar::Error::NotAuthenticated.into());
     }
 
-    // Match account to calendar tracking ID or use first account
-    let target_email = accounts
-        .values()
-        .find(|a| a.email == input.calendar_tracking_id)
-        .map(|a| a.email.clone())
-        .unwrap_or_else(|| accounts.keys().next().unwrap().clone());
+    let target_account = resolve_target_account(&accounts, connection_id)?;
+    let target_email = target_account.email.clone();
 
     ensure_write_scope(app, &target_email).await?;
     let token = access_token_for_account(app, Some(&target_email)).await?;
 
     let is_all_day = input.is_all_day.unwrap_or(false);
-    let start = parse_event_datetime(is_all_day, &input.started_at);
-    let end = parse_event_datetime(is_all_day, &input.ended_at);
+    let start = parse_event_datetime(is_all_day, &input.started_at)?;
+    let end = parse_event_datetime(is_all_day, &input.ended_at)?;
 
     let req = hypr_google_calendar::CreateEventRequest {
         calendar_id: input.calendar_tracking_id,
@@ -1377,41 +1447,71 @@ pub async fn gmail_access_token<R: tauri::Runtime>(
         .ok_or_else(|| auth_error("no refresh token for Gmail account"))?;
 
     let state = app.state::<GoogleAuthState>();
-    let mut tokens_guard = state.gmail_tokens.lock().await;
 
-    if let Some(cached) = tokens_guard.get(&account.email)
-        && cached.expires_at.saturating_duration_since(Instant::now()) > EXPIRY_MARGIN
+    // 1. Fast path: check in-memory cache
     {
-        return Ok(cached.access_token.clone());
+        let tokens_guard = state.gmail_tokens.lock().await;
+        if let Some(cached) = tokens_guard.get(&account.email)
+            && cached.expires_at.saturating_duration_since(Instant::now()) > EXPIRY_MARGIN
+        {
+            return Ok(cached.access_token.clone());
+        }
     }
 
-    let token =
-        hypr_google_oauth::refresh_access_token(&state.http, &account.client(), &refresh_token)
-            .await
-            .map_err(|e| {
-                auth_error(format!(
-                    "access-token refresh failed for Gmail {}: {e}",
-                    account.email
-                ))
-            })?;
+    // 2. Per-account lock to prevent concurrent double-refresh
+    let refresh_lock = {
+        let mut locks = state.gmail_refresh_locks.lock().unwrap();
+        locks.entry(account.email.clone()).or_default().clone()
+    };
+    let _refresh_guard = refresh_lock.lock().await;
+
+    // 3. Re-check cache in case another task refreshed while waiting
+    {
+        let tokens_guard = state.gmail_tokens.lock().await;
+        if let Some(cached) = tokens_guard.get(&account.email)
+            && cached.expires_at.saturating_duration_since(Instant::now()) > EXPIRY_MARGIN
+        {
+            return Ok(cached.access_token.clone());
+        }
+    }
+
+    // 4. Refresh without holding state.gmail_tokens
+    let client = account.client();
+    let email = account.email.clone();
+    let token = hypr_google_oauth::refresh_access_token(&state.http, &client, &refresh_token)
+        .await
+        .map_err(|e| {
+            auth_error(format!(
+                "access-token refresh failed for Gmail {email}: {e}"
+            ))
+        })?;
 
     let access_token = token.access_token.clone();
-    tokens_guard.insert(
-        account.email.clone(),
-        CachedToken {
-            access_token: token.access_token,
-            expires_at: Instant::now() + Duration::from_secs(token.expires_in.unwrap_or(3600)),
-        },
-    );
+    {
+        let mut tokens_guard = state.gmail_tokens.lock().await;
+        tokens_guard.insert(
+            account.email.clone(),
+            CachedToken {
+                access_token: token.access_token,
+                expires_at: Instant::now() + Duration::from_secs(token.expires_in.unwrap_or(3600)),
+            },
+        );
+    }
 
     Ok(access_token)
 }
 
 /// Assemble an RFC 2822 email message.
+/// Header values (recipients and subject) are sanitized to prevent CRLF injection.
 pub fn build_rfc2822_message(to: &[String], subject: &str, body: &str) -> String {
-    let to_line = to.join(", ");
+    let sanitized_to: Vec<String> = to
+        .iter()
+        .map(|addr| addr.replace(['\r', '\n'], ""))
+        .collect();
+    let to_line = sanitized_to.join(", ");
+    let sanitized_subject = subject.replace(['\r', '\n'], "");
     format!(
-        "To: {to_line}\r\nSubject: {subject}\r\nContent-Type: text/plain; charset=UTF-8\r\nMIME-Version: 1.0\r\n\r\n{body}"
+        "To: {to_line}\r\nSubject: {sanitized_subject}\r\nContent-Type: text/plain; charset=UTF-8\r\nMIME-Version: 1.0\r\n\r\n{body}"
     )
 }
 
@@ -1591,5 +1691,112 @@ mod tests {
         assert!(message.contains("Content-Type: text/plain; charset=UTF-8\r\n"));
         assert!(message.contains("MIME-Version: 1.0\r\n\r\n"));
         assert!(message.ends_with(body));
+    }
+
+    #[test]
+    fn test_resolve_target_account_for_create_event() {
+        let mut accounts = HashMap::new();
+        accounts.insert(
+            "alice@example.com".to_string(),
+            StoredGoogleAccount {
+                email: "alice@example.com".to_string(),
+                client_id: "alice-client".to_string(),
+                client_secret: "alice-secret".to_string(),
+                auth_uri: "auth".to_string(),
+                token_uri: "token".to_string(),
+                client_kind: None,
+                refresh_token: Some("alice-token".to_string()),
+                granted_scopes: vec![],
+            },
+        );
+        accounts.insert(
+            "bob@example.com".to_string(),
+            StoredGoogleAccount {
+                email: "bob@example.com".to_string(),
+                client_id: "bob-client".to_string(),
+                client_secret: "bob-secret".to_string(),
+                auth_uri: "auth".to_string(),
+                token_uri: "token".to_string(),
+                client_kind: None,
+                refresh_token: Some("bob-token".to_string()),
+                granted_scopes: vec![],
+            },
+        );
+
+        // Resolves alice even if calendar_tracking_id is a secondary calendar or "primary"
+        let alice = resolve_target_account(&accounts, "google:alice@example.com").unwrap();
+        assert_eq!(alice.email, "alice@example.com");
+
+        // Resolves bob correctly
+        let bob = resolve_target_account(&accounts, "google:bob@example.com").unwrap();
+        assert_eq!(bob.email, "bob@example.com");
+
+        // Non-connected account returns error
+        let err = resolve_target_account(&accounts, "google:charlie@example.com");
+        assert!(err.is_err());
+
+        // google-direct falls back to an available account
+        let direct = resolve_target_account(&accounts, "google-direct").unwrap();
+        assert!(direct.email == "alice@example.com" || direct.email == "bob@example.com");
+    }
+
+    #[test]
+    fn test_build_rfc2822_message_header_injection() {
+        let to = vec![
+            "alice@example.com\r\nBcc: victim@example.com".to_string(),
+            "bob@example.com\nTo-Injected: hacker@example.com".to_string(),
+        ];
+        let subject = "Status Update\r\nBcc: evil@example.com\r\nX-Injected: true";
+        let body = "This is a clean body.";
+
+        let message = build_rfc2822_message(&to, subject, body);
+        let header_part = message.split("\r\n\r\n").next().unwrap();
+
+        // Ensure injected headers are NOT present as individual header lines
+        assert!(!header_part.contains("\r\nBcc:"));
+        assert!(!header_part.contains("\nBcc:"));
+        assert!(!header_part.contains("\r\nTo-Injected:"));
+        assert!(!header_part.contains("\r\nX-Injected:"));
+        // Verify CRLF is completely stripped from header section
+        let lines: Vec<&str> = header_part.split("\r\n").collect();
+        assert_eq!(lines.len(), 4); // To, Subject, Content-Type, MIME-Version
+        assert_eq!(
+            lines[0],
+            "To: alice@example.comBcc: victim@example.com, bob@example.comTo-Injected: hacker@example.com"
+        );
+        assert_eq!(
+            lines[1],
+            "Subject: Status UpdateBcc: evil@example.comX-Injected: true"
+        );
+    }
+
+    #[test]
+    fn test_validate_calendar_id() {
+        assert!(validate_calendar_id("primary").is_ok());
+        assert!(validate_calendar_id("alice@example.com").is_ok());
+        assert!(validate_calendar_id("c_188abc@group.calendar.google.com").is_ok());
+        assert!(validate_calendar_id("en.usa#holiday@group.v.calendar.google.com").is_ok());
+
+        assert!(validate_calendar_id("").is_err());
+        assert!(validate_calendar_id("   ").is_err());
+        assert!(validate_calendar_id("../traversal").is_err());
+        assert!(validate_calendar_id("path/segment").is_err());
+        assert!(validate_calendar_id("path\\segment").is_err());
+        assert!(validate_calendar_id("id\nwith\rnewlines").is_err());
+    }
+
+    #[test]
+    fn test_parse_event_datetime() {
+        let all_day = parse_event_datetime(true, "2026-11-03").unwrap();
+        assert!(all_day.date.is_some());
+        assert!(all_day.date_time.is_none());
+
+        let timed = parse_event_datetime(false, "2026-11-03T10:00:00Z").unwrap();
+        assert!(timed.date.is_none());
+        assert!(timed.date_time.is_some());
+
+        // Invalid datetimes must return Err rather than silently returning None
+        assert!(parse_event_datetime(true, "not-a-date").is_err());
+        assert!(parse_event_datetime(false, "invalid-time").is_err());
     }
 }

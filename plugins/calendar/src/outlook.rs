@@ -10,6 +10,7 @@
 //! - First-party bundled client via `NOTARE_MS_CLIENT_ID` with BYO client ID fallback.
 
 use std::collections::HashMap;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use tauri::Manager;
@@ -88,6 +89,7 @@ pub struct OutlookAuthState {
     client: tokio::sync::Mutex<Option<Option<StoredOutlookClient>>>,
     accounts: tokio::sync::Mutex<Option<HashMap<String, StoredOutlookAccount>>>,
     tokens: tokio::sync::Mutex<HashMap<String, CachedToken>>,
+    refresh_locks: std::sync::Mutex<HashMap<String, Arc<tokio::sync::Mutex<()>>>>,
 }
 
 impl Default for OutlookAuthState {
@@ -97,6 +99,7 @@ impl Default for OutlookAuthState {
             client: tokio::sync::Mutex::new(None),
             accounts: tokio::sync::Mutex::new(None),
             tokens: tokio::sync::Mutex::new(HashMap::new()),
+            refresh_locks: std::sync::Mutex::new(HashMap::new()),
         }
     }
 }
@@ -315,7 +318,15 @@ pub async fn access_token_for_connection<R: tauri::Runtime>(
     app: &tauri::AppHandle<R>,
     connection_id: &str,
 ) -> Result<String, Error> {
-    let email_opt = parse_outlook_connection_id(connection_id);
+    let email_opt = if connection_id == "outlook-direct" {
+        None
+    } else if let Some(email) = parse_outlook_connection_id(connection_id) {
+        Some(email)
+    } else {
+        return Err(auth_error(format!(
+            "invalid outlook connection id '{connection_id}': expected format 'outlook:<email>' or 'outlook-direct'"
+        )));
+    };
     access_token_for_account(app, email_opt).await
 }
 
@@ -342,54 +353,74 @@ pub async fn access_token_for_account<R: tauri::Runtime>(
     let refresh_token = account
         .refresh_token
         .as_deref()
-        .ok_or_else(|| auth_error(format!("no refresh token for account {}", account.email)))?;
+        .ok_or_else(|| auth_error(format!("no refresh token for account {}", account.email)))?
+        .to_string();
 
     let state = app.state::<OutlookAuthState>();
-    let mut tokens_guard = state.tokens.lock().await;
 
-    if let Some(cached) = tokens_guard.get(&account.email)
-        && cached.expires_at > Instant::now() + EXPIRY_MARGIN
+    // 1. Fast path: check in-memory token cache
     {
-        return Ok(cached.access_token.clone());
+        let tokens_guard = state.tokens.lock().await;
+        if let Some(cached) = tokens_guard.get(&account.email)
+            && cached.expires_at > Instant::now() + EXPIRY_MARGIN
+        {
+            return Ok(cached.access_token.clone());
+        }
     }
 
+    // 2. Per-account lock to prevent concurrent double-refresh
+    let refresh_lock = {
+        let mut locks = state.refresh_locks.lock().unwrap();
+        locks.entry(account.email.clone()).or_default().clone()
+    };
+    let _refresh_guard = refresh_lock.lock().await;
+
+    // 3. Re-check cache in case another task refreshed while waiting
+    {
+        let tokens_guard = state.tokens.lock().await;
+        if let Some(cached) = tokens_guard.get(&account.email)
+            && cached.expires_at > Instant::now() + EXPIRY_MARGIN
+        {
+            return Ok(cached.access_token.clone());
+        }
+    }
+
+    // 4. Perform refresh without holding state.tokens
+    let client_id = account.client_id.clone();
+    let email = account.email.clone();
     let token = hypr_microsoft_oauth::refresh_access_token(
         &state.http,
         hypr_microsoft_oauth::DEFAULT_TOKEN_URI,
-        &account.client_id,
-        refresh_token,
+        &client_id,
+        &refresh_token,
         None,
     )
     .await
-    .map_err(|e| {
-        auth_error(format!(
-            "access-token refresh failed for {}: {e}",
-            account.email
-        ))
-    })?;
+    .map_err(|e| auth_error(format!("access-token refresh failed for {email}: {e}")))?;
 
     if let Some(new_refresh) = token.refresh_token.clone()
         && new_refresh != refresh_token
     {
         let mut updated = account.clone();
         updated.refresh_token = Some(new_refresh);
-        drop(tokens_guard);
         write_account_keyring(app, &updated).await?;
         let mut accounts_guard = state.accounts.lock().await;
         if let Some(map) = &mut *accounts_guard {
             map.insert(updated.email.clone(), updated);
         }
-        tokens_guard = state.tokens.lock().await;
     }
 
     let access_token = token.access_token.clone();
-    tokens_guard.insert(
-        account.email.clone(),
-        CachedToken {
-            access_token: token.access_token,
-            expires_at: Instant::now() + Duration::from_secs(token.expires_in.unwrap_or(3600)),
-        },
-    );
+    {
+        let mut tokens_guard = state.tokens.lock().await;
+        tokens_guard.insert(
+            account.email.clone(),
+            CachedToken {
+                access_token: token.access_token,
+                expires_at: Instant::now() + Duration::from_secs(token.expires_in.unwrap_or(3600)),
+            },
+        );
+    }
 
     Ok(access_token)
 }
@@ -636,20 +667,59 @@ pub async fn ensure_write_scope<R: tauri::Runtime>(
     Ok(())
 }
 
+/// Validate that a calendar tracking ID is safe for URL usage and does not contain path traversal.
+pub fn validate_calendar_id(id: &str) -> Result<(), Error> {
+    let trimmed = id.trim();
+    if trimmed.is_empty() {
+        return Err(Error::Api("calendar id cannot be empty".to_string()));
+    }
+    if trimmed.contains('/')
+        || trimmed.contains('\\')
+        || trimmed.contains("..")
+        || trimmed.chars().any(|c| c.is_control())
+    {
+        return Err(Error::Api(format!(
+            "invalid calendar id '{id}': contains forbidden path traversal or control characters"
+        )));
+    }
+    Ok(())
+}
+
+/// Resolve which Outlook account owns the target calendar based on connection_id.
+pub fn resolve_target_account<'a>(
+    accounts: &'a HashMap<String, StoredOutlookAccount>,
+    connection_id: &str,
+) -> Result<&'a StoredOutlookAccount, Error> {
+    if connection_id == "outlook-direct" {
+        accounts
+            .values()
+            .next()
+            .ok_or_else(|| auth_error("no outlook account connected"))
+    } else if let Some(email) = parse_outlook_connection_id(connection_id) {
+        accounts
+            .get(email)
+            .ok_or_else(|| auth_error(format!("account not found: {email}")))
+    } else {
+        Err(auth_error(format!(
+            "invalid outlook connection id '{connection_id}': expected format 'outlook:<email>' or 'outlook-direct'"
+        )))
+    }
+}
+
 pub async fn create_event<R: tauri::Runtime>(
     app: &tauri::AppHandle<R>,
+    connection_id: &str,
     input: hypr_calendar_interface::CreateEventInput,
 ) -> Result<String, Error> {
+    validate_calendar_id(&input.calendar_tracking_id)?;
+
     let accounts = load_accounts(app).await?;
     if accounts.is_empty() {
         return Err(hypr_calendar::Error::NotAuthenticated.into());
     }
 
-    let target_email = accounts
-        .values()
-        .find(|a| a.email == input.calendar_tracking_id)
-        .map(|a| a.email.clone())
-        .unwrap_or_else(|| accounts.keys().next().unwrap().clone());
+    let target_account = resolve_target_account(&accounts, connection_id)?;
+    let target_email = target_account.email.clone();
 
     ensure_write_scope(app, &target_email).await?;
     let token = access_token_for_account(app, Some(&target_email)).await?;
@@ -724,6 +794,62 @@ mod tests {
         );
         assert_eq!(parse_outlook_connection_id("google:alice@gmail.com"), None);
         assert_eq!(parse_outlook_connection_id("ics"), None);
+    }
+
+    #[test]
+    fn test_resolve_target_account_for_create_event() {
+        let mut accounts = HashMap::new();
+        accounts.insert(
+            "alice@contoso.com".to_string(),
+            StoredOutlookAccount {
+                email: "alice@contoso.com".to_string(),
+                client_id: "alice-client".to_string(),
+                refresh_token: Some("alice-token".to_string()),
+                granted_scopes: vec![],
+            },
+        );
+        accounts.insert(
+            "bob@contoso.com".to_string(),
+            StoredOutlookAccount {
+                email: "bob@contoso.com".to_string(),
+                client_id: "bob-client".to_string(),
+                refresh_token: Some("bob-token".to_string()),
+                granted_scopes: vec![],
+            },
+        );
+
+        // Resolves alice even if calendar_tracking_id is an opaque Graph ID
+        let alice = resolve_target_account(&accounts, "outlook:alice@contoso.com").unwrap();
+        assert_eq!(alice.email, "alice@contoso.com");
+
+        // Resolves bob correctly
+        let bob = resolve_target_account(&accounts, "outlook:bob@contoso.com").unwrap();
+        assert_eq!(bob.email, "bob@contoso.com");
+
+        // Non-connected account returns error
+        let err = resolve_target_account(&accounts, "outlook:charlie@contoso.com");
+        assert!(err.is_err());
+
+        // Invalid format returns error
+        assert!(resolve_target_account(&accounts, "google:alice@gmail.com").is_err());
+        assert!(resolve_target_account(&accounts, "invalid").is_err());
+
+        // outlook-direct falls back to an available account
+        let direct = resolve_target_account(&accounts, "outlook-direct").unwrap();
+        assert!(direct.email == "alice@contoso.com" || direct.email == "bob@contoso.com");
+    }
+
+    #[test]
+    fn test_validate_calendar_id() {
+        assert!(validate_calendar_id("AAMkAD12345").is_ok());
+        assert!(validate_calendar_id("AQMkADAwATM3AAA=").is_ok());
+
+        assert!(validate_calendar_id("").is_err());
+        assert!(validate_calendar_id("   ").is_err());
+        assert!(validate_calendar_id("../me/messages").is_err());
+        assert!(validate_calendar_id("path/segment").is_err());
+        assert!(validate_calendar_id("path\\segment").is_err());
+        assert!(validate_calendar_id("id\nwith\rnewlines").is_err());
     }
 
     #[test]

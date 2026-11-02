@@ -22,9 +22,10 @@ pub fn parse_paste_code(
     if trimmed.starts_with("http://") || trimmed.starts_with("https://") {
         let (code, state) = extract_code_and_state_from_url(trimmed)?;
         if let (Some(extracted_state), Some(expected)) = (state, expected_state)
-            && extracted_state != expected {
-                return Err(LoopbackError::StateMismatch);
-            }
+            && extracted_state != expected
+        {
+            return Err(LoopbackError::StateMismatch);
+        }
         return Ok(code);
     }
 
@@ -37,16 +38,22 @@ pub fn parse_paste_code(
         if code.is_empty() && (state.contains("code=") || state.contains("state=")) {
             let (c, s) = extract_params_from_query(state)?;
             if let (Some(extracted_state), Some(expected)) = (s, expected_state)
-                && extracted_state != expected {
-                    return Err(LoopbackError::StateMismatch);
-                }
+                && extracted_state != expected
+            {
+                return Err(LoopbackError::StateMismatch);
+            }
             return Ok(c);
         }
 
+        if code.is_empty() {
+            return Err(LoopbackError::MissingCode);
+        }
+
         if let Some(expected) = expected_state
-            && state != expected {
-                return Err(LoopbackError::StateMismatch);
-            }
+            && state != expected
+        {
+            return Err(LoopbackError::StateMismatch);
+        }
         return Ok(code.to_string());
     }
 
@@ -55,16 +62,26 @@ pub fn parse_paste_code(
 }
 
 fn extract_code_and_state_from_url(url: &str) -> Result<(String, Option<String>), LoopbackError> {
-    // Check fragment first (#...), then query (?...)
-    let query_or_fragment = if let Some((_, frag)) = url.split_once('#') {
-        frag
-    } else if let Some((_, query)) = url.split_once('?') {
-        query
-    } else {
-        return Err(LoopbackError::MissingCode);
-    };
+    // Prefer query (?...) over fragment (#...) for authorization code and state
+    let query_part = url
+        .split_once('?')
+        .map(|(_, after_q)| after_q.split_once('#').map(|(q, _)| q).unwrap_or(after_q));
+    let frag_part = url.split_once('#').map(|(_, f)| f);
 
-    extract_params_from_query(query_or_fragment)
+    if let Some(query) = query_part
+        && let Ok((code, state)) = extract_params_from_query(query)
+    {
+        let state = state.or_else(|| {
+            frag_part.and_then(|f| extract_params_from_query(f).ok().and_then(|(_, s)| s))
+        });
+        return Ok((code, state));
+    }
+
+    if let Some(frag) = frag_part {
+        return extract_params_from_query(frag);
+    }
+
+    Err(LoopbackError::MissingCode)
 }
 
 fn extract_params_from_query(query: &str) -> Result<(String, Option<String>), LoopbackError> {
@@ -84,6 +101,9 @@ fn extract_params_from_query(query: &str) -> Result<(String, Option<String>), Lo
     }
 
     let code = code.ok_or(LoopbackError::MissingCode)?;
+    if code.trim().is_empty() {
+        return Err(LoopbackError::MissingCode);
+    }
     Ok((code, state))
 }
 
@@ -130,6 +150,42 @@ mod tests {
         ));
         assert!(matches!(
             parse_paste_code("   ", None),
+            Err(LoopbackError::MissingCode)
+        ));
+    }
+
+    #[test]
+    fn url_with_query_and_fragment_prefers_query() {
+        // Claude-style trailing fragment `#_=_` must not discard query params
+        let input = "https://platform.claude.com/oauth/code/callback?code=REAL_CODE&state=s123#_=_";
+        let code = parse_paste_code(input, Some("s123")).unwrap();
+        assert_eq!(code, "REAL_CODE");
+
+        // Query takes precedence over fragment when both contain code
+        let malicious = "https://auth.example/callback?code=legit_code#code=evil_code";
+        let code = parse_paste_code(malicious, None).unwrap();
+        assert_eq!(code, "legit_code");
+    }
+
+    #[test]
+    fn parses_fragment_only_url() {
+        let input = "https://example.com/oauth#code=frag_code&state=frag_state";
+        let code = parse_paste_code(input, Some("frag_state")).unwrap();
+        assert_eq!(code, "frag_code");
+    }
+
+    #[test]
+    fn rejects_empty_code_in_hash_format() {
+        assert!(matches!(
+            parse_paste_code("#", None),
+            Err(LoopbackError::MissingCode)
+        ));
+        assert!(matches!(
+            parse_paste_code("  #  ", None),
+            Err(LoopbackError::MissingCode)
+        ));
+        assert!(matches!(
+            parse_paste_code("#state=foo", None),
             Err(LoopbackError::MissingCode)
         ));
     }

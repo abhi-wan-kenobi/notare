@@ -21,15 +21,37 @@ class RateLimiter {
   private queue: Array<() => void> = [];
   private active = false;
 
-  async acquire(): Promise<() => void> {
+  async acquire(signal?: AbortSignal): Promise<() => void> {
+    if (signal?.aborted) {
+      throw new Error("Aborted");
+    }
+
     if (!this.active) {
       this.active = true;
       return this.makeRelease();
     }
 
-    const { promise, resolve } = withResolvers<void>();
+    const { promise, resolve, reject } = withResolvers<void>();
+    const onAbort = () => {
+      const idx = this.queue.indexOf(resolve);
+      if (idx !== -1) {
+        this.queue.splice(idx, 1);
+      }
+      reject(new Error("Aborted"));
+    };
+
+    if (signal) {
+      signal.addEventListener("abort", onAbort, { once: true });
+    }
+
     this.queue.push(resolve);
-    await promise;
+    try {
+      await promise;
+    } finally {
+      if (signal) {
+        signal.removeEventListener("abort", onAbort);
+      }
+    }
     return this.makeRelease();
   }
   private makeRelease(): () => void {
@@ -59,7 +81,15 @@ export async function generateBriefForEvent(
   modelName: string,
   options: { signal?: AbortSignal } = {},
 ): Promise<SessionBrief | null> {
-  const release = await briefGenerationRateLimiter.acquire();
+  let release: (() => void) | undefined;
+  try {
+    release = await briefGenerationRateLimiter.acquire(options.signal);
+  } catch (error) {
+    if (options.signal?.aborted) {
+      return null;
+    }
+    throw error;
+  }
   try {
     if (options.signal?.aborted) {
       return null;
@@ -93,7 +123,7 @@ export async function generateBriefForEvent(
     console.error("[briefs] failed to generate brief", error);
     return null;
   } finally {
-    release();
+    release?.();
   }
 }
 

@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   briefForEvent: null as SessionBrief | null,
   briefForSession: null as SessionBrief | null,
   dismissedId: null as string | null,
+  dismissShouldFail: false,
   regeneratedEventId: null as string | null,
   taskModel: {
     model: {} as unknown as LanguageModel,
@@ -25,6 +26,9 @@ vi.mock("./storage", () => ({
   useBriefForEvent: () => mocks.briefForEvent,
   useBriefForSession: () => mocks.briefForSession,
   dismissBrief: vi.fn(async (id: string) => {
+    if (mocks.dismissShouldFail) {
+      throw new Error("DB offline");
+    }
     mocks.dismissedId = id;
   }),
 }));
@@ -67,6 +71,7 @@ describe("BriefCard Component", () => {
     mocks.briefForEvent = null;
     mocks.briefForSession = null;
     mocks.dismissedId = null;
+    mocks.dismissShouldFail = false;
     mocks.regeneratedEventId = null;
   });
 
@@ -131,5 +136,40 @@ describe("BriefCard Component", () => {
     expect(mocks.dismissedId).toBe("brief-test-1");
     // Card should unmount / disappear
     expect(screen.queryByText("Brief")).toBeNull();
+  });
+
+  it("reverts optimistic dismiss when dismissBrief fails", async () => {
+    mocks.dismissShouldFail = true;
+    render(<BriefCard initialBrief={sampleBrief} />);
+
+    const dismissBtn = screen.getByTitle("Dismiss brief");
+    fireEvent.click(dismissBtn);
+
+    // Card should still be visible because dismiss failed and reverted
+    await vi.waitFor(() => {
+      expect(screen.getByText("Brief")).toBeDefined();
+    });
+  });
+
+  it("renders citation chips inside headings", () => {
+    const headingBrief: SessionBrief = {
+      ...sampleBrief,
+      content_md: "## Meeting Outcomes [[src:sess-prev@2500]]\n- Followed up",
+    };
+    render(<BriefCard initialBrief={headingBrief} />);
+
+    const chips = screen.getAllByTestId("citation-chip");
+    expect(chips).toHaveLength(1);
+    expect(chips[0]?.getAttribute("data-session-id")).toBe("sess-prev");
+    expect(chips[0]?.getAttribute("data-ms")).toBe("2500");
+  });
+
+  it("ignores initialBrief if it has already been dismissed", () => {
+    const dismissedBrief: SessionBrief = {
+      ...sampleBrief,
+      dismissed_at: "2026-11-02T12:00:00.000Z",
+    };
+    const { container } = render(<BriefCard initialBrief={dismissedBrief} />);
+    expect(container.firstChild).toBeNull();
   });
 });

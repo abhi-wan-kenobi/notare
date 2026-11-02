@@ -8,19 +8,30 @@ use crate::http::run_server;
 use crate::server::NotareMcpServer;
 use crate::types::*;
 
+pub fn validate_port(port: u16, currently_running_on: Option<u16>) -> Result<()> {
+    if port == 0 {
+        return Err(Error::InvalidPort(port));
+    }
+    if port < 1024 && currently_running_on != Some(port) {
+        return Err(Error::InvalidPort(port));
+    }
+    Ok(())
+}
+
 pub struct McpServerState {
     pub running: bool,
     pub port: u16,
     pub last_error: Option<String>,
     pub shutdown_tx: Option<watch::Sender<bool>>,
+    pub task_handle: Option<tokio::task::JoinHandle<()>>,
 }
 
+#[derive(Clone)]
 pub struct McpServerManager {
     pub state: Arc<RwLock<McpServerState>>,
     pub pool: sqlx::SqlitePool,
     pub app_handle: tauri::AppHandle,
 }
-
 impl McpServerManager {
     pub fn new(pool: sqlx::SqlitePool, app_handle: tauri::AppHandle) -> Self {
         Self {
@@ -29,6 +40,7 @@ impl McpServerManager {
                 port: DEFAULT_PORT,
                 last_error: None,
                 shutdown_tx: None,
+                task_handle: None,
             })),
             pool,
             app_handle,
@@ -49,9 +61,10 @@ impl McpServerManager {
             SECRET_KEY,
         )
         .map_err(Error::Keyring)?
-            && !token.is_empty() {
-                return Ok(token);
-            }
+            && !token.trim().is_empty()
+        {
+            return Ok(token);
+        }
 
         let new_token = format!(
             "ntr_mcp_{}{}",
@@ -90,6 +103,7 @@ impl McpServerManager {
         let store = self.scoped()?;
         let enabled = store.get::<bool>(StoreKey::Enabled)?.unwrap_or(false);
         let port = store.get::<u16>(StoreKey::Port)?.unwrap_or(DEFAULT_PORT);
+        let port = if port == 0 { DEFAULT_PORT } else { port };
         let bearer_token = self.get_or_create_token()?;
 
         Ok(McpServerSettings {
@@ -100,10 +114,15 @@ impl McpServerManager {
     }
 
     pub async fn set_settings(&self, input: McpServerSettingsInput) -> Result<McpServerSettings> {
-        let store = self.scoped()?;
-        store.set(StoreKey::Enabled, input.enabled)?;
-        store.set(StoreKey::Port, input.port)?;
-        store.save()?;
+        let current_running_port = {
+            let guard = self.state.read().await;
+            if guard.running {
+                Some(guard.port)
+            } else {
+                None
+            }
+        };
+        validate_port(input.port, current_running_port)?;
 
         if input.enabled {
             self.restart(input.port).await?;
@@ -111,7 +130,24 @@ impl McpServerManager {
             self.stop().await;
         }
 
+        let store = self.scoped()?;
+        store.set(StoreKey::Enabled, input.enabled)?;
+        store.set(StoreKey::Port, input.port)?;
+        store.save()?;
+
         self.get_settings()
+    }
+
+    pub async fn regenerate_token_and_restart(&self) -> Result<String> {
+        let (running, port) = {
+            let guard = self.state.read().await;
+            (guard.running, guard.port)
+        };
+        let token = self.regenerate_token()?;
+        if running {
+            self.restart(port).await?;
+        }
+        Ok(token)
     }
 
     pub async fn get_status(&self) -> McpServerStatus {
@@ -124,55 +160,77 @@ impl McpServerManager {
     }
 
     pub async fn stop(&self) {
-        let mut guard = self.state.write().await;
-        if let Some(tx) = guard.shutdown_tx.take() {
+        let (tx, handle) = {
+            let mut guard = self.state.write().await;
+            guard.running = false;
+            guard.last_error = None;
+            (guard.shutdown_tx.take(), guard.task_handle.take())
+        };
+        if let Some(tx) = tx {
             let _ = tx.send(true);
         }
-        guard.running = false;
-        guard.last_error = None;
+        if let Some(handle) = handle {
+            let _ = handle.await;
+        }
     }
 
     pub async fn restart(&self, port: u16) -> Result<()> {
+        let current_running_port = {
+            let guard = self.state.read().await;
+            if guard.running {
+                Some(guard.port)
+            } else {
+                None
+            }
+        };
+        validate_port(port, current_running_port)?;
+
         self.stop().await;
 
         let token = self.get_or_create_token()?;
-        let (tx, rx) = watch::channel(false);
+        let (shutdown_tx, shutdown_rx) = watch::channel(false);
+        let (ready_tx, ready_rx) = tokio::sync::oneshot::channel();
 
         let server = NotareMcpServer::new(self.pool.clone(), Some(self.app_handle.clone()));
         let state_clone = self.state.clone();
 
-        let listener_check = tokio::net::TcpListener::bind(("127.0.0.1", port)).await;
-        if let Err(e) = listener_check {
-            let err = if e.kind() == std::io::ErrorKind::AddrInUse {
-                Error::PortInUse(port)
-            } else {
-                Error::Server(e.to_string())
-            };
+        let handle = tokio::spawn(async move {
+            let res = run_server(server, port, token, shutdown_rx, Some(ready_tx)).await;
             let mut guard = state_clone.write().await;
             guard.running = false;
-            guard.port = port;
-            guard.last_error = Some(err.to_string());
-            return Err(err);
-        }
-        drop(listener_check);
-
-        {
-            let mut guard = self.state.write().await;
-            guard.running = true;
-            guard.port = port;
-            guard.last_error = None;
-            guard.shutdown_tx = Some(tx);
-        }
-
-        tokio::spawn(async move {
-            if let Err(e) = run_server(server, port, token, rx).await {
+            if let Err(e) = res {
                 tracing::error!("MCP server exited with error: {e}");
-                let mut guard = state_clone.write().await;
-                guard.running = false;
                 guard.last_error = Some(e.to_string());
             }
         });
 
-        Ok(())
+        match ready_rx.await {
+            Ok(Ok(())) => {
+                let mut guard = self.state.write().await;
+                guard.running = true;
+                guard.port = port;
+                guard.last_error = None;
+                guard.shutdown_tx = Some(shutdown_tx);
+                guard.task_handle = Some(handle);
+                Ok(())
+            }
+            Ok(Err(e)) => {
+                let _ = handle.await;
+                let mut guard = self.state.write().await;
+                guard.running = false;
+                guard.port = port;
+                guard.last_error = Some(e.to_string());
+                Err(e)
+            }
+            Err(_) => {
+                let _ = handle.await;
+                let mut guard = self.state.write().await;
+                guard.running = false;
+                guard.port = port;
+                let err = Error::Server("MCP server task terminated during startup".to_string());
+                guard.last_error = Some(err.to_string());
+                Err(err)
+            }
+        }
     }
 }
