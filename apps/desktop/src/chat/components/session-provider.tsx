@@ -15,6 +15,15 @@ import {
   useChatContextPipeline,
 } from "~/chat/context/use-chat-context-pipeline";
 import {
+  type ChatScopeSelection,
+  DEFAULT_EVERYTHING_SCOPE,
+  DEFAULT_THIS_MEETING_SCOPE,
+  NEW_CHAT_SCOPE_KEY,
+  resolveScopeFilter,
+  type ToolScopeFilter,
+  useChatScopeStore,
+} from "~/chat/state/chat-scope";
+import {
   buildPersistedChatMessage,
   getVisibleChatMessages,
   shouldPersistFinishedMessage,
@@ -51,6 +60,8 @@ export type ChatSessionRenderProps = {
   onAddContextEntity: (ref: ContextRef) => void;
   onDraftContextRefsChange: (refs: ContextRef[]) => void;
   isSystemPromptReady: boolean;
+  scopeSelection: ChatScopeSelection;
+  scopeFilter: ToolScopeFilter;
 };
 
 interface ChatSessionProps {
@@ -123,14 +134,32 @@ export function ChatSession({
     setPendingManualRefs([]);
     setPendingDraftRefs([]);
   }, [sessionId, chatGroupId]);
+  const pendingMessageRefs = useMemo(
+    () => dedupeByKey([pendingManualRefs, pendingDraftRefs]),
+    [pendingManualRefs, pendingDraftRefs],
+  );
+
+  const rawScope = useChatScopeStore(
+    (state) => state.scopesByGroupId[chatGroupId ?? NEW_CHAT_SCOPE_KEY],
+  );
+  const scopeSelection =
+    rawScope ??
+    (currentSessionId ? DEFAULT_THIS_MEETING_SCOPE : DEFAULT_EVERYTHING_SCOPE);
+
+  const { filter: scopeFilter, isThisMeeting } = useMemo(
+    () =>
+      resolveScopeFilter(scopeSelection, currentSessionId, pendingMessageRefs),
+    [scopeSelection, currentSessionId, pendingMessageRefs],
+  );
 
   const { transport, isSystemPromptReady } = useTransport(
     modelOverride,
     extraTools,
     systemPromptOverride,
     ownerUserId || undefined,
+    scopeFilter,
+    isThisMeeting,
   );
-
   const persistedVisibleMessages = useMemo(
     () => getVisibleChatMessages(persistedMessages),
     [persistedMessages],
@@ -273,6 +302,22 @@ export function ChatSession({
     void chatRegenerate();
   }, [chatGroupId, messages, chatRegenerate]);
 
+  const prevUserMsgCountRef = useRef(0);
+  useEffect(() => {
+    const count = messages.filter((message) => message.role === "user").length;
+    if (count > prevUserMsgCountRef.current) {
+      setPendingManualRefs([]);
+      setPendingDraftRefs([]);
+    }
+    prevUserMsgCountRef.current = count;
+  }, [messages]);
+
+  const { contextEntities, pendingRefs } = useChatContextPipeline({
+    messages,
+    currentSessionId,
+    pendingManualRefs: pendingMessageRefs,
+  });
+
   const setMessages = useCallback(
     (next: HyprUIMessage[] | ((prev: HyprUIMessage[]) => HyprUIMessage[])) => {
       chatSetMessages(next);
@@ -287,28 +332,6 @@ export function ChatSession({
     },
     [chatGroupId, messages, chatSetMessages],
   );
-
-  const prevUserMsgCountRef = useRef(0);
-  useEffect(() => {
-    const count = messages.filter((message) => message.role === "user").length;
-    if (count > prevUserMsgCountRef.current) {
-      setPendingManualRefs([]);
-      setPendingDraftRefs([]);
-    }
-    prevUserMsgCountRef.current = count;
-  }, [messages]);
-
-  const pendingMessageRefs = useMemo(
-    () => dedupeByKey([pendingManualRefs, pendingDraftRefs]),
-    [pendingManualRefs, pendingDraftRefs],
-  );
-
-  const { contextEntities, pendingRefs } = useChatContextPipeline({
-    messages,
-    currentSessionId,
-    pendingManualRefs: pendingMessageRefs,
-  });
-
   const content = children({
     sessionId,
     messages,
@@ -324,6 +347,8 @@ export function ChatSession({
     onAddContextEntity,
     onDraftContextRefsChange,
     isSystemPromptReady,
+    scopeSelection,
+    scopeFilter,
   });
 
   if (unstyled) {

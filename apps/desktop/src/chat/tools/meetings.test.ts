@@ -8,6 +8,11 @@ const mocks = vi.hoisted(() => ({
   getMeeting: vi.fn(),
   getMeetingTranscript: vi.fn(),
   getRecurringMeetingHistory: vi.fn(),
+  // `./scope-resolver` pulls in `~/db`, whose client is built from these.
+  execute: vi.fn(),
+  executeProxy: vi.fn(),
+  executeTransaction: vi.fn(),
+  subscribe: vi.fn(),
 }));
 
 vi.mock("@hypr/plugin-db", () => mocks);

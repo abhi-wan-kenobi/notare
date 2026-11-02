@@ -2,8 +2,10 @@ import { tool } from "ai";
 import { z } from "zod";
 
 import { CONTEXT_TEXT_FIELD } from "./context-text";
+import { resolveAllowedSessionIds } from "./scope-resolver";
 import type { ToolDependencies } from "./types";
 
+import type { ToolScopeFilter } from "~/chat/state/chat-scope";
 import {
   loadActiveSessionIds,
   loadSessionContentSnapshot,
@@ -36,10 +38,13 @@ type LoadedNoteFile = {
 type SearchSnippet = {
   section: string;
   text: string;
+  startMs?: number;
+  source_id?: string;
 };
 
 type SearchMatch = {
   sessionId: string;
+  source_id?: string;
   title: string;
   date: string | null;
   score: number;
@@ -530,7 +535,10 @@ export const buildReadNoteTool = (_deps: ToolDependencies) =>
       }),
   });
 
-export const buildSearchMeetingContentTool = (_deps: ToolDependencies) =>
+export const buildSearchMeetingContentTool = (
+  deps: ToolDependencies,
+  scopeFilterOverride?: ToolScopeFilter | (() => ToolScopeFilter | undefined),
+) =>
   tool({
     description:
       "Search local meeting notes and transcripts for exact words or phrases. Use search_meetings first for open-ended questions about past meetings, people, decisions, or topics. This is lexical content search, not vector search.",
@@ -553,9 +561,39 @@ export const buildSearchMeetingContentTool = (_deps: ToolDependencies) =>
       meeting_ids?: string[];
       limit?: number;
     }) => {
+      const activeFilter =
+        typeof scopeFilterOverride === "function"
+          ? scopeFilterOverride()
+          : (scopeFilterOverride ??
+            (typeof deps.scopeFilter === "function"
+              ? deps.scopeFilter()
+              : deps.scopeFilter));
+
+      const allowedSessionIds = await resolveAllowedSessionIds(
+        activeFilter,
+        deps,
+      );
+      let sessionIds = params.meeting_ids;
+      if (allowedSessionIds !== null) {
+        if (sessionIds && sessionIds.length > 0) {
+          sessionIds = sessionIds.filter((id) =>
+            allowedSessionIds.includes(id),
+          );
+        } else {
+          sessionIds = allowedSessionIds;
+        }
+        if (sessionIds.length === 0) {
+          return {
+            query: params.query,
+            scanned: 0,
+            results: [],
+          };
+        }
+      }
+
       const result = await searchMeetingContent({
         query: params.query,
-        sessionIds: params.meeting_ids,
+        sessionIds,
         limit: Math.min(params.limit ?? DEFAULT_SEARCH_LIMIT, MAX_SEARCH_LIMIT),
       });
       return {
@@ -563,12 +601,20 @@ export const buildSearchMeetingContentTool = (_deps: ToolDependencies) =>
         results: result.results.map(({ sessionId, ...match }) => ({
           ...match,
           meeting_id: sessionId,
+          source_id: `[[src:${sessionId}@0]]`,
+          snippets: match.snippets.map((s) => ({
+            ...s,
+            source_id: s.source_id ?? `[[src:${sessionId}@${s.startMs ?? 0}]]`,
+          })),
         })),
       };
     },
   });
 
-export const buildFindRelatedMeetingsTool = (deps: ToolDependencies) =>
+export const buildFindRelatedMeetingsTool = (
+  deps: ToolDependencies,
+  scopeFilterOverride?: ToolScopeFilter | (() => ToolScopeFilter | undefined),
+) =>
   tool({
     description:
       "Find meetings related to the current or given meeting by shared participants, the same calendar event, or nearby dates.",
@@ -601,11 +647,30 @@ export const buildFindRelatedMeetingsTool = (deps: ToolDependencies) =>
         sessionId,
         limit: Math.min(params.limit ?? DEFAULT_SEARCH_LIMIT, MAX_SEARCH_LIMIT),
       });
+      const activeFilter =
+        typeof scopeFilterOverride === "function"
+          ? scopeFilterOverride()
+          : (scopeFilterOverride ??
+            (typeof deps.scopeFilter === "function"
+              ? deps.scopeFilter()
+              : deps.scopeFilter));
+
+      const allowedSessionIds = await resolveAllowedSessionIds(
+        activeFilter,
+        deps,
+      );
+      let meetingResults = result.results;
+      if (allowedSessionIds !== null) {
+        meetingResults = meetingResults.filter((m) =>
+          allowedSessionIds.includes(m.sessionId),
+        );
+      }
+
       const { sessionId: resolvedMeetingId, ...related } = result;
       return {
         ...related,
         meeting_id: resolvedMeetingId,
-        results: result.results.map(({ sessionId, ...meeting }) => ({
+        results: meetingResults.map(({ sessionId, ...meeting }) => ({
           ...meeting,
           meeting_id: sessionId,
         })),

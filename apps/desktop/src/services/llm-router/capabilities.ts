@@ -61,6 +61,7 @@ const STRUCTURED_OUTPUT_PROVIDERS: ReadonlySet<string> = new Set([
   "openrouter",
   "mistral",
   "hyprnote",
+  "omp",
 ]);
 
 export function providerSupportsStructuredOutputs(
@@ -122,6 +123,15 @@ export function checkCaps(params: {
   /** User setting: "my model is capable, stop second-guessing me". */
   userOverride?: boolean;
 }): CapsCheck {
+  // Provider 'omp' exposes models via omp aliases (@smol, @slow, @plan, etc.)
+  // and upstream provider/model ids through the local omp auth-gateway. Parameter
+  // counts cannot be inferred from alias names, but omp aliases map to cloud-grade
+  // models supporting JSON-schema decoding and multi-step tasks. We treat omp as
+  // cloud-grade: all tasks allowed, JSON output supported.
+  if (params.providerId === "omp") {
+    return { structuredOutputs: true, minParamsOk: true };
+  }
+
   const req = TASK_REQUIREMENTS[params.task];
 
   const structured = req.structuredOutputs

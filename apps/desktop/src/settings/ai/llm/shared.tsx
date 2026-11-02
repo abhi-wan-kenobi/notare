@@ -165,6 +165,16 @@ const _PROVIDERS = [
     requirements: [],
   },
   {
+    id: "omp",
+    displayName: "omp Gateway",
+    badge: null,
+    icon: <Icon icon="mingcute:terminal-box-line" width={16} />,
+    baseUrl: "http://127.0.0.1:4000/v1",
+    requirements: [
+      { kind: "requires_config", fields: ["base_url", "api_key"] },
+    ],
+  },
+  {
     id: "custom",
     displayName: "Custom",
     badge: null,

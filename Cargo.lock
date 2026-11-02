@@ -779,33 +779,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "api-subscription"
-version = "0.1.0"
-dependencies = [
- "analytics",
- "api-auth",
- "api-env",
- "api-error",
- "async-stripe",
- "async-stripe-billing",
- "async-stripe-core",
- "axum",
- "backon",
- "chrono",
- "loops",
- "observability",
- "reqwest 0.13.4",
- "sentry",
- "serde",
- "serde_json",
- "thiserror 2.0.18",
- "tokio",
- "tracing",
- "urlencoding",
- "utoipa",
-]
-
-[[package]]
 name = "api-support"
 version = "0.1.0"
 dependencies = [
@@ -1440,21 +1413,6 @@ dependencies = [
  "serde_json",
  "serde_qs",
  "thiserror 2.0.18",
- "tracing",
-]
-
-[[package]]
-name = "async-stripe-core"
-version = "1.0.0-rc.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ee9710c3d64db48dda1ec0b4976d091b7f40cabc8ed7bcab9e93b608b70b405c"
-dependencies = [
- "async-stripe-client-core",
- "async-stripe-shared",
- "async-stripe-types",
- "miniserde",
- "serde",
- "smol_str",
  "tracing",
 ]
 

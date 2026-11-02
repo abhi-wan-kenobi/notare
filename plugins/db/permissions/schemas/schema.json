@@ -307,6 +307,18 @@
           "markdownDescription": "Denies the cleanup_legacy_files command without any pre-configured scope."
         },
         {
+          "description": "Enables the delete_recipe command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-delete-recipe",
+          "markdownDescription": "Enables the delete_recipe command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the delete_recipe command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-delete-recipe",
+          "markdownDescription": "Denies the delete_recipe command without any pre-configured scope."
+        },
+        {
           "description": "Enables the execute command without any pre-configured scope.",
           "type": "string",
           "const": "allow-execute",
@@ -413,6 +425,18 @@
           "type": "string",
           "const": "deny-list-meetings",
           "markdownDescription": "Denies the list_meetings command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the list_recipes command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-list-recipes",
+          "markdownDescription": "Enables the list_recipes command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the list_recipes command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-list-recipes",
+          "markdownDescription": "Denies the list_recipes command without any pre-configured scope."
         },
         {
           "description": "Enables the run_legacy_import command without any pre-configured scope.",
@@ -547,10 +571,22 @@
           "markdownDescription": "Denies the unsubscribe command without any pre-configured scope."
         },
         {
-          "description": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-execute`\n- `allow-execute-proxy`\n- `allow-execute-transaction`\n- `allow-list-meetings`\n- `allow-get-meeting`\n- `allow-get-meeting-transcript`\n- `allow-get-recurring-meeting-history`\n- `allow-get-legacy-cleanup-status`\n- `allow-cleanup-legacy-files`\n- `allow-subscribe`\n- `allow-unsubscribe`\n- `allow-sync-status`\n- `allow-sync-trigger`\n- `allow-sync-list-peers`\n- `allow-sync-this-device`\n- `allow-sync-add-peer`\n- `allow-sync-remove-peer`\n- `allow-sync-start`\n- `allow-sync-stop`",
+          "description": "Enables the upsert_recipe command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-upsert-recipe",
+          "markdownDescription": "Enables the upsert_recipe command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the upsert_recipe command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-upsert-recipe",
+          "markdownDescription": "Denies the upsert_recipe command without any pre-configured scope."
+        },
+        {
+          "description": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-execute`\n- `allow-execute-proxy`\n- `allow-execute-transaction`\n- `allow-list-meetings`\n- `allow-get-meeting`\n- `allow-get-meeting-transcript`\n- `allow-get-recurring-meeting-history`\n- `allow-get-legacy-cleanup-status`\n- `allow-cleanup-legacy-files`\n- `allow-subscribe`\n- `allow-unsubscribe`\n- `allow-sync-status`\n- `allow-sync-trigger`\n- `allow-sync-list-peers`\n- `allow-sync-this-device`\n- `allow-sync-add-peer`\n- `allow-sync-remove-peer`\n- `allow-sync-start`\n- `allow-sync-stop`\n- `allow-list-recipes`\n- `allow-upsert-recipe`\n- `allow-delete-recipe`",
           "type": "string",
           "const": "default",
-          "markdownDescription": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-execute`\n- `allow-execute-proxy`\n- `allow-execute-transaction`\n- `allow-list-meetings`\n- `allow-get-meeting`\n- `allow-get-meeting-transcript`\n- `allow-get-recurring-meeting-history`\n- `allow-get-legacy-cleanup-status`\n- `allow-cleanup-legacy-files`\n- `allow-subscribe`\n- `allow-unsubscribe`\n- `allow-sync-status`\n- `allow-sync-trigger`\n- `allow-sync-list-peers`\n- `allow-sync-this-device`\n- `allow-sync-add-peer`\n- `allow-sync-remove-peer`\n- `allow-sync-start`\n- `allow-sync-stop`"
+          "markdownDescription": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-execute`\n- `allow-execute-proxy`\n- `allow-execute-transaction`\n- `allow-list-meetings`\n- `allow-get-meeting`\n- `allow-get-meeting-transcript`\n- `allow-get-recurring-meeting-history`\n- `allow-get-legacy-cleanup-status`\n- `allow-cleanup-legacy-files`\n- `allow-subscribe`\n- `allow-unsubscribe`\n- `allow-sync-status`\n- `allow-sync-trigger`\n- `allow-sync-list-peers`\n- `allow-sync-this-device`\n- `allow-sync-add-peer`\n- `allow-sync-remove-peer`\n- `allow-sync-start`\n- `allow-sync-stop`\n- `allow-list-recipes`\n- `allow-upsert-recipe`\n- `allow-delete-recipe`"
         }
       ]
     }

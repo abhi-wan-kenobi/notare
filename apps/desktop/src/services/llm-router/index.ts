@@ -142,6 +142,11 @@ export function classifyTier(candidate: Candidate): ModelTier {
   if (id === "custom") {
     return isLocalUrl(candidate.baseUrl) ? "local" : "byo-cloud";
   }
+  // Note on 'omp': even though omp auth-gateway serves on a local/loopback
+  // interface (default 127.0.0.1:4000), it proxies inference to remote/cloud
+  // providers. It is classified as 'byo-cloud' (remote-inference) rather than
+  // 'local' so local-first privacy gating invariants are preserved and it is
+  // never used as an unprompted local fallback.
   return "byo-cloud";
 }
 

@@ -9,6 +9,11 @@ import { Disclosure, MessageBubble, MessageContainer } from "./shared";
 import { Tool } from "./tool";
 import type { Part } from "./types";
 
+import { CitationChip } from "~/chat/citations/chip";
+import {
+  parseCitation,
+  replaceCitationsForRendering,
+} from "~/chat/citations/parser";
 import { hasRenderableContent } from "~/chat/components/shared";
 import type { HyprUIMessage } from "~/chat/types";
 
@@ -72,7 +77,7 @@ export function NormalMessage({
       >
         <MessageBubble variant={isUser ? "user" : "assistant"}>
           {message.parts.map((part, i) => (
-            <Part key={i} part={part as Part} />
+            <Part key={i} part={part as Part} isAssistant={!isUser} />
           ))}
         </MessageBubble>
         {!isUser && (
@@ -100,12 +105,18 @@ export function NormalMessage({
   );
 }
 
-function Part({ part }: { part: Part }) {
+function Part({
+  part,
+  isAssistant = false,
+}: {
+  part: Part;
+  isAssistant?: boolean;
+}) {
   if (part.type === "reasoning") {
     return <Reasoning part={part} />;
   }
   if (part.type === "text") {
-    return <Text part={part} />;
+    return <Text part={part} isAssistant={isAssistant} />;
   }
   if (part.type === "step-start") {
     return null;
@@ -190,10 +201,47 @@ const chatComponents = {
       <p className="mb-1.5 last:mb-0">{props.children as React.ReactNode}</p>
     );
   },
+  a: (props: React.AnchorHTMLAttributes<HTMLAnchorElement>) => {
+    const href = props.href;
+    if (href?.startsWith("citation:")) {
+      const parsed = parseCitation(`[[src:${href.slice(9)}]]`);
+      if (parsed) {
+        return (
+          <CitationChip
+            sessionId={parsed.sessionId}
+            ms={parsed.ms}
+            raw={
+              typeof props.children === "string" ? props.children : undefined
+            }
+          />
+        );
+      }
+    }
+
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noreferrer noopener"
+        className="hover:text-foreground underline"
+      >
+        {props.children as React.ReactNode}
+      </a>
+    );
+  },
 } as const;
 
-function Text({ part }: { part: Extract<Part, { type: "text" }> }) {
+function Text({
+  part,
+  isAssistant = false,
+}: {
+  part: Extract<Part, { type: "text" }>;
+  isAssistant?: boolean;
+}) {
   const isAnimating = part.state !== "done";
+  const renderedText = isAssistant
+    ? replaceCitationsForRendering(part.text)
+    : part.text;
 
   return (
     <Streamdown
@@ -203,7 +251,7 @@ function Text({ part }: { part: Extract<Part, { type: "text" }> }) {
       isAnimating={isAnimating}
       linkSafety={{ enabled: false }}
     >
-      {part.text}
+      {renderedText}
     </Streamdown>
   );
 }

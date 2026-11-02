@@ -8,6 +8,11 @@ import {
   listMeetings,
 } from "@hypr/plugin-db";
 
+import { resolveAllowedSessionIds } from "./scope-resolver";
+import type { ToolDependencies } from "./types";
+
+import type { ToolScopeFilter } from "~/chat/state/chat-scope";
+
 const listLimitSchema = z
   .number()
   .int()
@@ -38,7 +43,10 @@ const historyOffsetSchema = z
   .optional()
   .describe("Number of meetings to skip; defaults to 0");
 
-export const buildListMeetingsTool = () =>
+export const buildListMeetingsTool = (
+  deps?: ToolDependencies,
+  scopeFilterOverride?: ToolScopeFilter | (() => ToolScopeFilter | undefined),
+) =>
   tool({
     description:
       "List recent Notare meetings with pagination metadata. Use query to narrow by title or meeting id, then pass next_offset as offset to continue.",
@@ -51,7 +59,35 @@ export const buildListMeetingsTool = () =>
       limit: listLimitSchema,
       offset: offsetSchema,
     }),
-    execute: listMeetings,
+    execute: async (params) => {
+      const page = await listMeetings(params);
+      const activeFilter =
+        typeof scopeFilterOverride === "function"
+          ? scopeFilterOverride()
+          : (scopeFilterOverride ??
+            (typeof deps?.scopeFilter === "function"
+              ? deps.scopeFilter()
+              : deps?.scopeFilter));
+
+      const allowedSessionIds = await resolveAllowedSessionIds(
+        activeFilter,
+        deps,
+      );
+      if (allowedSessionIds === null) {
+        return page;
+      }
+
+      const filteredMeetings = page.meetings.filter((meeting) =>
+        allowedSessionIds.includes(meeting.id),
+      );
+
+      return {
+        ...page,
+        meetings: filteredMeetings,
+        total: filteredMeetings.length,
+        next_offset: null,
+      };
+    },
   });
 
 export const buildGetMeetingTool = () =>

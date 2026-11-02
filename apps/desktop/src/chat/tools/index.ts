@@ -32,6 +32,7 @@ import type {
 } from "./types";
 import { buildWebSearchTool } from "./web-search";
 
+import type { ToolScopeFilter } from "~/chat/state/chat-scope";
 import type { SearchFilters } from "~/search/contexts/engine/types";
 
 export type { ToolDependencies };
@@ -68,8 +69,14 @@ function withToolLogging<T extends { execute?: (...args: any[]) => any }>(
   } as T;
 }
 
-export const buildChatTools = (deps: ToolDependencies) => ({
-  list_meetings: withToolLogging("list_meetings", buildListMeetingsTool()),
+export const buildChatTools = (
+  deps: ToolDependencies,
+  scopeFilterOverride?: ToolScopeFilter | (() => ToolScopeFilter | undefined),
+) => ({
+  list_meetings: withToolLogging(
+    "list_meetings",
+    buildListMeetingsTool(deps, scopeFilterOverride),
+  ),
   get_meeting: withToolLogging("get_meeting", buildGetMeetingTool()),
   get_meeting_transcript: withToolLogging(
     "get_meeting_transcript",
@@ -81,15 +88,15 @@ export const buildChatTools = (deps: ToolDependencies) => ({
   ),
   search_meeting_content: withToolLogging(
     "search_meeting_content",
-    buildSearchMeetingContentTool(deps),
+    buildSearchMeetingContentTool(deps, scopeFilterOverride),
   ),
   find_related_meetings: withToolLogging(
     "find_related_meetings",
-    buildFindRelatedMeetingsTool(deps),
+    buildFindRelatedMeetingsTool(deps, scopeFilterOverride),
   ),
   search_meetings: withToolLogging(
     "search_meetings",
-    buildSearchMeetingsTool(deps),
+    buildSearchMeetingsTool(deps, scopeFilterOverride),
   ),
   search_contacts: withToolLogging(
     "search_contacts",

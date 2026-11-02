@@ -23,6 +23,9 @@ Default permissions for the plugin
 - `allow-sync-remove-peer`
 - `allow-sync-start`
 - `allow-sync-stop`
+- `allow-list-recipes`
+- `allow-upsert-recipe`
+- `allow-delete-recipe`
 
 ## Permission Table
 
@@ -55,6 +58,32 @@ Enables the cleanup_legacy_files command without any pre-configured scope.
 <td>
 
 Denies the cleanup_legacy_files command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`db:allow-delete-recipe`
+
+</td>
+<td>
+
+Enables the delete_recipe command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`db:deny-delete-recipe`
+
+</td>
+<td>
+
+Denies the delete_recipe command without any pre-configured scope.
 
 </td>
 </tr>
@@ -289,6 +318,32 @@ Enables the list_meetings command without any pre-configured scope.
 <td>
 
 Denies the list_meetings command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`db:allow-list-recipes`
+
+</td>
+<td>
+
+Enables the list_recipes command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`db:deny-list-recipes`
+
+</td>
+<td>
+
+Denies the list_recipes command without any pre-configured scope.
 
 </td>
 </tr>
@@ -575,6 +630,32 @@ Enables the unsubscribe command without any pre-configured scope.
 <td>
 
 Denies the unsubscribe command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`db:allow-upsert-recipe`
+
+</td>
+<td>
+
+Enables the upsert_recipe command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`db:deny-upsert-recipe`
+
+</td>
+<td>
+
+Denies the upsert_recipe command without any pre-configured scope.
 
 </td>
 </tr>

@@ -27,10 +27,17 @@ import {
   MESSAGE_WINDOW_THRESHOLD,
   type ToolOutputPart,
 } from "./helpers";
+import { formatPreRetrievalBlock, runPreRetrieval } from "./pre-retrieval";
+
+import type { ToolScopeFilter } from "~/chat/state/chat-scope";
 
 export type ResolvedChatContext =
   | { kind: "session"; context: SessionContext }
   | { kind: "text"; text: string };
+export interface PreRetrievalTransportOptions {
+  scopeFilter?: ToolScopeFilter;
+  isThisMeeting?: boolean;
+}
 
 export class CustomChatTransport implements ChatTransport<HyprUIMessage> {
   constructor(
@@ -40,6 +47,7 @@ export class CustomChatTransport implements ChatTransport<HyprUIMessage> {
     private resolveContextRef?: (
       ref: ContextRef,
     ) => Promise<ResolvedChatContext | null>,
+    private preRetrievalOptions?: PreRetrievalTransportOptions,
   ) {}
 
   private async renderContextBlock(
@@ -184,10 +192,33 @@ export class CustomChatTransport implements ChatTransport<HyprUIMessage> {
     );
 
     let lastUserMessageIndex = -1;
+    let lastUserQuery = "";
     for (let i = options.messages.length - 1; i >= 0; i -= 1) {
       if (options.messages[i]?.role === "user") {
         lastUserMessageIndex = i;
+        lastUserQuery = options.messages[i].parts
+          .filter((p) => p.type === "text")
+          .map((p) => ("text" in p && typeof p.text === "string" ? p.text : ""))
+          .join(" ")
+          .trim();
         break;
+      }
+    }
+
+    let preRetrievalBlock: string | null = null;
+    if (lastUserQuery && !this.preRetrievalOptions?.isThisMeeting) {
+      try {
+        const chunks = await runPreRetrieval({
+          query: lastUserQuery,
+          scopeFilter: this.preRetrievalOptions?.scopeFilter,
+          limit: 8,
+        });
+        const formatted = formatPreRetrievalBlock(chunks);
+        if (formatted) {
+          preRetrievalBlock = formatted;
+        }
+      } catch (error) {
+        console.error("Failed to run pre-retrieval:", error);
       }
     }
 
@@ -208,19 +239,26 @@ export class CustomChatTransport implements ChatTransport<HyprUIMessage> {
 
     for (const [index, msg] of options.messages.entries()) {
       if (msg.role === "user") {
-        if (
-          !effectiveContextBlock ||
-          lastUserMessageIndex === -1 ||
-          index !== lastUserMessageIndex
-        ) {
+        if (lastUserMessageIndex === -1 || index !== lastUserMessageIndex) {
           messagesWithContext.push(msg);
           continue;
         }
 
+        const blocksToInject = [
+          effectiveContextBlock,
+          preRetrievalBlock,
+        ].filter(Boolean);
+
+        if (blocksToInject.length === 0) {
+          messagesWithContext.push(msg);
+          continue;
+        }
+
+        const combinedBlock = blocksToInject.join("\n\n");
         messagesWithContext.push({
           ...msg,
           parts: [
-            { type: "text" as const, text: `${effectiveContextBlock}\n\n` },
+            { type: "text" as const, text: `${combinedBlock}\n\n` },
             ...msg.parts,
           ],
         });

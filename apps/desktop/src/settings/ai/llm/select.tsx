@@ -20,6 +20,7 @@ import { cn } from "@hypr/utils";
 
 import { useLlmSettings } from "./context";
 import { HealthStatusIndicator, useConnectionHealth } from "./health";
+import { fetchOmpModels } from "./list-omp";
 import { getPreferredProviderModel } from "./selection";
 import { type Provider, PROVIDERS } from "./shared";
 
@@ -142,7 +143,10 @@ export function SelectProviderAndModel() {
     const nextModel = getPreferredProviderModel(
       lastSelectedModelsRef.current[provider],
       getCachedModels(provider),
-      { allowSavedModelWithoutChoices: provider === "custom" },
+      {
+        allowSavedModelWithoutChoices:
+          provider === "custom" || provider === "omp",
+      },
     );
 
     rememberModel(provider, nextModel);
@@ -155,7 +159,10 @@ export function SelectProviderAndModel() {
       const resolvedModel = getPreferredProviderModel(
         lastSelectedModelsRef.current[provider],
         models,
-        { allowSavedModelWithoutChoices: provider === "custom" },
+        {
+          allowSavedModelWithoutChoices:
+            provider === "custom" || provider === "omp",
+        },
       );
 
       if (selectionRequestRef.current !== requestId) {
@@ -496,11 +503,13 @@ export function getLlmProviderStatus({
   const apiKey = String(config?.api_key || "").trim();
 
   const eligible =
-    getProviderSelectionBlockers(provider.requirements, {
-      isAuthenticated,
-      isPaid,
-      config: { base_url: baseUrl, api_key: apiKey },
-    }).length === 0;
+    provider.id === "omp"
+      ? !!baseUrl
+      : getProviderSelectionBlockers(provider.requirements, {
+          isAuthenticated,
+          isPaid,
+          config: { base_url: baseUrl, api_key: apiKey },
+        }).length === 0;
 
   if (!eligible) {
     return { configured: false };
@@ -562,6 +571,9 @@ export function getLlmProviderStatus({
       break;
     case "lmstudio":
       listModelsFunc = () => listLMStudioModels(baseUrl, apiKey);
+      break;
+    case "omp":
+      listModelsFunc = () => fetchOmpModels(baseUrl, apiKey);
       break;
     case "custom":
       listModelsFunc = () => listGenericModels(baseUrl, apiKey);

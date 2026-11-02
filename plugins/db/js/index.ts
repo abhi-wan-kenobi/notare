@@ -10,10 +10,12 @@ import type {
   ListMeetingsInput as GeneratedListMeetingsInput,
   Meeting,
   MeetingPage,
+  Recipe,
   SubscriptionRegistration,
   SyncPeer,
   SyncStatusResult,
   TranscriptPage,
+  UpsertRecipeInput,
 } from "./bindings.gen";
 
 export type {
@@ -23,9 +25,11 @@ export type {
   LegacyImportReport,
   Meeting,
   MeetingPage,
+  Recipe,
   SyncPeer,
   SyncStatusResult,
   TranscriptPage,
+  UpsertRecipeInput,
 } from "./bindings.gen";
 
 export type ListMeetingsInput = Partial<GeneratedListMeetingsInput>;
@@ -146,6 +150,18 @@ export async function syncAddPeer(
 
 export async function syncRemovePeer(fingerprint: string): Promise<boolean> {
   return invoke("plugin:db|sync_remove_peer", { fingerprint });
+}
+
+export async function listRecipes(): Promise<Recipe[]> {
+  return invoke("plugin:db|list_recipes");
+}
+
+export async function upsertRecipe(input: UpsertRecipeInput): Promise<Recipe> {
+  return invoke("plugin:db|upsert_recipe", { input });
+}
+
+export async function deleteRecipe(id: string): Promise<void> {
+  return invoke("plugin:db|delete_recipe", { id });
 }
 
 export async function subscribe<T = Record<string, unknown>>(

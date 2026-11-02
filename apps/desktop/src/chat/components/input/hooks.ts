@@ -5,21 +5,42 @@ import { EMPTY_DOC } from "@hypr/editor/markdown";
 import { commands as analyticsCommands } from "@hypr/plugin-analytics";
 
 import type { ContextRef } from "~/chat/context/entities";
+import type { Recipe } from "~/chat/recipes";
 
 const draftsByKey = new Map<string, JSONContent>();
+const recipesByDraftKey = new Map<string, Recipe | null>();
 
 export function useDraftState({
   draftKey,
   onDraftContentChange,
   onContextRefsChange,
+  onActiveRecipeChange,
 }: {
   draftKey: string;
   onDraftContentChange?: (hasDraftContent: boolean) => void;
   onContextRefsChange?: (refs: ContextRef[]) => void;
+  onActiveRecipeChange?: (recipe: Recipe | null) => void;
 }) {
   const initialContent = useRef(draftsByKey.get(draftKey) ?? EMPTY_DOC);
   const [hasContent, setHasContent] = useState(() =>
     hasTextContent(initialContent.current),
+  );
+
+  const [activeRecipe, setActiveRecipeState] = useState<Recipe | null>(
+    () => recipesByDraftKey.get(draftKey) ?? null,
+  );
+
+  const setActiveRecipe = useCallback(
+    (recipe: Recipe | null) => {
+      setActiveRecipeState(recipe);
+      if (recipe) {
+        recipesByDraftKey.set(draftKey, recipe);
+      } else {
+        recipesByDraftKey.delete(draftKey);
+      }
+      onActiveRecipeChange?.(recipe);
+    },
+    [draftKey, onActiveRecipeChange],
   );
 
   useEffect(() => {
@@ -43,6 +64,8 @@ export function useDraftState({
     hasContent,
     initialContent: initialContent.current,
     handleEditorUpdate,
+    activeRecipe,
+    setActiveRecipe,
   };
 }
 
@@ -53,6 +76,8 @@ export function useSubmit({
   onSendMessage,
   onDraftContentChange,
   onContextRefsChange,
+  onActiveRecipeChange,
+  setActiveRecipe,
 }: {
   draftKey: string;
   editorRef: React.RefObject<ChatEditorHandle | null>;
@@ -65,6 +90,8 @@ export function useSubmit({
   ) => void;
   onDraftContentChange?: (hasDraftContent: boolean) => void;
   onContextRefsChange?: (refs: ContextRef[]) => void;
+  onActiveRecipeChange?: (recipe: Recipe | null) => void;
+  setActiveRecipe?: (recipe: Recipe | null) => void;
 }) {
   return useCallback(() => {
     const json = editorRef.current?.getJSON();
@@ -81,6 +108,9 @@ export function useSubmit({
     draftsByKey.delete(draftKey);
     onDraftContentChange?.(false);
     onContextRefsChange?.([]);
+    recipesByDraftKey.delete(draftKey);
+    setActiveRecipe?.(null);
+    onActiveRecipeChange?.(null);
   }, [
     draftKey,
     editorRef,
@@ -133,21 +163,29 @@ export function useAutoFocusEditor({
   }, [editorRef, disabled, shouldFocus]);
 }
 
-function proseMirrorJsonToText(json: any): string {
+export function proseMirrorJsonToText(json: unknown): string {
   if (!json || typeof json !== "object") {
     return "";
   }
 
-  if (json.type === "text") {
-    return json.text || "";
+  const node = json as {
+    type?: string;
+    text?: string;
+    attrs?: Record<string, unknown>;
+    content?: unknown[];
+  };
+
+  if (node.type === "text") {
+    return node.text || "";
   }
 
-  if (typeof json.type === "string" && json.type.startsWith("mention-")) {
-    return `@${json.attrs?.label || json.attrs?.id || ""}`;
+  if (typeof node.type === "string" && node.type.startsWith("mention-")) {
+    const label = node.attrs?.label || node.attrs?.id || "";
+    return `@${String(label)}`;
   }
 
-  if (json.content && Array.isArray(json.content)) {
-    return json.content.map(proseMirrorJsonToText).join("");
+  if (node.content && Array.isArray(node.content)) {
+    return node.content.map(proseMirrorJsonToText).join("");
   }
 
   return "";

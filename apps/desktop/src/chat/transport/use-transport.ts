@@ -5,10 +5,13 @@ import { commands as templateCommands } from "@hypr/plugin-template";
 
 import { CustomChatTransport } from "./index";
 import type { ResolvedChatContext } from "./index";
+import { appendCitationGuidance } from "./pre-retrieval";
 
 import { useLanguageModel } from "~/ai/hooks";
 import type { ContextRef } from "~/chat/context/entities";
 import { hydrateSessionContext } from "~/chat/context/session-context-hydrator";
+import type { ToolScopeFilter } from "~/chat/state/chat-scope";
+import { applyScopeFilterToTools } from "~/chat/tools/scope-tools";
 import { loadHuman, loadOrganization } from "~/contacts/queries";
 import { useToolRegistry } from "~/contexts/tool";
 import { useConfigValue } from "~/shared/config";
@@ -84,6 +87,8 @@ export function useTransport(
   extraTools?: ToolSet,
   systemPromptOverride?: string,
   userId?: string,
+  scopeFilter?: ToolScopeFilter,
+  isThisMeeting?: boolean,
 ) {
   const registry = useToolRegistry();
   const configuredModel = useLanguageModel("chat");
@@ -128,8 +133,8 @@ export function useTransport(
     };
   }, [language, systemPromptOverride]);
 
-  const effectiveSystemPrompt = appendMeetingContextToolGuidance(
-    systemPromptOverride ?? systemPrompt,
+  const effectiveSystemPrompt = appendCitationGuidance(
+    appendMeetingContextToolGuidance(systemPromptOverride ?? systemPrompt),
   );
   const isSystemPromptReady =
     typeof systemPromptOverride === "string" || systemPrompt !== undefined;
@@ -147,12 +152,17 @@ export function useTransport(
       }
     }
 
-    return {
+    const combined = {
       ...localTools,
       ...extraTools,
     };
-  }, [registry, extraTools]);
 
+    return applyScopeFilterToTools(
+      combined,
+      scopeFilter,
+      Boolean(isThisMeeting),
+    );
+  }, [registry, extraTools, scopeFilter, isThisMeeting]);
   const transport = useMemo(() => {
     if (!model) {
       return null;
@@ -182,9 +192,12 @@ export function useTransport(
           ? ({ kind: "text", text } satisfies ResolvedChatContext)
           : null;
       },
+      {
+        scopeFilter,
+        isThisMeeting: Boolean(isThisMeeting),
+      },
     );
-  }, [model, tools, effectiveSystemPrompt, userId]);
-
+  }, [model, tools, effectiveSystemPrompt, userId, scopeFilter, isThisMeeting]);
   return {
     transport,
     isSystemPromptReady,

@@ -46,7 +46,6 @@ hypr-api-nango = { path = "crates/api-nango", package = "api-nango" }
 hypr-api-pyannote = { path = "crates/api-pyannote", package = "api-pyannote" }
 hypr-api-research = { path = "crates/api-research", package = "api-research" }
 hypr-api-storage = { path = "crates/api-storage", package = "api-storage" }
-hypr-api-subscription = { path = "crates/api-subscription", package = "api-subscription" }
 hypr-api-support = { path = "crates/api-support", package = "api-support" }
 hypr-api-sync = { path = "crates/api-sync", package = "api-sync" }
 hypr-api-ticket = { path = "crates/api-ticket", package = "api-ticket" }
