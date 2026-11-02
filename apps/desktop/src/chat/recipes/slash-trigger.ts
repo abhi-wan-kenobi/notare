@@ -42,11 +42,12 @@ export function detectSlashTrigger(
   const tokenStart = lastSpaceIndex === -1 ? 0 : lastSpaceIndex + 1;
   const tokenBeforeSlash = text.slice(tokenStart, slashIndex);
 
-  // If the word immediately before the space is a URL protocol/prefix
+  // If the token immediately before the slash is a URL protocol/prefix
+  // ("https:" + "/" typed as separate tokens), it is not a trigger. A URL
+  // elsewhere in the text, followed by whitespace, does not suppress one.
   if (
     /^(https?|ftp|file):/i.test(tokenBeforeSlash) ||
-    /^www\./i.test(tokenBeforeSlash) ||
-    /^(https?|ftp|file):\/\/?/i.test(text.slice(0, slashIndex).trimEnd())
+    /^www\./i.test(tokenBeforeSlash)
   ) {
     return null;
   }
