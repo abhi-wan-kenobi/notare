@@ -1,3 +1,4 @@
+import type { ToolScopeFilter } from "~/chat/state/chat-scope";
 import type { SearchFilters, SearchHit } from "~/search/contexts/engine/types";
 
 export type ContactSearchResult = {
@@ -55,4 +56,7 @@ export interface ToolDependencies {
   openEditTab: (requestId: string) => void;
   getAuthHeaders: () => Record<string, string> | null | undefined;
   fetch?: typeof fetch;
+  scopeFilter?: ToolScopeFilter | (() => ToolScopeFilter | undefined);
+  resolveSessionIdsForHuman?: (humanId: string) => Promise<string[]>;
+  resolveSessionIdsForOrg?: (orgId: string) => Promise<string[]>;
 }

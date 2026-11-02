@@ -10,7 +10,7 @@ getting exactly one VM, running `apps/claw`.
 2. `crates/api-claw` (this crate) — deterministic naming, per-user keys,
    provision/suspend/resume/deprovision mechanics, VM-scoped token minting.
    **Does not know about billing.**
-3. `crates/api-subscription` (or equivalent) — calls into `ClawManager`
+3. Billing/subscription service (or equivalent) — calls into `ClawManager`
    from webhook handlers. This is where policy lives (e.g. "on
    `invoice.payment_failed` → suspend").
 

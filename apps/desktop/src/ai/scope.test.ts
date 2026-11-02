@@ -36,9 +36,10 @@ describe("isCloudProvider", () => {
   });
 
   it("treats every other provider (incl. hosted) as cloud", () => {
-    for (const p of ["openai", "anthropic", "openrouter", "hyprnote"]) {
+    for (const p of ["openai", "anthropic", "openrouter", "hyprnote", "omp"]) {
       expect(isCloudProvider(p, undefined)).toBe(true);
     }
+    expect(isCloudProvider("omp", "http://127.0.0.1:4000/v1")).toBe(true);
     expect(isCloudProvider(undefined, undefined)).toBe(false);
   });
 });

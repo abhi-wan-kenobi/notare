@@ -33,6 +33,22 @@ describe("tier classification", () => {
     }
   });
 
+  it("classifies omp as byo-cloud even with loopback base URL (remote-inference privacy rule)", () => {
+    expect(
+      classifyTier({
+        providerId: "omp",
+        modelId: "@smol",
+        baseUrl: "http://127.0.0.1:4000/v1",
+      }),
+    ).toBe("byo-cloud");
+    expect(
+      classifyTier({
+        providerId: "omp",
+        modelId: "@slow",
+      }),
+    ).toBe("byo-cloud");
+  });
+
   it("classifies custom endpoints by host", () => {
     expect(
       classifyTier({
@@ -147,6 +163,34 @@ describe("capability gating", () => {
   it("custom provider structured-output support is unknown, not assumed", () => {
     expect(providerSupportsStructuredOutputs("custom")).toBe("unknown");
   });
+
+  it("treats omp provider as cloud-grade with structured output support for all tasks", () => {
+    expect(providerSupportsStructuredOutputs("omp")).toBe(true);
+
+    const actionItemsCaps = checkCaps({
+      task: "action_items",
+      providerId: "omp",
+      modelId: "@smol",
+    });
+    expect(actionItemsCaps.structuredOutputs).toBe(true);
+    expect(actionItemsCaps.minParamsOk).toBe(true);
+
+    const chatCaps = checkCaps({
+      task: "chat",
+      providerId: "omp",
+      modelId: "@slow",
+    });
+    expect(chatCaps.structuredOutputs).toBe(true);
+    expect(chatCaps.minParamsOk).toBe(true);
+
+    const enhanceCaps = checkCaps({
+      task: "enhance",
+      providerId: "omp",
+      modelId: "@plan",
+    });
+    expect(enhanceCaps.structuredOutputs).toBe(true);
+    expect(enhanceCaps.minParamsOk).toBe(true);
+  });
 });
 
 describe("resolveModel invariants", () => {
@@ -247,5 +291,52 @@ describe("resolveModel invariants", () => {
     });
     expect(r.status).toBe("unavailable");
     expect((r as { reason: string }).reason).toBe("no_provider");
+  });
+
+  it("explicitly selected omp resolves as byo-cloud across tasks", () => {
+    const rAction = resolveModel("action_items", {
+      selected: {
+        providerId: "omp",
+        modelId: "@smol",
+        baseUrl: "http://127.0.0.1:4000/v1",
+      },
+      selectionIsExplicit: true,
+    });
+    expect(rAction.status).toBe("ok");
+    if (rAction.status === "ok") {
+      expect(rAction.tier).toBe("byo-cloud");
+      expect(rAction.providerId).toBe("omp");
+    }
+
+    const rChat = resolveModel("chat", {
+      selected: {
+        providerId: "omp",
+        modelId: "@slow",
+        baseUrl: "http://127.0.0.1:4000/v1",
+      },
+      selectionIsExplicit: true,
+    });
+    expect(rChat.status).toBe("ok");
+    if (rChat.status === "ok") {
+      expect(rChat.tier).toBe("byo-cloud");
+    }
+  });
+
+  it("drops omp from localFallbacks because it is classified as remote inference", () => {
+    const r = resolveModel("enhance", {
+      selected: null,
+      selectionIsExplicit: false,
+      localFallbacks: [
+        {
+          providerId: "omp",
+          modelId: "@smol",
+          baseUrl: "http://127.0.0.1:4000/v1",
+        },
+      ],
+    });
+    expect(r.status).toBe("unavailable");
+    if (r.status === "unavailable") {
+      expect(r.reason).toBe("no_provider");
+    }
   });
 });

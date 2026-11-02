@@ -323,11 +323,22 @@ const resolveLLMConnection = (params: {
     config: { base_url: baseUrl, api_key: apiKey },
   };
 
-  const blockers = getProviderSelectionBlockers(
+  const rawBlockers = getProviderSelectionBlockers(
     providerDefinition.requirements,
     context,
   );
-
+  // Provider 'omp' gateway bearer token is optional (e.g. gateway running with --no-auth).
+  const blockers = rawBlockers
+    .map((blocker) => {
+      if (providerId === "omp" && blocker.code === "missing_config") {
+        const nonApiKeyFields = blocker.fields.filter((f) => f !== "api_key");
+        return nonApiKeyFields.length > 0
+          ? { ...blocker, fields: nonApiKeyFields }
+          : null;
+      }
+      return blocker;
+    })
+    .filter((b): b is NonNullable<typeof b> => b !== null);
   if (blockers.length > 0) {
     const blocker = blockers[0];
     if (blocker.code === "requires_auth" && providerId === "hyprnote") {
@@ -476,6 +487,7 @@ const createLanguageModel = (
       return wrapWithThinkingMiddleware(provider.chatModel(conn.modelId));
     }
 
+    case "omp":
     default: {
       const config: Parameters<typeof createOpenAICompatible>[0] = {
         fetch: tauriFetch,

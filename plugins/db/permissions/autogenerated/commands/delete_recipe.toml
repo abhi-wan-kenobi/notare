@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-delete-recipe"
+description = "Enables the delete_recipe command without any pre-configured scope."
+commands.allow = ["delete_recipe"]
+
+[[permission]]
+identifier = "deny-delete-recipe"
+description = "Denies the delete_recipe command without any pre-configured scope."
+commands.deny = ["delete_recipe"]

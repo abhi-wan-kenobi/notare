@@ -19,6 +19,9 @@ import {
 } from "@hypr/ui/components/ui/dropdown-menu";
 import { cn, formatDistanceToNow } from "@hypr/utils";
 
+import { ScopeSelector } from "./scope-selector";
+import { useSessionTab } from "./use-session-tab";
+
 import {
   type ChatGroupRecord,
   useRecentChatGroups,
@@ -44,6 +47,7 @@ export function ChatToolbarControls({
   surface?: "light" | "dark";
 }) {
   const { t } = useLingui();
+  const { currentSessionId } = useSessionTab();
   const isDark = surface === "dark";
   const isRightPanel = layout === "right-panel";
 
@@ -55,6 +59,11 @@ export function ChatToolbarControls({
         <ChatGroups
           currentChatGroupId={currentChatGroupId}
           onSelectChat={onSelectChat}
+          surface={surface}
+        />
+        <ScopeSelector
+          currentChatGroupId={currentChatGroupId}
+          currentSessionId={currentSessionId}
           surface={surface}
         />
       </div>

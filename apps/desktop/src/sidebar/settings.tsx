@@ -104,6 +104,7 @@ export function SettingsNav() {
           label: t`Personalization`,
           icon: SlidersHorizontalIcon,
         },
+        { id: "recipes", label: t`Recipes`, icon: BookText },
       ],
     },
     {

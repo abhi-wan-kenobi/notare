@@ -95,6 +95,11 @@ jobs:
           CXX: cl
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          # First-party Google client (plugins/calendar bundled_client). desktop_cd
+          # passed these since 2026-07-21; release never did, so no tagged build
+          # has had "Sign in with Google" without a BYO client.
+          NOTARE_GOOGLE_CLIENT_ID: ${{ secrets.NOTARE_GOOGLE_CLIENT_ID }}
+          NOTARE_GOOGLE_CLIENT_SECRET: ${{ secrets.NOTARE_GOOGLE_CLIENT_SECRET }}
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -149,6 +154,8 @@ jobs:
           CI: false
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          NOTARE_GOOGLE_CLIENT_ID: ${{ secrets.NOTARE_GOOGLE_CLIENT_ID }}
+          NOTARE_GOOGLE_CLIENT_SECRET: ${{ secrets.NOTARE_GOOGLE_CLIENT_SECRET }}
           # linuxdeploy is itself an AppImage; GitHub's ubuntu runners no longer
           # ship FUSE, so it can't mount/run → "failed to run linuxdeploy" during
           # AppImage bundling. Extract-and-run instead of mounting via FUSE.
@@ -239,6 +246,8 @@ jobs:
           CI: false
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          NOTARE_GOOGLE_CLIENT_ID: ${{ secrets.NOTARE_GOOGLE_CLIENT_ID }}
+          NOTARE_GOOGLE_CLIENT_SECRET: ${{ secrets.NOTARE_GOOGLE_CLIENT_SECRET }}
           # Apple Developer ID signing + notarization (re-enabled 2026-07-21:
           # the account's stuck first notarization cleared — submissions now
           # Accepted). Signs + notarizes + staples the .app and .dmg.

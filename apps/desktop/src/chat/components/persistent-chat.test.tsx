@@ -27,6 +27,8 @@ const mocks = vi.hoisted(() => ({
     regenerate: vi.fn(),
     sendMessage: vi.fn(),
     sessionId: "chat-session-1",
+    scopeSelection: { type: "everything" as const },
+    scopeFilter: { kind: "none" as const },
     setMessages: vi.fn(),
     status: "ready" as const,
     stop: vi.fn(),

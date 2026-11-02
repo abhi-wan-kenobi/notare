@@ -5,6 +5,7 @@ mod runtime;
 #[cfg(all(feature = "sync", sync_platform))]
 pub mod sync;
 
+pub use commands::{Recipe, UpsertRecipeInput};
 pub use error::{Error, Result};
 pub use runtime::{PluginDbRuntime, cloudsync_available, open_app_db, open_app_db_with_cloudsync};
 use tauri::Manager;
@@ -145,6 +146,9 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
             commands::sync_remove_peer,
             commands::sync_start,
             commands::sync_stop,
+            commands::list_recipes,
+            commands::upsert_recipe,
+            commands::delete_recipe,
         ])
         .error_handling(tauri_specta::ErrorHandlingMode::Result)
 }
@@ -482,5 +486,62 @@ mod test {
 
         let event = next_event(&events, 0).await.unwrap();
         assert!(matches!(event, QueryEvent::Error(_)));
+    }
+
+    #[tokio::test]
+    async fn recipe_crud_and_builtin_delete_protection() {
+        let (_dir, runtime) = setup_runtime().await;
+
+        let builtin = commands::upsert_recipe_db(
+            runtime.pool(),
+            commands::UpsertRecipeInput {
+                id: "builtin-action-items".to_string(),
+                title: "Action items".to_string(),
+                prompt: "Extract action items {{selection}}".to_string(),
+                scope: "single".to_string(),
+                builtin: true,
+            },
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(builtin.id, "builtin-action-items");
+        assert!(builtin.builtin);
+
+        let user = commands::upsert_recipe_db(
+            runtime.pool(),
+            commands::UpsertRecipeInput {
+                id: "user-custom".to_string(),
+                title: "Custom summary".to_string(),
+                prompt: "Summarize this".to_string(),
+                scope: "single".to_string(),
+                builtin: false,
+            },
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(user.id, "user-custom");
+        assert!(!user.builtin);
+
+        let list = commands::list_recipes_db(runtime.pool()).await.unwrap();
+        assert_eq!(list.len(), 2);
+        assert_eq!(list[0].id, "builtin-action-items");
+        assert_eq!(list[1].id, "user-custom");
+
+        let del_builtin =
+            commands::delete_recipe_db(runtime.pool(), "builtin-action-items".to_string()).await;
+        assert!(del_builtin.is_err());
+        assert_eq!(
+            del_builtin.unwrap_err(),
+            "Built-in recipes cannot be deleted"
+        );
+
+        let del_user = commands::delete_recipe_db(runtime.pool(), "user-custom".to_string()).await;
+        assert!(del_user.is_ok());
+
+        let list_after = commands::list_recipes_db(runtime.pool()).await.unwrap();
+        assert_eq!(list_after.len(), 1);
+        assert_eq!(list_after[0].id, "builtin-action-items");
     }
 }

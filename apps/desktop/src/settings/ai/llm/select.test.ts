@@ -46,4 +46,28 @@ describe("getLlmProviderStatus", () => {
     expect(status.configured).toBe(true);
     expect(status.listModels).toBeTypeOf("function");
   });
+
+  test("keeps omp active without an API key (optional token with --no-auth)", () => {
+    const status = getLlmProviderStatus({
+      provider: provider("omp"),
+      config: { api_key: "" },
+      isAuthenticated: false,
+      isPaid: false,
+    });
+
+    expect(status.configured).toBe(true);
+    expect(status.listModels).toBeTypeOf("function");
+  });
+
+  test("configures omp with a saved bearer token", () => {
+    const status = getLlmProviderStatus({
+      provider: provider("omp"),
+      config: { api_key: "omp-secret-token" },
+      isAuthenticated: false,
+      isPaid: false,
+    });
+
+    expect(status.configured).toBe(true);
+    expect(status.listModels).toBeTypeOf("function");
+  });
 });

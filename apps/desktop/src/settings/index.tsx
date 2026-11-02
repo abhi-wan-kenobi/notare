@@ -7,6 +7,7 @@ import {
   SettingsNotifications,
   SettingsPermissions,
 } from "./general";
+import { SettingsRecipes } from "./recipes";
 import { SettingsSync } from "./sync";
 import { SettingsTodo } from "./todo";
 import { SettingsWebhook } from "./webhook";
@@ -31,7 +32,8 @@ export function TabContentSettings({
 
 function SettingsView({ tab }: { tab: Extract<Tab, { type: "settings" }> }) {
   const requestedTab = tab.state.tab as string | undefined;
-  const activeTab = requestedTab === "data" ? "app" : (tab.state.tab ?? "app");
+  const activeTab: string =
+    requestedTab === "data" ? "app" : (tab.state.tab ?? "app");
 
   const renderContent = () => {
     switch (activeTab) {
@@ -57,6 +59,8 @@ function SettingsView({ tab }: { tab: Extract<Tab, { type: "settings" }> }) {
         return <SettingsWebhook />;
       case "sync":
         return <SettingsSync />;
+      case "recipes":
+        return <SettingsRecipes />;
       default:
         return <SettingsApp />;
     }

@@ -1,8 +1,10 @@
 import { tool } from "ai";
 import { z } from "zod";
 
+import { resolveAllowedSessionIds } from "./scope-resolver";
 import type { ToolDependencies } from "./types";
 
+import type { ToolScopeFilter } from "~/chat/state/chat-scope";
 import type { SearchFilters } from "~/search/contexts/engine/types";
 
 const gteSchema = z
@@ -100,7 +102,10 @@ function getRecentDaysFilter(
   };
 }
 
-export const buildSearchMeetingsTool = (deps: ToolDependencies) =>
+export const buildSearchMeetingsTool = (
+  deps: ToolDependencies,
+  scopeFilterOverride?: ToolScopeFilter | (() => ToolScopeFilter | undefined),
+) =>
   tool({
     description: `
 Search for meetings using note and transcript content plus optional date filters.
@@ -148,7 +153,26 @@ Returns relevant meetings with matching content excerpts.
         : null;
 
       const hits = await deps.search(query, effectiveFilters);
-      const meetingHits = hits.filter((hit) => hit.document.type === "session");
+      let meetingHits = hits.filter((hit) => hit.document.type === "session");
+
+      const activeFilter =
+        typeof scopeFilterOverride === "function"
+          ? scopeFilterOverride()
+          : (scopeFilterOverride ??
+            (typeof deps.scopeFilter === "function"
+              ? deps.scopeFilter()
+              : deps.scopeFilter));
+
+      const allowedSessionIds = await resolveAllowedSessionIds(
+        activeFilter,
+        deps,
+      );
+      if (allowedSessionIds !== null) {
+        meetingHits = meetingHits.filter((hit) =>
+          allowedSessionIds.includes(hit.document.id),
+        );
+      }
+
       const limit = params.limit ?? 5;
       const results = meetingHits.slice(0, limit).map((hit) => ({
         id: hit.document.id,

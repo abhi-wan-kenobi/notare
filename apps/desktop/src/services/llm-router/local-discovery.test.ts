@@ -11,9 +11,12 @@ vi.mock("@hypr/plugin-local-llm", () => ({
 import {
   discoverEmbeddedModel,
   listLmStudioModels,
+  listOmpModels,
+  OMP_DEFAULT_BASE_URL,
+  ompModelsUrl,
+  probeOmpGateway,
   probeStructuredOutputs,
 } from "./local-discovery";
-
 /** Builds a minimal OpenAI-shaped chat-completions success response. */
 function chatResponse(content: unknown) {
   return {
@@ -248,5 +251,178 @@ describe("discoverEmbeddedModel", () => {
     });
 
     await expect(discoverEmbeddedModel()).resolves.toEqual([]);
+  });
+});
+
+describe("ompModelsUrl", () => {
+  it("normalizes base URLs correctly", () => {
+    expect(ompModelsUrl("http://127.0.0.1:4000/v1")).toBe(
+      "http://127.0.0.1:4000/v1/models",
+    );
+    expect(ompModelsUrl("http://127.0.0.1:4000")).toBe(
+      "http://127.0.0.1:4000/v1/models",
+    );
+    expect(ompModelsUrl("http://127.0.0.1:4000/v1/models")).toBe(
+      "http://127.0.0.1:4000/v1/models",
+    );
+  });
+});
+
+describe("probeOmpGateway", () => {
+  it("returns available (200) with parsed models", async () => {
+    const sampleData = {
+      data: [
+        { id: "@smol" },
+        { id: "@slow" },
+        { id: "@plan" },
+        { id: "anthropic/claude-3-5-sonnet" },
+      ],
+    };
+    const fetchImpl = vi.fn().mockResolvedValue(okResponse(sampleData));
+
+    const result = await probeOmpGateway(
+      OMP_DEFAULT_BASE_URL,
+      "my-token",
+      fetchImpl as unknown as typeof fetch,
+    );
+
+    expect(result).toEqual({
+      status: "available",
+      models: ["@smol", "@slow", "@plan", "anthropic/claude-3-5-sonnet"],
+    });
+    expect(fetchImpl).toHaveBeenCalledWith(
+      "http://127.0.0.1:4000/v1/models",
+      expect.objectContaining({
+        method: "GET",
+        headers: { Authorization: "Bearer my-token" },
+      }),
+    );
+  });
+
+  it("omits Authorization header when apiKey is empty (--no-auth)", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(okResponse({ data: [{ id: "@smol" }] }));
+
+    const result = await probeOmpGateway(
+      OMP_DEFAULT_BASE_URL,
+      "",
+      fetchImpl as unknown as typeof fetch,
+    );
+
+    expect(result.status).toBe("available");
+    expect(fetchImpl).toHaveBeenCalledWith(
+      "http://127.0.0.1:4000/v1/models",
+      expect.objectContaining({
+        method: "GET",
+        headers: {},
+      }),
+    );
+  });
+
+  it("returns needs_token on 401 (present but needs token)", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+      json: async () => ({ error: "unauthorized" }),
+    } as unknown as Response);
+
+    const result = await probeOmpGateway(
+      OMP_DEFAULT_BASE_URL,
+      undefined,
+      fetchImpl as unknown as typeof fetch,
+    );
+
+    expect(result).toEqual({
+      status: "needs_token",
+      models: [],
+    });
+  });
+
+  it("returns unavailable on ECONNREFUSED (network error)", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockRejectedValue(new Error("connect ECONNREFUSED 127.0.0.1:4000"));
+
+    const result = await probeOmpGateway(
+      OMP_DEFAULT_BASE_URL,
+      undefined,
+      fetchImpl as unknown as typeof fetch,
+    );
+
+    expect(result).toEqual({
+      status: "unavailable",
+      models: [],
+    });
+  });
+
+  it("returns unavailable on 500 error", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(httpErrorResponse());
+
+    const result = await probeOmpGateway(
+      OMP_DEFAULT_BASE_URL,
+      undefined,
+      fetchImpl as unknown as typeof fetch,
+    );
+
+    expect(result).toEqual({
+      status: "unavailable",
+      models: [],
+    });
+  });
+
+  it("returns unavailable for empty baseUrl without calling fetch", async () => {
+    const fetchImpl = vi.fn();
+    const result = await probeOmpGateway(
+      "",
+      undefined,
+      fetchImpl as unknown as typeof fetch,
+    );
+    expect(result).toEqual({ status: "unavailable", models: [] });
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+});
+
+describe("listOmpModels", () => {
+  it("returns model list on success", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(
+        okResponse({ data: [{ id: "@smol" }, { id: "@slow" }] }),
+      );
+
+    const models = await listOmpModels(
+      OMP_DEFAULT_BASE_URL,
+      undefined,
+      fetchImpl as unknown as typeof fetch,
+    );
+
+    expect(models).toEqual(["@smol", "@slow"]);
+  });
+
+  it("returns empty array on 401 or ECONNREFUSED", async () => {
+    const fetch401 = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+    } as unknown as Response);
+
+    expect(
+      await listOmpModels(
+        OMP_DEFAULT_BASE_URL,
+        undefined,
+        fetch401 as unknown as typeof fetch,
+      ),
+    ).toEqual([]);
+
+    const fetchRefused = vi
+      .fn()
+      .mockRejectedValue(new Error("connect ECONNREFUSED"));
+    expect(
+      await listOmpModels(
+        OMP_DEFAULT_BASE_URL,
+        undefined,
+        fetchRefused as unknown as typeof fetch,
+      ),
+    ).toEqual([]);
   });
 });

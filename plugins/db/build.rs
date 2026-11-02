@@ -27,6 +27,9 @@ const COMMANDS: &[&str] = &[
     "sync_remove_peer",
     "sync_start",
     "sync_stop",
+    "list_recipes",
+    "upsert_recipe",
+    "delete_recipe",
 ];
 
 fn main() {

@@ -391,3 +391,116 @@ pub(crate) async fn sync_remove_peer(
         Err("sync is not available in this build".to_string())
     }
 }
+
+#[derive(
+    Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize, specta::Type, sqlx::FromRow,
+)]
+#[serde(rename_all = "camelCase")]
+pub struct Recipe {
+    pub id: String,
+    pub title: String,
+    pub prompt: String,
+    pub scope: String,
+    pub builtin: bool,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct UpsertRecipeInput {
+    pub id: String,
+    pub title: String,
+    pub prompt: String,
+    pub scope: String,
+    #[serde(default)]
+    pub builtin: bool,
+}
+
+pub(crate) async fn list_recipes_db(pool: &sqlx::SqlitePool) -> Result<Vec<Recipe>, String> {
+    sqlx::query_as::<_, Recipe>(
+        "SELECT id, title, prompt, scope, builtin, created_at, updated_at FROM recipes ORDER BY builtin DESC, title COLLATE NOCASE ASC",
+    )
+    .fetch_all(pool)
+    .await
+    .map_err(|error| error.to_string())
+}
+
+pub(crate) async fn upsert_recipe_db(
+    pool: &sqlx::SqlitePool,
+    input: UpsertRecipeInput,
+) -> Result<Recipe, String> {
+    let scope = if input.scope == "multi" {
+        "multi"
+    } else {
+        "single"
+    };
+    sqlx::query_as::<_, Recipe>(
+        r#"
+        INSERT INTO recipes (id, title, prompt, scope, builtin, created_at, updated_at)
+        VALUES (?1, ?2, ?3, ?4, ?5, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+        ON CONFLICT(id) DO UPDATE SET
+          title = excluded.title,
+          prompt = excluded.prompt,
+          scope = excluded.scope,
+          builtin = excluded.builtin,
+          updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
+        RETURNING id, title, prompt, scope, builtin, created_at, updated_at
+        "#,
+    )
+    .bind(input.id)
+    .bind(input.title)
+    .bind(input.prompt)
+    .bind(scope)
+    .bind(input.builtin)
+    .fetch_one(pool)
+    .await
+    .map_err(|error| error.to_string())
+}
+
+pub(crate) async fn delete_recipe_db(pool: &sqlx::SqlitePool, id: String) -> Result<(), String> {
+    let recipe = sqlx::query_scalar::<_, bool>("SELECT builtin FROM recipes WHERE id = ?1")
+        .bind(&id)
+        .fetch_optional(pool)
+        .await
+        .map_err(|error| error.to_string())?;
+
+    match recipe {
+        Some(true) => Err("Built-in recipes cannot be deleted".to_string()),
+        Some(false) => {
+            sqlx::query("DELETE FROM recipes WHERE id = ?1")
+                .bind(&id)
+                .execute(pool)
+                .await
+                .map_err(|error| error.to_string())?;
+            Ok(())
+        }
+        None => Ok(()),
+    }
+}
+
+#[tauri::command]
+#[specta::specta]
+pub(crate) async fn list_recipes(
+    state: tauri::State<'_, ManagedState>,
+) -> Result<Vec<Recipe>, String> {
+    list_recipes_db(state.pool()).await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub(crate) async fn upsert_recipe(
+    state: tauri::State<'_, ManagedState>,
+    input: UpsertRecipeInput,
+) -> Result<Recipe, String> {
+    upsert_recipe_db(state.pool(), input).await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub(crate) async fn delete_recipe(
+    state: tauri::State<'_, ManagedState>,
+    id: String,
+) -> Result<(), String> {
+    delete_recipe_db(state.pool(), id).await
+}

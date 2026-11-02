@@ -28,6 +28,7 @@ export { listOllamaModels } from "~/settings/ai/shared/list-ollama";
 
 export const OLLAMA_DEFAULT_BASE_URL = "http://localhost:11434";
 export const LMSTUDIO_DEFAULT_BASE_URL = "http://localhost:1234/v1";
+export const OMP_DEFAULT_BASE_URL = "http://127.0.0.1:4000/v1";
 
 /** Connect timeout for local probes — these are localhost, so keep it short. */
 const PROBE_CONNECT_TIMEOUT_MS = 2500;
@@ -80,6 +81,86 @@ export async function listLmStudioModels(
   } catch {
     return [];
   }
+}
+
+export type OmpGatewayStatus = "available" | "needs_token" | "unavailable";
+
+export type OmpProbeResult = {
+  status: OmpGatewayStatus;
+  models: string[];
+};
+
+export function ompModelsUrl(baseUrl: string): string {
+  const trimmed = baseUrl.replace(/\/+$/, "");
+  if (/\/models$/.test(trimmed)) {
+    return trimmed;
+  }
+  if (/\/v1$/.test(trimmed)) {
+    return `${trimmed}/models`;
+  }
+  return `${trimmed}/v1/models`;
+}
+
+/**
+ * Probe the omp auth-gateway (`GET <base>/v1/models`).
+ * Treats:
+ * - 200 as 'available' (with parsed model aliases / ids)
+ * - 401 as 'needs_token' ('present but needs token')
+ * - ECONNREFUSED or other network/HTTP errors as 'unavailable'.
+ * Never throws.
+ */
+export async function probeOmpGateway(
+  baseUrl: string = OMP_DEFAULT_BASE_URL,
+  apiKey?: string,
+  fetchImpl: ProbeFetch = tauriFetch,
+): Promise<OmpProbeResult> {
+  if (!baseUrl) {
+    return { status: "unavailable", models: [] };
+  }
+  const url = ompModelsUrl(baseUrl);
+  const headers: Record<string, string> = {};
+  if (apiKey?.trim()) {
+    headers.Authorization = `Bearer ${apiKey.trim()}`;
+  }
+
+  try {
+    const res = await fetchImpl(url, {
+      method: "GET",
+      headers,
+      connectTimeout: PROBE_CONNECT_TIMEOUT_MS,
+    });
+
+    if (res.status === 200) {
+      const json = (await res.json()) as { data?: Array<{ id?: unknown }> };
+      const models =
+        json && Array.isArray(json.data)
+          ? json.data
+              .map((entry) => entry?.id)
+              .filter((id): id is string => typeof id === "string")
+          : [];
+      return { status: "available", models };
+    }
+
+    if (res.status === 401) {
+      return { status: "needs_token", models: [] };
+    }
+
+    return { status: "unavailable", models: [] };
+  } catch {
+    return { status: "unavailable", models: [] };
+  }
+}
+
+/**
+ * List models from the omp auth-gateway. Returns `[]` on any error — never throws.
+ */
+export async function listOmpModels(
+  baseUrl: string = OMP_DEFAULT_BASE_URL,
+  apiKey?: string,
+  fetchImpl: ProbeFetch = tauriFetch,
+): Promise<string[]> {
+  const result = await probeOmpGateway(baseUrl, apiKey, fetchImpl);
+  return result.models;
 }
 
 /**

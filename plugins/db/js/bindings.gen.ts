@@ -181,6 +181,30 @@ async syncStop() : Promise<Result<null, string>> {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
+},
+async listRecipes() : Promise<Result<Recipe[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:db|list_recipes") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async upsertRecipe(input: UpsertRecipeInput) : Promise<Result<Recipe, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:db|upsert_recipe", { input }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async deleteRecipe(id: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:db|delete_recipe", { id }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 }
 }
 
@@ -216,6 +240,7 @@ export type MeetingPage = { meetings: MeetingListItem[]; pagination: Pagination 
 export type Pagination = { offset: number; limit: number; returned: number; total: number | null; next_offset: number | null }
 export type Participant = { human_id: string; display_name: string; email: string; role: string; job_title: string; organization_id: string; organization_name: string }
 export type QueryEvent = { event: "result"; data: JsonValue[] } | { event: "error"; data: string }
+export type Recipe = { id: string; title: string; prompt: string; scope: string; builtin: boolean; createdAt: string; updatedAt: string }
 export type StorageMigrationState = { phase: string; latestRunId: string; parityVerified: boolean; cutoverAt: string | null; rollbackUntil: string | null; lastError: string; updatedAt: string }
 export type SubscriptionRegistration = { id: string; analysis: DependencyAnalysis }
 /**
@@ -241,6 +266,7 @@ export type SyncStatusResult = ({ kind: "live" } & SyncStatusPayload) | { kind: 
 export type TAURI_CHANNEL<TSend> = null
 export type TransactionStatement = { sql: string; params: JsonValue[]; expectedRowsAffected?: number | null }
 export type TranscriptPage = { meeting_id: string; text: string; words: JsonValue[]; pagination: Pagination }
+export type UpsertRecipeInput = { id: string; title: string; prompt: string; scope: string; builtin?: boolean }
 
 /** tauri-specta globals **/
 
