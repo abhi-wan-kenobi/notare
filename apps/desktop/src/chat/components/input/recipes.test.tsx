@@ -330,4 +330,78 @@ describe("ChatMessageInput Recipe Slash Commands", () => {
     // Recipe chip should be removed
     expect(document.querySelector("[data-recipe-chip]")).toBeNull();
   });
+  it("supports a11y role=listbox/option, aria-expanded, and aria-activedescendant roving", () => {
+    render(
+      <ChatMessageInput
+        draftKey="recipe-test-session-a11y"
+        onSendMessage={vi.fn()}
+      />,
+    );
+
+    const inputContainer = document.querySelector(
+      "[data-chat-message-input]",
+    ) as HTMLElement;
+    expect(inputContainer).toBeTruthy();
+    expect(inputContainer.getAttribute("role")).toBe("combobox");
+    expect(inputContainer.getAttribute("aria-expanded")).toBe("false");
+    expect(inputContainer.getAttribute("aria-haspopup")).toBe("listbox");
+    expect(inputContainer.getAttribute("aria-controls")).toBeNull();
+    expect(inputContainer.getAttribute("aria-activedescendant")).toBeNull();
+
+    // Type "/" to open the recipe menu
+    act(() => {
+      editorState.json = {
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [{ type: "text", text: "/" }],
+          },
+        ],
+      };
+      editorState.onUpdate?.(editorState.json);
+    });
+
+    // Menu is now open
+    expect(inputContainer.getAttribute("aria-expanded")).toBe("true");
+    expect(inputContainer.getAttribute("aria-controls")).toBe(
+      "recipe-slash-menu-listbox",
+    );
+
+    const listbox = screen.getByRole("listbox", { name: /recipes/i });
+    expect(listbox).toBeTruthy();
+    expect(listbox.id).toBe("recipe-slash-menu-listbox");
+
+    const options = screen.getAllByRole("option");
+    expect(options.length).toBeGreaterThan(1);
+
+    // Initial selected option is first item (Action items)
+    const firstOption = options[0];
+    expect(firstOption.id).toBe("recipe-option-builtin-action-items");
+    expect(firstOption.getAttribute("aria-selected")).toBe("true");
+    expect(inputContainer.getAttribute("aria-activedescendant")).toBe(
+      firstOption.id,
+    );
+
+    const secondOption = options[1];
+    expect(secondOption.id).toBe("recipe-option-builtin-key-decisions");
+    expect(secondOption.getAttribute("aria-selected")).toBe("false");
+    // Press ArrowDown to rove
+    fireEvent.keyDown(inputContainer, { key: "ArrowDown" });
+
+    expect(firstOption.getAttribute("aria-selected")).toBe("false");
+    expect(secondOption.getAttribute("aria-selected")).toBe("true");
+    expect(inputContainer.getAttribute("aria-activedescendant")).toBe(
+      secondOption.id,
+    );
+
+    // Press ArrowUp to rove back
+    fireEvent.keyDown(inputContainer, { key: "ArrowUp" });
+
+    expect(firstOption.getAttribute("aria-selected")).toBe("true");
+    expect(secondOption.getAttribute("aria-selected")).toBe("false");
+    expect(inputContainer.getAttribute("aria-activedescendant")).toBe(
+      firstOption.id,
+    );
+  });
 });

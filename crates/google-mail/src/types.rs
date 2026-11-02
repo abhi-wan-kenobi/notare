@@ -403,3 +403,41 @@ pub struct HistoryLabelRemoved {
     #[serde(default)]
     pub label_ids: Vec<String>,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "specta", derive(Type))]
+#[cfg_attr(feature = "utoipa", derive(ToSchema))]
+#[serde(rename_all = "camelCase")]
+pub struct CreateDraftRequest {
+    #[serde(default = "default_user_id")]
+    pub user_id: String,
+    pub draft: Draft,
+}
+
+fn default_user_id() -> String {
+    "me".to_string()
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "specta", derive(Type))]
+#[cfg_attr(feature = "utoipa", derive(ToSchema))]
+#[serde(rename_all = "camelCase")]
+pub struct Draft {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub message: Option<DraftMessage>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "specta", derive(Type))]
+#[cfg_attr(feature = "utoipa", derive(ToSchema))]
+#[serde(rename_all = "camelCase")]
+pub struct DraftMessage {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub thread_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub raw: Option<String>,
+}

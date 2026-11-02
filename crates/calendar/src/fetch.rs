@@ -7,6 +7,7 @@ use hypr_outlook_calendar::{Calendar as OutlookCalendar, Event as OutlookEvent};
 use crate::error::Error;
 
 pub const GOOGLE_API_BASE: &str = "https://www.googleapis.com";
+pub const MS_GRAPH_BASE: &str = "https://graph.microsoft.com/v1.0";
 
 /// Minimal `hypr_http::HttpClient` that talks straight to the Google REST API
 /// with a bearer token — this replaces the dead upstream-cloud proxy route.
@@ -143,80 +144,88 @@ pub async fn list_google_events_direct(
     Ok(response.items)
 }
 
-pub async fn list_all_connection_ids(
-    api_base_url: &str,
+/// List the user's Outlook calendars directly via Microsoft Graph (`/me/calendars`).
+pub async fn list_outlook_calendars_direct(
+    base_url: &str,
     access_token: &str,
-) -> Result<Vec<(String, Vec<String>)>, Error> {
-    let client = make_client(api_base_url, access_token)?;
+) -> Result<Vec<OutlookCalendar>, Error> {
+    let client = reqwest::Client::new();
+    let mut calendars = Vec::new();
+    let mut next_url = Some(format!("{}/me/calendars", base_url.trim_end_matches('/')));
 
-    let response = client
-        .list_connections()
-        .await
-        .map_err(|e| Error::Api(e.to_string()))?;
-
-    let connections = response.into_inner().connections;
-    let mut map = std::collections::HashMap::<String, Vec<String>>::new();
-    for c in &connections {
-        map.entry(c.integration_id.clone())
-            .or_default()
-            .push(c.connection_id.clone());
+    while let Some(url) = next_url {
+        let response = client
+            .get(&url)
+            .header(
+                reqwest::header::AUTHORIZATION,
+                format!("Bearer {access_token}"),
+            )
+            .send()
+            .await?;
+        let status = response.status();
+        let bytes = response.bytes().await?;
+        if !status.is_success() {
+            return Err(Error::Api(format!(
+                "outlook api returned {status}: {}",
+                String::from_utf8_lossy(&bytes)
+            )));
+        }
+        let page: hypr_outlook_calendar::ListCalendarsResponse = serde_json::from_slice(&bytes)?;
+        calendars.extend(page.value);
+        next_url = page.odata_next_link.filter(|s| !s.is_empty());
     }
 
-    Ok(map.into_iter().collect())
+    Ok(calendars)
 }
 
-fn make_client(api_base_url: &str, access_token: &str) -> Result<hypr_api_client::Client, Error> {
-    let auth_value = format!("Bearer {access_token}").parse()?;
-    let mut headers = reqwest::header::HeaderMap::new();
-    headers.insert(reqwest::header::AUTHORIZATION, auth_value);
-    let http = reqwest::Client::builder()
-        .default_headers(headers)
-        .build()?;
-    Ok(hypr_api_client::Client::new_with_client(api_base_url, http))
-}
-
-pub async fn list_outlook_calendars(
-    api_base_url: &str,
+/// List events of one Outlook calendar directly via Microsoft Graph
+/// (`/me/calendars/{id}/calendarView?startDateTime=...&endDateTime=...`).
+///
+/// Handles `@odata.nextLink` paging across multiple pages.
+pub async fn list_outlook_events_direct(
+    base_url: &str,
     access_token: &str,
-    connection_id: &str,
-) -> Result<Vec<OutlookCalendar>, Error> {
-    let client = make_client(api_base_url, access_token)?;
-
-    let body = hypr_api_client::types::OutlookListCalendarsRequest {
-        connection_id: connection_id.to_string(),
-    };
-
-    let response = client
-        .outlook_list_calendars(&body)
-        .await
-        .map_err(|e| Error::Api(e.to_string()))?;
-
-    Ok(response.into_inner().value)
-}
-
-pub async fn list_outlook_events(
-    api_base_url: &str,
-    access_token: &str,
-    connection_id: &str,
     filter: EventFilter,
 ) -> Result<Vec<OutlookEvent>, Error> {
-    let client = make_client(api_base_url, access_token)?;
+    let client = reqwest::Client::new();
+    let mut events = Vec::new();
+    let calendar_id = &filter.calendar_tracking_id;
+    let start_iso = filter.from.to_rfc3339();
+    let end_iso = filter.to.to_rfc3339();
 
-    let body = hypr_api_client::types::OutlookListEventsRequest {
-        connection_id: connection_id.to_string(),
-        calendar_id: filter.calendar_tracking_id,
-        time_min: Some(filter.from.to_rfc3339()),
-        time_max: Some(filter.to.to_rfc3339()),
-        max_results: None,
-        order_by: Some("startTime".to_string()),
-    };
+    let initial_url = format!(
+        "{}/me/calendars/{}/calendarView?startDateTime={}&endDateTime={}",
+        base_url.trim_end_matches('/'),
+        urlencoding::encode(calendar_id),
+        urlencoding::encode(&start_iso),
+        urlencoding::encode(&end_iso)
+    );
 
-    let response = client
-        .outlook_list_events(&body)
-        .await
-        .map_err(|e| Error::Api(e.to_string()))?;
+    let mut next_url = Some(initial_url);
 
-    Ok(response.into_inner().value)
+    while let Some(url) = next_url {
+        let response = client
+            .get(&url)
+            .header(
+                reqwest::header::AUTHORIZATION,
+                format!("Bearer {access_token}"),
+            )
+            .send()
+            .await?;
+        let status = response.status();
+        let bytes = response.bytes().await?;
+        if !status.is_success() {
+            return Err(Error::Api(format!(
+                "outlook api returned {status}: {}",
+                String::from_utf8_lossy(&bytes)
+            )));
+        }
+        let page: hypr_outlook_calendar::ListEventsResponse = serde_json::from_slice(&bytes)?;
+        events.extend(page.value);
+        next_url = page.odata_next_link.filter(|s| !s.is_empty());
+    }
+
+    Ok(events)
 }
 
 #[cfg(test)]
@@ -307,6 +316,122 @@ mod tests {
             .await;
 
         let err = list_google_calendars_direct(&server.uri(), "expired")
+            .await
+            .unwrap_err();
+        assert!(err.to_string().contains("401"));
+    }
+
+    #[tokio::test]
+    async fn lists_outlook_calendars_directly() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/me/calendars"))
+            .and(header("authorization", "Bearer ms-at-1"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "value": [
+                    {
+                        "id": "cal-primary",
+                        "name": "Calendar",
+                        "isDefaultCalendar": true,
+                        "canEdit": true,
+                        "hexColor": "#0078d4"
+                    },
+                    {
+                        "id": "cal-work",
+                        "name": "Work",
+                        "isDefaultCalendar": false,
+                        "canEdit": true,
+                        "hexColor": "#ffaa00"
+                    }
+                ]
+            })))
+            .mount(&server)
+            .await;
+
+        let calendars = list_outlook_calendars_direct(&server.uri(), "ms-at-1")
+            .await
+            .unwrap();
+
+        assert_eq!(calendars.len(), 2);
+        assert_eq!(calendars[0].id, "cal-primary");
+        assert_eq!(calendars[0].name.as_deref(), Some("Calendar"));
+        assert_eq!(calendars[0].is_default_calendar, Some(true));
+        assert_eq!(calendars[1].id, "cal-work");
+    }
+
+    #[tokio::test]
+    async fn lists_outlook_events_with_next_link_paging() {
+        let server = MockServer::start().await;
+        let next_page_path = "/page-2";
+        let next_page_url = format!("{}{}", server.uri(), next_page_path);
+
+        // First page returns 1 event and @odata.nextLink pointing to second page
+        Mock::given(method("GET"))
+            .and(path("/me/calendars/cal-123/calendarView"))
+            .and(header("authorization", "Bearer ms-at-1"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "@odata.nextLink": next_page_url,
+                "value": [
+                    {
+                        "id": "evt-1",
+                        "subject": "Sprint Planning",
+                        "start": {"dateTime": "2026-11-03T10:00:00Z", "timeZone": "UTC"},
+                        "end": {"dateTime": "2026-11-03T11:00:00Z", "timeZone": "UTC"},
+                        "iCalUId": "evt-1@outlook.com"
+                    }
+                ]
+            })))
+            .mount(&server)
+            .await;
+
+        // Second page returns 1 event and null nextLink
+        Mock::given(method("GET"))
+            .and(path(next_page_path))
+            .and(header("authorization", "Bearer ms-at-1"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "@odata.nextLink": null,
+                "value": [
+                    {
+                        "id": "evt-2",
+                        "subject": "Design Review",
+                        "start": {"dateTime": "2026-11-03T14:00:00Z", "timeZone": "UTC"},
+                        "end": {"dateTime": "2026-11-03T15:00:00Z", "timeZone": "UTC"},
+                        "iCalUId": "evt-2@outlook.com"
+                    }
+                ]
+            })))
+            .mount(&server)
+            .await;
+
+        let filter = EventFilter {
+            from: chrono::Utc::now() - chrono::Duration::days(1),
+            to: chrono::Utc::now() + chrono::Duration::days(1),
+            calendar_tracking_id: "cal-123".to_string(),
+        };
+
+        let events = list_outlook_events_direct(&server.uri(), "ms-at-1", filter)
+            .await
+            .unwrap();
+
+        assert_eq!(events.len(), 2);
+        assert_eq!(events[0].id, "evt-1");
+        assert_eq!(events[0].subject.as_deref(), Some("Sprint Planning"));
+        assert_eq!(events[1].id, "evt-2");
+        assert_eq!(events[1].subject.as_deref(), Some("Design Review"));
+    }
+
+    #[tokio::test]
+    async fn surfaces_outlook_api_errors() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/me/calendars"))
+            .respond_with(ResponseTemplate::new(401).set_body_json(serde_json::json!({
+                "error": {"code": "InvalidAuthenticationToken", "message": "Access token has expired."}
+            })))
+            .mount(&server)
+            .await;
+
+        let err = list_outlook_calendars_direct(&server.uri(), "expired-token")
             .await
             .unwrap_err();
         assert!(err.to_string().contains("401"));

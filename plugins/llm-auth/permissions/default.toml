@@ -1,0 +1,11 @@
+[default]
+description = "Default permissions for tauri-plugin-llm-auth"
+permissions = [
+    "allow-status",
+    "allow-start",
+    "allow-complete",
+    "allow-cancel",
+    "allow-logout",
+    "allow-access-token",
+    "allow-catalog",
+]

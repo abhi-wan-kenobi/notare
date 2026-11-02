@@ -184,6 +184,30 @@ const _PROVIDERS = [
       { kind: "requires_config", fields: ["base_url", "api_key"] },
     ],
   },
+  {
+    id: "anthropic_subscription",
+    displayName: "Anthropic (Subscription)",
+    badge: "Unofficial",
+    icon: <Anthropic size={16} />,
+    baseUrl: "https://api.anthropic.com/v1",
+    requirements: [],
+  },
+  {
+    id: "openai_subscription",
+    displayName: "OpenAI Codex (Subscription)",
+    badge: "Unofficial",
+    icon: <OpenAI size={16} />,
+    baseUrl: "https://chatgpt.com/backend-api/codex",
+    requirements: [],
+  },
+  {
+    id: "gemini_subscription",
+    displayName: "Google Gemini (Subscription)",
+    badge: "Unofficial",
+    icon: <Icon icon="simple-icons:googlegemini" width={16} />,
+    baseUrl: "https://cloudcode-pa.googleapis.com",
+    requirements: [],
+  },
 ] as const satisfies readonly Provider[];
 
 // "hyprnote" (the dead upstream cloud LLM) is hidden from the UI; see the
@@ -192,3 +216,37 @@ export const PROVIDERS = sortProviders(
   _PROVIDERS.filter((provider) => provider.id !== "hyprnote"),
 );
 export type ProviderId = (typeof _PROVIDERS)[number]["id"];
+
+export const SUBSCRIPTION_PROVIDER_IDS = [
+  "anthropic_subscription",
+  "openai_subscription",
+  "gemini_subscription",
+] as const;
+
+export type SubscriptionProviderId = (typeof SUBSCRIPTION_PROVIDER_IDS)[number];
+
+export function isSubscriptionProvider(
+  id: string,
+): id is SubscriptionProviderId {
+  return (SUBSCRIPTION_PROVIDER_IDS as readonly string[]).includes(id);
+}
+
+export function toLlmAuthProvider(
+  id: SubscriptionProviderId,
+): "anthropic" | "openai_codex" | "gemini" {
+  switch (id) {
+    case "anthropic_subscription":
+      return "anthropic";
+    case "openai_subscription":
+      return "openai_codex";
+    case "gemini_subscription":
+      return "gemini";
+  }
+}
+
+export const SUBSCRIPTION_PROVIDERS = _PROVIDERS.filter((p) =>
+  isSubscriptionProvider(p.id),
+);
+export const STANDARD_PROVIDERS = PROVIDERS.filter(
+  (p) => !isSubscriptionProvider(p.id),
+);

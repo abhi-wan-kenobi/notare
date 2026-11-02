@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-outlook-connect"
+description = "Enables the outlook_connect command without any pre-configured scope."
+commands.allow = ["outlook_connect"]
+
+[[permission]]
+identifier = "deny-outlook-connect"
+description = "Denies the outlook_connect command without any pre-configured scope."
+commands.deny = ["outlook_connect"]

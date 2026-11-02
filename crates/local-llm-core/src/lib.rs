@@ -3,8 +3,23 @@ mod model;
 mod server;
 
 pub use error::*;
+#[cfg(feature = "llama")]
+pub use hypr_local_llm_llama::{is_metal_enabled, set_metal_enabled, use_gpu};
 pub use model::*;
 pub use server::*;
+
+#[cfg(not(feature = "llama"))]
+pub fn use_gpu() -> bool {
+    false
+}
+
+#[cfg(not(feature = "llama"))]
+pub fn set_metal_enabled(_enabled: bool) {}
+
+#[cfg(not(feature = "llama"))]
+pub fn is_metal_enabled() -> bool {
+    false
+}
 
 use std::path::Path;
 

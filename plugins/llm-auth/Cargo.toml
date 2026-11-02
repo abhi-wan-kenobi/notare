@@ -1,0 +1,26 @@
+[package]
+name = "tauri-plugin-llm-auth"
+version = "0.1.0"
+edition = "2024"
+exclude = ["/js", "/node_modules"]
+links = "tauri-plugin-llm-auth"
+description = ""
+
+[dependencies]
+hypr-llm-auth = { workspace = true }
+hypr-oauth-loopback = { workspace = true }
+tauri = { workspace = true, features = ["test"] }
+tauri-plugin-store2 = { workspace = true }
+tauri-specta = { workspace = true, features = ["derive", "typescript"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+specta = { workspace = true, features = ["chrono"] }
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["sync", "time"] }
+tracing = { workspace = true }
+
+[build-dependencies]
+tauri-plugin = { workspace = true, features = ["build"] }
+
+[dev-dependencies]
+specta-typescript = { workspace = true }

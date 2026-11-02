@@ -1,9 +1,10 @@
 use std::time::Duration;
 
-use base64::Engine;
-use sha2::{Digest, Sha256};
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
+
+pub use hypr_oauth_loopback::{
+    PkcePair, RedirectOutcome, generate_pkce, parse_redirect_request, pkce_challenge_s256,
+};
 
 use crate::client_json::ClientCredentials;
 use crate::error::Error;
@@ -16,33 +17,6 @@ pub const DEFAULT_SCOPES: &[&str] = &[
     "https://www.googleapis.com/auth/calendar.events.readonly",
     "https://www.googleapis.com/auth/userinfo.email",
 ];
-
-#[derive(Debug, Clone)]
-pub struct PkcePair {
-    pub verifier: String,
-    pub challenge: String,
-}
-
-/// RFC 7636 S256 code challenge from a verifier.
-pub fn pkce_challenge_s256(verifier: &str) -> String {
-    let digest = Sha256::digest(verifier.as_bytes());
-    base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(digest)
-}
-
-pub fn generate_pkce() -> PkcePair {
-    // Two v4 UUIDs = 64 hex chars, ~244 bits of entropy, all within the
-    // allowed PKCE verifier charset.
-    let verifier = format!(
-        "{}{}",
-        uuid::Uuid::new_v4().simple(),
-        uuid::Uuid::new_v4().simple()
-    );
-    let challenge = pkce_challenge_s256(&verifier);
-    PkcePair {
-        verifier,
-        challenge,
-    }
-}
 
 /// Build the consent-screen URL for the installed-app (loopback) flow.
 pub fn build_auth_url(
@@ -73,118 +47,17 @@ pub fn build_auth_url(
     format!("{}?{}", creds.auth_uri, query)
 }
 
-/// Outcome of parsing one HTTP request that hit the loopback listener.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum RedirectOutcome {
-    /// `?code=...&state=...` — the happy path.
-    Code { code: String, state: String },
-    /// `?error=access_denied` etc.
-    Error(String),
-    /// Not the OAuth redirect (e.g. /favicon.ico) — keep listening.
-    Unrelated,
-}
-
-/// Parse the request line of an HTTP request ("GET /?code=... HTTP/1.1").
-pub fn parse_redirect_request(request_head: &str) -> RedirectOutcome {
-    let Some(first_line) = request_head.lines().next() else {
-        return RedirectOutcome::Unrelated;
-    };
-    let mut parts = first_line.split_whitespace();
-    let (Some(_method), Some(target)) = (parts.next(), parts.next()) else {
-        return RedirectOutcome::Unrelated;
-    };
-
-    let Some((_path, query)) = target.split_once('?') else {
-        return RedirectOutcome::Unrelated;
-    };
-
-    let mut code = None;
-    let mut state = None;
-    let mut error = None;
-    for pair in query.split('&') {
-        let (k, v) = pair.split_once('=').unwrap_or((pair, ""));
-        let v = urlencoding::decode(v)
-            .map(|c| c.into_owned())
-            .unwrap_or_else(|_| v.to_string());
-        match k {
-            "code" => code = Some(v),
-            "state" => state = Some(v),
-            "error" => error = Some(v),
-            _ => {}
-        }
-    }
-
-    if let Some(error) = error {
-        return RedirectOutcome::Error(error);
-    }
-    match (code, state) {
-        (Some(code), Some(state)) => RedirectOutcome::Code { code, state },
-        _ => RedirectOutcome::Unrelated,
-    }
-}
-
-fn html_response(body: &str) -> String {
-    format!(
-        "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
-        body.len(),
-        body
-    )
-}
-
-const SUCCESS_PAGE: &str = "<!doctype html><html><head><title>Notare</title></head><body style=\"font-family: sans-serif; display: flex; justify-content: center; margin-top: 20vh;\"><div style=\"text-align: center;\"><h2>Google Calendar connected</h2><p>You can close this tab and return to Notare.</p></div></body></html>";
-
-const FAILURE_PAGE: &str = "<!doctype html><html><head><title>Notare</title></head><body style=\"font-family: sans-serif; display: flex; justify-content: center; margin-top: 20vh;\"><div style=\"text-align: center;\"><h2>Connection failed</h2><p>Authorization was not granted. You can close this tab and try again from Notare.</p></div></body></html>";
-
-const NOT_FOUND_RESPONSE: &str =
-    "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
-
 async fn handle_connections(listener: TcpListener, expected_state: &str) -> Result<String, Error> {
-    loop {
-        let (mut stream, _addr) = listener.accept().await?;
-
-        let mut buf = vec![0u8; 8192];
-        let mut read_total = 0;
-        // Read until we have the request line (headers/body don't matter).
-        let head = loop {
-            let n = stream.read(&mut buf[read_total..]).await?;
-            if n == 0 {
-                break String::new();
+    hypr_oauth_loopback::handle_connections(listener, expected_state)
+        .await
+        .map_err(|e| match e {
+            hypr_oauth_loopback::LoopbackError::StateMismatch => Error::StateMismatch,
+            hypr_oauth_loopback::LoopbackError::AuthorizationDenied(err) => {
+                Error::AuthorizationDenied(err)
             }
-            read_total += n;
-            let text = String::from_utf8_lossy(&buf[..read_total]);
-            if text.contains("\r\n") || read_total == buf.len() {
-                break text.into_owned();
-            }
-        };
-
-        match parse_redirect_request(&head) {
-            RedirectOutcome::Code { code, state } => {
-                if state != expected_state {
-                    let _ = stream
-                        .write_all(html_response(FAILURE_PAGE).as_bytes())
-                        .await;
-                    let _ = stream.shutdown().await;
-                    return Err(Error::StateMismatch);
-                }
-                let _ = stream
-                    .write_all(html_response(SUCCESS_PAGE).as_bytes())
-                    .await;
-                let _ = stream.shutdown().await;
-                return Ok(code);
-            }
-            RedirectOutcome::Error(error) => {
-                let _ = stream
-                    .write_all(html_response(FAILURE_PAGE).as_bytes())
-                    .await;
-                let _ = stream.shutdown().await;
-                return Err(Error::AuthorizationDenied(error));
-            }
-            RedirectOutcome::Unrelated => {
-                let _ = stream.write_all(NOT_FOUND_RESPONSE.as_bytes()).await;
-                let _ = stream.shutdown().await;
-            }
-        }
-    }
+            hypr_oauth_loopback::LoopbackError::Io(err) => Error::Io(err),
+            other => Error::AuthorizationDenied(other.to_string()),
+        })
 }
 
 /// Run the full installed-app OAuth flow:

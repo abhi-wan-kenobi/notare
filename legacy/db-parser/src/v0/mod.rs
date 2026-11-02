@@ -353,7 +353,7 @@ async fn normalize_empty_words(conn: &libsql::Connection) -> Result<()> {
 mod tests {
     use super::*;
     use legacy_db_core::DatabaseBuilder;
-    use legacy_db_user::{UserDatabase, migrate};
+    use legacy_db_user::{migrate, UserDatabase};
 
     async fn setup_db(path: &Path) -> UserDatabase {
         let db = DatabaseBuilder::default()

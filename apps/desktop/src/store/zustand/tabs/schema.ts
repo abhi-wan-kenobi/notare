@@ -56,7 +56,9 @@ export type SettingsTab =
   | "todo"
   | "webhook"
   | "sync"
-  | "recipes";
+  | "recipes"
+  | "mcp"
+  | "gmail";
 
 const isSettingsTab = (tab: string | null | undefined): tab is SettingsTab => {
   switch (tab) {
@@ -72,6 +74,8 @@ const isSettingsTab = (tab: string | null | undefined): tab is SettingsTab => {
     case "webhook":
     case "sync":
     case "recipes":
+    case "mcp":
+    case "gmail":
       return true;
     default:
       return false;
@@ -93,6 +97,8 @@ export const normalizeSettingsTab = (
     case "webhook":
     case "sync":
     case "recipes":
+    case "mcp":
+    case "gmail":
       return tab;
     case "account":
     default:

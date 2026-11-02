@@ -7,6 +7,8 @@ import {
   SettingsNotifications,
   SettingsPermissions,
 } from "./general";
+import { SettingsGmail } from "./gmail";
+import { SettingsMcp } from "./mcp";
 import { SettingsRecipes } from "./recipes";
 import { SettingsSync } from "./sync";
 import { SettingsTodo } from "./todo";
@@ -61,6 +63,10 @@ function SettingsView({ tab }: { tab: Extract<Tab, { type: "settings" }> }) {
         return <SettingsSync />;
       case "recipes":
         return <SettingsRecipes />;
+      case "gmail":
+        return <SettingsGmail />;
+      case "mcp":
+        return <SettingsMcp />;
       default:
         return <SettingsApp />;
     }

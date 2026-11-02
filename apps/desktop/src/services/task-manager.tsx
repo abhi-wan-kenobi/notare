@@ -14,6 +14,7 @@ import {
   cleanupExpiredAudio,
   normalizeAudioRetention,
 } from "./audio-retention";
+import { useBriefsScheduler } from "./briefs";
 import { CALENDAR_SYNC_TASK_ID, syncCalendarEvents } from "./calendar";
 import {
   checkEventNotifications,
@@ -82,6 +83,7 @@ export function TaskManager() {
   useScheduleTaskRun(AUDIO_RETENTION_TASK_ID, undefined, 0, {
     repeatDelay: AUDIO_RETENTION_INTERVAL,
   });
+  useBriefsScheduler();
 
   return null;
 }

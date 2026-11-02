@@ -5,6 +5,7 @@ import { type Tab } from "~/store/zustand/tabs";
 
 export { parseWebTemplates } from "./codec";
 export type { WebTemplate } from "./codec";
+export { BUILT_IN_TEMPLATES } from "./gallery-data";
 export {
   useCreateTemplate,
   useUserTemplate,

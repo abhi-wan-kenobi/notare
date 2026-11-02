@@ -1,0 +1,8 @@
+[default]
+description = "Default permissions for the MCP server plugin"
+permissions = [
+    "allow-get-settings",
+    "allow-set-settings",
+    "allow-regenerate-token",
+    "allow-get-status",
+]

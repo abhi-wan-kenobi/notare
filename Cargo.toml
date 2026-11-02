@@ -13,6 +13,7 @@ members = [
   "apps/cli",
   "apps/desktop/src-tauri",
   "apps/stt-server",
+  "apps/mcp-stdio",
   "crates/*",
   "legacy/*",
   "plugins/*",
@@ -121,6 +122,7 @@ hypr-linear = { path = "crates/linear", package = "linear" }
 hypr-listener-core = { path = "crates/listener-core", package = "listener-core" }
 hypr-listener2-core = { path = "crates/listener2-core", package = "listener2-core" }
 hypr-llama-cpp-backend = { path = "crates/llama-cpp-backend", package = "llama-cpp-backend" }
+hypr-llm-auth = { path = "crates/llm-auth", package = "llm-auth" }
 hypr-llm-proxy = { path = "crates/llm-proxy", package = "llm-proxy" }
 hypr-llm-types = { path = "crates/llm-types", package = "llm-types" }
 hypr-lmstudio = { path = "crates/lmstudio", package = "lmstudio" }
@@ -132,6 +134,7 @@ hypr-local-stt-server = { path = "crates/local-stt-server", package = "local-stt
 hypr-loops = { path = "crates/loops", package = "loops" }
 hypr-mac = { path = "crates/mac", package = "mac" }
 hypr-mcp = { path = "crates/mcp", package = "mcp" }
+hypr-microsoft-oauth = { path = "crates/microsoft-oauth", package = "microsoft-oauth" }
 hypr-mobile-bridge = { path = "crates/mobile-bridge", package = "mobile-bridge" }
 hypr-model-downloader = { path = "crates/model-downloader", package = "model-downloader" }
 hypr-model-manager = { path = "crates/model-manager", package = "model-manager" }
@@ -141,6 +144,7 @@ hypr-notification = { path = "crates/notification", package = "notification" }
 hypr-notification-interface = { path = "crates/notification-interface", package = "notification-interface" }
 hypr-notification-macos2 = { path = "crates/notification-macos2", package = "notification-macos2" }
 hypr-observability = { path = "crates/observability", package = "observability" }
+hypr-oauth-loopback = { path = "crates/oauth-loopback", package = "oauth-loopback" }
 hypr-onnx = { path = "crates/onnx", package = "onnx" }
 hypr-opencode = { path = "crates/opencode", package = "opencode" }
 hypr-openrouter = { path = "crates/openrouter", package = "openrouter" }
@@ -244,9 +248,11 @@ tauri-plugin-hooks = { path = "plugins/hooks" }
 tauri-plugin-icon = { path = "plugins/icon" }
 tauri-plugin-importer = { path = "plugins/importer" }
 tauri-plugin-js = { path = "plugins/js" }
+tauri-plugin-llm-auth = { path = "plugins/llm-auth" }
 tauri-plugin-local-llm = { path = "plugins/local-llm" }
 tauri-plugin-local-stt = { path = "plugins/local-stt" }
 tauri-plugin-mcp = { path = "plugins/mcp" }
+tauri-plugin-mcp-server = { path = "plugins/mcp-server" }
 tauri-plugin-messenger = { path = "plugins/messenger" }
 tauri-plugin-misc = { path = "plugins/misc" }
 tauri-plugin-network = { path = "plugins/network" }

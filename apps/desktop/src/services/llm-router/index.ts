@@ -229,7 +229,9 @@ export function resolveModel(
 function asCharTask(task: LlmTask): CharTask | undefined {
   return task === "chat" || task === "enhance" || task === "title"
     ? task
-    : undefined;
+    : task === "brief"
+      ? "enhance"
+      : undefined;
 }
 
 /**

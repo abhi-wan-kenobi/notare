@@ -3,6 +3,9 @@ use utoipa::OpenApi;
 #[derive(OpenApi)]
 #[openapi(components(schemas(
     crate::Attachment,
+    crate::CreateDraftRequest,
+    crate::Draft,
+    crate::DraftMessage,
     crate::GetMessageRequest,
     crate::GetThreadRequest,
     crate::History,

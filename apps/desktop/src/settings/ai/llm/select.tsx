@@ -12,18 +12,39 @@ import { Button } from "@hypr/ui/components/ui/button";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from "@hypr/ui/components/ui/select";
+import { Switch } from "@hypr/ui/components/ui/switch";
 import { cn } from "@hypr/utils";
 
 import { useLlmSettings } from "./context";
 import { HealthStatusIndicator, useConnectionHealth } from "./health";
 import { fetchOmpModels } from "./list-omp";
 import { getPreferredProviderModel } from "./selection";
-import { type Provider, PROVIDERS } from "./shared";
+import {
+  isSubscriptionProvider,
+  type Provider,
+  PROVIDERS,
+  STANDARD_PROVIDERS,
+  SUBSCRIPTION_PROVIDERS,
+  type SubscriptionProviderId,
+  toLlmAuthProvider,
+} from "./shared";
 
+import { ANTHROPIC_SUBSCRIPTION_MODELS } from "~/ai/providers/anthropic-subscription";
+import { GEMINI_SUBSCRIPTION_MODELS } from "~/ai/providers/gemini-subscription";
+import {
+  commands as llmAuthCommands,
+  DEFAULT_CATALOG,
+  type LlmAuthProvider,
+  type LlmAuthStatus,
+} from "~/ai/providers/llm-auth-client";
+import { OPENAI_CODEX_SUBSCRIPTION_MODELS } from "~/ai/providers/openai-codex-subscription";
 import { useAuth } from "~/auth";
 import { useBillingAccess } from "~/auth/billing";
 import { providerRowId, ProviderIconSlot } from "~/settings/ai/shared";
@@ -51,7 +72,7 @@ import { listOpenRouterModels } from "~/settings/ai/shared/list-openrouter";
 import { ModelCombobox } from "~/settings/ai/shared/model-combobox";
 import { useAiProviders } from "~/settings/providers";
 import { useSetSettingValue } from "~/settings/queries";
-import { useConfigValues } from "~/shared/config";
+import { useConfigValue, useConfigValues } from "~/shared/config";
 import { SettingsAlert } from "~/shared/ui/settings-alert";
 
 export function SelectProviderAndModel() {
@@ -68,6 +89,25 @@ export function SelectProviderAndModel() {
   const selectedProviderConfigured = current_llm_provider
     ? (configuredProviders[current_llm_provider]?.configured ?? false)
     : false;
+
+  const catalogQuery = useQuery({
+    queryKey: ["llm-auth", "catalog"],
+    queryFn: async () => {
+      const res = await llmAuthCommands.catalog();
+      return res.status === "ok" ? res.data : DEFAULT_CATALOG;
+    },
+    staleTime: 1000 * 60 * 5,
+  });
+  const catalog = catalogQuery.data ?? DEFAULT_CATALOG;
+  const enabledSubscriptionProviders = useMemo(() => {
+    return SUBSCRIPTION_PROVIDERS.filter((provider) => {
+      const pluginId = toLlmAuthProvider(provider.id as SubscriptionProviderId);
+      const catalogProvider = catalog.providers.find(
+        (cp) => cp.id === pluginId,
+      );
+      return Boolean(catalogProvider?.enabled);
+    });
+  }, [catalog]);
 
   const health = useConnectionHealth();
   const isConfigured = !!(
@@ -211,7 +251,7 @@ export function SelectProviderAndModel() {
               <SelectValue placeholder={t`Select a provider`} />
             </SelectTrigger>
             <SelectContent>
-              {PROVIDERS.map((provider) => {
+              {STANDARD_PROVIDERS.map((provider) => {
                 const requiresPro = requiresEntitlement(
                   provider.requirements,
                   "pro",
@@ -244,6 +284,49 @@ export function SelectProviderAndModel() {
                   </SelectItem>
                 );
               })}
+
+              {enabledSubscriptionProviders.length > 0 && (
+                <>
+                  <SelectSeparator />
+                  <SelectGroup>
+                    <SelectLabel className="text-muted-foreground text-[11px] font-semibold tracking-wider uppercase">
+                      <Trans>Use my subscription (unofficial)</Trans>
+                    </SelectLabel>
+                    {enabledSubscriptionProviders.map((provider) => {
+                      const configured =
+                        configuredProviders[provider.id]?.configured ?? false;
+
+                      return (
+                        <SelectItem
+                          key={provider.id}
+                          value={provider.id}
+                          disabled={!configured}
+                          className={cn([
+                            "data-disabled:text-muted-foreground data-disabled:!opacity-100",
+                            !configured && "text-muted-foreground",
+                          ])}
+                        >
+                          <div className="flex flex-col gap-0.5">
+                            <div className="flex items-center gap-2">
+                              <ProviderIconSlot>
+                                {provider.icon}
+                              </ProviderIconSlot>
+                              <span>{provider.displayName}</span>
+                            </div>
+                            {!configured ? (
+                              <span className="text-muted-foreground text-[11px]">
+                                <Trans>
+                                  Sign in in settings to use this provider.
+                                </Trans>
+                              </span>
+                            ) : null}
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectGroup>
+                </>
+              )}
             </SelectContent>
           </Select>
         </div>
@@ -331,6 +414,8 @@ function LocalModelManager({
     new Map(),
   );
 
+  const localLlmMetal = useConfigValue("local_llm_metal");
+  const setLocalLlmMetal = useSetSettingValue("local_llm_metal");
   const handleDownload = useCallback(
     async (model: GgufLlmModel) => {
       setDownloading((prev) => new Map(prev).set(model, 0));
@@ -405,6 +490,24 @@ function LocalModelManager({
           needed.
         </Trans>
       </p>
+      <div className="border-border/60 bg-muted/30 flex items-center justify-between rounded-lg border p-2.5">
+        <div className="flex flex-col gap-0.5">
+          <label htmlFor="local-llm-metal" className="text-sm font-medium">
+            <Trans>Metal GPU offload (macOS)</Trans>
+          </label>
+          <span className="text-muted-foreground text-xs">
+            <Trans>
+              Offload model layers to Apple Silicon / Metal GPU for faster
+              inference.
+            </Trans>
+          </span>
+        </div>
+        <Switch
+          id="local-llm-metal"
+          checked={localLlmMetal ?? true}
+          onCheckedChange={setLocalLlmMetal}
+        />
+      </div>
       <div className="divide-border/60 divide-y">
         {models.map((model) => {
           const isDownloaded = downloadedSet.has(model.key);
@@ -493,12 +596,47 @@ export function getLlmProviderStatus({
   config,
   isAuthenticated,
   isPaid,
+  authStatuses,
 }: {
   provider: Provider;
   config?: ProviderConfig;
   isAuthenticated: boolean;
   isPaid: boolean;
+  authStatuses?: Partial<Record<LlmAuthProvider, LlmAuthStatus>>;
 }): ProviderStatus {
+  if (isSubscriptionProvider(provider.id)) {
+    const pluginId = toLlmAuthProvider(provider.id);
+    const signedIn = authStatuses?.[pluginId]?.signed_in ?? false;
+    if (!signedIn) {
+      return { configured: false };
+    }
+
+    let models: string[] = [];
+    switch (provider.id) {
+      case "anthropic_subscription":
+        models = [...ANTHROPIC_SUBSCRIPTION_MODELS];
+        break;
+      case "openai_subscription":
+        models = [...OPENAI_CODEX_SUBSCRIPTION_MODELS];
+        break;
+      case "gemini_subscription":
+        models = [...GEMINI_SUBSCRIPTION_MODELS];
+        break;
+    }
+
+    const result: ListModelsResult = {
+      models,
+      ignored: [],
+      metadata: Object.fromEntries(
+        models.map((m) => [
+          m,
+          { input_modalities: ["text", "image"] as InputModality[] },
+        ]),
+      ),
+    };
+
+    return { configured: true, listModels: async () => result };
+  }
   const baseUrl = String(config?.base_url || provider.baseUrl || "").trim();
   const apiKey = String(config?.api_key || "").trim();
 
@@ -594,6 +732,34 @@ export function useConfiguredMapping(): Record<string, ProviderStatus> {
   const billing = useBillingAccess();
   const configuredProviders = useAiProviders("llm");
 
+  const authStatusesQuery = useQuery({
+    queryKey: ["llm-auth", "statuses"],
+    queryFn: async (): Promise<
+      Partial<Record<LlmAuthProvider, LlmAuthStatus>>
+    > => {
+      const providers: LlmAuthProvider[] = [
+        "anthropic",
+        "openai_codex",
+        "gemini",
+      ];
+      const pairs = await Promise.all(
+        providers.map(async (p) => {
+          const res = await llmAuthCommands.status(p);
+          return [
+            p,
+            res.status === "ok"
+              ? res.data
+              : { signed_in: false, account_label: null, expires_at: null },
+          ] as const;
+        }),
+      );
+      return Object.fromEntries(pairs);
+    },
+    staleTime: 1000 * 10,
+  });
+
+  const authStatuses = authStatusesQuery.data;
+
   const mapping = useMemo(() => {
     return Object.fromEntries(
       PROVIDERS.map((provider) => {
@@ -605,11 +771,12 @@ export function useConfiguredMapping(): Record<string, ProviderStatus> {
             config,
             isAuthenticated: !!auth?.session,
             isPaid: billing.isPaid,
+            authStatuses,
           }),
         ];
       }),
     ) as Record<string, ProviderStatus>;
-  }, [configuredProviders, auth, billing]);
+  }, [configuredProviders, auth, billing, authStatuses]);
 
   return mapping;
 }

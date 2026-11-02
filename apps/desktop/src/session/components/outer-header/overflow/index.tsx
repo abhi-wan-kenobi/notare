@@ -21,6 +21,7 @@ import {
 
 import { DeleteNote } from "./delete";
 import { ExportModal } from "./export-modal";
+import { FollowupEmail } from "./followup";
 import { Listening } from "./listening";
 import { ShowInFinder } from "./misc";
 
@@ -114,6 +115,10 @@ export function OverflowButton({
                 <Trans>Export</Trans>
               </span>
             </DropdownMenuItem>
+            <FollowupEmail
+              sessionId={sessionId}
+              onSelect={() => setOpen(false)}
+            />
             <DropdownMenuSeparator />
             {showListeningAction && (
               <Listening sessionId={sessionId} hasTranscript={hasTranscript} />

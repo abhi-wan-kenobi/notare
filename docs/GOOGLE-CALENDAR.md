@@ -17,8 +17,10 @@ Official builds of Notare ship with a first-party Google OAuth client baked in (
 5. The browser displays **"Google Calendar connected — you can close this tab"**.
 6. Back in Notare, your calendars appear within a few seconds. **Tick the calendars you want** to sync.
 
-Multiple calendars are supported — each toggle is independent. Events from enabled calendars flow into the calendar view, meeting notes, and upcoming-meeting notifications.
-
+Multiple calendars and multiple Google accounts are supported:
+- **Multiple accounts**: Connect both work and personal accounts. Click **"+ Add Google account"** to authenticate an additional account. Refresh tokens are isolated per account in your OS keychain under `google-calendar/oauth/<account_email>`.
+- **Per-account controls**: Disconnect specific accounts individually or remove all at once.
+- **Incremental write permission**: Initial connection requests read-only calendar access. If you choose to create an event directly from Notare, Google will prompt you incrementally for write permission (`calendar.events`) without requiring full re-authorization.
 ### Unverified app warning
 
 Until Google finishes the OAuth verification process for our first-party client, you may see a screen saying:
@@ -32,10 +34,11 @@ This is normal while an app is under Google verification or operating in testing
 
 > **Testing mode token expiry:** While in Google testing mode, refresh tokens expire after **7 days**. If Notare reports that it can no longer refresh your calendar events, simply return to **Settings → Calendar** and click **Sign in with Google** again to re-authenticate. Once Google verification is complete, refresh tokens remain valid without the 7-day expiration.
 
-### Disconnecting
+### Accounts & Disconnecting
 
-- **Disconnect** (in the Google section) revokes the session and forgets your tokens. Reconnecting is a single click.
-
+- **Add another account**: Click **"+ Add Google account"** in the Google Calendar settings to connect multiple accounts.
+- **Remove account**: Click **Remove** next to any account in the Connected Accounts list to revoke its session and delete its token from your OS keychain.
+- **Disconnect all**: Revokes and removes all connected Google accounts.
 ---
 
 ## Bring your own OAuth client (forks, source builds, or if you prefer it)
@@ -118,17 +121,18 @@ That's the end of the Google console part. You never need to go back there (unle
 
 | Item | Where |
 | --- | --- |
-| Client id + client secret + refresh token | OS keychain (macOS Keychain / Windows Credential Manager / Secret Service on Linux) |
-| Which calendars are enabled | Notare's local database |
-| Access tokens | Memory only, refreshed automatically |
+| Per-account refresh tokens | OS keychain (`google-calendar/oauth/<account_email>`) |
+| Client id + client secret | OS keychain (macOS Keychain / Windows Credential Manager / Secret Service on Linux) |
+| Which calendars are enabled | Notare's local database (per-account connection ids `google:<email>`) |
+| Access tokens | Memory only, refreshed automatically per account |
 
-Scopes requested (both read-only):
-
-- `https://www.googleapis.com/auth/calendar.readonly`
-- `https://www.googleapis.com/auth/calendar.events.readonly`
-
-Notare never writes to your Google Calendar and never sees your Google password. The OAuth redirect happens exclusively on `127.0.0.1` (your own machine), the standard loopback flow for desktop apps. Nothing ever passes through `notare.dev`.
-
+Scopes requested:
+- Initial read-only scopes:
+  - `https://www.googleapis.com/auth/calendar.readonly`
+  - `https://www.googleapis.com/auth/calendar.events.readonly`
+  - `https://www.googleapis.com/auth/userinfo.email`
+- Incremental write scope (requested only when creating an event):
+  - `https://www.googleapis.com/auth/calendar.events`
 ---
 
 ## Troubleshooting

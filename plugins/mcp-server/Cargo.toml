@@ -1,0 +1,45 @@
+[package]
+name = "tauri-plugin-mcp-server"
+version = "0.1.0"
+authors = ["You"]
+edition = "2024"
+exclude = ["/js", "/node_modules"]
+links = "tauri-plugin-mcp-server"
+description = "Notare local-first MCP server plugin"
+
+[build-dependencies]
+tauri-plugin = { workspace = true, features = ["build"] }
+
+[dev-dependencies]
+specta-typescript = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "net", "io-util", "time"] }
+tempfile = { workspace = true }
+
+[dependencies]
+specta = { workspace = true, features = ["derive", "serde_json"] }
+tauri = { workspace = true, features = ["test", "macos-private-api"] }
+tauri-plugin-db = { workspace = true }
+tauri-plugin-store2 = { workspace = true }
+tauri-plugin-tantivy = { workspace = true }
+tauri-plugin-embedding-search = { workspace = true }
+tauri-specta = { workspace = true, features = ["derive", "typescript"] }
+reqwest = { workspace = true, features = ["json"] }
+
+hypr-agent-access = { workspace = true }
+hypr-db-app = { workspace = true }
+hypr-db-core = { workspace = true }
+hypr-mcp = { workspace = true }
+
+rmcp = { workspace = true, features = ["server", "transport-streamable-http-server"] }
+axum = { workspace = true }
+tower = { workspace = true }
+tower-http = { workspace = true }
+
+tokio = { workspace = true, features = ["rt", "time", "net", "sync", "macros"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+uuid = { workspace = true, features = ["v4"] }
+strum = { workspace = true, features = ["derive"] }
+sqlx = { workspace = true, features = ["sqlite"] }

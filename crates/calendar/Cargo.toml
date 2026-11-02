@@ -7,7 +7,6 @@ edition = "2024"
 specta = ["dep:specta"]
 
 [dependencies]
-hypr-api-client = { workspace = true }
 hypr-apple-calendar = { workspace = true, features = ["specta"] }
 hypr-calendar-interface = { workspace = true }
 hypr-google-calendar = { workspace = true, features = ["specta"] }
@@ -26,6 +25,7 @@ serde_json = { workspace = true }
 specta = { workspace = true, features = ["chrono"], optional = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
+urlencoding = { workspace = true }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }

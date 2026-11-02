@@ -28,6 +28,9 @@ describe("tier classification", () => {
       "google_generative_ai",
       "mistral",
       "azure_openai",
+      "anthropic_subscription",
+      "openai_subscription",
+      "gemini_subscription",
     ]) {
       expect(classifyTier({ providerId: p, modelId: "x" })).toBe("byo-cloud");
     }
@@ -162,6 +165,14 @@ describe("capability gating", () => {
 
   it("custom provider structured-output support is unknown, not assumed", () => {
     expect(providerSupportsStructuredOutputs("custom")).toBe("unknown");
+  });
+
+  it("supports structured outputs for subscription providers", () => {
+    expect(providerSupportsStructuredOutputs("anthropic_subscription")).toBe(
+      true,
+    );
+    expect(providerSupportsStructuredOutputs("openai_subscription")).toBe(true);
+    expect(providerSupportsStructuredOutputs("gemini_subscription")).toBe(true);
   });
 
   it("treats omp provider as cloud-grade with structured output support for all tasks", () => {

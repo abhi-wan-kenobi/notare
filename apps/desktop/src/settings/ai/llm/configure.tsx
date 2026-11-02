@@ -1,12 +1,31 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useQuery } from "@tanstack/react-query";
 
-import { Accordion } from "@hypr/ui/components/ui/accordion";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@hypr/ui/components/ui/accordion";
+import { Badge } from "@hypr/ui/components/ui/badge";
 import { Button } from "@hypr/ui/components/ui/button";
 
 import { useLlmSettings } from "./context";
-import { ProviderId, PROVIDERS } from "./shared";
+import {
+  ProviderId,
+  PROVIDERS,
+  STANDARD_PROVIDERS,
+  SUBSCRIPTION_PROVIDERS,
+  type SubscriptionProviderId,
+  toLlmAuthProvider,
+} from "./shared";
+import { SubscriptionCard } from "./subscription-card";
 
+import {
+  commands as llmAuthCommands,
+  DEFAULT_CATALOG,
+  type LlmAuthCatalogProvider,
+} from "~/ai/providers/llm-auth-client";
 import {
   OMP_DEFAULT_BASE_URL,
   probeOmpGateway,
@@ -28,7 +47,7 @@ export function ConfigureProviders() {
         value={accordionValue}
         onValueChange={setAccordionValue}
       >
-        {PROVIDERS.map((provider) => (
+        {STANDARD_PROVIDERS.map((provider) => (
           <NonHyprProviderCard
             key={provider.id}
             config={provider}
@@ -48,7 +67,76 @@ export function ConfigureProviders() {
           />
         ))}
       </Accordion>
+      <SubscriptionProvidersSection />
     </div>
+  );
+}
+export function SubscriptionProvidersSection() {
+  const catalogQuery = useQuery({
+    queryKey: ["llm-auth", "catalog"],
+    queryFn: async () => {
+      const res = await llmAuthCommands.catalog();
+      return res.status === "ok" ? res.data : DEFAULT_CATALOG;
+    },
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const catalog = catalogQuery.data ?? DEFAULT_CATALOG;
+  const enabledProviders = SUBSCRIPTION_PROVIDERS.map((provider) => {
+    const pluginId = toLlmAuthProvider(provider.id as SubscriptionProviderId);
+    const catalogProvider = catalog.providers.find((cp) => cp.id === pluginId);
+    return { provider, catalogProvider };
+  }).filter(
+    (
+      item,
+    ): item is {
+      provider: (typeof SUBSCRIPTION_PROVIDERS)[number];
+      catalogProvider: LlmAuthCatalogProvider;
+    } => Boolean(item.catalogProvider?.enabled),
+  );
+
+  if (enabledProviders.length === 0) {
+    return null;
+  }
+
+  return (
+    <Accordion type="single" collapsible className="flex flex-col gap-3">
+      <AccordionItem
+        value="subscription-section"
+        className="border-border/60 bg-card rounded-xl border shadow-xs"
+      >
+        <AccordionTrigger className="px-4 py-3 hover:no-underline">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold">
+              <Trans>Use my subscription (unofficial)</Trans>
+            </span>
+            <Badge
+              variant="outline"
+              className="border-amber-500/30 bg-amber-500/10 text-[10px] text-amber-600 dark:text-amber-400"
+            >
+              <Trans>Unofficial</Trans>
+            </Badge>
+          </div>
+        </AccordionTrigger>
+        <AccordionContent className="flex flex-col gap-3 px-4 pt-1 pb-4">
+          <p className="text-muted-foreground text-xs leading-relaxed">
+            <Trans>
+              Sign in with your Claude, ChatGPT, or Google account to use your
+              subscription directly without entering API keys.
+            </Trans>
+          </p>
+          <div className="flex flex-col gap-3">
+            {enabledProviders.map(({ provider, catalogProvider }) => (
+              <SubscriptionCard
+                key={provider.id}
+                provider={provider}
+                catalogProvider={catalogProvider}
+              />
+            ))}
+          </div>
+        </AccordionContent>
+      </AccordionItem>
+    </Accordion>
   );
 }
 

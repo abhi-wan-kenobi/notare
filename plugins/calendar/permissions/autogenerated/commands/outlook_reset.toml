@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-outlook-reset"
+description = "Enables the outlook_reset command without any pre-configured scope."
+commands.allow = ["outlook_reset"]
+
+[[permission]]
+identifier = "deny-outlook-reset"
+description = "Denies the outlook_reset command without any pre-configured scope."
+commands.deny = ["outlook_reset"]

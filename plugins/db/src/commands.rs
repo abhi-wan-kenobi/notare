@@ -417,7 +417,7 @@ pub struct UpsertRecipeInput {
     pub builtin: bool,
 }
 
-pub(crate) async fn list_recipes_db(pool: &sqlx::SqlitePool) -> Result<Vec<Recipe>, String> {
+pub async fn list_recipes_db(pool: &sqlx::SqlitePool) -> Result<Vec<Recipe>, String> {
     sqlx::query_as::<_, Recipe>(
         "SELECT id, title, prompt, scope, builtin, created_at, updated_at FROM recipes ORDER BY builtin DESC, title COLLATE NOCASE ASC",
     )

@@ -27,12 +27,14 @@ pub async fn is_provider_enabled<R: tauri::Runtime>(
     let token = access_token(&app);
     let apple = is_apple_authorized(&app).await?;
     let google = crate::google::is_connected(&app).await;
+    let outlook = crate::outlook::is_connected(&app).await;
     let ics = crate::ics::has_files(&app);
     hypr_calendar::is_provider_enabled(
         &config.api_base_url,
         token.as_deref(),
         apple,
         google,
+        outlook,
         ics,
         provider,
     )
@@ -48,11 +50,29 @@ pub async fn list_connection_ids<R: tauri::Runtime>(
     let config = app.state::<crate::PluginConfig>();
     let token = access_token(&app);
     let apple = is_apple_authorized(&app).await?;
-    let google = crate::google::is_connected(&app).await;
+    let google_connected = crate::google::is_connected(&app).await;
+    let outlook_connected = crate::outlook::is_connected(&app).await;
     let ics = crate::ics::has_files(&app);
-    hypr_calendar::list_connection_ids(&config.api_base_url, token.as_deref(), apple, google, ics)
-        .await
-        .map_err(Into::into)
+    let mut connections = hypr_calendar::list_connection_ids(
+        &config.api_base_url,
+        token.as_deref(),
+        apple,
+        google_connected,
+        outlook_connected,
+        ics,
+    )
+    .await
+    .map_err(Error::Calendar)?;
+
+    for conn in &mut connections {
+        if conn.provider == CalendarProviderType::Google {
+            conn.connection_ids = crate::google::list_connection_ids(&app).await?;
+        } else if conn.provider == CalendarProviderType::Outlook {
+            conn.connection_ids = crate::outlook::list_connection_ids(&app).await?;
+        }
+    }
+
+    Ok(connections)
 }
 
 #[tauri::command]
@@ -65,9 +85,13 @@ pub async fn list_calendars<R: tauri::Runtime>(
     let config = app.state::<crate::PluginConfig>();
     let token = match provider {
         CalendarProviderType::Apple => access_token(&app).unwrap_or_default(),
-        CalendarProviderType::Google => crate::google::access_token(&app).await?,
+        CalendarProviderType::Google => {
+            crate::google::access_token_for_connection(&app, &connection_id).await?
+        }
+        CalendarProviderType::Outlook => {
+            crate::outlook::access_token_for_connection(&app, &connection_id).await?
+        }
         CalendarProviderType::Ics => String::new(),
-        _ => require_access_token(&app)?,
     };
     let ics_dir = crate::ics::ics_dir(&app)?;
     hypr_calendar::list_calendars(
@@ -92,9 +116,13 @@ pub async fn list_events<R: tauri::Runtime>(
     let config = app.state::<crate::PluginConfig>();
     let token = match provider {
         CalendarProviderType::Apple => access_token(&app).unwrap_or_default(),
-        CalendarProviderType::Google => crate::google::access_token(&app).await?,
+        CalendarProviderType::Google => {
+            crate::google::access_token_for_connection(&app, &connection_id).await?
+        }
+        CalendarProviderType::Outlook => {
+            crate::outlook::access_token_for_connection(&app, &connection_id).await?
+        }
         CalendarProviderType::Ics => String::new(),
-        _ => require_access_token(&app)?,
     };
     let ics_dir = crate::ics::ics_dir(&app)?;
     hypr_calendar::list_events(
@@ -120,12 +148,16 @@ pub fn open_calendar<R: tauri::Runtime>(
 
 #[tauri::command]
 #[specta::specta]
-pub fn create_event<R: tauri::Runtime>(
-    _app: tauri::AppHandle<R>,
+pub async fn create_event<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
     provider: CalendarProviderType,
     input: CreateEventInput,
 ) -> Result<String, Error> {
-    hypr_calendar::create_event(provider, input).map_err(Into::into)
+    match provider {
+        CalendarProviderType::Google => crate::google::create_event(&app, input).await,
+        CalendarProviderType::Outlook => crate::outlook::create_event(&app, input).await,
+        _ => hypr_calendar::create_event(provider, input).map_err(Into::into),
+    }
 }
 
 #[tauri::command]
@@ -177,8 +209,9 @@ pub async fn google_connect<R: tauri::Runtime>(
 #[specta::specta]
 pub async fn google_disconnect<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
+    email: Option<String>,
 ) -> Result<crate::google::GoogleAccountStatus, Error> {
-    crate::google::disconnect(&app).await
+    crate::google::disconnect(&app, email.as_deref()).await
 }
 
 /// Removes the session AND the imported client json.
@@ -188,6 +221,45 @@ pub async fn google_reset<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
 ) -> Result<crate::google::GoogleAccountStatus, Error> {
     crate::google::reset(&app).await
+}
+
+// --- Gmail client ---
+
+#[tauri::command]
+#[specta::specta]
+pub async fn gmail_status<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+) -> Result<crate::google::GmailAccountStatus, Error> {
+    crate::google::gmail_status(&app).await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn gmail_connect<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+) -> Result<crate::google::GmailAccountStatus, Error> {
+    crate::google::gmail_connect(&app).await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn gmail_disconnect<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    email: Option<String>,
+) -> Result<crate::google::GmailAccountStatus, Error> {
+    crate::google::gmail_disconnect(&app, email.as_deref()).await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn gmail_create_draft<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    account_email: Option<String>,
+    to: Vec<String>,
+    subject: String,
+    body: String,
+) -> Result<String, Error> {
+    crate::google::gmail_create_draft(&app, account_email, to, subject, body).await
 }
 
 // --- Imported .ics calendar files ---
@@ -233,10 +305,55 @@ pub fn ics_remove_file<R: tauri::Runtime>(
     crate::ics::remove(&app, &id)
 }
 
+// --- Direct Outlook integration ---
+
+#[tauri::command]
+#[specta::specta]
+pub async fn outlook_account_status<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+) -> Result<crate::outlook::OutlookAccountStatus, Error> {
+    crate::outlook::status(&app).await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn outlook_set_client_id<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    client_id: String,
+) -> Result<crate::outlook::OutlookClientImportResult, Error> {
+    crate::outlook::set_client_id(&app, &client_id).await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn outlook_connect<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+) -> Result<crate::outlook::OutlookAccountStatus, Error> {
+    crate::outlook::connect(&app).await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn outlook_disconnect<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    email: Option<String>,
+) -> Result<crate::outlook::OutlookAccountStatus, Error> {
+    crate::outlook::disconnect(&app, email.as_deref()).await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn outlook_reset<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+) -> Result<crate::outlook::OutlookAccountStatus, Error> {
+    crate::outlook::reset(&app).await
+}
+
 fn access_token<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Option<String> {
     app.access_token().ok().flatten().filter(|t| !t.is_empty())
 }
 
+#[allow(dead_code)]
 fn require_access_token<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Result<String, Error> {
     let token = app.access_token().map_err(|e| Error::Auth(e.to_string()))?;
     match token {
