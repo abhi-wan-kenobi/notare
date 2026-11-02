@@ -443,7 +443,7 @@ pub(crate) async fn upsert_recipe_db(
           title = excluded.title,
           prompt = excluded.prompt,
           scope = excluded.scope,
-          builtin = excluded.builtin,
+          builtin = recipes.builtin,
           updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
         RETURNING id, title, prompt, scope, builtin, created_at, updated_at
         "#,
@@ -459,23 +459,24 @@ pub(crate) async fn upsert_recipe_db(
 }
 
 pub(crate) async fn delete_recipe_db(pool: &sqlx::SqlitePool, id: String) -> Result<(), String> {
-    let recipe = sqlx::query_scalar::<_, bool>("SELECT builtin FROM recipes WHERE id = ?1")
+    // Single statement so the built-in check and the delete cannot interleave.
+    let deleted = sqlx::query("DELETE FROM recipes WHERE id = ?1 AND builtin = 0")
+        .bind(&id)
+        .execute(pool)
+        .await
+        .map_err(|error| error.to_string())?
+        .rows_affected();
+    if deleted > 0 {
+        return Ok(());
+    }
+    let is_builtin = sqlx::query_scalar::<_, bool>("SELECT builtin FROM recipes WHERE id = ?1")
         .bind(&id)
         .fetch_optional(pool)
         .await
         .map_err(|error| error.to_string())?;
-
-    match recipe {
+    match is_builtin {
         Some(true) => Err("Built-in recipes cannot be deleted".to_string()),
-        Some(false) => {
-            sqlx::query("DELETE FROM recipes WHERE id = ?1")
-                .bind(&id)
-                .execute(pool)
-                .await
-                .map_err(|error| error.to_string())?;
-            Ok(())
-        }
-        None => Ok(()),
+        _ => Ok(()),
     }
 }
 

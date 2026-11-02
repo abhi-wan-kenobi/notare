@@ -322,6 +322,11 @@ msgstr "Applied to every generated or regenerated meeting summary."
 msgid "Apply to all"
 msgstr "Apply to all"
 
+#. placeholder {0}: deleteConfirmRecipe.title
+#: src/settings/recipes/index.tsx
+msgid "Are you sure you want to delete \"{0}\"? This action cannot be undone."
+msgstr "Are you sure you want to delete \"{0}\"? This action cannot be undone."
+
 #: src/chat/components/input/index.tsx
 msgid "Ask & search about anything, or be creative!"
 msgstr "Ask & search about anything, or be creative!"
@@ -421,6 +426,10 @@ msgstr "Browser handoff not working? Paste the callback link instead"
 msgid "Building the search index…"
 msgstr "Building the search index…"
 
+#: src/settings/recipes/index.tsx
+msgid "Built-in"
+msgstr "Built-in"
+
 #: src/calendar/components/sidebar.tsx
 #: src/settings/general/permissions.tsx
 #: src/sidebar/calendar.tsx
@@ -443,6 +452,7 @@ msgstr "Can transcribe while the meeting is happening."
 #: src/settings/general/storage/legacy-cleanup.tsx
 #: src/settings/general/storage/notes-location.tsx
 #: src/settings/personalization/dictionary-settings.tsx
+#: src/settings/recipes/index.tsx
 #: src/settings/sync/index.tsx
 #: src/settings/todo/github.tsx
 #: src/snippets/entry-row.tsx
@@ -478,6 +488,10 @@ msgstr "Chat history"
 #: src/settings/ai/llm/scoped-models.tsx
 msgid "Chat model"
 msgstr "Chat model"
+
+#: src/chat/components/scope-selector.tsx
+msgid "Chat scope"
+msgstr "Chat scope"
 
 #: src/settings/general/app-settings.tsx
 msgid "Check for updates"
@@ -648,6 +662,10 @@ msgstr "Configure"
 msgid "Configure Providers"
 msgstr "Configure Providers"
 
+#: src/settings/recipes/index.tsx
+msgid "Configure the title, scope, and prompt template for this recipe."
+msgstr "Configure the title, scope, and prompt template for this recipe."
+
 #: src/onboarding/folder-location.tsx
 #: src/session/components/note-input/transcript/renderer/speaker-assign.tsx
 msgid "Confirm"
@@ -815,6 +833,7 @@ msgstr "Date and time are required"
 
 #: src/session/components/outer-header/overflow/delete.tsx
 #: src/settings/ai/llm/select.tsx
+#: src/settings/recipes/index.tsx
 #: src/snippets/entry-row.tsx
 #: src/templates/sections-editor.tsx
 #: src/templates/template-form.tsx
@@ -845,6 +864,10 @@ msgstr "Delete model"
 msgid "Delete Note"
 msgstr "Delete Note"
 
+#: src/settings/recipes/index.tsx
+msgid "Delete recipe"
+msgstr "Delete recipe"
+
 #: src/session/components/outer-header/overflow/delete.tsx
 msgid "Delete recording"
 msgstr "Delete recording"
@@ -874,6 +897,14 @@ msgstr "Deleting..."
 #: src/templates/template-form.tsx
 msgid "Describe the template purpose..."
 msgstr "Describe the template purpose..."
+
+#: src/settings/ai/llm/configure.tsx
+msgid "Detect"
+msgstr "Detect"
+
+#: src/settings/ai/llm/configure.tsx
+msgid "Detecting…"
+msgstr "Detecting…"
 
 #: src/settings/general/notification.tsx
 msgid "Detection delay"
@@ -1004,9 +1035,17 @@ msgstr "Downloading… {0}%"
 msgid "Duplicate"
 msgstr "Duplicate"
 
+#: src/settings/recipes/index.tsx
+msgid "Duplicate recipe"
+msgstr "Duplicate recipe"
+
 #: src/session/components/outer-header/overflow/export-modal.tsx
 msgid "Duration"
 msgstr "Duration"
+
+#: src/settings/recipes/index.tsx
+msgid "e.g. Action items, Executive summary..."
+msgstr "e.g. Action items, Executive summary..."
 
 #: src/snippets/entry-row.tsx
 msgid "Edit"
@@ -1019,6 +1058,10 @@ msgstr "Edit {label}"
 #: src/session/components/outer-header/metadata/date.tsx
 msgid "Edit date"
 msgstr "Edit date"
+
+#: src/settings/recipes/index.tsx
+msgid "Edit recipe"
+msgstr "Edit recipe"
 
 #: src/settings/personalization/dictionary-settings.tsx
 msgid "Edit replacement text"
@@ -1109,6 +1152,10 @@ msgstr "Enter a valid date and time"
 msgid "Enter template title"
 msgstr "Enter template title"
 
+#: src/settings/recipes/index.tsx
+msgid "Enter the instruction prompt for the model... (Use {{selection}} to insert selected text)"
+msgstr "Enter the instruction prompt for the model... (Use {{selection}} to insert selected text)"
+
 #: src/settings/ai/shared/index.tsx
 msgid "Enter your API key"
 msgstr "Enter your API key"
@@ -1132,6 +1179,10 @@ msgstr "events"
 #: src/settings/webhook/index.tsx
 msgid "Events to send"
 msgstr "Events to send"
+
+#: src/chat/components/scope-selector.tsx
+msgid "Everything"
+msgstr "Everything"
 
 #: src/settings/personalization/index.tsx
 msgid "Example: Start with a two-sentence overview, then list decisions and action items with owners. Do not use headings."
@@ -1283,6 +1334,10 @@ msgstr "Frequently used"
 #: src/calendar/components/google/content.tsx
 msgid "Full setup guide"
 msgstr "Full setup guide"
+
+#: src/settings/ai/llm/configure.tsx
+msgid "Gateway found, but requires authentication. Run <0>omp auth-gateway token</0> to print your bearer token."
+msgstr "Gateway found, but requires authentication. Run <0>omp auth-gateway token</0> to print your bearer token."
 
 #: src/sidebar/settings.tsx
 msgid "General"
@@ -1612,6 +1667,10 @@ msgstr "Loading calendars..."
 msgid "Loading models..."
 msgstr "Loading models..."
 
+#: src/settings/recipes/index.tsx
+msgid "Loading recipes..."
+msgstr "Loading recipes..."
+
 #: src/settings/sync/index.tsx
 msgid "Loading sync status"
 msgstr "Loading sync status"
@@ -1793,6 +1852,10 @@ msgstr "Move up"
 msgid "Moving..."
 msgstr "Moving..."
 
+#: src/settings/recipes/index.tsx
+msgid "Multi-meeting"
+msgstr "Multi-meeting"
+
 #: src/settings/ai/stt/shared.tsx
 msgid "Multilingual"
 msgstr "Multilingual"
@@ -1818,6 +1881,10 @@ msgstr "New Note"
 #: src/settings/general/storage/notes-location.tsx
 msgid "New notes will be saved to {0}. You can also move your existing notes there. If the folder already contains files, your notes are copied and the originals stay in place. The app will restart to apply the change."
 msgstr "New notes will be saved to {0}. You can also move your existing notes there. If the folder already contains files, your notes are copied and the originals stay in place. The app will restart to apply the change."
+
+#: src/settings/recipes/index.tsx
+msgid "New recipe"
+msgstr "New recipe"
 
 #: src/contacts/shared.tsx
 msgid "Newest"
@@ -1935,6 +2002,14 @@ msgstr "No people in this organization"
 #: src/chat/components/toolbar-controls.tsx
 msgid "No recent chats"
 msgstr "No recent chats"
+
+#: src/settings/recipes/index.tsx
+msgid "No recipes match your search."
+msgstr "No recipes match your search."
+
+#: src/settings/recipes/index.tsx
+msgid "No recipes yet."
+msgstr "No recipes yet."
 
 #: src/contacts/details.tsx
 msgid "No related notes found"
@@ -2075,6 +2150,22 @@ msgstr "Off by default. Turning this on starts a background sync agent that publ
 msgid "Oldest"
 msgstr "Oldest"
 
+#: src/settings/ai/llm/configure.tsx
+msgid "omp gateway detected"
+msgstr "omp gateway detected"
+
+#: src/settings/ai/llm/configure.tsx
+msgid "omp gateway detected ({count} models)"
+msgstr "omp gateway detected ({count} models)"
+
+#: src/settings/ai/llm/configure.tsx
+msgid "omp gateway detected (bearer token required)"
+msgstr "omp gateway detected (bearer token required)"
+
+#: src/settings/ai/llm/configure.tsx
+msgid "omp gateway not detected"
+msgstr "omp gateway not detected"
+
 #: src/settings/todo/github.tsx
 msgid "Only public repositories are supported."
 msgstr "Only public repositories are supported."
@@ -2150,6 +2241,7 @@ msgstr "or"
 msgid "Orb style"
 msgstr "Orb style"
 
+#: src/chat/components/scope-selector.tsx
 #: src/contacts/details.tsx
 msgid "Organization"
 msgstr "Organization"
@@ -2241,6 +2333,10 @@ msgstr "Permissions"
 msgid "Permissions granted"
 msgstr "Permissions granted"
 
+#: src/chat/components/scope-selector.tsx
+msgid "Person"
+msgstr "Person"
+
 #: src/settings/personalization/index.tsx
 #: src/sidebar/settings.tsx
 msgid "Personalization"
@@ -2306,6 +2402,18 @@ msgstr "Pro"
 msgid "Pro trial"
 msgstr "Pro trial"
 
+#: src/settings/ai/llm/configure.tsx
+msgid "Probing omp gateway…"
+msgstr "Probing omp gateway…"
+
+#: src/settings/recipes/index.tsx
+msgid "Prompt template"
+msgstr "Prompt template"
+
+#: src/settings/recipes/index.tsx
+msgid "Prompt templates for chat workflows and analysis."
+msgstr "Prompt templates for chat workflows and analysis."
+
 #: src/dictation/orb.tsx
 msgid "Pulse"
 msgstr "Pulse"
@@ -2329,6 +2437,11 @@ msgstr "Recent"
 #: src/settings/webhook/index.tsx
 msgid "Recent deliveries"
 msgstr "Recent deliveries"
+
+#: src/settings/recipes/index.tsx
+#: src/sidebar/settings.tsx
+msgid "Recipes"
+msgstr "Recipes"
 
 #: src/settings/dictation/index.tsx
 msgid "Recognized text is typed straight into the focused app while you talk."
@@ -2533,6 +2646,7 @@ msgstr "Same as live model"
 
 #: src/settings/personalization/dictionary-settings.tsx
 #: src/settings/personalization/index.tsx
+#: src/settings/recipes/index.tsx
 #: src/settings/webhook/index.tsx
 #: src/snippets/entry-row.tsx
 msgid "Save"
@@ -2541,6 +2655,10 @@ msgstr "Save"
 #: src/session/components/outer-header/metadata/date.tsx
 msgid "Save date"
 msgstr "Save date"
+
+#: src/settings/recipes/index.tsx
+msgid "Scope"
+msgstr "Scope"
 
 #: src/sidebar/surface-nav.tsx
 msgid "Search"
@@ -2597,6 +2715,10 @@ msgstr "Search or type owner/repo"
 #: src/session/components/note-input/transcript/renderer/speaker-assign.tsx
 msgid "Search people"
 msgstr "Search people"
+
+#: src/settings/recipes/index.tsx
+msgid "Search recipes..."
+msgstr "Search recipes..."
 
 #: src/session/components/note-input/header.tsx
 #: src/templates/template-sidebar.tsx
@@ -2678,6 +2800,7 @@ msgstr "Select timezone"
 msgid "Select..."
 msgstr "Select..."
 
+#: src/chat/components/scope-selector.tsx
 #: src/onboarding/transcription.tsx
 msgid "Selected"
 msgstr "Selected"
@@ -2855,6 +2978,14 @@ msgstr "Signing secret"
 msgid "Silk"
 msgstr "Silk"
 
+#: src/settings/recipes/index.tsx
+msgid "Single meeting"
+msgstr "Single meeting"
+
+#: src/settings/recipes/index.tsx
+msgid "Single-meeting"
+msgstr "Single-meeting"
+
 #: src/onboarding/shared.tsx
 msgid "Skip"
 msgstr "Skip"
@@ -2914,6 +3045,10 @@ msgstr "Start Notare at login"
 #: src/main/empty.tsx
 msgid "Start Recording"
 msgstr "Start Recording"
+
+#: src/settings/ai/llm/configure.tsx
+msgid "Start the gateway with <0>omp auth-gateway serve --bind=127.0.0.1:4000</0>"
+msgstr "Start the gateway with <0>omp auth-gateway serve --bind=127.0.0.1:4000</0>"
 
 #: src/settings/general/app-settings.tsx
 msgid "Start when meeting begins"
@@ -3011,6 +3146,10 @@ msgstr "Supports {languageCount} languages."
 #: src/settings/ai/stt/shared.tsx
 msgid "Supports many languages."
 msgstr "Supports many languages."
+
+#: src/settings/recipes/index.tsx
+msgid "Supports Markdown and"
+msgstr "Supports Markdown and"
 
 #: src/sidebar/surface-nav.tsx
 msgid "Switch view"
@@ -3129,6 +3268,10 @@ msgstr "This combination is already used by the paste-last-dictation shortcut be
 msgid "This device"
 msgstr "This device"
 
+#: src/chat/components/scope-selector.tsx
+msgid "This meeting"
+msgstr "This meeting"
+
 #: src/session/components/action-items/index.tsx
 msgid "This model can't produce structured output. Pick a different model."
 msgstr "This model can't produce structured output. Pick a different model."
@@ -3154,6 +3297,10 @@ msgstr "Timezone"
 #: src/session/components/note-input/enhanced/streaming.tsx
 msgid "Tip: The Notare team loves our users!"
 msgstr "Tip: The Notare team loves our users!"
+
+#: src/settings/recipes/index.tsx
+msgid "Title"
+msgstr "Title"
 
 #: src/snippets/index.tsx
 msgid "Today"
