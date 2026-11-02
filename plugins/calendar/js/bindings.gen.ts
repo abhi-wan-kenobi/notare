@@ -49,9 +49,9 @@ async openCalendar(provider: CalendarProviderType) : Promise<Result<null, string
     else return { status: "error", error: e  as any };
 }
 },
-async createEvent(provider: CalendarProviderType, input: CreateEventInput) : Promise<Result<string, string>> {
+async createEvent(provider: CalendarProviderType, connectionId: string, input: CreateEventInput) : Promise<Result<string, string>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("plugin:calendar|create_event", { provider, input }) };
+    return { status: "ok", data: await TAURI_INVOKE("plugin:calendar|create_event", { provider, connectionId, input }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };

@@ -45,30 +45,16 @@ pub fn init() -> tauri::plugin::TauriPlugin<tauri::Wry> {
 
             // If enabled in settings, auto-start
             if let Ok(settings) = manager.get_settings()
-                && settings.enabled {
-                    let port = settings.port;
-                    let mgr_state = manager.state.clone();
-                    let app_clone = app.clone();
-                    let pool_clone = manager.pool.clone();
-                    let token = settings.bearer_token;
-
-                    tauri::async_runtime::spawn(async move {
-                        let (tx, rx) = tokio::sync::watch::channel(false);
-                        {
-                            let mut guard = mgr_state.write().await;
-                            guard.running = true;
-                            guard.port = port;
-                            guard.shutdown_tx = Some(tx);
-                        }
-                        let server = NotareMcpServer::new(pool_clone, Some(app_clone));
-                        if let Err(e) = http::run_server(server, port, token, rx).await {
-                            tracing::error!("Failed to auto-start MCP server: {e}");
-                            let mut guard = mgr_state.write().await;
-                            guard.running = false;
-                            guard.last_error = Some(e.to_string());
-                        }
-                    });
-                }
+                && settings.enabled
+            {
+                let mgr = manager.clone();
+                let port = settings.port;
+                tauri::async_runtime::spawn(async move {
+                    if let Err(e) = mgr.restart(port).await {
+                        tracing::error!("Failed to auto-start MCP server: {e}");
+                    }
+                });
+            }
 
             app.manage(manager);
             Ok(())
@@ -80,7 +66,6 @@ pub fn init() -> tauri::plugin::TauriPlugin<tauri::Wry> {
 mod tests {
     use super::*;
     use rmcp::handler::server::wrapper::Parameters;
-    use std::time::Duration;
 
     #[test]
     fn export_types() {
@@ -276,15 +261,17 @@ mod tests {
 
         let token = "valid-secret-token-test";
         let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
+        let (ready_tx, ready_rx) = tokio::sync::oneshot::channel();
 
         let server_handle = tokio::spawn(http::run_server(
             server,
             port,
             token.to_string(),
             shutdown_rx,
+            Some(ready_tx),
         ));
 
-        tokio::time::sleep(Duration::from_millis(100)).await;
+        ready_rx.await.unwrap().unwrap();
 
         let client = reqwest::Client::new();
         let url = format!("http://127.0.0.1:{port}/");
@@ -328,7 +315,8 @@ mod tests {
         let occupied_port = listener.local_addr().unwrap().port();
 
         let (_shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
-        let result = http::run_server(server, occupied_port, "test".to_string(), shutdown_rx).await;
+        let result =
+            http::run_server(server, occupied_port, "test".to_string(), shutdown_rx, None).await;
 
         drop(listener);
 
@@ -336,5 +324,96 @@ mod tests {
             Err(Error::PortInUse(p)) => assert_eq!(p, occupied_port),
             other => panic!("expected PortInUse error, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn test_extract_snippet_char_boundaries_devanagari_and_emoji() {
+        // Hindi transcript with Devanagari and emoji
+        let text = "यहाँ पर नमस्ते दुनिया 😀 है और हम सब मिलकर बात कर रहे हैं। इस मीटिंग में बहुत सारे महत्वपूर्ण निर्णय लिए गए।";
+
+        // 1. Search for word in middle
+        let snippet = server::extract_snippet(text, "महत्वपूर्ण");
+        assert!(snippet.contains("महत्वपूर्ण"));
+
+        // 2. Search for emoji
+        let snippet_emoji = server::extract_snippet(text, "😀");
+        assert!(snippet_emoji.contains("😀"));
+
+        // 3. Specifically test byte offset that would land in the middle of a 4-byte emoji
+        // 😀 is 4 bytes: [240, 159, 152, 128]
+        // Place 😀 at byte 57..61, so byte 60 is inside 😀
+        let mut crafted = "a".repeat(57);
+        crafted.push('😀');
+        crafted.push_str(&"b".repeat(70));
+        // Query "bb" starts at byte 61 + 59 = 120. pos - 60 = 60, which falls inside '😀' (bytes 57..61)!
+        // In old code, &crafted[60..] panicked with: "byte index 60 is not a char boundary"
+        let query = "bb";
+        let snippet_crafted = server::extract_snippet(&crafted, query);
+        assert!(snippet_crafted.contains("bb"));
+
+        // 4. Missing query with multibyte text (fallback slicing)
+        let snippet_fallback = server::extract_snippet(text, "nonexistent");
+        assert!(!snippet_fallback.is_empty());
+    }
+
+    #[test]
+    fn test_port_validation() {
+        use crate::ext::validate_port;
+
+        // Port 0 is always rejected
+        assert!(matches!(validate_port(0, None), Err(Error::InvalidPort(0))));
+        assert!(matches!(
+            validate_port(0, Some(0)),
+            Err(Error::InvalidPort(0))
+        ));
+
+        // Privileged port < 1024 is rejected unless already running
+        assert!(matches!(
+            validate_port(80, None),
+            Err(Error::InvalidPort(80))
+        ));
+        assert!(matches!(
+            validate_port(443, Some(80)),
+            Err(Error::InvalidPort(443))
+        ));
+        assert!(validate_port(80, Some(80)).is_ok());
+
+        // Non-privileged port >= 1024 is accepted
+        assert!(validate_port(8787, None).is_ok());
+        assert!(validate_port(1024, None).is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_empty_bearer_token_rejected() {
+        let (_dir, db) = setup_test_db().await;
+        let server = NotareMcpServer::new(db.pool().clone(), None);
+        let (_shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
+
+        let result = http::run_server(server, 8787, "   ".to_string(), shutdown_rx, None).await;
+        assert!(matches!(result, Err(Error::Internal(_))));
+    }
+
+    #[tokio::test]
+    async fn test_search_meeting_content_db_error_surfaced() {
+        let (_dir, db) = setup_test_db().await;
+        let pool = db.pool().clone();
+        let server = NotareMcpServer::new(pool.clone(), None);
+
+        // Close the pool to induce a DB error
+        pool.close().await;
+
+        let res = server
+            .search_meeting_content(Parameters(SearchMeetingContentParams {
+                query: "test".to_string(),
+                meeting_ids: None,
+                limit: Some(10),
+            }))
+            .await;
+
+        // Must return Err(McpError) rather than Ok with empty matches!
+        assert!(
+            res.is_err(),
+            "expected DB error to be surfaced as MCP error"
+        );
     }
 }

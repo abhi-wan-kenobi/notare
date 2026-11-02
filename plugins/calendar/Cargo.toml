@@ -8,22 +8,22 @@ links = "tauri-plugin-calendar"
 description = ""
 
 [dependencies]
+base64 = { workspace = true }
+chrono = { workspace = true }
 hypr-calendar = { workspace = true, features = ["specta"] }
 hypr-calendar-interface = { workspace = true }
-hypr-google-oauth = { workspace = true }
 hypr-google-calendar = { workspace = true }
 hypr-google-mail = { workspace = true }
+hypr-google-oauth = { workspace = true }
 hypr-http = { workspace = true }
-hypr-oauth-loopback = { workspace = true }
-hypr-microsoft-oauth = { path = "../../crates/microsoft-oauth", package = "microsoft-oauth" }
-hypr-outlook-calendar = { workspace = true }
-uuid = { workspace = true, features = ["v4"] }
-base64 = { workspace = true }
-urlencoding = { workspace = true }
-chrono = { workspace = true }
 # Not in [workspace.dependencies] yet (root Cargo.toml is owned by another
 # track); direct path dep until an `hypr-ics-calendar` entry lands there.
 hypr-ics-calendar = { path = "../../crates/ics-calendar", package = "ics-calendar" }
+hypr-microsoft-oauth = { path = "../../crates/microsoft-oauth", package = "microsoft-oauth" }
+hypr-oauth-loopback = { workspace = true }
+hypr-outlook-calendar = { workspace = true }
+urlencoding = { workspace = true }
+uuid = { workspace = true, features = ["v4"] }
 
 tauri = { workspace = true, features = ["test"] }
 tauri-plugin-auth = { workspace = true }

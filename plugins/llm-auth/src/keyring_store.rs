@@ -20,17 +20,35 @@ impl<R: tauri::Runtime> TokenStore for KeyringTokenStore<R> {
         let key = provider.as_str().to_string();
 
         async move {
+            let app_get = app.clone();
+            let key_get = key.clone();
             let raw = tauri::async_runtime::spawn_blocking(move || {
-                tauri_plugin_store2::secrets::get_secret_blocking(&app, KEYRING_SCOPE, &key)
+                tauri_plugin_store2::secrets::get_secret_blocking(&app_get, KEYRING_SCOPE, &key_get)
             })
             .await
             .map_err(|e| hypr_llm_auth::Error::Store(e.to_string()))?
             .map_err(hypr_llm_auth::Error::Store)?;
 
             match raw {
-                Some(s) => serde_json::from_str(&s)
-                    .map(Some)
-                    .map_err(|e| hypr_llm_auth::Error::Store(e.to_string())),
+                Some(s) => match serde_json::from_str(&s) {
+                    Ok(tokens) => Ok(Some(tokens)),
+                    Err(e) => {
+                        tracing::warn!(
+                            "Corrupted tokens in keyring for provider {}, clearing: {}",
+                            provider.as_str(),
+                            e
+                        );
+                        let _ = tauri::async_runtime::spawn_blocking(move || {
+                            tauri_plugin_store2::secrets::delete_secret_blocking(
+                                &app,
+                                KEYRING_SCOPE,
+                                &key,
+                            )
+                        })
+                        .await;
+                        Ok(None)
+                    }
+                },
                 None => Ok(None),
             }
         }

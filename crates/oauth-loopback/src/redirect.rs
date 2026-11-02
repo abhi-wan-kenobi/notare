@@ -5,6 +5,8 @@ pub enum RedirectOutcome {
     Code { code: String, state: String },
     /// `?error=access_denied` etc.
     Error(String),
+    /// `?code=...` but missing or empty `state` parameter.
+    MissingState,
     /// Not the OAuth redirect (e.g. /favicon.ico) — keep listening.
     Unrelated,
 }
@@ -43,7 +45,22 @@ pub fn parse_redirect_request(request_head: &str) -> RedirectOutcome {
         return RedirectOutcome::Error(error);
     }
     match (code, state) {
-        (Some(code), Some(state)) => RedirectOutcome::Code { code, state },
+        (Some(code), Some(state)) => {
+            if code.trim().is_empty() {
+                RedirectOutcome::Unrelated
+            } else if state.trim().is_empty() {
+                RedirectOutcome::MissingState
+            } else {
+                RedirectOutcome::Code { code, state }
+            }
+        }
+        (Some(code), None) => {
+            if code.trim().is_empty() {
+                RedirectOutcome::Unrelated
+            } else {
+                RedirectOutcome::MissingState
+            }
+        }
         _ => RedirectOutcome::Unrelated,
     }
 }
@@ -109,6 +126,19 @@ mod tests {
         assert_eq!(
             parse_redirect_request("INVALID"),
             RedirectOutcome::Unrelated
+        );
+    }
+
+    #[test]
+    fn parses_code_without_state_as_missing_state() {
+        let head = "GET /callback?code=some_code HTTP/1.1\r\nHost: localhost:53692\r\n\r\n";
+        assert_eq!(parse_redirect_request(head), RedirectOutcome::MissingState);
+
+        let empty_state =
+            "GET /callback?code=some_code&state= HTTP/1.1\r\nHost: localhost:53692\r\n\r\n";
+        assert_eq!(
+            parse_redirect_request(empty_state),
+            RedirectOutcome::MissingState
         );
     }
 }

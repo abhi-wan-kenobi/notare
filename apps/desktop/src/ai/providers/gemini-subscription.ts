@@ -1,7 +1,6 @@
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 
 import {
-  commands as llmAuthCommands,
   type LlmAuthCatalogProvider,
   type LlmAuthToken,
 } from "./llm-auth-client";
@@ -30,8 +29,8 @@ export function rewriteGeminiUrl(urlStr: string): string {
     return newUrl.toString();
   } catch {
     return urlStr.replace(
-      /https:\/\/generativelanguage\.googleapis\.com\/v1beta\/models\/[^:]+:(streamGenerateContent|generateContent)/,
-      "https://cloudcode-pa.googleapis.com/v1internal:$1",
+      /https:\/\/generativelanguage\.googleapis\.com\/v1(beta)?\/models\/[^:]+:(streamGenerateContent|generateContent)/,
+      "https://cloudcode-pa.googleapis.com/v1internal:$2",
     );
   }
 }
@@ -43,16 +42,23 @@ export function wrapGeminiRequestBody(
 ): string {
   try {
     const parsed = JSON.parse(bodyText) as Record<string, unknown>;
-    if (parsed && typeof parsed === "object" && "request" in parsed) {
+    if (
+      parsed &&
+      typeof parsed === "object" &&
+      !Array.isArray(parsed) &&
+      "request" in parsed
+    ) {
+      if (project && !parsed.project) {
+        parsed.project = project;
+        return JSON.stringify(parsed);
+      }
       return bodyText;
     }
     const wrapped: Record<string, unknown> = {
       model,
+      ...(project ? { project } : {}),
       request: parsed,
     };
-    if (project) {
-      wrapped.project = project;
-    }
     return JSON.stringify(wrapped);
   } catch {
     return bodyText;
@@ -131,10 +137,13 @@ export async function transformGeminiResponse(
   const contentType = response.headers.get("content-type") || "";
   if (contentType.includes("text/event-stream") && response.body) {
     const transformedStream = transformSseStream(response.body);
+    const headers = new Headers(response.headers);
+    headers.delete("content-length");
+    headers.delete("content-encoding");
     return new Response(transformedStream, {
       status: response.status,
       statusText: response.statusText,
-      headers: response.headers,
+      headers,
     });
   }
 
@@ -142,10 +151,13 @@ export async function transformGeminiResponse(
     try {
       const data = (await response.json()) as Record<string, unknown>;
       if (data && typeof data === "object" && "response" in data) {
+        const headers = new Headers(response.headers);
+        headers.delete("content-length");
+        headers.delete("content-encoding");
         return new Response(JSON.stringify(data.response), {
           status: response.status,
           statusText: response.statusText,
-          headers: response.headers,
+          headers,
         });
       }
     } catch {
@@ -174,8 +186,8 @@ export function createGeminiSubscriptionFetch(
     injectHeaders: (token) => ({
       Authorization: `Bearer ${token}`,
     }),
-    transformBody: (bodyText) => {
-      let projectId: string | undefined;
+    transformBody: (bodyText, extra) => {
+      const projectId = extra?.project_id;
       return wrapGeminiRequestBody(bodyText, modelId, projectId);
     },
     transformResponse: transformGeminiResponse,
@@ -186,34 +198,7 @@ export function createGeminiSubscriptionModel(
   modelId: string,
   options: GeminiSubscriptionOptions = {},
 ) {
-  const customFetch: typeof fetch = async (input, init) => {
-    let token: LlmAuthToken;
-    if (options.getToken) {
-      token = await options.getToken();
-    } else {
-      const tokenRes = await llmAuthCommands.accessToken("gemini");
-      if (tokenRes.status !== "ok") {
-        throw new Error(tokenRes.error);
-      }
-      token = tokenRes.data;
-    }
-
-    const projectId = token.extra?.project_id;
-    const innerFetch = createSubscriptionFetch({
-      provider: "gemini",
-      fetchFn: options.fetchFn,
-      getToken: async () => token,
-      rewriteUrl: rewriteGeminiUrl,
-      injectHeaders: (t) => ({
-        Authorization: `Bearer ${t}`,
-      }),
-      transformBody: (bodyText) =>
-        wrapGeminiRequestBody(bodyText, modelId, projectId),
-      transformResponse: transformGeminiResponse,
-    });
-
-    return innerFetch(input, init);
-  };
+  const customFetch = createGeminiSubscriptionFetch(modelId, options);
 
   const provider = createGoogleGenerativeAI({
     fetch: customFetch,

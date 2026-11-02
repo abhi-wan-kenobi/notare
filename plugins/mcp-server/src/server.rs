@@ -32,13 +32,41 @@ fn internal_err(e: impl std::fmt::Display) -> McpError {
     McpError::internal_error(e.to_string(), None)
 }
 
-fn extract_snippet(text: &str, query: &str) -> String {
+fn floor_char_boundary(s: &str, mut idx: usize) -> usize {
+    if idx >= s.len() {
+        return s.len();
+    }
+    while !s.is_char_boundary(idx) {
+        idx = idx.saturating_sub(1);
+    }
+    idx
+}
+
+fn ceil_char_boundary(s: &str, mut idx: usize) -> usize {
+    if idx >= s.len() {
+        return s.len();
+    }
+    while !s.is_char_boundary(idx) {
+        idx += 1;
+    }
+    idx
+}
+
+pub fn extract_snippet(text: &str, query: &str) -> String {
+    if text.is_empty() {
+        return String::new();
+    }
+
     let lower_text = text.to_lowercase();
     let lower_query = query.to_lowercase();
 
     if let Some(pos) = lower_text.find(&lower_query) {
-        let start = pos.saturating_sub(60);
-        let end = (pos + query.len() + 60).min(text.len());
+        let raw_start = pos.saturating_sub(60);
+        let start = floor_char_boundary(text, raw_start.min(text.len()));
+
+        let raw_end = pos.saturating_add(query.len()).saturating_add(60);
+        let end = ceil_char_boundary(text, raw_end.min(text.len()));
+        let start = start.min(end);
 
         let prefix = if start > 0 { "..." } else { "" };
         let suffix = if end < text.len() { "..." } else { "" };
@@ -46,7 +74,8 @@ fn extract_snippet(text: &str, query: &str) -> String {
         let snippet = &text[start..end];
         format!("{prefix}{snippet}{suffix}")
     } else {
-        let end = text.len().min(120);
+        let raw_end = 120.min(text.len());
+        let end = ceil_char_boundary(text, raw_end);
         let suffix = if end < text.len() { "..." } else { "" };
         format!("{}{suffix}", &text[..end])
     }
@@ -215,13 +244,14 @@ impl NotareMcpServer {
         .bind(&pattern)
         .fetch_all(&self.pool)
         .await
-        .unwrap_or_default();
+        .map_err(internal_err)?;
 
         for (session_id, kind, title, body) in doc_rows {
             if let Some(filter_ids) = &params.meeting_ids
-                && !filter_ids.contains(&session_id) {
-                    continue;
-                }
+                && !filter_ids.contains(&session_id)
+            {
+                continue;
+            }
 
             let snippet = extract_snippet(&body, &params.query);
             matches.push(ContentMatch {
@@ -243,13 +273,14 @@ impl NotareMcpServer {
             .bind(&pattern)
             .fetch_all(&self.pool)
             .await
-            .unwrap_or_default();
+            .map_err(internal_err)?;
 
             for (session_id, memo, words_json) in transcript_rows {
                 if let Some(filter_ids) = &params.meeting_ids
-                    && !filter_ids.contains(&session_id) {
-                        continue;
-                    }
+                    && !filter_ids.contains(&session_id)
+                {
+                    continue;
+                }
 
                 let text = if memo.is_empty() { words_json } else { memo };
                 let snippet = extract_snippet(&text, &params.query);

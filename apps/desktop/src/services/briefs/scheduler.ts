@@ -39,9 +39,31 @@ export function selectCandidateEvents(
       continue;
     }
 
-    const startTime = new Date(event.started_at).getTime();
+    if (!event.started_at) {
+      continue;
+    }
+
+    let startTime: number;
+    try {
+      startTime = new Date(event.started_at).getTime();
+    } catch {
+      continue;
+    }
+
     if (Number.isNaN(startTime)) {
       continue;
+    }
+
+    if (event.ended_at) {
+      let endTime: number;
+      try {
+        endTime = new Date(event.ended_at).getTime();
+      } catch {
+        continue;
+      }
+      if (Number.isNaN(endTime)) {
+        continue;
+      }
     }
 
     if (startTime < now || startTime > maxTime) {
@@ -49,7 +71,9 @@ export function selectCandidateEvents(
     }
 
     const participants = parseEventParticipants(
-      event.participants_json ?? undefined,
+      event.participants_json && event.participants_json.trim() !== ""
+        ? event.participants_json
+        : undefined,
     ).filter((p) => p.is_current_user !== true);
 
     if (participants.length < 1) {
@@ -161,6 +185,8 @@ export function useBriefsScheduler() {
         modelName,
         signal: controller.signal,
       });
+    } catch (err) {
+      console.error("[briefs] scheduler task failed", err);
     } finally {
       if (abortControllerRef.current === controller) {
         abortControllerRef.current = null;

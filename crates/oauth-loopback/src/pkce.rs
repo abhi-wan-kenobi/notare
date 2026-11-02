@@ -15,13 +15,11 @@ pub fn pkce_challenge_s256(verifier: &str) -> String {
 
 /// Generates a PKCE verifier + challenge pair.
 pub fn generate_pkce() -> PkcePair {
-    // Two v4 UUIDs = 64 hex chars, ~244 bits of entropy, all within the
-    // allowed PKCE verifier charset.
-    let verifier = format!(
-        "{}{}",
-        uuid::Uuid::new_v4().simple(),
-        uuid::Uuid::new_v4().simple()
-    );
+    // RFC 7636 Section 4.1: 32 octets of cryptographic randomness base64url-encoded
+    // without padding yields a 43-octet code verifier with 256 bits of entropy.
+    let mut bytes = [0u8; 32];
+    getrandom::getrandom(&mut bytes).expect("getrandom failed to obtain cryptographic randomness");
+    let verifier = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(bytes);
     let challenge = pkce_challenge_s256(&verifier);
     PkcePair {
         verifier,
@@ -55,8 +53,12 @@ mod tests {
     #[test]
     fn generated_pkce_is_valid() {
         let pkce = generate_pkce();
-        assert_eq!(pkce.verifier.len(), 64);
-        assert!(pkce.verifier.chars().all(|c| c.is_ascii_hexdigit()));
+        assert_eq!(pkce.verifier.len(), 43);
+        assert!(
+            pkce.verifier
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
+        );
         assert_eq!(pkce.challenge, pkce_challenge_s256(&pkce.verifier));
         assert!(verify_pkce(&pkce.verifier, &pkce.challenge));
         assert_ne!(generate_pkce().verifier, pkce.verifier);

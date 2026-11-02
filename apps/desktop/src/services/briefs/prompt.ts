@@ -124,33 +124,52 @@ export async function retrieveBriefContext(
 ): Promise<BriefRetrievalContext> {
   const attendees = await resolveAttendees(event.participants_json);
   const candidateSessionIds = new Set<string>();
+  const sessionTimestamps = new Map<string, number>();
 
   // 1. Same series history
   if (event.recurrence_series_id) {
-    const seriesRows = await liveQueryClient.execute<{ id: string }>(
-      `
-        SELECT id
-        FROM sessions
-        WHERE series_id = ? AND deleted_at IS NULL
-        ORDER BY COALESCE(NULLIF(started_at, ''), created_at) DESC
-        LIMIT 5
-      `,
-      [event.recurrence_series_id],
-    );
-    for (const r of seriesRows) {
-      candidateSessionIds.add(r.id);
+    try {
+      const seriesRows = await liveQueryClient.execute<{ id: string }>(
+        `
+          SELECT id
+          FROM sessions
+          WHERE series_id = ? AND deleted_at IS NULL
+          ORDER BY COALESCE(NULLIF(started_at, ''), created_at) DESC
+          LIMIT 5
+        `,
+        [event.recurrence_series_id],
+      );
+      for (const r of seriesRows) {
+        candidateSessionIds.add(r.id);
+      }
+    } catch (error) {
+      console.warn("[briefs] failed to load recurrence series sessions", error);
     }
   }
 
   // 2. Meetings with the same attendees
   for (const attendee of attendees) {
     if (candidateSessionIds.size >= 10) break;
-    const searchRes = await searchMeetingContent({
-      query: attendee.name,
-      limit: 3,
-    });
-    for (const match of searchRes.results) {
-      candidateSessionIds.add(match.sessionId);
+    try {
+      const searchRes = await searchMeetingContent({
+        query: attendee.name,
+        limit: 3,
+      });
+      for (const match of searchRes.results) {
+        candidateSessionIds.add(match.sessionId);
+        const startMs = match.snippets[0]?.startMs;
+        if (
+          typeof startMs === "number" &&
+          !sessionTimestamps.has(match.sessionId)
+        ) {
+          sessionTimestamps.set(match.sessionId, startMs);
+        }
+      }
+    } catch (error) {
+      console.warn(
+        `[briefs] failed to search meetings for ${attendee.name}`,
+        error,
+      );
     }
   }
 
@@ -165,19 +184,30 @@ export async function retrieveBriefContext(
   }> = [];
 
   for (const org of distinctOrgs) {
-    const orgRes = await searchMeetingContent({
-      query: org,
-      limit: 3,
-    });
-    for (const match of orgRes.results) {
-      candidateSessionIds.add(match.sessionId);
-      if (match.snippets[0]) {
-        orgMentions.push({
-          sessionId: match.sessionId,
-          title: match.title,
-          snippet: match.snippets[0].text,
-        });
+    try {
+      const orgRes = await searchMeetingContent({
+        query: org,
+        limit: 3,
+      });
+      for (const match of orgRes.results) {
+        candidateSessionIds.add(match.sessionId);
+        const startMs = match.snippets[0]?.startMs;
+        if (
+          typeof startMs === "number" &&
+          !sessionTimestamps.has(match.sessionId)
+        ) {
+          sessionTimestamps.set(match.sessionId, startMs);
+        }
+        if (match.snippets[0]) {
+          orgMentions.push({
+            sessionId: match.sessionId,
+            title: match.title,
+            snippet: match.snippets[0].text,
+          });
+        }
       }
+    } catch (error) {
+      console.warn(`[briefs] failed to search org mentions for ${org}`, error);
     }
   }
 
@@ -188,27 +218,36 @@ export async function retrieveBriefContext(
   for (const sessionId of candidateSessionIds) {
     if (relevantMeetings.length >= 5) break;
 
-    const snapshot = await loadSessionContentSnapshot(sessionId);
-    if (!snapshot) continue;
+    try {
+      const snapshot = await loadSessionContentSnapshot(sessionId);
+      if (!snapshot) continue;
 
-    const outcome = extractMeetingOutcome(snapshot);
-    relevantMeetings.push({
-      sessionId,
-      title: snapshot.title.trim() || "Untitled meeting",
-      date: snapshot.createdAt,
-      outcome,
-      timestampMs: 0,
-    });
+      const outcome = extractMeetingOutcome(snapshot);
+      const timestampMs = sessionTimestamps.get(sessionId) ?? 0;
 
-    for (const item of snapshot.actionItems) {
-      if (item.status !== "done") {
-        openActionItems.push({
-          text: item.text,
-          dueAt: item.dueAt || undefined,
-          sourceSessionId: sessionId,
-          timestampMs: 0,
-        });
+      relevantMeetings.push({
+        sessionId,
+        title: snapshot.title.trim() || "Untitled meeting",
+        date: snapshot.createdAt,
+        outcome,
+        timestampMs,
+      });
+
+      for (const item of snapshot.actionItems) {
+        if (item.status !== "done") {
+          openActionItems.push({
+            text: item.text,
+            dueAt: item.dueAt || undefined,
+            sourceSessionId: sessionId,
+            timestampMs: 0,
+          });
+        }
       }
+    } catch (error) {
+      console.warn(
+        `[briefs] failed to load snapshot for session ${sessionId}`,
+        error,
+      );
     }
   }
 
@@ -294,8 +333,9 @@ CITATION FORMAT RULES:
     context.openActionItems.length > 0
       ? context.openActionItems
           .map((ai) => {
+            const timestamp = ai.timestampMs ?? 0;
             const cite = ai.sourceSessionId
-              ? ` [[src:${ai.sourceSessionId}@0]]`
+              ? ` [[src:${ai.sourceSessionId}@${timestamp}]]`
               : "";
             const due = ai.dueAt ? ` (Due: ${ai.dueAt})` : "";
             return `- ${ai.text}${due}${cite}`;

@@ -16,9 +16,13 @@ export function FollowupEmail({
 
   return (
     <DropdownMenuItem
-      onClick={() => {
+      onClick={async () => {
         onSelect?.();
-        void generateAndDeliver();
+        try {
+          await generateAndDeliver();
+        } catch {
+          // Error already captured in hook state and toasted
+        }
       }}
       disabled={isGenerating}
       className="cursor-pointer"

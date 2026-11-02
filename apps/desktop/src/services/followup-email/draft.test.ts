@@ -56,4 +56,11 @@ Next Steps:
     expect(draft.subject).toBe("Default Subject");
     expect(draft.body).toBe(output);
   });
+
+  it("strips trailing code fences or commentary after BODY", () => {
+    const output = `SUBJECT: Quick Sync\nBODY:\nHi team, thanks for joining.\n\`\`\`\nExtra model explanation that should not be in body.`;
+    const draft = parseFollowupOutput(output);
+    expect(draft.subject).toBe("Quick Sync");
+    expect(draft.body).toBe("Hi team, thanks for joining.");
+  });
 });

@@ -59,17 +59,42 @@ pub fn build_auth_url(
         .map(|(k, v)| format!("{}={}", k, urlencoding::encode(v)))
         .collect::<Vec<_>>()
         .join("&");
-    format!("{}?{}", auth_uri, query)
+    let sep = if auth_uri.contains('?') { '&' } else { '?' };
+    format!("{}{}{}", auth_uri, sep, query)
 }
 
-async fn handle_connections(listener: TcpListener, expected_state: &str) -> Result<String, Error> {
-    hypr_oauth_loopback::handle_connections(listener, expected_state)
+async fn bind_loopback() -> Result<(TcpListener, Option<TcpListener>, u16), Error> {
+    for _ in 0..10 {
+        let v4 = TcpListener::bind(("127.0.0.1", 0)).await?;
+        let port = v4.local_addr()?.port();
+        match TcpListener::bind(("::1", port)).await {
+            Ok(v6) => return Ok((v4, Some(v6), port)),
+            Err(e) => {
+                if e.kind() == std::io::ErrorKind::AddrInUse {
+                    continue;
+                }
+                return Ok((v4, None, port));
+            }
+        }
+    }
+    let v4 = TcpListener::bind(("127.0.0.1", 0)).await?;
+    let port = v4.local_addr()?.port();
+    Ok((v4, None, port))
+}
+
+async fn handle_connections(
+    v4: TcpListener,
+    v6: Option<TcpListener>,
+    expected_state: &str,
+) -> Result<String, Error> {
+    hypr_oauth_loopback::handle_connections_dual(v4, v6, expected_state)
         .await
         .map_err(|e| match e {
             LoopbackError::StateMismatch => Error::StateMismatch,
             LoopbackError::AuthorizationDenied(err) => Error::AuthorizationDenied(err),
             LoopbackError::Io(err) => Error::Io(err),
-            other => Error::AuthorizationDenied(other.to_string()),
+            LoopbackError::Timeout => Error::RedirectTimeout,
+            other => Error::Api(other.to_string()),
         })
 }
 
@@ -85,8 +110,7 @@ pub async fn connect(
     graph_base_url: &str,
     open_browser: impl FnOnce(&str) -> Result<(), String>,
 ) -> Result<(TokenResponse, String), Error> {
-    let listener = TcpListener::bind(("127.0.0.1", 0)).await?;
-    let port = listener.local_addr()?.port();
+    let (v4, v6, port) = bind_loopback().await?;
     // Microsoft requires localhost (not 127.0.0.1) for public desktop clients.
     let redirect_uri = format!("http://localhost:{port}");
 
@@ -104,21 +128,30 @@ pub async fn connect(
 
     open_browser(&auth_url).map_err(Error::OpenBrowser)?;
 
-    let code = tokio::time::timeout(timeout, handle_connections(listener, &state))
+    let code = tokio::time::timeout(timeout, handle_connections(v4, v6, &state))
         .await
         .map_err(|_| Error::RedirectTimeout)??;
 
-    let token = exchange_code(
-        http,
-        token_uri,
-        client_id,
-        &code,
-        &redirect_uri,
-        &pkce.verifier,
+    let token = tokio::time::timeout(
+        timeout,
+        exchange_code(
+            http,
+            token_uri,
+            client_id,
+            &code,
+            &redirect_uri,
+            &pkce.verifier,
+        ),
     )
-    .await?;
+    .await
+    .map_err(|_| Error::RedirectTimeout)??;
 
-    let email = fetch_user_email(http, graph_base_url, &token.access_token).await?;
+    let email = tokio::time::timeout(
+        timeout,
+        fetch_user_email(http, graph_base_url, &token.access_token),
+    )
+    .await
+    .map_err(|_| Error::RedirectTimeout)??;
 
     Ok((token, email))
 }
@@ -133,8 +166,7 @@ pub async fn connect_incremental(
     token_uri: &str,
     open_browser: impl FnOnce(&str) -> Result<(), String>,
 ) -> Result<TokenResponse, Error> {
-    let listener = TcpListener::bind(("127.0.0.1", 0)).await?;
-    let port = listener.local_addr()?.port();
+    let (v4, v6, port) = bind_loopback().await?;
     let redirect_uri = format!("http://localhost:{port}");
 
     let state = uuid::Uuid::new_v4().simple().to_string();
@@ -151,19 +183,23 @@ pub async fn connect_incremental(
 
     open_browser(&auth_url).map_err(Error::OpenBrowser)?;
 
-    let code = tokio::time::timeout(timeout, handle_connections(listener, &state))
+    let code = tokio::time::timeout(timeout, handle_connections(v4, v6, &state))
         .await
         .map_err(|_| Error::RedirectTimeout)??;
 
-    let token = exchange_code(
-        http,
-        token_uri,
-        client_id,
-        &code,
-        &redirect_uri,
-        &pkce.verifier,
+    let token = tokio::time::timeout(
+        timeout,
+        exchange_code(
+            http,
+            token_uri,
+            client_id,
+            &code,
+            &redirect_uri,
+            &pkce.verifier,
+        ),
     )
-    .await?;
+    .await
+    .map_err(|_| Error::RedirectTimeout)??;
 
     Ok(token)
 }
@@ -283,5 +319,74 @@ mod tests {
         assert_eq!(token.access_token, "at-mock");
         assert_eq!(token.refresh_token.as_deref(), Some("rt-mock"));
         assert_eq!(email, "user@outlook.com");
+    }
+
+    #[test]
+    fn test_build_auth_url_handles_existing_query_string() {
+        let auth_uri_with_query =
+            "https://login.microsoftonline.com/common/oauth2/v2.0/authorize?prompt_login=1";
+        let auth_url = build_auth_url(
+            auth_uri_with_query,
+            "client_1",
+            "http://localhost:1234",
+            DEFAULT_READ_SCOPES,
+            "state_1",
+            "challenge_1",
+            None,
+        );
+        // Should not have two '?' in the URL
+        assert_eq!(auth_url.matches('?').count(), 1);
+        assert!(auth_url.contains("prompt_login=1&client_id=client_1"));
+    }
+
+    #[tokio::test]
+    async fn test_connect_times_out_on_slow_token_endpoint() {
+        use wiremock::matchers::{method, path};
+        use wiremock::{Mock, MockServer, ResponseTemplate};
+
+        let token_server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/token"))
+            .respond_with(ResponseTemplate::new(200).set_delay(Duration::from_secs(5)))
+            .mount(&token_server)
+            .await;
+
+        let http = reqwest::Client::new();
+        let (tx, rx) = tokio::sync::oneshot::channel::<String>();
+
+        let token_uri = format!("{}/token", token_server.uri());
+        let connect_fut = connect(
+            &http,
+            "client-id",
+            DEFAULT_READ_SCOPES,
+            Duration::from_millis(200),
+            "https://login.microsoftonline.com/auth",
+            &token_uri,
+            "https://graph.microsoft.com",
+            move |url| {
+                let _ = tx.send(url.to_string());
+                Ok(())
+            },
+        );
+
+        let simulate_redirect = async {
+            let auth_url = rx.await.unwrap();
+            let parsed = reqwest::Url::parse(&auth_url).unwrap();
+            let mut state = String::new();
+            let mut redirect_uri = String::new();
+            for (k, v) in parsed.query_pairs() {
+                if k == "state" {
+                    state = v.into_owned();
+                } else if k == "redirect_uri" {
+                    redirect_uri = v.into_owned();
+                }
+            }
+            let callback_url = format!("{redirect_uri}?code=auth-code-123&state={state}");
+            let client = reqwest::Client::new();
+            let _ = client.get(&callback_url).send().await;
+        };
+
+        let (connect_res, _) = tokio::join!(connect_fut, simulate_redirect);
+        assert!(matches!(connect_res, Err(Error::RedirectTimeout)));
     }
 }

@@ -12,34 +12,34 @@ tauri-plugin = { workspace = true, features = ["build"] }
 
 [dev-dependencies]
 specta-typescript = { workspace = true }
-tokio = { workspace = true, features = ["macros", "rt-multi-thread", "net", "io-util", "time"] }
 tempfile = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "net", "io-util", "time"] }
 
 [dependencies]
+reqwest = { workspace = true, features = ["json"] }
 specta = { workspace = true, features = ["derive", "serde_json"] }
 tauri = { workspace = true, features = ["test", "macos-private-api"] }
 tauri-plugin-db = { workspace = true }
+tauri-plugin-embedding-search = { workspace = true }
 tauri-plugin-store2 = { workspace = true }
 tauri-plugin-tantivy = { workspace = true }
-tauri-plugin-embedding-search = { workspace = true }
 tauri-specta = { workspace = true, features = ["derive", "typescript"] }
-reqwest = { workspace = true, features = ["json"] }
 
 hypr-agent-access = { workspace = true }
 hypr-db-app = { workspace = true }
 hypr-db-core = { workspace = true }
 hypr-mcp = { workspace = true }
 
-rmcp = { workspace = true, features = ["server", "transport-streamable-http-server"] }
 axum = { workspace = true }
+rmcp = { workspace = true, features = ["server", "transport-streamable-http-server"] }
 tower = { workspace = true }
 tower-http = { workspace = true }
 
-tokio = { workspace = true, features = ["rt", "time", "net", "sync", "macros"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
+sqlx = { workspace = true, features = ["sqlite"] }
+strum = { workspace = true, features = ["derive"] }
 thiserror = { workspace = true }
+tokio = { workspace = true, features = ["rt", "time", "net", "sync", "macros"] }
 tracing = { workspace = true }
 uuid = { workspace = true, features = ["v4"] }
-strum = { workspace = true, features = ["derive"] }
-sqlx = { workspace = true, features = ["sqlite"] }

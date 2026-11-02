@@ -5,11 +5,12 @@ edition = "2024"
 
 [dependencies]
 base64 = { workspace = true }
+getrandom = "0.2"
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 sha2 = { workspace = true }
 thiserror = { workspace = true }
-tokio = { workspace = true, features = ["net", "io-util", "time", "macros", "sync"] }
+tokio = { workspace = true, features = ["net", "io-util", "time", "macros", "sync", "rt"] }
 tracing = { workspace = true }
 urlencoding = { workspace = true }
 uuid = { workspace = true, features = ["v4"] }

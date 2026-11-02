@@ -12734,6 +12734,7 @@ name = "oauth-loopback"
 version = "0.1.0"
 dependencies = [
  "base64 0.22.1",
+ "getrandom 0.2.17",
  "reqwest 0.13.4",
  "serde",
  "serde_json",

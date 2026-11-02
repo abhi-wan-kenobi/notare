@@ -25,13 +25,10 @@ pub async fn set_settings(
 #[tauri::command]
 #[specta::specta]
 pub async fn regenerate_token(state: State<'_, McpServerManager>) -> Result<String, String> {
-    let token = state.regenerate_token().map_err(|e| e.to_string())?;
-    // If currently running, restart with the new token
-    let status = state.get_status().await;
-    if status.running {
-        let _ = state.restart(status.port).await;
-    }
-    Ok(token)
+    state
+        .regenerate_token_and_restart()
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]

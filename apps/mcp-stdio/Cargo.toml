@@ -7,5 +7,5 @@ description = "Stdio to HTTP bridge for Notare MCP server"
 [dependencies]
 clap = { workspace = true, features = ["derive", "env"] }
 reqwest = { workspace = true, features = ["json"] }
-tokio = { workspace = true, features = ["rt-multi-thread", "macros", "io-std"] }
 tauri-plugin-mcp-server = { workspace = true }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "io-std"] }

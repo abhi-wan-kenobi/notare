@@ -31,7 +31,8 @@ export function BriefCard({
 }) {
   const briefFromEvent = useBriefForEvent(eventId);
   const briefFromSession = useBriefForSession(sessionId);
-  const brief = initialBrief ?? briefFromEvent ?? briefFromSession;
+  const effectiveInitial = initialBrief?.dismissed_at ? null : initialBrief;
+  const brief = effectiveInitial ?? briefFromEvent ?? briefFromSession;
 
   const [isOpen, setIsOpen] = useState(true);
   const [isRegenerating, setIsRegenerating] = useState(false);
@@ -46,7 +47,12 @@ export function BriefCard({
   const handleDismiss = useCallback(async () => {
     if (!brief) return;
     setIsDismissed(true);
-    await dismissBrief(brief.id);
+    try {
+      await dismissBrief(brief.id);
+    } catch (e) {
+      setIsDismissed(false);
+      console.error("[briefs] failed to dismiss brief", e);
+    }
   }, [brief]);
 
   const handleRegenerate = useCallback(async () => {
@@ -162,7 +168,19 @@ export function BriefContentRenderer({ content }: { content: string }) {
                     key={`l-${lineIdx}`}
                     className="text-foreground mt-1 font-semibold first:mt-0"
                   >
-                    {cleanLine}
+                    {segments.map((segment, segIdx) => {
+                      if (segment.type === "citation") {
+                        return (
+                          <CitationChip
+                            key={`c-${segIdx}`}
+                            sessionId={segment.sessionId}
+                            ms={segment.ms}
+                            raw={segment.raw}
+                          />
+                        );
+                      }
+                      return <span key={`t-${segIdx}`}>{segment.text}</span>;
+                    })}
                   </h4>
                 );
               }

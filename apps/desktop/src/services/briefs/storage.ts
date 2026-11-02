@@ -92,6 +92,9 @@ export async function saveBrief(params: {
   content_md: string;
   model: string;
 }): Promise<SessionBrief> {
+  if (!params.event_id || !params.event_id.trim()) {
+    throw new Error("event_id is required");
+  }
   return enqueueDatabaseWrite("save-brief", async () => {
     const existing = await loadBriefForEvent(params.event_id);
     const briefId = params.id ?? existing?.id ?? id();
