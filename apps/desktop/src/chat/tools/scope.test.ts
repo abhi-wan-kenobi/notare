@@ -302,13 +302,33 @@ describe("tool layer scope filter enforcement", () => {
   });
 
   describe("list_meetings scope filtering", () => {
-    it("restricts list_meetings output to allowed scope", async () => {
+    it("keeps paging the raw list until the requested in-scope count is met", async () => {
       const deps = dummyDependencies();
-      mocks.listMeetings.mockResolvedValue({
-        meetings: [{ id: "s1" }, { id: "s2" }, { id: "s3" }],
-        total: 3,
-        next_offset: 3,
-      });
+      // Raw list: page 1 has one in-scope meeting, page 2 has the other two.
+      mocks.listMeetings.mockImplementation(
+        async ({ offset }: { offset?: number }) =>
+          (offset ?? 0) === 0
+            ? {
+                meetings: [{ id: "x1" }, { id: "s1" }],
+                pagination: {
+                  offset: 0,
+                  limit: 2,
+                  returned: 2,
+                  total: 4,
+                  next_offset: 2,
+                },
+              }
+            : {
+                meetings: [{ id: "s3" }, { id: "x2" }],
+                pagination: {
+                  offset: 2,
+                  limit: 2,
+                  returned: 2,
+                  total: 4,
+                  next_offset: null,
+                },
+              },
+      );
 
       const scopeFilter: ToolScopeFilter = {
         kind: "session_ids",
@@ -318,11 +338,93 @@ describe("tool layer scope filter enforcement", () => {
       const tool = buildListMeetingsTool(deps, scopeFilter);
       const result = await executeTool<
         Record<string, unknown>,
-        { meetings: Array<{ id: string }>; total: number }
-      >(tool, {});
+        {
+          meetings: Array<{ id: string }>;
+          pagination: { returned: number; next_offset: number | null };
+        }
+      >(tool, { limit: 2 });
 
       expect(result.meetings.map((m) => m.id)).toEqual(["s1", "s3"]);
-      expect(result.total).toBe(2);
+      expect(result.pagination.returned).toBe(2);
+      expect(result.pagination.next_offset).toBeNull();
+      expect(mocks.listMeetings).toHaveBeenCalledTimes(2);
+    });
+
+    it("returns nothing without querying when the scope is empty", async () => {
+      const deps = dummyDependencies();
+      const tool = buildListMeetingsTool(deps, {
+        kind: "session_ids",
+        sessionIds: [],
+      });
+      const result = await executeTool<
+        Record<string, unknown>,
+        { meetings: unknown[] }
+      >(tool, {});
+      expect(result.meetings).toEqual([]);
+      expect(mocks.listMeetings).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("id-addressed tools cannot read outside the scope", () => {
+    it("refuses get_meeting / get_meeting_transcript for out-of-scope ids", async () => {
+      const deps = dummyDependencies();
+      const execute = vi.fn(async () => ({ id: "x9" }));
+      const rawTools = {
+        get_meeting: { description: "", inputSchema: {}, execute },
+        get_meeting_transcript: { description: "", inputSchema: {}, execute },
+      };
+      const scoped = applyScopeFilterToTools(
+        rawTools,
+        { kind: "session_ids", sessionIds: ["s1"] },
+        false,
+        deps,
+      );
+
+      for (const name of ["get_meeting", "get_meeting_transcript"] as const) {
+        const denied = await executeTool<
+          { meeting_id: string },
+          { error?: string }
+        >(scoped[name], { meeting_id: "x9" });
+        expect(denied.error).toMatch(/outside the current chat scope/);
+        const allowed = await executeTool<{ meeting_id: string }, unknown>(
+          scoped[name],
+          { meeting_id: "s1" },
+        );
+        expect(allowed).toEqual({ id: "x9" });
+      }
+      expect(execute).toHaveBeenCalledTimes(2);
+    });
+
+    it("filters get_recurring_meeting_history results to the scope", async () => {
+      const deps = dummyDependencies();
+      const rawTools = {
+        get_recurring_meeting_history: {
+          description: "",
+          inputSchema: {},
+          execute: vi.fn(async () => ({
+            meetings: [{ id: "s1" }, { id: "x1" }],
+            pagination: {
+              offset: 0,
+              limit: 20,
+              returned: 2,
+              total: 2,
+              next_offset: null,
+            },
+          })),
+        },
+      };
+      const scoped = applyScopeFilterToTools(
+        rawTools,
+        { kind: "session_ids", sessionIds: ["s1"] },
+        false,
+        deps,
+      );
+      const result = await executeTool<
+        { meeting_id: string },
+        { meetings: Array<{ id: string }>; pagination: { returned: number } }
+      >(scoped.get_recurring_meeting_history, { meeting_id: "s1" });
+      expect(result.meetings.map((m) => m.id)).toEqual(["s1"]);
+      expect(result.pagination.returned).toBe(1);
     });
   });
 

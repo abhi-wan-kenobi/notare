@@ -167,9 +167,18 @@ export function ChatMessageInput({
             inlineNodes.push(schema.text(lines[i]));
           }
         }
-        const from = view.state.selection.$from.start() + currentMatch.from;
-        const to = view.state.selection.$from.pos;
-        const tr = view.state.tr.replaceWith(from, to, inlineNodes);
+        // The match was computed on the last editor update; the cursor may
+        // have moved since. Only replace the "/query" span if it is still
+        // there, otherwise insert at the cursor and leave the text alone.
+        const cursor = view.state.selection.$from.pos;
+        const matchFrom =
+          view.state.selection.$from.start() + currentMatch.from;
+        const spanIsIntact =
+          matchFrom >= 0 &&
+          matchFrom < cursor &&
+          view.state.doc.textBetween(matchFrom, cursor).startsWith("/");
+        const from = spanIsIntact ? matchFrom : cursor;
+        const tr = view.state.tr.replaceWith(from, cursor, inlineNodes);
         view.dispatch(tr);
         view.focus();
       } else {

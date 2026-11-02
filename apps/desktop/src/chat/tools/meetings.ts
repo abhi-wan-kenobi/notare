@@ -6,12 +6,67 @@ import {
   getMeetingTranscript,
   getRecurringMeetingHistory,
   listMeetings,
+  type MeetingPage,
 } from "@hypr/plugin-db";
 
 import { resolveAllowedSessionIds } from "./scope-resolver";
 import type { ToolDependencies } from "./types";
 
 import type { ToolScopeFilter } from "~/chat/state/chat-scope";
+
+const MAX_SCOPE_PAGE_WALK = 10;
+
+/**
+ * Pages through the unfiltered meeting list until `limit` in-scope meetings
+ * are collected (or the source is exhausted). `pagination.next_offset` stays a
+ * raw-list offset so the model can keep paging; `total` is unknown under a
+ * filter and reported as null.
+ */
+export async function collectMeetingsInScope(
+  fetchPage: (params: {
+    offset?: number;
+    limit?: number;
+  }) => Promise<MeetingPage>,
+  params: { offset?: number; limit?: number },
+  allowedSessionIds: readonly string[],
+): Promise<MeetingPage> {
+  const allowed = new Set(allowedSessionIds);
+  const limit = params.limit ?? 20;
+  const startOffset = params.offset ?? 0;
+  const collected: MeetingPage["meetings"] = [];
+  let offset = startOffset;
+  let nextOffset: number | null = startOffset;
+
+  for (let walk = 0; walk < MAX_SCOPE_PAGE_WALK; walk += 1) {
+    if (allowed.size === 0) {
+      nextOffset = null;
+      break;
+    }
+    const page = await fetchPage({ ...params, offset, limit });
+    for (const meeting of page.meetings) {
+      if (allowed.has(meeting.id)) {
+        collected.push(meeting);
+      }
+    }
+    nextOffset = page.pagination.next_offset;
+    if (collected.length >= limit || nextOffset === null) {
+      break;
+    }
+    offset = nextOffset;
+  }
+
+  const meetings = collected.slice(0, limit);
+  return {
+    meetings,
+    pagination: {
+      offset: startOffset,
+      limit,
+      returned: meetings.length,
+      total: null,
+      next_offset: nextOffset,
+    },
+  };
+}
 
 const listLimitSchema = z
   .number()
@@ -60,7 +115,6 @@ export const buildListMeetingsTool = (
       offset: offsetSchema,
     }),
     execute: async (params) => {
-      const page = await listMeetings(params);
       const activeFilter =
         typeof scopeFilterOverride === "function"
           ? scopeFilterOverride()
@@ -74,19 +128,14 @@ export const buildListMeetingsTool = (
         deps,
       );
       if (allowedSessionIds === null) {
-        return page;
+        return listMeetings(params);
       }
 
-      const filteredMeetings = page.meetings.filter((meeting) =>
-        allowedSessionIds.includes(meeting.id),
+      return collectMeetingsInScope(
+        (page) => listMeetings({ ...params, ...page }),
+        params,
+        allowedSessionIds,
       );
-
-      return {
-        ...page,
-        meetings: filteredMeetings,
-        total: filteredMeetings.length,
-        next_offset: null,
-      };
     },
   });
 

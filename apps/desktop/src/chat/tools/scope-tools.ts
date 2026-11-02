@@ -1,5 +1,8 @@
 import type { ToolSet } from "ai";
 
+import type { MeetingPage } from "@hypr/plugin-db";
+
+import { collectMeetingsInScope } from "./meetings";
 import { resolveAllowedSessionIds } from "./scope-resolver";
 import type { ToolDependencies } from "./types";
 
@@ -9,6 +12,12 @@ export const CROSS_MEETING_TOOL_NAMES = [
   "search_meetings",
   "list_meetings",
   "find_related_meetings",
+  "get_recurring_meeting_history",
+] as const;
+
+const ID_GUARDED_TOOL_NAMES = [
+  "get_meeting",
+  "get_meeting_transcript",
   "get_recurring_meeting_history",
 ] as const;
 
@@ -120,14 +129,15 @@ export function applyScopeFilterToTools(
     }
   }
 
-  // Wrap list_meetings (if not deleted)
+  // Wrap list_meetings (if not deleted): page through the raw list until the
+  // requested number of in-scope meetings is found, keeping next_offset valid.
   if (nextTools.list_meetings && typeof nextTools.list_meetings === "object") {
     const original = nextTools.list_meetings as {
       execute?: (params: {
         query?: string;
         limit?: number;
         offset?: number;
-      }) => Promise<{ meetings?: Array<{ id: string }>; total?: number }>;
+      }) => Promise<MeetingPage>;
     };
     if (typeof original.execute === "function") {
       const originalExecute = original.execute.bind(nextTools.list_meetings);
@@ -138,26 +148,77 @@ export function applyScopeFilterToTools(
           limit?: number;
           offset?: number;
         }) => {
-          const page = await originalExecute(params);
           const allowedSessionIds = await resolveAllowedSessionIds(
             scopeFilter,
             deps,
           );
-          if (allowedSessionIds !== null && page?.meetings) {
-            const filtered = page.meetings.filter((m) =>
-              allowedSessionIds.includes(m.id),
-            );
-            return {
-              ...page,
-              meetings: filtered,
-              total: filtered.length,
-              next_offset: null,
-            };
+          if (allowedSessionIds === null) {
+            return originalExecute(params);
           }
-          return page;
+          return collectMeetingsInScope(
+            (page) => originalExecute({ ...params, ...page }),
+            params,
+            allowedSessionIds,
+          );
         },
       };
     }
+  }
+
+  // Tools addressed by meeting_id must not read meetings outside the scope,
+  // even if the model learned an id from earlier conversation context.
+  for (const name of ID_GUARDED_TOOL_NAMES) {
+    const current = nextTools[name];
+    if (!current || typeof current !== "object") {
+      continue;
+    }
+    const original = current as {
+      execute?: (params: { meeting_id: string }) => Promise<unknown>;
+    };
+    if (typeof original.execute !== "function") {
+      continue;
+    }
+    const originalExecute = original.execute.bind(current);
+    nextTools[name] = {
+      ...current,
+      execute: async (params: { meeting_id: string }) => {
+        const allowedSessionIds = await resolveAllowedSessionIds(
+          scopeFilter,
+          deps,
+        );
+        if (
+          allowedSessionIds !== null &&
+          !allowedSessionIds.includes(params.meeting_id)
+        ) {
+          return {
+            error: `Meeting ${params.meeting_id} is outside the current chat scope. Change the scope selector to access it.`,
+          };
+        }
+        const result = await originalExecute(params);
+        if (
+          name === "get_recurring_meeting_history" &&
+          allowedSessionIds !== null &&
+          result &&
+          typeof result === "object" &&
+          Array.isArray((result as MeetingPage).meetings)
+        ) {
+          const page = result as MeetingPage;
+          const meetings = page.meetings.filter((m) =>
+            allowedSessionIds.includes(m.id),
+          );
+          return {
+            ...page,
+            meetings,
+            pagination: {
+              ...page.pagination,
+              returned: meetings.length,
+              total: null,
+            },
+          };
+        }
+        return result;
+      },
+    };
   }
 
   // Wrap find_related_meetings (if not deleted)
