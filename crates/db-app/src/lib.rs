@@ -106,6 +106,11 @@ pub const APP_MIGRATION_STEPS: &[hypr_db_migrate::MigrationStep] = &[
         scope: hypr_db_migrate::MigrationScope::Plain,
         sql: include_str!("../migrations/20261102000000_recipes.sql"),
     },
+    hypr_db_migrate::MigrationStep {
+        id: "20261102010000_session_briefs",
+        scope: hypr_db_migrate::MigrationScope::Plain,
+        sql: include_str!("../migrations/20261102010000_session_briefs.sql"),
+    },
 ];
 
 pub fn schema() -> hypr_db_migrate::DbSchema {
@@ -312,6 +317,7 @@ mod tests {
                 "organizations",
                 "recipes",
                 "session_attachments",
+                "session_briefs",
                 "session_documents",
                 "session_participants",
                 "session_tags",

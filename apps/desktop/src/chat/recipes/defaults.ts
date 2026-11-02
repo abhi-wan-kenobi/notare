@@ -51,4 +51,17 @@ export const BUILTIN_RECIPES: ReadonlyArray<
     scope: "single",
     builtin: true,
   },
+  {
+    id: "builtin-pre-meeting-brief",
+    title: "Pre-meeting brief",
+    prompt:
+      "Generate a concise pre-meeting brief for the upcoming meeting:\n" +
+      "- Attendees: Who is attending (names and organization)\n" +
+      "- Recent Meetings: Last 3 relevant meetings with one-line outcomes (cite sources with [[src:<sessionId>@<ms>]])\n" +
+      "- Open Action Items: Outstanding action items involving these attendees\n" +
+      "- Suggested Questions: Strategic questions to ask or discuss\n\n" +
+      "{{selection}}",
+    scope: "single",
+    builtin: true,
+  },
 ];

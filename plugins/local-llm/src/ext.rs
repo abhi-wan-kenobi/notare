@@ -217,6 +217,19 @@ impl<'a, R: Runtime, M: Manager<R>> LocalLlmExt<'a, R, M> {
         if let Some(running) = guard.server.take() {
             running.server.stop().await;
         }
+        let metal_enabled = {
+            use tauri_plugin_settings::SettingsPluginExt;
+            if let Ok(settings) = self.manager.settings().load().await {
+                settings
+                    .get("ai")
+                    .and_then(|ai| ai.get("local_llm_metal"))
+                    .and_then(|val| val.as_bool())
+                    .unwrap_or(cfg!(target_os = "macos"))
+            } else {
+                cfg!(target_os = "macos")
+            }
+        };
+        hypr_local_llm_core::set_metal_enabled(metal_enabled);
 
         let server = hypr_local_llm_core::LlmServer::start_with_model_path(
             model.display_name().to_string(),

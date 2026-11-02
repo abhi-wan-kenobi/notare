@@ -32,6 +32,7 @@ import { shouldShowSessionTopAudioPlayer } from "./top-audio-player";
 import { useInvalidateAudioOnRecordingFinish } from "./use-invalidate-audio-on-finish";
 
 import * as AudioPlayer from "~/audio-player";
+import { BriefCard } from "~/services/briefs";
 import { useSession } from "~/session/queries";
 import { type Tab, useTabs } from "~/store/zustand/tabs";
 import { useListener } from "~/stt/contexts";
@@ -240,6 +241,11 @@ function TabContentNoteInner({
               <div className="border-border/70 bg-card/80 overflow-hidden rounded-[22px] border">
                 <AudioPlayer.Timeline contentClassName="py-1.5 pr-3 pl-1" />
               </div>
+            </div>
+          ) : null}
+          {session ? (
+            <div className="shrink-0 px-1 pb-2">
+              <BriefCard sessionId={sessionId} />
             </div>
           ) : null}
           <div className="min-h-0 flex-1">

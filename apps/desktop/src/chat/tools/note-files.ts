@@ -23,7 +23,7 @@ type NoteSection = {
   text: string;
 };
 
-type LoadedNoteFile = {
+export type LoadedNoteFile = {
   sessionId: string;
   title: string;
   date: string | null;
@@ -42,7 +42,7 @@ type SearchSnippet = {
   source_id?: string;
 };
 
-type SearchMatch = {
+export type SearchMatch = {
   sessionId: string;
   source_id?: string;
   title: string;
@@ -168,7 +168,9 @@ function limitText(
   };
 }
 
-async function loadNoteFile(sessionId: string): Promise<LoadedNoteFile | null> {
+export async function loadNoteFile(
+  sessionId: string,
+): Promise<LoadedNoteFile | null> {
   const snapshot = await loadSessionContentSnapshot(sessionId);
   if (!snapshot) return null;
 
@@ -344,7 +346,7 @@ function searchNote(note: LoadedNoteFile, query: string): SearchMatch | null {
   };
 }
 
-async function searchMeetingContent({
+export async function searchMeetingContent({
   query,
   sessionIds,
   limit,
@@ -418,7 +420,7 @@ function getDateDistanceDays(
   return Math.abs(aMs - bMs) / (24 * 60 * 60 * 1000);
 }
 
-async function listRelatedNotes({
+export async function listRelatedNotes({
   sessionId,
   limit,
 }: {

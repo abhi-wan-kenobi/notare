@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-outlook-disconnect"
+description = "Enables the outlook_disconnect command without any pre-configured scope."
+commands.allow = ["outlook_disconnect"]
+
+[[permission]]
+identifier = "deny-outlook-disconnect"
+description = "Denies the outlook_disconnect command without any pre-configured scope."
+commands.deny = ["outlook_disconnect"]

@@ -10,7 +10,8 @@ export type LlmTask =
   | "enhance"
   | "title"
   | "action_items"
-  | "dictation_cleanup";
+  | "dictation_cleanup"
+  | "brief";
 
 /** Per-task model requirements. */
 export type TaskRequirements = {
@@ -35,6 +36,7 @@ export const TASK_REQUIREMENTS: Record<LlmTask, TaskRequirements> = {
   title: { structuredOutputs: false, minParamsB: null },
   action_items: { structuredOutputs: true, minParamsB: 7 },
   dictation_cleanup: { structuredOutputs: false, minParamsB: null },
+  brief: { structuredOutputs: false, minParamsB: null },
 };
 
 /**
@@ -62,6 +64,9 @@ const STRUCTURED_OUTPUT_PROVIDERS: ReadonlySet<string> = new Set([
   "mistral",
   "hyprnote",
   "omp",
+  "anthropic_subscription",
+  "openai_subscription",
+  "gemini_subscription",
 ]);
 
 export function providerSupportsStructuredOutputs(

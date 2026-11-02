@@ -18,6 +18,7 @@ import { AccessPermissionRow, TroubleShootingLink } from "./apple/permission";
 import { GoogleDirectContent } from "./google/content";
 import { IcsContent } from "./ics/content";
 import { OAuthProviderContent } from "./oauth/provider-content";
+import { OutlookDirectContent } from "./outlook/content";
 import { type CalendarProvider, PROVIDERS } from "./shared";
 
 import { useAuth } from "~/auth";
@@ -345,7 +346,12 @@ function ProviderAccordionItem({
               )}
             </div>
           )}
-          {provider.direct && <GoogleDirectContent config={provider} />}
+          {provider.id === "google" && (
+            <GoogleDirectContent config={provider} />
+          )}
+          {provider.id === "outlook" && (
+            <OutlookDirectContent config={provider} />
+          )}
           {provider.ics && <IcsContent config={provider} />}
           {provider.nangoIntegrationId && (
             <OAuthProviderContent config={provider} returnTo={returnTo} />

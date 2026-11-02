@@ -15,6 +15,8 @@ import {
   type LucideIcon,
   UsersIcon,
   WebhookIcon,
+  ServerIcon,
+  MailIcon,
 } from "lucide-react";
 import { useCallback } from "react";
 
@@ -112,6 +114,8 @@ export function SettingsNav() {
       items: [
         { id: "webhook", label: t`Webhooks`, icon: WebhookIcon },
         { id: "sync", label: t`Devices`, icon: MonitorSmartphoneIcon },
+        { id: "mcp", label: t`MCP Server`, icon: ServerIcon },
+        { id: "gmail" as const, label: t`Gmail (beta)`, icon: MailIcon },
       ],
     },
   ];

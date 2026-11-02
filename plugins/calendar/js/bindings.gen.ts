@@ -99,9 +99,9 @@ async googleConnect() : Promise<Result<GoogleAccountStatus, string>> {
 /**
  * Revokes + forgets the session but keeps the imported client json.
  */
-async googleDisconnect() : Promise<Result<GoogleAccountStatus, string>> {
+async googleDisconnect(email: string | null) : Promise<Result<GoogleAccountStatus, string>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("plugin:calendar|google_disconnect") };
+    return { status: "ok", data: await TAURI_INVOKE("plugin:calendar|google_disconnect", { email }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -113,6 +113,78 @@ async googleDisconnect() : Promise<Result<GoogleAccountStatus, string>> {
 async googleReset() : Promise<Result<GoogleAccountStatus, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("plugin:calendar|google_reset") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async outlookAccountStatus() : Promise<Result<OutlookAccountStatus, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:calendar|outlook_account_status") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async outlookSetClientId(clientId: string) : Promise<Result<OutlookClientImportResult, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:calendar|outlook_set_client_id", { clientId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async outlookConnect() : Promise<Result<OutlookAccountStatus, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:calendar|outlook_connect") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async outlookDisconnect(email: string | null) : Promise<Result<OutlookAccountStatus, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:calendar|outlook_disconnect", { email }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async outlookReset() : Promise<Result<OutlookAccountStatus, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:calendar|outlook_reset") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async gmailStatus() : Promise<Result<GmailAccountStatus, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:calendar|gmail_status") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async gmailConnect() : Promise<Result<GmailAccountStatus, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:calendar|gmail_connect") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async gmailDisconnect(email: string | null) : Promise<Result<GmailAccountStatus, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:calendar|gmail_disconnect", { email }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async gmailCreateDraft(accountEmail: string | null, to: string[], subject: string, body: string) : Promise<Result<string, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:calendar|gmail_create_draft", { accountEmail, to, subject, body }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -266,20 +338,35 @@ email: string | null;
 is_current_user: boolean }
 export type EventStatus = "confirmed" | "tentative" | "cancelled"
 /**
- * Status surfaced to the frontend.
+ * Status surfaced to the frontend for Gmail.
  */
-export type GoogleAccountStatus = { 
+export type GmailAccountStatus = { 
 /**
- * A client json has been imported (BYO client).
+ * A Gmail client is configured at compile time.
  */
 has_client: boolean; 
 /**
- * A bundled first-party client is compiled into this build, so the user can
- * "Sign in with Google" without importing their own client.
+ * At least one Gmail account is connected.
+ */
+connected: boolean; 
+/**
+ * Connected Gmail account emails.
+ */
+accounts?: string[] }
+/**
+ * Status surfaced to the frontend for Google Calendar.
+ */
+export type GoogleAccountStatus = { 
+/**
+ * A client json has been imported (BYO client) or bundled client is available.
+ */
+has_client: boolean; 
+/**
+ * A bundled first-party client is compiled into this build.
  */
 has_bundled_client: boolean; 
 /**
- * A refresh token exists (i.e. the consent flow completed).
+ * At least one Google account is connected.
  */
 connected: boolean; 
 /**
@@ -289,20 +376,19 @@ client_kind: string | null;
 /**
  * The client id, so the user can tell which GCP client is in use.
  */
-client_id: string | null }
+client_id: string | null; 
+/**
+ * All currently connected Google accounts.
+ */
+accounts?: GoogleConnectedAccount[] }
 /**
  * Result of importing a client json.
  */
-export type GoogleClientImportResult = { client_id: string; 
+export type GoogleClientImportResult = { client_id: string; client_kind: string; warning_web_client: boolean }
 /**
- * `"installed"` or `"web"`.
+ * Per-account representation returned to the frontend.
  */
-client_kind: string; 
-/**
- * True when the json was a "web" client — loopback redirects may not
- * work with those; the UI should warn but proceed.
- */
-warning_web_client: boolean }
+export type GoogleConnectedAccount = { email: string; granted_scopes: string[] }
 /**
  * One imported `.ics` file, surfaced to the frontend.
  */
@@ -323,6 +409,38 @@ calendar_name: string | null;
  * Display name (calendar name, else file name without extension).
  */
 title: string; event_count: number; imported_at: string; updated_at: string }
+/**
+ * Status surfaced to the frontend for Outlook Calendar.
+ */
+export type OutlookAccountStatus = { 
+/**
+ * A client ID is configured (BYO client or bundled client).
+ */
+has_client: boolean; 
+/**
+ * A bundled first-party client is compiled into this build.
+ */
+has_bundled_client: boolean; 
+/**
+ * At least one Outlook account is connected.
+ */
+connected: boolean; 
+/**
+ * The client ID in use.
+ */
+client_id: string | null; 
+/**
+ * All currently connected Outlook accounts.
+ */
+accounts?: OutlookConnectedAccount[] }
+/**
+ * Result of importing a client ID.
+ */
+export type OutlookClientImportResult = { client_id: string }
+/**
+ * Per-account representation returned to the frontend.
+ */
+export type OutlookConnectedAccount = { email: string; granted_scopes: string[] }
 export type ProviderConnectionIds = { provider: CalendarProviderType; connection_ids: string[] }
 
 /** tauri-specta globals **/

@@ -10,4 +10,5 @@ mod model;
 
 pub use model::{
     ChatMessage, FinishReason, GenerateOutcome, GenerateRequest, LlamaLlmModel, LlmError,
+    is_metal_enabled, set_metal_enabled, use_gpu,
 };

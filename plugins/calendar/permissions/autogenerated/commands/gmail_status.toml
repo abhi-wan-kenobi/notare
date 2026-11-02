@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-gmail-status"
+description = "Enables the gmail_status command without any pre-configured scope."
+commands.allow = ["gmail_status"]
+
+[[permission]]
+identifier = "deny-gmail-status"
+description = "Denies the gmail_status command without any pre-configured scope."
+commands.deny = ["gmail_status"]

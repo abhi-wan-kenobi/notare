@@ -50,6 +50,18 @@ const _PROVIDERS = [
   },
   {
     disabled: false,
+    id: "outlook",
+    displayName: "Outlook",
+    badge: "",
+    icon: <OutlookIcon size={16} />,
+    platform: "all",
+    docsPath:
+      "https://github.com/abhi-wan-kenobi/notare/blob/main/docs/OUTLOOK-CALENDAR.md",
+    nangoIntegrationId: undefined,
+    direct: true,
+  },
+  {
+    disabled: false,
     id: "ics",
     displayName: "Calendar files (.ics)",
     badge: "",
@@ -60,21 +72,6 @@ const _PROVIDERS = [
     nangoIntegrationId: undefined,
     ics: true,
   },
-  {
-    disabled: false,
-    id: "outlook",
-    displayName: "Outlook",
-    badge: "",
-    icon: <OutlookIcon size={16} />,
-    platform: "all",
-    nangoIntegrationId: "outlook",
-  },
 ] as const satisfies readonly CalendarProvider[];
 
-// "outlook" (the dead upstream Nango/Pro cloud integration) is hidden from the
-// UI — same treatment as the "hyprnote" cloud LLM provider. Unlike Google it
-// has no direct BYO-OAuth path yet. The entry stays in _PROVIDERS so ids/types
-// stay intact for persisted settings; unhide it here once a direct path exists.
-export const PROVIDERS = _PROVIDERS.filter(
-  (provider) => provider.id !== "outlook",
-);
+export const PROVIDERS = _PROVIDERS;

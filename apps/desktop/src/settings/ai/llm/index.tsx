@@ -1,5 +1,6 @@
 import { Trans } from "@lingui/react/macro";
 
+import { BriefsSettings } from "./briefs";
 import { ConfigureProviders } from "./configure";
 import { LlmSettingsProvider } from "./context";
 import { RoutingPreferences } from "./routing";
@@ -16,6 +17,7 @@ export function LLM() {
         <SelectProviderAndModel />
         <RoutingPreferences />
         <ScopedModelSettings />
+        <BriefsSettings />
         <ConfigureProviders />
       </div>
     </LlmSettingsProvider>

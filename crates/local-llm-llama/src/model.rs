@@ -43,10 +43,25 @@ pub enum LlmError {
     PromptTooLong(usize, u32),
 }
 
-/// Whether to offload to GPU. Only meaningful when this crate is built with
-/// `cuda` or `vulkan`; CPU-only builds (the default) always run on CPU.
-const fn use_gpu() -> bool {
-    cfg!(feature = "cuda") || cfg!(feature = "vulkan")
+use std::sync::atomic::{AtomicBool, Ordering};
+
+static METAL_ENABLED: AtomicBool = AtomicBool::new(true);
+
+pub fn set_metal_enabled(enabled: bool) {
+    METAL_ENABLED.store(enabled, Ordering::Relaxed);
+}
+
+pub fn is_metal_enabled() -> bool {
+    METAL_ENABLED.load(Ordering::Relaxed)
+}
+
+/// Whether to offload to GPU. Meaningful when this crate is built with
+/// `cuda` or `vulkan`, or on macOS Apple Silicon via Metal when `METAL_ENABLED` is true;
+/// CPU-only builds on Linux/Windows always run on CPU.
+pub fn use_gpu() -> bool {
+    cfg!(feature = "cuda")
+        || cfg!(feature = "vulkan")
+        || (cfg!(target_os = "macos") && is_metal_enabled())
 }
 
 pub struct LlamaLlmModel {
@@ -395,6 +410,23 @@ mod tests {
     fn use_gpu_is_false_on_a_plain_cpu_build() {
         // This crate's own test binary is built with this test file's
         // default features (no `cuda`/`vulkan`) unless explicitly enabled.
+        #[cfg(not(target_os = "macos"))]
         assert_eq!(use_gpu(), cfg!(any(feature = "cuda", feature = "vulkan")));
+        #[cfg(target_os = "macos")]
+        assert!(use_gpu());
+    }
+
+    #[test]
+    fn metal_enabled_toggle() {
+        let prev = is_metal_enabled();
+        set_metal_enabled(false);
+        assert!(!is_metal_enabled());
+        #[cfg(target_os = "macos")]
+        assert!(!use_gpu());
+        set_metal_enabled(true);
+        assert!(is_metal_enabled());
+        #[cfg(target_os = "macos")]
+        assert!(use_gpu());
+        set_metal_enabled(prev);
     }
 }

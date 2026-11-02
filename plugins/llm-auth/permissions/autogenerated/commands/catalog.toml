@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-catalog"
+description = "Enables the catalog command without any pre-configured scope."
+commands.allow = ["catalog"]
+
+[[permission]]
+identifier = "deny-catalog"
+description = "Denies the catalog command without any pre-configured scope."
+commands.deny = ["catalog"]

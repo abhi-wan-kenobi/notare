@@ -1128,6 +1128,7 @@ function TemplatePickerPopover({
       key: string;
       title: string;
       icon: TemplateIcon;
+      category?: string;
       isFavorite?: boolean;
       onClick: () => void;
     }>
@@ -1136,6 +1137,7 @@ function TemplatePickerPopover({
       key: template.id,
       title: template.title || "Untitled",
       icon: template.icon,
+      category: template.category,
       isFavorite: true,
       onClick: () =>
         handleUseTemplate({
@@ -1148,6 +1150,7 @@ function TemplatePickerPopover({
       key: template.id,
       title: template.title || "Untitled",
       icon: template.icon,
+      category: template.category,
       onClick: () =>
         handleUseTemplate({
           templateId: template.id,
@@ -1159,9 +1162,9 @@ function TemplatePickerPopover({
       key: template.slug || `library-${index}`,
       title: template.title || "Untitled",
       icon: template.icon,
+      category: template.category,
       onClick: () => handleWebTemplateClick(template),
     }));
-
     const otherItems = [...userItems, ...webItems].sort((a, b) =>
       a.title.localeCompare(b.title),
     );
@@ -1186,6 +1189,7 @@ function TemplatePickerPopover({
         key: string;
         title: string;
         icon: TemplateIcon;
+        category?: string;
         isFavorite?: boolean;
         onClick: () => void;
       }>;
@@ -1369,6 +1373,7 @@ function TemplatePickerPopover({
                               }}
                               title={item.title}
                               icon={item.icon}
+                              category={item.category}
                               isFavorite={item.isFavorite}
                               onClick={item.onClick}
                               onKeyDown={(e) =>
@@ -1636,6 +1641,7 @@ function TemplateResultButton({
   buttonRef,
   title,
   icon,
+  category,
   isFavorite = false,
   onClick,
   onKeyDown,
@@ -1643,6 +1649,7 @@ function TemplateResultButton({
   buttonRef?: React.Ref<HTMLButtonElement>;
   title: string;
   icon: TemplateIcon;
+  category?: string;
   isFavorite?: boolean;
   onClick: () => void;
   onKeyDown?: (e: React.KeyboardEvent<HTMLButtonElement>) => void;
@@ -1658,9 +1665,14 @@ function TemplateResultButton({
       onKeyDown={onKeyDown}
     >
       <TemplateIconGlyph icon={icon} className="size-4 text-sm" />
-      <span className="text-foreground min-w-0 truncate text-sm font-medium">
+      <span className="text-foreground min-w-0 flex-1 truncate text-sm font-medium">
         {title}
       </span>
+      {category ? (
+        <span className="text-muted-foreground shrink-0 text-xs capitalize">
+          {category}
+        </span>
+      ) : null}
       {isFavorite ? (
         <HeartIcon
           aria-hidden

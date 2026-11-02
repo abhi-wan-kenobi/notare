@@ -12,6 +12,9 @@ import type { CharTask } from "@hypr/api-client";
 import type { AIProviderStorage } from "@hypr/store";
 
 import { createAuthFetch } from "../auth-fetch";
+import { createAnthropicSubscriptionModel } from "../providers/anthropic-subscription";
+import { createGeminiSubscriptionModel } from "../providers/gemini-subscription";
+import { createOpenAICodexSubscriptionModel } from "../providers/openai-codex-subscription";
 import {
   isCloudProvider,
   type LlmScope,
@@ -485,6 +488,23 @@ const createLanguageModel = (
         baseURL: conn.baseUrl,
       });
       return wrapWithThinkingMiddleware(provider.chatModel(conn.modelId));
+    }
+    case "anthropic_subscription": {
+      return wrapWithThinkingMiddleware(
+        createAnthropicSubscriptionModel(conn.modelId),
+      );
+    }
+
+    case "openai_subscription": {
+      return wrapWithThinkingMiddleware(
+        createOpenAICodexSubscriptionModel(conn.modelId),
+      );
+    }
+
+    case "gemini_subscription": {
+      return wrapWithThinkingMiddleware(
+        createGeminiSubscriptionModel(conn.modelId),
+      );
     }
 
     case "omp":

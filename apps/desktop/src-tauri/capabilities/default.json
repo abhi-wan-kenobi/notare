@@ -42,6 +42,7 @@
     "store:default",
     "store2:default",
     "process:default",
+    "llm-auth:default",
     "local-llm:default",
     "local-stt:default",
     "dialog:default",
@@ -80,6 +81,7 @@
     "shortcut:default",
     "dictation:default",
     "webhook:default",
+    "mcp-server:default",
     {
       "identifier": "http:default",
       "deny": [],

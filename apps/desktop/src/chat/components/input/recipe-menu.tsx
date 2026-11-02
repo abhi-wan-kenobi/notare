@@ -5,11 +5,13 @@ import { cn } from "@hypr/utils";
 import type { Recipe } from "~/chat/recipes";
 
 export function RecipeSlashMenu({
+  id = "recipe-slash-menu-listbox",
   items,
   selectedIndex,
   onSelect,
   onHoverIndex,
 }: {
+  id?: string;
   items: Recipe[];
   selectedIndex: number;
   onSelect: (recipe: Recipe) => void;
@@ -21,6 +23,7 @@ export function RecipeSlashMenu({
 
   return (
     <div
+      id={id}
       data-recipe-slash-menu
       role="listbox"
       aria-label="Recipes"
@@ -36,6 +39,7 @@ export function RecipeSlashMenu({
         return (
           <button
             key={recipe.id}
+            id={`recipe-option-${recipe.id}`}
             role="option"
             aria-selected={isSelected}
             type="button"

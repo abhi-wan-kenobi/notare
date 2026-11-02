@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-gmail-create-draft"
+description = "Enables the gmail_create_draft command without any pre-configured scope."
+commands.allow = ["gmail_create_draft"]
+
+[[permission]]
+identifier = "deny-gmail-create-draft"
+description = "Denies the gmail_create_draft command without any pre-configured scope."
+commands.deny = ["gmail_create_draft"]

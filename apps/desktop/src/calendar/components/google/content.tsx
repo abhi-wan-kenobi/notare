@@ -1,7 +1,7 @@
 import { Trans } from "@lingui/react/macro";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { open as selectFile } from "@tauri-apps/plugin-dialog";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 
 import { commands as calendarCommands } from "@hypr/plugin-calendar";
 import type { GoogleAccountStatus } from "@hypr/plugin-calendar";
@@ -99,14 +99,15 @@ export function GoogleDirectContent({ config }: { config: CalendarProvider }) {
   });
 
   const disconnectMutation = useMutation({
-    mutationFn: async () => {
-      const result = await calendarCommands.googleDisconnect();
+    mutationFn: async (email?: string | null) => {
+      const result = await calendarCommands.googleDisconnect(email ?? null);
       if (result.status === "error") throw new Error(result.error);
       return result.data;
     },
     onSuccess: () => {
       setActionError(null);
       void invalidateStatus();
+      scheduleSync();
     },
     onError: (error: Error) => setActionError(error.message),
   });
@@ -235,8 +236,11 @@ export function GoogleDirectContent({ config }: { config: CalendarProvider }) {
     <div className="flex flex-col gap-2 pb-2">
       <ConnectedGoogleContent
         config={config}
-        onDisconnect={() => disconnectMutation.mutate()}
+        accounts={status.accounts ?? []}
+        onConnect={() => connectMutation.mutate()}
+        onDisconnect={(email) => disconnectMutation.mutate(email)}
         onReset={() => resetMutation.mutate()}
+        isConnecting={connectMutation.isPending}
       />
       {actionError && <p className="text-xs text-red-600">{actionError}</p>}
     </div>
@@ -405,50 +409,80 @@ function ImportClientContent({
 
 function ConnectedGoogleContent({
   config,
+  accounts,
+  onConnect,
   onDisconnect,
   onReset,
+  isConnecting,
 }: {
   config: CalendarProvider;
-  onDisconnect: () => void;
+  accounts: GoogleAccountStatus["accounts"];
+  onConnect: () => void;
+  onDisconnect: (email?: string) => void;
   onReset: () => void;
+  isConnecting: boolean;
 }) {
   const { groups, handleRefresh, handleToggle, isLoading } =
     useOAuthCalendarSelection(config);
 
-  const groupsWithMenus = useMemo(
-    () =>
-      groups.map((group) => ({
-        ...group,
-        menuItems: [
-          {
-            id: "disconnect-google",
-            text: "Disconnect",
-            action: onDisconnect,
-          },
-          {
-            id: "reset-google",
-            text: "Disconnect & remove client",
-            action: onReset,
-          },
-        ],
-      })),
-    [groups, onDisconnect, onReset],
-  );
-
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-3">
+      <div className="border-border bg-card/50 flex flex-col gap-1.5 rounded-md border p-2">
+        <span className="text-muted-foreground text-[11px] font-medium tracking-wider uppercase">
+          Connected Accounts
+        </span>
+        <div className="flex flex-col gap-1">
+          {(accounts ?? []).map((acc) => (
+            <div
+              key={acc.email}
+              className="hover:bg-accent/40 flex items-center justify-between rounded px-1.5 py-1 text-xs"
+            >
+              <span
+                className="max-w-[200px] truncate font-mono text-xs"
+                title={acc.email}
+              >
+                {acc.email}
+              </span>
+              <button
+                onClick={() => onDisconnect(acc.email)}
+                className="cursor-pointer text-xs text-red-500 underline hover:text-red-700"
+              >
+                Remove
+              </button>
+            </div>
+          ))}
+        </div>
+        <button
+          onClick={onConnect}
+          disabled={isConnecting}
+          className="text-muted-foreground hover:text-foreground cursor-pointer self-start pt-1 text-xs underline disabled:opacity-50"
+        >
+          {isConnecting ? "Waiting for browser…" : "+ Add Google account"}
+        </button>
+      </div>
+
       <OAuthCalendarSelection
-        groups={groupsWithMenus}
+        groups={groups}
         onToggle={handleToggle}
         onRefresh={handleRefresh}
         isLoading={isLoading}
       />
-      <button
-        onClick={onDisconnect}
-        className="cursor-pointer self-start text-xs text-red-500 underline transition-colors hover:text-red-700"
-      >
-        Disconnect
-      </button>
+
+      <div className="flex items-center gap-3 pt-1">
+        <button
+          onClick={() => onDisconnect()}
+          className="cursor-pointer text-xs text-red-500 underline hover:text-red-700"
+        >
+          Disconnect all
+        </button>
+        <span className="text-muted-foreground text-xs">•</span>
+        <button
+          onClick={onReset}
+          className="text-muted-foreground cursor-pointer text-xs underline hover:text-red-500"
+        >
+          Disconnect & remove client
+        </button>
+      </div>
     </div>
   );
 }

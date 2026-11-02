@@ -36,6 +36,8 @@
     "@hypr/plugin-analytics": "workspace:*",
     "@hypr/plugin-auth": "workspace:*",
     "@hypr/plugin-calendar": "workspace:*",
+    "@hypr/plugin-llm-auth": "workspace:*",
+    "@hypr/plugin-mcp-server": "workspace:*",
     "@hypr/plugin-db": "workspace:*",
     "@hypr/plugin-deeplink2": "workspace:*",
     "@hypr/plugin-detect": "workspace:*",

@@ -12,6 +12,7 @@ import { cn } from "@hypr/utils";
 
 import { toTz, useTimezone } from "~/calendar/hooks";
 import { useIgnoredEvents } from "~/calendar/ignored-events";
+import { BriefCard } from "~/services/briefs";
 import { EventDisplay } from "~/session/components/outer-header/metadata";
 import { getOrCreateSessionForEventId } from "~/session/queries";
 import {
@@ -161,7 +162,9 @@ function EventPopoverContent({
           description: event.description ?? undefined,
           calendarId: event.calendar_id ?? undefined,
         }}
-      />
+      >
+        <BriefCard eventId={eventId} />
+      </EventDisplay>
       <Button
         size="sm"
         className="bg-primary text-primary-foreground hover:bg-primary/90 min-h-8 w-full"

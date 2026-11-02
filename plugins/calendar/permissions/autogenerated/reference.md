@@ -18,6 +18,15 @@ Default permissions for the plugin
 - `allow-google-connect`
 - `allow-google-disconnect`
 - `allow-google-reset`
+- `allow-outlook-account-status`
+- `allow-outlook-set-client-id`
+- `allow-outlook-connect`
+- `allow-outlook-disconnect`
+- `allow-outlook-reset`
+- `allow-gmail-status`
+- `allow-gmail-connect`
+- `allow-gmail-disconnect`
+- `allow-gmail-create-draft`
 - `allow-ics-list-files`
 - `allow-ics-import-files`
 - `allow-ics-replace-file`
@@ -80,6 +89,110 @@ Enables the create_event command without any pre-configured scope.
 <td>
 
 Denies the create_event command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`calendar:allow-gmail-connect`
+
+</td>
+<td>
+
+Enables the gmail_connect command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`calendar:deny-gmail-connect`
+
+</td>
+<td>
+
+Denies the gmail_connect command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`calendar:allow-gmail-create-draft`
+
+</td>
+<td>
+
+Enables the gmail_create_draft command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`calendar:deny-gmail-create-draft`
+
+</td>
+<td>
+
+Denies the gmail_create_draft command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`calendar:allow-gmail-disconnect`
+
+</td>
+<td>
+
+Enables the gmail_disconnect command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`calendar:deny-gmail-disconnect`
+
+</td>
+<td>
+
+Denies the gmail_disconnect command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`calendar:allow-gmail-status`
+
+</td>
+<td>
+
+Enables the gmail_status command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`calendar:deny-gmail-status`
+
+</td>
+<td>
+
+Denies the gmail_status command without any pre-configured scope.
 
 </td>
 </tr>
@@ -470,6 +583,136 @@ Enables the open_calendar command without any pre-configured scope.
 <td>
 
 Denies the open_calendar command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`calendar:allow-outlook-account-status`
+
+</td>
+<td>
+
+Enables the outlook_account_status command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`calendar:deny-outlook-account-status`
+
+</td>
+<td>
+
+Denies the outlook_account_status command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`calendar:allow-outlook-connect`
+
+</td>
+<td>
+
+Enables the outlook_connect command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`calendar:deny-outlook-connect`
+
+</td>
+<td>
+
+Denies the outlook_connect command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`calendar:allow-outlook-disconnect`
+
+</td>
+<td>
+
+Enables the outlook_disconnect command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`calendar:deny-outlook-disconnect`
+
+</td>
+<td>
+
+Denies the outlook_disconnect command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`calendar:allow-outlook-reset`
+
+</td>
+<td>
+
+Enables the outlook_reset command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`calendar:deny-outlook-reset`
+
+</td>
+<td>
+
+Denies the outlook_reset command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`calendar:allow-outlook-set-client-id`
+
+</td>
+<td>
+
+Enables the outlook_set_client_id command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`calendar:deny-outlook-set-client-id`
+
+</td>
+<td>
+
+Denies the outlook_set_client_id command without any pre-configured scope.
 
 </td>
 </tr>

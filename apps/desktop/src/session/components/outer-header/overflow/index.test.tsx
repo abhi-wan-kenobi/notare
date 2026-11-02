@@ -72,6 +72,9 @@ vi.mock("./listening", () => ({
 vi.mock("./misc", () => ({
   ShowInFinder: () => <button type="button">Show in Finder</button>,
 }));
+vi.mock("./followup", () => ({
+  FollowupEmail: () => <button type="button">Follow-up email</button>,
+}));
 
 vi.mock("~/meeting-float/host", () => ({
   openFloatingMeetingPanel: vi.fn(),

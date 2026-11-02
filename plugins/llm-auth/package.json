@@ -1,0 +1,9 @@
+{
+  "name": "@hypr/plugin-llm-auth",
+  "private": true,
+  "main": "./js/index.ts",
+  "scripts": {
+    "codegen": "cargo test -p tauri-plugin-llm-auth",
+    "typecheck": "tsc --noEmit"
+  }
+}

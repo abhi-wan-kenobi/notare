@@ -23,6 +23,10 @@ msgstr "\"{0}\" will be permanently deleted. This cannot be undone."
 msgid "\"{0}\" will no longer be able to sync with this device. You can pair it again later."
 msgstr "\"{0}\" will no longer be able to sync with this device. You can pair it again later."
 
+#: src/settings/mcp/index.tsx
+msgid "(default: 8787)"
+msgstr "(default: 8787)"
+
 #: src/settings/general/notification.tsx
 msgid "(default)"
 msgstr "(default)"
@@ -54,6 +58,10 @@ msgstr "{trialDaysRemaining} day left"
 msgid "{trialDaysRemaining} days left"
 msgstr "{trialDaysRemaining} days left"
 
+#: src/settings/ai/llm/disclosure-modal.tsx
+msgid "<0>Account risk:</0> Vendors may modify or disable CLI access at any time, and using these tokens in third-party software carries the risk of affecting your account standing according to the vendor's terms."
+msgstr "<0>Account risk:</0> Vendors may modify or disable CLI access at any time, and using these tokens in third-party software carries the risk of affecting your account standing according to the vendor's terms."
+
 #: src/settings/ai/llm/select.tsx
 msgid "<0>Language model</0> is needed to make Notare summarize and chat about your conversations."
 msgstr "<0>Language model</0> is needed to make Notare summarize and chat about your conversations."
@@ -61,6 +69,14 @@ msgstr "<0>Language model</0> is needed to make Notare summarize and chat about 
 #: src/settings/ai/stt/select.tsx
 msgid "<0>Live transcription</0> needs a downloaded on-device model. Remote, custom, and cloud providers can't transcribe live — pick one below, or use them for the batch pass instead."
 msgstr "<0>Live transcription</0> needs a downloaded on-device model. Remote, custom, and cloud providers can't transcribe live — pick one below, or use them for the batch pass instead."
+
+#: src/settings/ai/llm/disclosure-modal.tsx
+msgid "<0>Not endorsed:</0> This integration is unofficial and is not endorsed, certified, or supported by Anthropic, OpenAI, or Google."
+msgstr "<0>Not endorsed:</0> This integration is unofficial and is not endorsed, certified, or supported by Anthropic, OpenAI, or Google."
+
+#: src/settings/ai/llm/disclosure-modal.tsx
+msgid "<0>Privacy:</0> Prompts, transcripts, and model interactions are transmitted directly to the vendor's cloud endpoints, identical to standard API usage."
+msgstr "<0>Privacy:</0> Prompts, transcripts, and model interactions are transmitted directly to the vendor's cloud endpoints, identical to standard API usage."
 
 #: src/settings/general/storage/index.tsx
 msgid "1 day"
@@ -380,6 +396,10 @@ msgstr "Automatically start listening when an event-backed note reaches its sche
 msgid "Automatically stop listening when the meeting app releases the microphone."
 msgstr "Automatically stop listening when the meeting app releases the microphone."
 
+#: src/settings/ai/llm/briefs.tsx
+msgid "Automatically synthesize attendee background, previous meeting outcomes, open action items, and suggested questions before upcoming meetings."
+msgstr "Automatically synthesize attendee background, previous meeting outcomes, open action items, and suggested questions before upcoming meetings."
+
 #: src/calendar/components/apple/permission.tsx
 #: src/instruction/index.tsx
 #: src/sidebar/custom-sidebar-header.tsx
@@ -409,6 +429,10 @@ msgstr "Batch & final-pass model"
 #: src/settings/ai/stt/select.tsx
 msgid "Batch transcription uses the live model. Pick a provider above to run the final pass on a different model."
 msgstr "Batch transcription uses the live model. Pick a provider above to run the final pass on a different model."
+
+#: src/settings/mcp/index.tsx
+msgid "Bearer Token"
+msgstr "Bearer Token"
 
 #: src/settings/ai/stt/shared.tsx
 msgid "Best quality"
@@ -447,7 +471,9 @@ msgid "Can transcribe while the meeting is happening."
 msgstr "Can transcribe while the meeting is happening."
 
 #: src/onboarding/transcription.tsx
+#: src/settings/ai/llm/disclosure-modal.tsx
 #: src/settings/ai/llm/select.tsx
+#: src/settings/ai/llm/subscription-card.tsx
 #: src/settings/general/account.tsx
 #: src/settings/general/storage/legacy-cleanup.tsx
 #: src/settings/general/storage/notes-location.tsx
@@ -537,6 +563,10 @@ msgstr "Choose template icon"
 msgid "Classic"
 msgstr "Classic"
 
+#: src/settings/mcp/index.tsx
+msgid "Claude Desktop (stdio bridge: notare-mcp)"
+msgstr "Claude Desktop (stdio bridge: notare-mcp)"
+
 #: src/settings/general/storage/legacy-cleanup.tsx
 msgid "Clean Up"
 msgstr "Clean Up"
@@ -573,6 +603,14 @@ msgstr "Clear all"
 #: src/templates/template-sidebar.tsx
 msgid "Clear search"
 msgstr "Clear search"
+
+#: src/calendar/components/outlook/content.tsx
+msgid "Click Register, then copy the <0>Application (client) ID</0> and paste it below."
+msgstr "Click Register, then copy the <0>Application (client) ID</0> and paste it below."
+
+#: src/settings/mcp/index.tsx
+msgid "Client Configuration Snippets"
+msgstr "Client Configuration Snippets"
 
 #: src/shared/ui/resource-list/preview-header.tsx
 msgid "Clone"
@@ -640,6 +678,10 @@ msgstr "Company"
 msgid "Compare Free and Pro before you sign in."
 msgstr "Compare Free and Pro before you sign in."
 
+#: src/settings/ai/llm/subscription-card.tsx
+msgid "Complete"
+msgstr "Complete"
+
 #: src/instruction/index.tsx
 msgid "Complete sign-in in your browser, then return to Notare."
 msgstr "Complete sign-in in your browser, then return to Notare."
@@ -656,6 +698,10 @@ msgstr "Complete your purchase"
 #: src/session/components/note-input/enhanced/config-error.tsx
 msgid "Configure"
 msgstr "Configure"
+
+#: src/settings/ai/llm/briefs.tsx
+msgid "Configure a local or cloud model above to enable automatic pre-meeting briefs."
+msgstr "Configure a local or cloud model above to enable automatic pre-meeting briefs."
 
 #: src/settings/ai/llm/configure.tsx
 #: src/settings/ai/stt/configure.tsx
@@ -678,6 +724,10 @@ msgstr "Confirm"
 msgid "Connect {0}"
 msgstr "Connect {0}"
 
+#: src/settings/gmail/index.tsx
+msgid "Connect Account"
+msgstr "Connect Account"
+
 #: src/onboarding/index.tsx
 msgid "Connect calendar"
 msgstr "Connect calendar"
@@ -686,6 +736,10 @@ msgstr "Connect calendar"
 msgid "Connect GitHub for private repos."
 msgstr "Connect GitHub for private repos."
 
+#: src/settings/gmail/index.tsx
+msgid "Connect your Google account to create follow-up email drafts directly in Gmail after meetings. This integration is separate from Google Calendar and uses its own OAuth client requesting only draft-creation permissions (<0>gmail.compose</0>). Notare never reads your inbox or sends emails automatically."
+msgstr "Connect your Google account to create follow-up email drafts directly in Gmail after meetings. This integration is separate from Google Calendar and uses its own OAuth client requesting only draft-creation permissions (<0>gmail.compose</0>). Notare never reads your inbox or sends emails automatically."
+
 #: src/instruction/index.tsx
 msgid "Connect your integration"
 msgstr "Connect your integration"
@@ -693,6 +747,14 @@ msgstr "Connect your integration"
 #: src/settings/ai/stt/select.tsx
 msgid "Connected"
 msgstr "Connected"
+
+#: src/settings/gmail/index.tsx
+msgid "Connected Accounts"
+msgstr "Connected Accounts"
+
+#: src/settings/gmail/index.tsx
+msgid "Connecting…"
+msgstr "Connecting…"
 
 #: src/sidebar/contacts.tsx
 #: src/sidebar/settings.tsx
@@ -713,12 +775,17 @@ msgstr "Continue"
 msgid "Continuing without trial"
 msgstr "Continuing without trial"
 
+#: src/settings/mcp/index.tsx
+msgid "Copied"
+msgstr "Copied"
+
 #: src/settings/dictation/index.tsx
 #: src/settings/sync/index.tsx
 #: src/snippets/index.tsx
 msgid "Copied to clipboard"
 msgstr "Copied to clipboard"
 
+#: src/settings/mcp/index.tsx
 #: src/snippets/entry-row.tsx
 msgid "Copy"
 msgstr "Copy"
@@ -726,6 +793,10 @@ msgstr "Copy"
 #: src/settings/sync/index.tsx
 msgid "Copy fingerprint"
 msgstr "Copy fingerprint"
+
+#: src/settings/mcp/index.tsx
+msgid "Copy JSON"
+msgstr "Copy JSON"
 
 #: src/session/components/note-input/header.tsx
 msgid "Copy latest live chunk"
@@ -818,6 +889,10 @@ msgstr "Created"
 #: src/settings/general/app-settings.tsx
 msgid "Current version"
 msgstr "Current version"
+
+#: src/settings/mcp/index.tsx
+msgid "Cursor (HTTP SSE transport)"
+msgstr "Cursor (HTTP SSE transport)"
 
 #: src/settings/ai/stt/select.tsx
 msgid "Custom model identifier"
@@ -958,6 +1033,7 @@ msgstr "Direct device-to-device sync isn't included in this build of Notare."
 msgid "Discarded"
 msgstr "Discarded"
 
+#: src/settings/gmail/index.tsx
 #: src/settings/todo/provider-content.tsx
 msgid "Disconnect"
 msgstr "Disconnect"
@@ -1029,6 +1105,10 @@ msgstr "Downloading…"
 #: src/main/update-banner.tsx
 msgid "Downloading… {0}%"
 msgstr "Downloading… {0}%"
+
+#: src/session/components/outer-header/overflow/followup.tsx
+msgid "Drafting email…"
+msgstr "Drafting email…"
 
 #: src/templates/details.tsx
 #: src/templates/template-form.tsx
@@ -1111,6 +1191,10 @@ msgstr "Enable a local or cloud model"
 #: src/settings/sync/index.tsx
 msgid "Enable device sync (experimental)"
 msgstr "Enable device sync (experimental)"
+
+#: src/settings/mcp/index.tsx
+msgid "Enable MCP Server"
+msgstr "Enable MCP Server"
 
 #: src/calendar/components/google/content.tsx
 msgid "Enable the Google Calendar API for that project."
@@ -1209,6 +1293,10 @@ msgstr "Export failed: {exportError}"
 #: src/session/components/outer-header/overflow/export-modal.tsx
 msgid "Exporting..."
 msgstr "Exporting..."
+
+#: src/settings/mcp/index.tsx
+msgid "Expose a read-only streamable HTTP MCP server inside Notare on loopback (<0>127.0.0.1</0>) so external AI clients (like Claude Desktop, Cursor, or CLI agents) can query meetings, summaries, notes, transcripts, recipes, and daily notes."
+msgstr "Expose a read-only streamable HTTP MCP server inside Notare on loopback (<0>127.0.0.1</0>) so external AI clients (like Claude Desktop, Cursor, or CLI agents) can query meetings, summaries, notes, transcripts, recipes, and daily notes."
 
 #: src/session/components/action-items/index.tsx
 msgid "Extract action items"
@@ -1311,6 +1399,10 @@ msgstr "Float chat"
 msgid "Floating bar look"
 msgstr "Floating bar look"
 
+#: src/session/components/outer-header/overflow/followup.tsx
+msgid "Follow-up email"
+msgstr "Follow-up email"
+
 #: src/templates/template-icon-picker.tsx
 msgid "Food & Drink"
 msgstr "Food & Drink"
@@ -1332,6 +1424,7 @@ msgid "Frequently used"
 msgstr "Frequently used"
 
 #: src/calendar/components/google/content.tsx
+#: src/calendar/components/outlook/content.tsx
 msgid "Full setup guide"
 msgstr "Full setup guide"
 
@@ -1342,6 +1435,10 @@ msgstr "Gateway found, but requires authentication. Run <0>omp auth-gateway toke
 #: src/sidebar/settings.tsx
 msgid "General"
 msgstr "General"
+
+#: src/settings/ai/llm/briefs.tsx
+msgid "Generate pre-meeting briefs"
+msgstr "Generate pre-meeting briefs"
 
 #: src/session/components/note-input/enhanced/streaming.tsx
 #: src/session/components/title-input.tsx
@@ -1368,6 +1465,15 @@ msgstr "Global shortcut that re-pastes your most recent dictation at the cursor,
 msgid "Global shortcut that starts or stops dictation. Click the combo, then press the keys you want - at least one of Ctrl, Alt, Shift or Super plus a key."
 msgstr "Global shortcut that starts or stops dictation. Click the combo, then press the keys you want - at least one of Ctrl, Alt, Shift or Super plus a key."
 
+#: src/settings/gmail/index.tsx
+#: src/sidebar/settings.tsx
+msgid "Gmail (beta)"
+msgstr "Gmail (beta)"
+
+#: src/settings/gmail/index.tsx
+msgid "Gmail OAuth client not configured in this build"
+msgstr "Gmail OAuth client not configured in this build"
+
 #: src/sidebar/timeline/index.tsx
 msgid "Go back to now"
 msgstr "Go back to now"
@@ -1391,6 +1497,10 @@ msgstr "Go to previous section"
 #: src/chat/components/body/index.tsx
 msgid "Go to recent"
 msgstr "Go to recent"
+
+#: src/calendar/components/outlook/content.tsx
+msgid "Go to the Microsoft Entra admin center or Azure Portal → App registrations → New registration."
+msgstr "Go to the Microsoft Entra admin center or Azure Portal → App registrations → New registration."
 
 #: src/settings/ai/stt/shared.tsx
 msgid "Good accuracy at a moderate speed."
@@ -1425,6 +1535,7 @@ msgid "Hide Deleted Events"
 msgstr "Hide Deleted Events"
 
 #: src/calendar/components/google/content.tsx
+#: src/calendar/components/outlook/content.tsx
 msgid "Hide setup steps"
 msgstr "Hide setup steps"
 
@@ -1456,6 +1567,14 @@ msgstr "Hold to talk"
 msgid "How do I get this file?"
 msgstr "How do I get this file?"
 
+#: src/calendar/components/outlook/content.tsx
+msgid "How do I register an app?"
+msgstr "How do I register an app?"
+
+#: src/settings/ai/llm/briefs.tsx
+msgid "How far in advance to generate briefs before events start."
+msgstr "How far in advance to generate briefs before events start."
+
 #: src/settings/general/notification.tsx
 msgid "How long the mic must be active before triggering"
 msgstr "How long the mic must be active before triggering"
@@ -1464,9 +1583,17 @@ msgstr "How long the mic must be active before triggering"
 msgid "Human"
 msgstr "Human"
 
+#: src/settings/ai/llm/disclosure-modal.tsx
+msgid "I Understand and Accept"
+msgstr "I Understand and Accept"
+
 #: src/templates/template-icon-picker.tsx
 msgid "Icons"
 msgstr "Icons"
+
+#: src/settings/ai/llm/subscription-card.tsx
+msgid "If the automatic callback did not complete, paste the authorization code from your browser below:"
+msgstr "If the automatic callback did not complete, paste the authorization code from your browser below:"
 
 #: src/settings/general/account.tsx
 msgid "If the browser does not reopen Notare, use the paste-link fallback in the sign-in instruction window."
@@ -1628,6 +1755,10 @@ msgstr "LinkedIn"
 msgid "Listening..."
 msgstr "Listening..."
 
+#: src/settings/mcp/index.tsx
+msgid "Listens on loopback only. Requires bearer token authentication."
+msgstr "Listens on loopback only. Requires bearer token authentication."
+
 #: src/settings/ai/stt/select.tsx
 msgid "Live"
 msgstr "Live"
@@ -1661,6 +1792,14 @@ msgstr "Loading available models…"
 #: src/calendar/components/calendar-selection.tsx
 msgid "Loading calendars..."
 msgstr "Loading calendars..."
+
+#: src/settings/gmail/index.tsx
+msgid "Loading Gmail settings"
+msgstr "Loading Gmail settings"
+
+#: src/settings/mcp/index.tsx
+msgid "Loading MCP settings..."
+msgstr "Loading MCP settings..."
 
 #: src/settings/ai/shared/model-combobox.tsx
 #: src/settings/ai/stt/select.tsx
@@ -1737,6 +1876,10 @@ msgstr "Match case"
 msgid "Match whole word"
 msgstr "Match whole word"
 
+#: src/sidebar/settings.tsx
+msgid "MCP Server"
+msgstr "MCP Server"
+
 #: src/session/components/action-items/index.tsx
 msgid "Medium"
 msgstr "Medium"
@@ -1778,6 +1921,10 @@ msgstr "Merged"
 msgid "Metadata"
 msgstr "Metadata"
 
+#: src/settings/ai/llm/select.tsx
+msgid "Metal GPU offload (macOS)"
+msgstr "Metal GPU offload (macOS)"
+
 #: src/onboarding/permissions.tsx
 #: src/settings/general/app-settings.tsx
 #: src/settings/general/permissions.tsx
@@ -1815,6 +1962,10 @@ msgstr "Model"
 #: src/settings/ai/llm/select.tsx
 msgid "Model being used"
 msgstr "Model being used"
+
+#: src/settings/mcp/index.tsx
+msgid "Model Context Protocol (MCP)"
+msgstr "Model Context Protocol (MCP)"
 
 #: src/settings/general/week-start.tsx
 msgid "Monday"
@@ -1864,6 +2015,10 @@ msgstr "Multilingual"
 #: src/contacts/organization-details.tsx
 msgid "Name"
 msgstr "Name"
+
+#: src/calendar/components/outlook/content.tsx
+msgid "Name: <0>Notare</0> (or any name)."
+msgstr "Name: <0>Notare</0> (or any name)."
 
 #: src/settings/sync/index.tsx
 msgid "Never connected"
@@ -1949,6 +2104,10 @@ msgstr "No dictionary entries yet."
 #: src/templates/template-icon-picker.tsx
 msgid "No emoji found"
 msgstr "No emoji found"
+
+#: src/settings/gmail/index.tsx
+msgid "No Gmail accounts connected yet."
+msgstr "No Gmail accounts connected yet."
 
 #: src/templates/template-icon-picker.tsx
 msgid "No icons found"
@@ -2040,6 +2199,10 @@ msgstr "No transcript to extract from yet."
 #: src/settings/dictation/index.tsx
 msgid "None"
 msgstr "None"
+
+#: src/settings/ai/llm/subscription-card.tsx
+msgid "Not connected"
+msgstr "Not connected"
 
 #: src/settings/ai/stt/select.tsx
 msgid "Not installed"
@@ -2146,6 +2309,14 @@ msgstr "Objects"
 msgid "Off by default. Turning this on starts a background sync agent that publishes this device's id and network address to Number 0 (n0.computer)'s public discovery service for as long as it runs, so your other devices can find it. No note content or paired-device information is ever published — only where this device can be reached. Turning it off immediately stops advertising this device."
 msgstr "Off by default. Turning this on starts a background sync agent that publishes this device's id and network address to Number 0 (n0.computer)'s public discovery service for as long as it runs, so your other devices can find it. No note content or paired-device information is ever published — only where this device can be reached. Turning it off immediately stops advertising this device."
 
+#: src/settings/gmail/index.tsx
+msgid "Official builds include the second Gmail client credentials. In development or source builds without <0>NOTARE_GMAIL_CLIENT_ID</0>, follow-up email drafts seamlessly fall back to clipboard copy and your system email app (<1>mailto:</1>)."
+msgstr "Official builds include the second Gmail client credentials. In development or source builds without <0>NOTARE_GMAIL_CLIENT_ID</0>, follow-up email drafts seamlessly fall back to clipboard copy and your system email app (<1>mailto:</1>)."
+
+#: src/settings/ai/llm/select.tsx
+msgid "Offload model layers to Apple Silicon / Metal GPU for faster inference."
+msgstr "Offload model layers to Apple Silicon / Metal GPU for faster inference."
+
 #: src/contacts/shared.tsx
 msgid "Oldest"
 msgstr "Oldest"
@@ -2190,6 +2361,10 @@ msgstr "Open calendar"
 #: src/calendar/components/calendar-selection.tsx
 msgid "Open calendar account actions"
 msgstr "Open calendar account actions"
+
+#: src/calendar/components/outlook/content.tsx
+msgid "Open Entra admin center"
+msgstr "Open Entra admin center"
 
 #: src/session/components/outer-header/overflow/index.tsx
 msgid "Open floating panel"
@@ -2287,6 +2462,10 @@ msgstr "Particles"
 msgid "Paste at cursor"
 msgstr "Paste at cursor"
 
+#: src/settings/ai/llm/subscription-card.tsx
+msgid "Paste authorization code here"
+msgstr "Paste authorization code here"
+
 #: src/settings/dictation/index.tsx
 msgid "Paste last dictation"
 msgstr "Paste last dictation"
@@ -2319,6 +2498,10 @@ msgstr "Peer fingerprint"
 #: src/session/components/note-input/transcript/renderer/speaker-assign.tsx
 msgid "People"
 msgstr "People"
+
+#: src/settings/mcp/index.tsx
+msgid "Per-install secret token stored securely in your OS keychain. Required in the <0>Authorization: Bearer <token></0> header."
+msgstr "Per-install secret token stored securely in your OS keychain. Required in the <0>Authorization: Bearer <token></0> header."
 
 #: src/calendar/components/apple/permission.tsx
 msgid "permission panel."
@@ -2369,6 +2552,14 @@ msgstr "Plan & Billing"
 #: src/settings/general/account.tsx
 msgid "Plans"
 msgstr "Plans"
+
+#: src/settings/ai/llm/briefs.tsx
+msgid "Pre-Meeting Briefs"
+msgstr "Pre-Meeting Briefs"
+
+#: src/settings/ai/llm/briefs.tsx
+msgid "Preparation window"
+msgstr "Preparation window"
 
 #: src/session/components/outer-header/overflow/export-modal.tsx
 msgid "Preparing transcript..."
@@ -2460,6 +2651,10 @@ msgstr "Record"
 msgid "Recording time"
 msgstr "Recording time"
 
+#: src/calendar/components/outlook/content.tsx
+msgid "Redirect URI: select platform <0>Mobile and desktop applications</0> and enter <1>http://localhost</1>."
+msgstr "Redirect URI: select platform <0>Mobile and desktop applications</0> and enter <1>http://localhost</1>."
+
 #: src/settings/general/app-settings.tsx
 msgid "Reduce background noise on your microphone before transcription. Applies to new sessions only; recordings are always saved unprocessed."
 msgstr "Reduce background noise on your microphone before transcription. Applies to new sessions only; recordings are always saved unprocessed."
@@ -2471,6 +2666,10 @@ msgstr "Refresh billing status"
 #: src/calendar/components/calendar-selection.tsx
 msgid "Refresh calendars"
 msgstr "Refresh calendars"
+
+#: src/settings/mcp/index.tsx
+msgid "Regenerate"
+msgstr "Regenerate"
 
 #: src/chat/components/message/normal.tsx
 msgid "Regenerate message"
@@ -2634,6 +2833,10 @@ msgstr "Rotate"
 #: src/settings/ai/llm/routing.tsx
 msgid "Routing"
 msgstr "Routing"
+
+#: src/settings/mcp/index.tsx
+msgid "Running on port {port}"
+msgstr "Running on port {port}"
 
 #: src/settings/ai/shared/index.tsx
 #: src/settings/ai/stt/select.tsx
@@ -2825,6 +3028,10 @@ msgstr "Send Notare events to an endpoint you control. Off by default — nothin
 msgid "Send test event"
 msgstr "Send test event"
 
+#: src/settings/mcp/index.tsx
+msgid "Server Port"
+msgstr "Server Port"
+
 #: src/session/components/action-items/index.tsx
 msgid "Session content is not available yet."
 msgstr "Session content is not available yet."
@@ -2928,6 +3135,7 @@ msgstr "Show This Event"
 msgid "Show tray icon"
 msgstr "Show tray icon"
 
+#: src/settings/ai/llm/subscription-card.tsx
 #: src/settings/general/account.tsx
 msgid "Sign in"
 msgstr "Sign in"
@@ -2939,6 +3147,10 @@ msgstr "Sign in for private repo access."
 #: src/settings/general/account.tsx
 msgid "Sign in for Pro"
 msgstr "Sign in for Pro"
+
+#: src/settings/ai/llm/select.tsx
+msgid "Sign in in settings to use this provider."
+msgstr "Sign in in settings to use this provider."
 
 #. placeholder {0}: config.displayName
 #: src/settings/todo/provider-content.tsx
@@ -2957,14 +3169,24 @@ msgstr "Sign in to unlock cloud transcription and AI models, plus Pro features l
 msgid "Sign in to your account"
 msgstr "Sign in to your account"
 
+#: src/settings/ai/llm/configure.tsx
+msgid "Sign in with your Claude, ChatGPT, or Google account to use your subscription directly without entering API keys."
+msgstr "Sign in with your Claude, ChatGPT, or Google account to use your subscription directly without entering API keys."
+
+#: src/settings/ai/llm/subscription-card.tsx
 #: src/settings/general/account.tsx
 msgid "Sign out"
 msgstr "Sign out"
 
 #: src/onboarding/account/after-login.tsx
+#: src/settings/ai/llm/subscription-card.tsx
 #: src/settings/general/account.tsx
 msgid "Signed in"
 msgstr "Signed in"
+
+#: src/settings/ai/llm/subscription-card.tsx
+msgid "Signing in with your browser…"
+msgstr "Signing in with your browser…"
 
 #: src/settings/general/account.tsx
 msgid "Signing out..."
@@ -3104,6 +3326,10 @@ msgstr "Stop transcription"
 msgid "Stop when meeting ends"
 msgstr "Stop when meeting ends"
 
+#: src/settings/mcp/index.tsx
+msgid "Stopped"
+msgstr "Stopped"
+
 #: src/settings/sync/index.tsx
 msgid "Stopping sync…"
 msgstr "Stopping sync…"
@@ -3138,6 +3364,10 @@ msgstr "Summary instructions"
 #: src/settings/general/week-start.tsx
 msgid "Sunday"
 msgstr "Sunday"
+
+#: src/calendar/components/outlook/content.tsx
+msgid "Supported account types: choose <0>Accounts in any organizational directory and personal Microsoft accounts</0>."
+msgstr "Supported account types: choose <0>Accounts in any organizational directory and personal Microsoft accounts</0>."
 
 #: src/settings/ai/stt/shared.tsx
 msgid "Supports {languageCount} languages."
@@ -3267,6 +3497,10 @@ msgstr "This combination is already used by the paste-last-dictation shortcut be
 #: src/settings/sync/index.tsx
 msgid "This device"
 msgstr "This device"
+
+#: src/settings/ai/llm/disclosure-modal.tsx
+msgid "This feature signs you in using OAuth client credentials intended for the vendor's own command-line tools (such as Claude Code, Codex, or Gemini CLI)."
+msgstr "This feature signs you in using OAuth client credentials intended for the vendor's own command-line tools (such as Claude Code, Codex, or Gemini CLI)."
 
 #: src/chat/components/scope-selector.tsx
 msgid "This meeting"
@@ -3408,6 +3642,11 @@ msgstr "Unnamed"
 msgid "Unnamed device"
 msgstr "Unnamed device"
 
+#: src/settings/ai/llm/configure.tsx
+#: src/settings/ai/llm/subscription-card.tsx
+msgid "Unofficial"
+msgstr "Unofficial"
+
 #: src/snippets/entry-row.tsx
 msgid "Unpin"
 msgstr "Unpin"
@@ -3502,6 +3741,15 @@ msgstr "Use"
 msgid "Use default model"
 msgstr "Use default model"
 
+#: src/settings/ai/llm/configure.tsx
+#: src/settings/ai/llm/select.tsx
+msgid "Use my subscription (unofficial)"
+msgstr "Use my subscription (unofficial)"
+
+#: src/settings/ai/llm/disclosure-modal.tsx
+msgid "Use Subscription Credentials (Unofficial)"
+msgstr "Use Subscription Credentials (Unofficial)"
+
 #: src/settings/ai/llm/routing.tsx
 msgid "Use the selected model for action items and other structured-output tasks even when its size can't be confirmed. Turn this on only if you trust your model's output quality; Notare still rejects malformed results downstream."
 msgstr "Use the selected model for action items and other structured-output tasks even when its size can't be confirmed. Turn this on only if you trust your model's output quality; Notare still rejects malformed results downstream."
@@ -3509,6 +3757,10 @@ msgstr "Use the selected model for action items and other structured-output task
 #: src/settings/ai/stt/select.tsx
 msgid "Used for the accurate pass after a recording ends, imported files, and re-transcription. Pick a larger on-device model, a custom self-hosted server, or a cloud provider — independent of the live model."
 msgstr "Used for the accurate pass after a recording ends, imported files, and re-transcription. Pick a larger on-device model, a custom self-hosted server, or a cloud provider — independent of the live model."
+
+#: src/settings/ai/llm/subscription-card.tsx
+msgid "Verification failed. Check the code and try again."
+msgstr "Verification failed. Check the code and try again."
 
 #: src/settings/general/storage/legacy-cleanup.tsx
 msgid "Verifying the SQLite migration status"

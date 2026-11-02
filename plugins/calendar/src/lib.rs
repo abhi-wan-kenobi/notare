@@ -3,6 +3,7 @@ mod error;
 mod events;
 mod google;
 mod ics;
+mod outlook;
 mod runtime;
 
 pub use error::Error;
@@ -33,6 +34,15 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
             commands::google_connect::<tauri::Wry>,
             commands::google_disconnect::<tauri::Wry>,
             commands::google_reset::<tauri::Wry>,
+            commands::outlook_account_status::<tauri::Wry>,
+            commands::outlook_set_client_id::<tauri::Wry>,
+            commands::outlook_connect::<tauri::Wry>,
+            commands::outlook_disconnect::<tauri::Wry>,
+            commands::outlook_reset::<tauri::Wry>,
+            commands::gmail_status::<tauri::Wry>,
+            commands::gmail_connect::<tauri::Wry>,
+            commands::gmail_disconnect::<tauri::Wry>,
+            commands::gmail_create_draft::<tauri::Wry>,
             commands::ics_list_files::<tauri::Wry>,
             commands::ics_import_files::<tauri::Wry>,
             commands::ics_replace_file::<tauri::Wry>,
@@ -56,6 +66,7 @@ pub fn init<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
             use tauri::Manager;
             app.manage(PluginConfig { api_base_url });
             app.manage(google::GoogleAuthState::default());
+            app.manage(outlook::OutlookAuthState::default());
             Ok(())
         })
         .build()

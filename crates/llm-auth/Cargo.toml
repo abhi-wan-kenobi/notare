@@ -1,0 +1,22 @@
+[package]
+name = "llm-auth"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+hypr-oauth-loopback = { workspace = true }
+reqwest = { workspace = true, features = ["json"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+chrono = { workspace = true, features = ["serde"] }
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["net", "io-util", "time", "macros", "sync"] }
+tracing = { workspace = true }
+base64 = { workspace = true }
+specta = { workspace = true, features = ["chrono", "derive"] }
+urlencoding = { workspace = true }
+uuid = { workspace = true, features = ["v4"] }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
+wiremock = { workspace = true }

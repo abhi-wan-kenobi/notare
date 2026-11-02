@@ -1,4 +1,4 @@
-mod convert;
+pub mod convert;
 mod error;
 mod fetch;
 pub mod runtime;
@@ -35,6 +35,9 @@ pub struct ProviderConnectionIds {
 /// integration. There is exactly one Google connection at a time.
 pub const GOOGLE_DIRECT_CONNECTION_ID: &str = "google-direct";
 
+/// The synthetic connection id used for the direct Outlook integration.
+pub const OUTLOOK_DIRECT_CONNECTION_ID: &str = "outlook-direct";
+
 /// The single synthetic connection id for imported `.ics` calendar files.
 pub const ICS_CONNECTION_ID: &str = "ics";
 
@@ -62,10 +65,12 @@ pub async fn list_connection_ids(
     access_token: Option<&str>,
     apple_authorized: bool,
     google_connected: bool,
+    outlook_connected: bool,
     ics_connected: bool,
 ) -> Result<Vec<ProviderConnectionIds>, Error> {
     use std::collections::HashMap;
 
+    let _ = (api_base_url, access_token);
     let mut map: HashMap<CalendarProviderType, Vec<String>> = HashMap::new();
 
     #[cfg(target_os = "macos")]
@@ -90,6 +95,15 @@ pub async fn list_connection_ids(
         );
     }
 
+    // Outlook runs directly against Microsoft Graph — no cloud connection involved.
+    map.entry(CalendarProviderType::Outlook).or_default();
+    if outlook_connected {
+        map.insert(
+            CalendarProviderType::Outlook,
+            vec![OUTLOOK_DIRECT_CONNECTION_ID.to_string()],
+        );
+    }
+
     // Imported .ics files are fully local; a single synthetic connection
     // carries all of them (each file = one calendar).
     map.entry(CalendarProviderType::Ics).or_default();
@@ -98,33 +112,6 @@ pub async fn list_connection_ids(
             CalendarProviderType::Ics,
             vec![ICS_CONNECTION_ID.to_string()],
         );
-    }
-
-    if let Some(token) = access_token.filter(|t| !t.is_empty()) {
-        match fetch::list_all_connection_ids(api_base_url, token).await {
-            Ok(all) => {
-                // empty vec = provider is available but has no connections (vs absent = unavailable)
-                map.entry(CalendarProviderType::Outlook).or_default();
-                for (integration_id, connection_ids) in all {
-                    let provider = match integration_id.as_str() {
-                        "outlook" => CalendarProviderType::Outlook,
-                        _ => continue,
-                    };
-                    map.insert(provider, connection_ids);
-                }
-            }
-            Err(e) => {
-                if is_local_api_base_url(api_base_url) {
-                    tracing::debug!(
-                        "failed to fetch remote connection ids from local API: {e}; continuing with local providers only"
-                    );
-                } else {
-                    tracing::warn!(
-                        "failed to fetch remote connection ids: {e}; continuing with local providers only"
-                    );
-                }
-            }
-        }
     }
 
     Ok(map
@@ -136,6 +123,7 @@ pub async fn list_connection_ids(
         .collect())
 }
 
+#[allow(dead_code)]
 fn is_local_api_base_url(api_base_url: &str) -> bool {
     reqwest::Url::parse(api_base_url)
         .ok()
@@ -151,6 +139,7 @@ pub async fn is_provider_enabled(
     access_token: Option<&str>,
     apple_authorized: bool,
     google_connected: bool,
+    outlook_connected: bool,
     ics_connected: bool,
     provider: CalendarProviderType,
 ) -> Result<bool, Error> {
@@ -159,6 +148,7 @@ pub async fn is_provider_enabled(
         access_token,
         apple_authorized,
         google_connected,
+        outlook_connected,
         ics_connected,
     )
     .await?;
@@ -168,7 +158,7 @@ pub async fn is_provider_enabled(
 }
 
 pub async fn list_calendars(
-    api_base_url: &str,
+    _api_base_url: &str,
     access_token: &str,
     provider: CalendarProviderType,
     connection_id: &str,
@@ -188,8 +178,9 @@ pub async fn list_calendars(
             Ok(convert::convert_google_calendars(calendars))
         }
         CalendarProviderType::Outlook => {
+            let _ = connection_id;
             let calendars =
-                fetch::list_outlook_calendars(api_base_url, access_token, connection_id).await?;
+                fetch::list_outlook_calendars_direct(fetch::MS_GRAPH_BASE, access_token).await?;
             Ok(convert::convert_outlook_calendars(calendars))
         }
         CalendarProviderType::Ics => {
@@ -201,7 +192,7 @@ pub async fn list_calendars(
 }
 
 pub async fn list_events(
-    api_base_url: &str,
+    _api_base_url: &str,
     access_token: &str,
     provider: CalendarProviderType,
     connection_id: &str,
@@ -222,9 +213,10 @@ pub async fn list_events(
             Ok(convert::convert_google_events(events, &calendar_id))
         }
         CalendarProviderType::Outlook => {
+            let _ = connection_id;
             let calendar_id = filter.calendar_tracking_id.clone();
             let events =
-                fetch::list_outlook_events(api_base_url, access_token, connection_id, filter)
+                fetch::list_outlook_events_direct(fetch::MS_GRAPH_BASE, access_token, filter)
                     .await?;
             Ok(convert::convert_outlook_events(events, &calendar_id))
         }

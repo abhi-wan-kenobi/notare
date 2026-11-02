@@ -1,0 +1,5 @@
+{
+  "name": "@hypr/plugin-mcp-server",
+  "private": true,
+  "main": "./js/index.ts"
+}

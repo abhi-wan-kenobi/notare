@@ -2,9 +2,10 @@ use hypr_http::HttpClient;
 
 use crate::error::Error;
 use crate::types::{
-    Attachment, GetMessageRequest, GetThreadRequest, HistoryType, ListHistoryRequest,
-    ListHistoryResponse, ListLabelsResponse, ListMessagesRequest, ListMessagesResponse,
-    ListThreadsRequest, ListThreadsResponse, Message, MessageFormat, Profile, Thread,
+    Attachment, CreateDraftRequest, Draft, GetMessageRequest, GetThreadRequest, HistoryType,
+    ListHistoryRequest, ListHistoryResponse, ListLabelsResponse, ListMessagesRequest,
+    ListMessagesResponse, ListThreadsRequest, ListThreadsResponse, Message, MessageFormat, Profile,
+    Thread,
 };
 
 pub struct GoogleMailClient<C> {
@@ -212,5 +213,18 @@ impl<C: HttpClient> GoogleMailClient<C> {
         let bytes = self.http.get(&path).await.map_err(Error::Http)?;
         let response: ListHistoryResponse = serde_json::from_slice(&bytes)?;
         Ok(response)
+    }
+
+    pub async fn create_draft(&self, req: CreateDraftRequest) -> Result<Draft, Error> {
+        let user_id = urlencoding::encode(&req.user_id);
+        let path = format!("/gmail/v1/users/{user_id}/drafts");
+        let body = serde_json::to_vec(&req.draft)?;
+        let bytes = self
+            .http
+            .post(&path, body, "application/json")
+            .await
+            .map_err(Error::Http)?;
+        let draft: Draft = serde_json::from_slice(&bytes)?;
+        Ok(draft)
     }
 }

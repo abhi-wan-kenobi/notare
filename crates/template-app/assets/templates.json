@@ -1,0 +1,721 @@
+[
+  {
+    "slug": "one-on-one-meeting",
+    "title": "1:1 Meeting",
+    "description": "Regular check-in between manager and direct report to discuss priorities, feedback, and growth.",
+    "category": "management",
+    "icon": { "type": "icon", "value": "users", "color": "#3b82f6" },
+    "sections": [
+      {
+        "title": "Wins & Highlights",
+        "description": "Notable accomplishments and positive developments since the last check-in."
+      },
+      {
+        "title": "Priorities & Progress",
+        "description": "Current focus areas, active workstreams, and milestone progress."
+      },
+      {
+        "title": "Roadblocks & Support",
+        "description": "Obstacles, dependency delays, or where manager guidance and unblocking are needed."
+      },
+      {
+        "title": "Feedback & Growth",
+        "description": "Mutual feedback, career aspirations, and development opportunities."
+      },
+      {
+        "title": "Action Items & Next Steps",
+        "description": "Clear commitments, assignees, and deadlines agreed during the session."
+      }
+    ]
+  },
+  {
+    "slug": "sales-discovery",
+    "title": "Sales Discovery",
+    "description": "Initial qualification call to uncover prospect business challenges, goals, and technical requirements.",
+    "category": "sales",
+    "icon": { "type": "icon", "value": "compass", "color": "#10b981" },
+    "sections": [
+      {
+        "title": "Company & Role Context",
+        "description": "Prospect background, team structure, current operating environment, and business model."
+      },
+      {
+        "title": "Core Challenges & Pain Points",
+        "description": "Current bottlenecks, operational frustrations, and what prompted the evaluation."
+      },
+      {
+        "title": "Desired Outcomes & Goals",
+        "description": "What quantifiable success looks like, key KPIs, and target timeframes."
+      },
+      {
+        "title": "Tech Stack & Workflow",
+        "description": "Existing software ecosystem, integration requirements, and technical constraints."
+      },
+      {
+        "title": "Decision Process & Timeline",
+        "description": "Key stakeholders, evaluation criteria, budget ownership, and procurement steps."
+      },
+      { "title": "Next Steps", "description": "Agreed follow-ups, scheduled demo or collateral, and action items." }
+    ]
+  },
+  {
+    "slug": "sales-demo",
+    "title": "Sales Demo",
+    "description": "Tailored product walk-through addressing prospect use cases, questions, and feature alignment.",
+    "category": "sales",
+    "icon": { "type": "icon", "value": "presentation", "color": "#10b981" },
+    "sections": [
+      {
+        "title": "Meeting Objectives & Agenda",
+        "description": "Review tailored agenda, confirmed attendees, and goals for the walkthrough."
+      },
+      {
+        "title": "Use Cases Demonstrated",
+        "description": "Key workflows, features shown, and how they map to prospect pain points."
+      },
+      {
+        "title": "Prospect Questions & Reactions",
+        "description": "Feedback on specific features, technical objections, and positive signals."
+      },
+      {
+        "title": "Technical Requirements & Integrations",
+        "description": "Architecture fit, security considerations, and necessary third-party connectors."
+      },
+      {
+        "title": "Commercials & Proposal Next Steps",
+        "description": "Pricing tiers discussed, proof of concept scope, and procurement timeline."
+      }
+    ]
+  },
+  {
+    "slug": "customer-success-check-in",
+    "title": "Customer Success Check-In",
+    "description": "Periodic account sync to evaluate product adoption, account health, and ongoing support needs.",
+    "category": "customer success",
+    "icon": { "type": "icon", "value": "heart-handshake", "color": "#ec4899" },
+    "sections": [
+      {
+        "title": "Account Health & Usage",
+        "description": "License adoption metrics, active user trends, and product utilization review."
+      },
+      {
+        "title": "Recent Wins & Value Realized",
+        "description": "Milestones achieved with the platform and measurable outcomes reached."
+      },
+      {
+        "title": "Open Issues & Support Escalations",
+        "description": "Bug reports, open tickets, technical hurdles, and unresolved requests."
+      },
+      {
+        "title": "Upcoming Roadmap & Feature Requests",
+        "description": "Feature asks, relevant product roadmap items, and beta opportunities."
+      },
+      {
+        "title": "Action Items & Renewal Timeline",
+        "description": "Next deliverables, owner assignments, and key contract milestone dates."
+      }
+    ]
+  },
+  {
+    "slug": "interview-hiring",
+    "title": "Interview (Hiring)",
+    "description": "Structured candidate interview evaluating competencies, culture fit, and role-specific requirements.",
+    "category": "people",
+    "icon": { "type": "icon", "value": "user-check", "color": "#8b5cf6" },
+    "sections": [
+      {
+        "title": "Candidate Background & Overview",
+        "description": "Career trajectory, relevant past projects, and core motivations for applying."
+      },
+      {
+        "title": "Role-Specific Competencies",
+        "description": "Assessment of technical, operational, or functional skills against role rubric."
+      },
+      {
+        "title": "Behavioral & Situational Examples",
+        "description": "Handling conflict, cross-functional collaboration, ownership, and ambiguity."
+      },
+      {
+        "title": "Culture & Values Alignment",
+        "description": "Communication style, team dynamics fit, and curiosity about the mission."
+      },
+      {
+        "title": "Candidate Questions",
+        "description": "Questions asked about the team, company vision, tech stack, and expectations."
+      },
+      {
+        "title": "Recommendation & Next Steps",
+        "description": "Overall hiring score (Strong Yes / Yes / No), standout pros/cons, and hiring manager recommendation."
+      }
+    ]
+  },
+  {
+    "slug": "user-research-interview",
+    "title": "User Research Interview",
+    "description": "Qualitative research session to understand user behaviors, mental models, and product feedback.",
+    "category": "research",
+    "icon": { "type": "icon", "value": "search", "color": "#06b6d4" },
+    "sections": [
+      {
+        "title": "Participant Profile",
+        "description": "Demographics, role, experience level, and relevant usage habits."
+      },
+      {
+        "title": "Current Workflow & Mental Model",
+        "description": "How they currently accomplish the task, workarounds used, and key triggers."
+      },
+      {
+        "title": "Observations & Pain Points",
+        "description": "Moments of friction, confusion, cognitive load, and unmet needs observed."
+      },
+      {
+        "title": "Concept or Prototype Feedback",
+        "description": "Immediate reactions to prototypes, feature concepts, or usability tasks."
+      },
+      {
+        "title": "Key Quotes & Insights",
+        "description": "Memorable verbatim quotes and qualitative patterns across participants."
+      }
+    ]
+  },
+  {
+    "slug": "standup",
+    "title": "Standup",
+    "description": "Daily agile team synchronization for progress updates and blocker identification.",
+    "category": "engineering",
+    "icon": { "type": "icon", "value": "clock", "color": "#f59e0b" },
+    "sections": [
+      {
+        "title": "Completed Yesterday",
+        "description": "Tasks finished, PRs merged, and milestones reached since the last sync."
+      },
+      { "title": "Committed Today", "description": "Target items planned for today and expected PRs or deliverables." },
+      {
+        "title": "Blockers & Impediments",
+        "description": "Issues blocking progress, dependency bottlenecks, or requests for peer assistance."
+      },
+      {
+        "title": "Announcements & Notes",
+        "description": "Environment maintenance, release dates, or cross-team notices."
+      }
+    ]
+  },
+  {
+    "slug": "sprint-planning",
+    "title": "Sprint Planning",
+    "description": "Sprint kickoff session to scope, estimate, and commit to engineering deliverables.",
+    "category": "engineering",
+    "icon": { "type": "icon", "value": "calendar-range", "color": "#3b82f6" },
+    "sections": [
+      { "title": "Sprint Goal", "description": "The overarching business or technical objective for this iteration." },
+      {
+        "title": "Team Capacity & Availability",
+        "description": "Available engineering days accounting for vacations, holidays, and on-call rotations."
+      },
+      {
+        "title": "Committed Backlog Items",
+        "description": "User stories, bug fixes, and technical debt tasks accepted into the sprint."
+      },
+      {
+        "title": "Dependencies & External Risks",
+        "description": "Cross-team deliverables, third-party integrations, and known risks."
+      },
+      {
+        "title": "Definition of Done & QA Plan",
+        "description": "Testing criteria, rollout flags, and acceptance validation requirements."
+      }
+    ]
+  },
+  {
+    "slug": "sprint-retro",
+    "title": "Sprint Retro",
+    "description": "Blameless retrospective to reflect on team performance, tooling, and continuous process improvements.",
+    "category": "engineering",
+    "icon": { "type": "icon", "value": "refresh-cw", "color": "#6366f1" },
+    "sections": [
+      {
+        "title": "What Went Well",
+        "description": "Practices, tooling wins, and collaboration highlights worth celebrating and keeping."
+      },
+      {
+        "title": "What Could Be Improved",
+        "description": "Friction points, process bottlenecks, unexpected scope changes, and delays."
+      },
+      { "title": "Key Learnings", "description": "Technical and workflow insights discovered during the iteration." },
+      {
+        "title": "Action Items for Next Sprint",
+        "description": "Concrete, assignable process or tooling adjustments with designated owners."
+      }
+    ]
+  },
+  {
+    "slug": "design-review",
+    "title": "Design Review",
+    "description": "Critique and alignment session on user experience, UI components, and design systems.",
+    "category": "design",
+    "icon": { "type": "icon", "value": "palette", "color": "#a855f7" },
+    "sections": [
+      {
+        "title": "Problem & Context",
+        "description": "User problem, target persona, and product requirements framing the design."
+      },
+      {
+        "title": "User Flows & Wireframes",
+        "description": "Navigation structure, screen flows, edge cases, and empty states evaluated."
+      },
+      {
+        "title": "UI Polish & Component Consistency",
+        "description": "Design tokens, accessibility considerations (contrast, keyboard), and micro-interactions."
+      },
+      {
+        "title": "Feedback & Open Decisions",
+        "description": "Constructive critique, trade-offs discussed, and decisions requiring resolution."
+      },
+      {
+        "title": "Follow-Up Revisions",
+        "description": "Next design iterations, handoff deadlines, and prototype updates."
+      }
+    ]
+  },
+  {
+    "slug": "architecture-review",
+    "title": "Architecture Review",
+    "description": "Deep-dive technical review of system design, data modeling, scalability, and security posture.",
+    "category": "engineering",
+    "icon": { "type": "icon", "value": "network", "color": "#64748b" },
+    "sections": [
+      {
+        "title": "System Overview & Goals",
+        "description": "High-level architecture, business drivers, and non-functional requirements (SLAs/SLOs)."
+      },
+      {
+        "title": "Component Architecture & Data Flow",
+        "description": "Service boundaries, API contracts, database schema, and event pipelines."
+      },
+      {
+        "title": "Scalability, Performance & Reliability",
+        "description": "Throughput limits, caching strategies, failure modes, and recovery mechanisms."
+      },
+      {
+        "title": "Security, Privacy & Compliance",
+        "description": "Authentication, authorization, data encryption, PII handling, and audit trails."
+      },
+      {
+        "title": "Trade-offs & Alternatives Considered",
+        "description": "Alternative approaches evaluated and rationale behind selected technologies."
+      },
+      {
+        "title": "Decisions & Migration Plan",
+        "description": "Consensus decisions, implementation phases, and rollback strategy."
+      }
+    ]
+  },
+  {
+    "slug": "incident-postmortem",
+    "title": "Incident Postmortem",
+    "description": "Blameless analysis of an outage or degraded service event to prevent recurrence.",
+    "category": "engineering",
+    "icon": { "type": "icon", "value": "shield-alert", "color": "#ef4444" },
+    "sections": [
+      {
+        "title": "Executive Summary & Severity",
+        "description": "Incident classification, duration, affected services, and overall business impact."
+      },
+      {
+        "title": "Timeline of Events",
+        "description": "Chronological breakdown from initial detection to full service restoration."
+      },
+      {
+        "title": "Root Cause Analysis (5 Whys)",
+        "description": "Underlying triggers, contributing technical factors, and failure mechanisms."
+      },
+      {
+        "title": "Detection & Response Effectiveness",
+        "description": "How the incident was spotted (alerts vs. user reports) and team coordination efficiency."
+      },
+      {
+        "title": "What Went Well vs. Where We Got Lucky",
+        "description": "Resilient systems that helped, and vulnerabilities exposed by luck or timing."
+      },
+      {
+        "title": "Preventive Action Items",
+        "description": "P0/P1 engineering fixes, alert improvements, and runbook updates to prevent recurrence."
+      }
+    ]
+  },
+  {
+    "slug": "board-meeting",
+    "title": "Board Meeting",
+    "description": "High-level strategic and fiduciary meeting with company directors and investors.",
+    "category": "leadership",
+    "icon": { "type": "icon", "value": "landmark", "color": "#475569" },
+    "sections": [
+      {
+        "title": "Executive Overview & CEO Update",
+        "description": "Macro perspective, strategic milestones achieved, and key company challenges."
+      },
+      {
+        "title": "Financial Performance & Runway",
+        "description": "Revenue, ARR growth, burn rate, cash position, and revised projections."
+      },
+      {
+        "title": "Key Department Highlights",
+        "description": "Product roadmap momentum, sales pipeline health, engineering delivery, and hiring."
+      },
+      {
+        "title": "Strategic Topics & Growth Initiatives",
+        "description": "Market expansion, M&A, pricing changes, or new product category investments."
+      },
+      {
+        "title": "Formal Resolutions & Approvals",
+        "description": "Option grants, compensation approvals, financing authorizations, and governance items."
+      },
+      {
+        "title": "Closed Session / Action Items",
+        "description": "Executive session notes, follow-up disclosures, and commitments made to directors."
+      }
+    ]
+  },
+  {
+    "slug": "investor-update",
+    "title": "Investor Update",
+    "description": "Monthly or quarterly briefing for investors tracking growth metrics, milestones, and runway.",
+    "category": "finance",
+    "icon": { "type": "icon", "value": "trending-up", "color": "#10b981" },
+    "sections": [
+      {
+        "title": "TL;DR & Core Metrics",
+        "description": "MRR/ARR, growth percentage, net retention, active user count, and cash runway in months."
+      },
+      {
+        "title": "Highlights & Wins",
+        "description": "Major customer logos signed, key hires made, and product releases shipped."
+      },
+      {
+        "title": "Lowlights & Challenges",
+        "description": "Missed targets, churned accounts, technical setbacks, and learnings."
+      },
+      {
+        "title": "Product & Roadmap Progress",
+        "description": "Status of in-flight features, roadmap shifts, and user adoption metrics."
+      },
+      {
+        "title": "Asks from Investors",
+        "description": "Intro requests (prospects, candidates, advisors), feedback requests, and hiring amplification."
+      }
+    ]
+  },
+  {
+    "slug": "all-hands",
+    "title": "All-Hands",
+    "description": "Company-wide town hall meeting for sharing vision, company progress, and team recognition.",
+    "category": "leadership",
+    "icon": { "type": "icon", "value": "megaphone", "color": "#3b82f6" },
+    "sections": [
+      {
+        "title": "Welcome & Celebrations",
+        "description": "New hire welcomes, promotions, work anniversaries, and values shoutouts."
+      },
+      {
+        "title": "Company Vision & Strategic Priorities",
+        "description": "Leadership update on company direction, mission focus, and top initiatives."
+      },
+      {
+        "title": "Business Health & Metric Highlights",
+        "description": "High-level review of revenue, product usage, customer feedback, and quarterly targets."
+      },
+      {
+        "title": "Department Spotlight",
+        "description": "Showcase from a specific team detailing recent launches, experiments, or deep-dives."
+      },
+      { "title": "Open Q&A / AMA", "description": "Answers to questions submitted by employees anonymously or live." }
+    ]
+  },
+  {
+    "slug": "okr-review",
+    "title": "OKR Review",
+    "description": "Evaluation of Objectives and Key Results progress, confidence scoring, and blockers.",
+    "category": "leadership",
+    "icon": { "type": "icon", "value": "target", "color": "#f59e0b" },
+    "sections": [
+      {
+        "title": "Objective Progress Summary",
+        "description": "Overall score and status summary for company or department-level objectives."
+      },
+      {
+        "title": "Key Result Scores & Metrics",
+        "description": "Current numerical progress vs. targets for each key result with confidence ratings."
+      },
+      {
+        "title": "Wins & Accomplishments",
+        "description": "Significant breakthroughs and successful initiatives contributing to the OKRs."
+      },
+      {
+        "title": "Gaps, At-Risk Items & Root Causes",
+        "description": "Key results tracking behind schedule and underlying reasons for underperformance."
+      },
+      {
+        "title": "Pivots & Adjustments",
+        "description": "Resource reallocations, scope adjustments, or updated targets for the remainder of the cycle."
+      }
+    ]
+  },
+  {
+    "slug": "performance-review",
+    "title": "Performance Review",
+    "description": "Comprehensive evaluation of employee performance, impact, strengths, and growth paths.",
+    "category": "management",
+    "icon": { "type": "icon", "value": "award", "color": "#8b5cf6" },
+    "sections": [
+      {
+        "title": "Review Period & Role Expectations",
+        "description": "Role level, scope of responsibility, and key expectations for the evaluation period."
+      },
+      {
+        "title": "Major Contributions & Business Impact",
+        "description": "Key deliverables, project leadership, and measurable business outcomes achieved."
+      },
+      {
+        "title": "Demonstrated Strengths",
+        "description": "Core technical, leadership, or execution strengths consistently demonstrated."
+      },
+      {
+        "title": "Development Areas & Opportunities",
+        "description": "Constructive feedback on skill gaps, communication patterns, or execution opportunities."
+      },
+      {
+        "title": "Goals & Development Plan",
+        "description": "Actionable growth milestones, training opportunities, and goals for the upcoming review cycle."
+      }
+    ]
+  },
+  {
+    "slug": "project-kickoff",
+    "title": "Project Kickoff",
+    "description": "Initial alignment meeting establishing scope, ownership, timeline, and success metrics.",
+    "category": "product",
+    "icon": { "type": "icon", "value": "rocket", "color": "#ef4444" },
+    "sections": [
+      {
+        "title": "Problem Statement & Background",
+        "description": "Why we are doing this project, customer value proposition, and business context."
+      },
+      {
+        "title": "Project Scope & Non-Goals",
+        "description": "Explicit boundaries of what is included in the project and what is deliberately out of scope."
+      },
+      {
+        "title": "Roles & RACI Matrix",
+        "description": "Responsible, Accountable, Consulted, and Informed stakeholders and contributors."
+      },
+      {
+        "title": "Timeline & Key Milestones",
+        "description": "Target delivery phases, checkpoint demos, testing window, and launch date."
+      },
+      {
+        "title": "Risks & Open Questions",
+        "description": "Identified technical, operational, or dependency risks and initial mitigation plans."
+      }
+    ]
+  },
+  {
+    "slug": "project-status",
+    "title": "Project Status",
+    "description": "Regular status update tracking project health, deliverables, schedule, and risks.",
+    "category": "product",
+    "icon": { "type": "icon", "value": "check-circle-2", "color": "#10b981" },
+    "sections": [
+      {
+        "title": "Project Health & Overview",
+        "description": "Current status indicator (Green / Yellow / Red) and executive progress summary."
+      },
+      {
+        "title": "Recent Deliverables Shipped",
+        "description": "Milestones completed and features finalized during the reporting period."
+      },
+      {
+        "title": "Upcoming Workstreams",
+        "description": "Next deliverables queued for implementation in the coming work cycle."
+      },
+      {
+        "title": "Schedule & Budget Variance",
+        "description": "Any shifts in target milestone dates, resource bandwidth, or budget allocations."
+      },
+      {
+        "title": "Risks & Escalation Needs",
+        "description": "Blockers requiring cross-team intervention, leadership decisions, or resource adjustments."
+      }
+    ]
+  },
+  {
+    "slug": "vendor-evaluation",
+    "title": "Vendor Evaluation",
+    "description": "Structured assessment of third-party software, vendors, or external service providers.",
+    "category": "operations",
+    "icon": { "type": "icon", "value": "briefcase", "color": "#64748b" },
+    "sections": [
+      {
+        "title": "Vendor & Product Overview",
+        "description": "Company name, product description, vendor viability, and proposed service tier."
+      },
+      {
+        "title": "Functional & Feature Assessment",
+        "description": "How well the solution satisfies business requirements and functional checklist."
+      },
+      {
+        "title": "Security, Privacy & Compliance",
+        "description": "SOC 2, GDPR, data handling, enterprise SSO, encryption, and audit capabilities."
+      },
+      {
+        "title": "Pricing & Contract Terms",
+        "description": "Pricing structure, annual commitments, implementation fees, and renewal terms."
+      },
+      {
+        "title": "Pros, Cons & Team Consensus",
+        "description": "Summary comparison against competitive alternatives and stakeholder recommendations."
+      }
+    ]
+  },
+  {
+    "slug": "legal-contract-review",
+    "title": "Legal / Contract Review",
+    "description": "Review of contract clauses, legal risks, intellectual property terms, and commitments.",
+    "category": "legal",
+    "icon": { "type": "icon", "value": "shield-check", "color": "#0284c7" },
+    "sections": [
+      {
+        "title": "Contract Summary & Parties",
+        "description": "Agreement type (MSA, NDA, DPA, SOW), contracting entities, and effective dates."
+      },
+      {
+        "title": "Key Commercial & Financial Terms",
+        "description": "Payment obligations, net terms, price increases, and financial liability."
+      },
+      {
+        "title": "Risk Exposure & Indemnification",
+        "description": "Liability caps, warranties, indemnification provisions, and governing law."
+      },
+      {
+        "title": "Data Privacy & Intellectual Property",
+        "description": "IP ownership clauses, license grants, customer data handling, and confidentiality obligations."
+      },
+      {
+        "title": "Term, Termination & Auto-Renewal",
+        "description": "Notice periods, termination for convenience, auto-renewal clauses, and wind-down terms."
+      },
+      {
+        "title": "Required Redlines & Next Steps",
+        "description": "Mandatory amendments to request from opposing counsel and negotiation timeline."
+      }
+    ]
+  },
+  {
+    "slug": "therapy-coaching-session",
+    "title": "Therapy / Coaching Session",
+    "description": "Personal or professional coaching/therapy session notes, reflections, and growth commitments.",
+    "category": "personal",
+    "icon": { "type": "icon", "value": "smile", "color": "#f43f5e" },
+    "sections": [
+      {
+        "title": "Current State & Check-In",
+        "description": "Emotional baseline, energy levels, stress factors, and reflections on the week."
+      },
+      {
+        "title": "Core Themes & Discussion Topics",
+        "description": "Primary dilemmas, relationship dynamics, thought patterns, or career questions explored."
+      },
+      {
+        "title": "Breakthroughs & Reframings",
+        "description": "New perspectives gained, cognitive reframes, and insights into behaviors or motivations."
+      },
+      {
+        "title": "Practices & Action Commitments",
+        "description": "Behavioral experiments, journaling exercises, or communication practices for the week."
+      }
+    ]
+  },
+  {
+    "slug": "lecture-class",
+    "title": "Lecture / Class",
+    "description": "Structured educational notes capturing core concepts, formulas, and study questions.",
+    "category": "education",
+    "icon": { "type": "icon", "value": "graduation-cap", "color": "#3b82f6" },
+    "sections": [
+      {
+        "title": "Topic & Learning Objectives",
+        "description": "Course name, lecture date, primary subject matter, and key objectives."
+      },
+      {
+        "title": "Core Concepts & Theories",
+        "description": "Main arguments, theoretical frameworks, and key principles explained."
+      },
+      {
+        "title": "Definitions, Terminology & Formulas",
+        "description": "New vocabulary, critical definitions, equations, and illustrative examples."
+      },
+      {
+        "title": "Case Studies & Applications",
+        "description": "Real-world examples, historical cases, or practical applications discussed."
+      },
+      {
+        "title": "Review Questions & Next Reading",
+        "description": "Points requiring clarification, quiz prep questions, and assigned follow-up readings."
+      }
+    ]
+  },
+  {
+    "slug": "podcast-interview-recording",
+    "title": "Podcast / Interview Recording",
+    "description": "Recording notes capturing key discussion points, soundbites, and episode show notes.",
+    "category": "media",
+    "icon": { "type": "icon", "value": "mic", "color": "#8b5cf6" },
+    "sections": [
+      {
+        "title": "Episode Context & Guest Bio",
+        "description": "Episode title, recording date, guest name, background, and social links."
+      },
+      {
+        "title": "Main Discussion Themes",
+        "description": "Key topics covered throughout the conversation and narrative arc."
+      },
+      {
+        "title": "Memorable Soundbites & Quotes",
+        "description": "Timestamped impactful quotes, punchy insights, and engaging clip candidates."
+      },
+      {
+        "title": "Resources & Recommendations Mentioned",
+        "description": "Books, tools, articles, and references cited during the conversation."
+      },
+      {
+        "title": "Show Notes & Follow-Up Deliverables",
+        "description": "Summary draft for episode description, chapter markers, and social promo ideas."
+      }
+    ]
+  },
+  {
+    "slug": "personal-journal",
+    "title": "Personal Journal",
+    "description": "Daily reflection on thoughts, gratitudes, challenges, and personal intentions.",
+    "category": "personal",
+    "icon": { "type": "icon", "value": "book-open", "color": "#f97316" },
+    "sections": [
+      {
+        "title": "Morning Reflections & Intentions",
+        "description": "How I feel waking up, mindset, and the one thing that would make today great."
+      },
+      {
+        "title": "Events of the Day",
+        "description": "Key happenings, conversations, surprises, and accomplishments from today."
+      },
+      {
+        "title": "Gratitudes & Highlights",
+        "description": "Three specific things, interactions, or moments I am genuinely grateful for."
+      },
+      {
+        "title": "Challenges & Lessons",
+        "description": "What was difficult today, what I could have done better, and what I learned."
+      },
+      { "title": "Tomorrow's Focus", "description": "Top priority and mindset intention for tomorrow." }
+    ]
+  }
+]

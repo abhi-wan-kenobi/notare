@@ -1,0 +1,35 @@
+{
+  "providers": [
+    {
+      "id": "anthropic",
+      "enabled": false,
+      "label": "Anthropic (Claude)",
+      "beta_headers": {
+        "anthropic-beta": "claude-code-20250219,oauth-2025-04-20"
+      },
+      "system_prefix": "You are Claude Code, Anthropic's official CLI for Claude.",
+      "base_url": "https://api.anthropic.com/v1",
+      "notes": "Unofficial Claude Code OAuth integration. Feature is OFF by default; the user's consumer account carries the risk."
+    },
+    {
+      "id": "openai_codex",
+      "enabled": false,
+      "label": "OpenAI (ChatGPT Codex)",
+      "beta_headers": {
+        "OpenAI-Beta": "responses=experimental"
+      },
+      "system_prefix": null,
+      "base_url": "https://chatgpt.com/backend-api/codex",
+      "notes": "Unofficial Codex OAuth integration using ChatGPT Responses API. Feature is OFF by default; the user's consumer account carries the risk."
+    },
+    {
+      "id": "gemini",
+      "enabled": false,
+      "label": "Google Gemini (Code Assist)",
+      "beta_headers": {},
+      "system_prefix": null,
+      "base_url": "https://cloudcode-pa.googleapis.com/v1internal",
+      "notes": "Unofficial Gemini CLI OAuth integration using Cloud Code Assist. Feature is OFF by default; the user's consumer account carries the risk."
+    }
+  ]
+}

@@ -285,6 +285,11 @@ export const SETTING_DEFINITIONS = {
     type: "string",
     path: ["ai", "current_llm_model"],
   },
+  local_llm_metal: {
+    type: "boolean",
+    path: ["ai", "local_llm_metal"],
+    default: true as boolean,
+  },
   // Per-scope LLM overrides. Each scope (cleanup / notes / chat) may pin its
   // own provider + model; an empty string inherits the global selection
   // (`current_llm_provider` / `current_llm_model`). Resolution + the
@@ -320,6 +325,21 @@ export const SETTING_DEFINITIONS = {
     type: "string",
     path: ["ai", "scope_chat_model"],
     default: "" as string,
+  },
+  pre_meeting_briefs_enabled: {
+    type: "boolean",
+    path: ["ai", "pre_meeting_briefs_enabled"],
+    default: true as boolean,
+  },
+  pre_meeting_briefs_lead_time_hours: {
+    type: "number",
+    path: ["ai", "pre_meeting_briefs_lead_time_hours"],
+    default: 12 as number,
+  },
+  llm_subscription_disclosure_accepted: {
+    type: "boolean",
+    path: ["ai", "subscription_disclosure_accepted"],
+    default: false as boolean,
   },
   current_stt_provider: {
     type: "string",

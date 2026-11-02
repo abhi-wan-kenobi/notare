@@ -5,7 +5,7 @@ mod runtime;
 #[cfg(all(feature = "sync", sync_platform))]
 pub mod sync;
 
-pub use commands::{Recipe, UpsertRecipeInput};
+pub use commands::{Recipe, UpsertRecipeInput, list_recipes_db};
 pub use error::{Error, Result};
 pub use runtime::{PluginDbRuntime, cloudsync_available, open_app_db, open_app_db_with_cloudsync};
 use tauri::Manager;

@@ -429,6 +429,11 @@ export function TemplatesSidebarContent({
                           <div className="truncate font-medium">
                             {item.title}
                           </div>
+                          {item.template.category ? (
+                            <div className="text-muted-foreground truncate text-xs capitalize">
+                              {item.template.category}
+                            </div>
+                          ) : null}
                         </div>
                       </div>
                     </button>
@@ -516,6 +521,11 @@ function TemplateListItem({
           <div className="truncate font-medium">
             {template.title?.trim() || "Untitled"}
           </div>
+          {template.category ? (
+            <div className="text-muted-foreground truncate text-xs capitalize">
+              {template.category}
+            </div>
+          ) : null}
         </div>
       </div>
     </button>

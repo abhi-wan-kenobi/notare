@@ -233,14 +233,18 @@ export function ChatMessageInput({
     [handleEditorUpdate],
   );
 
+  const isMenuOpen =
+    Boolean(slashMatch) && !dismissed && filteredRecipes.length > 0;
+  const activeRecipeOptionId =
+    isMenuOpen && filteredRecipes[selectedIndex]
+      ? `recipe-option-${filteredRecipes[selectedIndex].id}`
+      : undefined;
+
   const handleKeyDownCapture = useCallback(
     (e: React.KeyboardEvent) => {
-      const isMenuOpen =
-        Boolean(slashMatch) && !dismissed && filteredRecipes.length > 0;
       if (!isMenuOpen) {
         return;
       }
-
       if (e.key === "ArrowDown") {
         e.preventDefault();
         e.stopPropagation();
@@ -261,7 +265,7 @@ export function ChatMessageInput({
         setDismissed(true);
       }
     },
-    [dismissed, filteredRecipes, handleSelectRecipe, selectedIndex, slashMatch],
+    [filteredRecipes, handleSelectRecipe, isMenuOpen, selectedIndex],
   );
   const mentionConfig = useMentionConfig();
   const isSendDisabled = Boolean(disabled) || !hasContent;
@@ -287,6 +291,11 @@ export function ChatMessageInput({
       <div
         ref={containerRef}
         data-chat-message-input
+        role="combobox"
+        aria-expanded={isMenuOpen}
+        aria-haspopup="listbox"
+        aria-controls={isMenuOpen ? "recipe-slash-menu-listbox" : undefined}
+        aria-activedescendant={activeRecipeOptionId}
         onKeyDownCapture={handleKeyDownCapture}
         className={cn([
           "relative",
