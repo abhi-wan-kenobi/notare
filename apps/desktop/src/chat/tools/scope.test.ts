@@ -1,3 +1,4 @@
+import type { ToolSet } from "ai";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { buildListMeetingsTool } from "./meetings";
@@ -372,7 +373,7 @@ describe("tool layer scope filter enforcement", () => {
       const rawTools = {
         get_meeting: { description: "", inputSchema: {}, execute },
         get_meeting_transcript: { description: "", inputSchema: {}, execute },
-      };
+      } as unknown as ToolSet;
       const scoped = applyScopeFilterToTools(
         rawTools,
         { kind: "session_ids", sessionIds: ["s1"] },
@@ -412,7 +413,7 @@ describe("tool layer scope filter enforcement", () => {
             },
           })),
         },
-      };
+      } as unknown as ToolSet;
       const scoped = applyScopeFilterToTools(
         rawTools,
         { kind: "session_ids", sessionIds: ["s1"] },

@@ -27,6 +27,7 @@ import { useMentionConfig } from "~/editor-bridge/mention-config";
 
 interface ProseMirrorDomView {
   state: {
+    doc: { textBetween: (from: number, to: number) => string };
     schema: {
       text: (t: string) => unknown;
       nodes: {
