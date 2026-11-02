@@ -224,7 +224,13 @@ mod tests {
         let sse = "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":1,\"result\":\"ok\"}\n\n";
         let framed = parse_http_response(Some("text/event-stream"), sse);
         assert_eq!(framed.len(), 1);
-        assert_eq!(framed[0], r#"{"id":1,"jsonrpc":"2.0","result":"ok"}"#);
+        // Key order depends on serde_json's `preserve_order` feature, which
+        // differs between the Linux and macOS dependency graphs.
+        let parsed: serde_json::Value = serde_json::from_str(&framed[0]).unwrap();
+        assert_eq!(
+            parsed,
+            serde_json::json!({"jsonrpc":"2.0","id":1,"result":"ok"})
+        );
         assert!(!framed[0].contains('\n'));
     }
 
