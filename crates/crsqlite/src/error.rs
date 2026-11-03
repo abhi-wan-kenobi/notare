@@ -1,16 +1,10 @@
 //! Error kinds for the cr-sqlite engine wrapper.
 //!
-//! `Transient`/`Fatal` are kept from `hypr_cloudsync`'s error module (with
-//! `Auth` dropped — cr-sqlite is a local CRDT engine, there is no credential
-//! to fail) so the runtime retry classifier in db-core
-//! (`cloudsync_background_loop`'s `Transient`-vs-`Fatal` branch) survives
-//! the engine swap unchanged.
+//! There is no `Auth` kind: cr-sqlite is a local CRDT engine, there is no
+//! credential to fail.
 
-/// Whether a failed operation is worth retrying.
-///
-/// The sync runtime loop retries `Transient` errors with backoff and stops
-/// the loop on `Fatal` ones (only `Fatal` engine errors halt the loop per the
-/// 2026-09-07 plan).
+/// Whether a failed operation is worth retrying: `Transient` with backoff,
+/// `Fatal` not at all.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ErrorKind {
     /// Lock contention (SQLITE_BUSY/SQLITE_LOCKED) or a busy database —

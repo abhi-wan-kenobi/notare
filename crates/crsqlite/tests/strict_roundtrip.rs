@@ -3,8 +3,7 @@
 //!
 //! Gating: requires `CRSQLITE_SPIKE_EXTENSION` (absolute path to a prebuilt
 //! `crsqlite.{so,dylib,dll}` from the vlcn-io `v0.16.3` release). Unset →
-//! every test prints "skipped" and returns, mirroring the `SQLITECLOUD_URL`
-//! gating in `crates/db-core/tests/e2e.rs`.
+//! every test prints "skipped" and returns.
 //!
 //! What this file pins (per the 2026-09-07 plan, Workstream C Phase 0):
 //!

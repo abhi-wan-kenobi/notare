@@ -1,7 +1,3 @@
-use std::sync::LazyLock;
-
-use hypr_db_core::CloudsyncTableSpec;
-
 /// SYNC-6: the tables actually enabled for CRDT sync. Enabling a table here
 /// mutates its data semantics across every paired device, so each table must
 /// have a convergence proof (§17-style) before it is added. SYNC-6 part A
@@ -56,42 +52,35 @@ pub const ELIGIBLE_PENDING_PROOF: &[&str] =
 /// concurrent creation. Must never appear in [`SYNCED_TABLES`].
 pub const NO_GO_TABLES: &[&str] = &["humans", "session_participants", "calendars", "events"];
 
-static CLOUDSYNC_TABLE_REGISTRY: LazyLock<Vec<CloudsyncTableSpec>> = LazyLock::new(|| {
-    [
-        "action_items",
-        "calendars",
-        "chat_groups",
-        "chat_messages",
-        "daily_notes",
-        "entity_mentions",
-        "events",
-        "humans",
-        "organizations",
-        "session_attachments",
-        "session_documents",
-        "session_participants",
-        "session_tags",
-        "sessions",
-        "tags",
-        "templates",
-        "transcripts",
-    ]
-    .into_iter()
-    .map(|table_name| CloudsyncTableSpec {
-        enabled: SYNCED_TABLES.contains(&table_name),
-        table_name: table_name.to_string(),
-        crdt_algo: None,
-        force_init: None,
-    })
-    .collect()
-});
+/// Every table whose schema is kept CRR-ready — one `TEXT NOT NULL` primary
+/// key named `id` and a DEFAULT on every other `NOT NULL` column
+/// (`crsql_as_crr` rejects a nullable primary key and a `NOT NULL` column
+/// without a DEFAULT). Superset of
+/// [`SYNCED_TABLES`], [`ELIGIBLE_PENDING_PROOF`] and [`NO_GO_TABLES`]; being
+/// listed here enables nothing.
+pub const SYNC_TABLE_REGISTRY: &[&str] = &[
+    "action_items",
+    "calendars",
+    "chat_groups",
+    "chat_messages",
+    "daily_notes",
+    "entity_mentions",
+    "events",
+    "humans",
+    "organizations",
+    "session_attachments",
+    "session_documents",
+    "session_participants",
+    "session_tags",
+    "sessions",
+    "tags",
+    "templates",
+    "transcripts",
+];
 
-pub fn cloudsync_table_registry() -> &'static [CloudsyncTableSpec] {
-    CLOUDSYNC_TABLE_REGISTRY.as_slice()
-}
-
-pub fn cloudsync_alter_guard_required(table_name: &str) -> bool {
-    cloudsync_table_registry()
-        .iter()
-        .any(|table| table.enabled && table.table_name == table_name)
+/// Whether a migration touching `table_name` must be declared
+/// `MigrationScope::CrrAlter`: true exactly for the [`SYNCED_TABLES`], the
+/// tables that may already be CRRs on a device that turned sync on.
+pub fn crr_alter_guard_required(table_name: &str) -> bool {
+    SYNCED_TABLES.contains(&table_name)
 }

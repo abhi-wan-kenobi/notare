@@ -399,7 +399,6 @@ pub async fn open_app_db_with_crsqlite(db_path: Option<&Path>, crsqlite: bool) -
     };
     let options = DbOpenOptions {
         storage,
-        cloudsync_enabled: false,
         journal_mode_wal: true,
         foreign_keys: true,
         max_connections: Some(4),

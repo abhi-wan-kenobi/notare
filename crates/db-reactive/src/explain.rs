@@ -137,7 +137,7 @@ mod tests {
     fn live_query_test_schema() -> hypr_db_migrate::DbSchema {
         hypr_db_migrate::DbSchema {
             steps: LIVE_QUERY_TEST_MIGRATION_STEPS,
-            validate_cloudsync_table: |_| false,
+            validate_crr_table: |_| false,
         }
     }
 

@@ -96,7 +96,6 @@ mod tests {
         let db_path = dir.path().join("app.db");
         let db = hypr_db_core::Db::open(hypr_db_core::DbOpenOptions {
             storage: hypr_db_core::DbStorage::Local(&db_path),
-            cloudsync_enabled: false,
             journal_mode_wal: true,
             foreign_keys: true,
             max_connections: Some(4),

@@ -4,8 +4,8 @@
 //!
 //! This is the packaging 1a contract end-to-end: `apply()` must extract the
 //! embedded binary for the current target, load it via
-//! `SqliteConnectOptions::extension()` (the style already proven by
-//! `hypr_cloudsync::apply`), and the extension must answer its API.
+//! `SqliteConnectOptions::extension()`, and the extension must answer its
+//! API.
 //!
 //! Runs on every supported target with no environment variable — the gate
 //! the `crsqlite_gate_{linux,macos,windows}` CI jobs execute on real

@@ -5,15 +5,13 @@
 //! Packaging 1a: the four `sync_platform` targets carry a prebuilt
 //! loadable-extension binary under `vendor/<target>/` (MIT LICENSE +
 //! SHA256SUMS verified by build.rs), embedded with `include_bytes!` and
-//! extracted to `dirs::cache_dir()/notare/crsqlite/<version>/<target>/` —
-//! ported from `crates/cloudsync/src/bundle.rs`. No `OUT_DIR` path, no
-//! `resources/` staging, no `tauri.conf.json` resource entry, so the #154
-//! class cannot recur.
+//! extracted to `dirs::cache_dir()/notare/crsqlite/<version>/<target>/`. No
+//! `OUT_DIR` path, no `resources/` staging, no `tauri.conf.json` resource
+//! entry, so the #154 class cannot recur.
 //!
 //! Modules:
-//! - [`apply`] — the same `SqliteConnectOptions -> (options, path)` signature
-//!   as `hypr_cloudsync::apply`, so db-core's call sites change only the
-//!   crate path.
+//! - [`apply`] — `SqliteConnectOptions -> (options, extension path)`, the
+//!   loader db-core's `Db::open_crsqlite` calls.
 //! - [`api`] — `as_crr`, `site_id`, `db_version`, `begin_alter`,
 //!   `commit_alter`, `finalize`, `close_pool` (finalize every pooled
 //!   connection, then close), `is_crr` (`<table>__crsql_clock` in
@@ -23,8 +21,8 @@
 //!   `pull_changes(after, exclude_site, limit) -> ChangesPage
 //!   {changes, next, more}` with tuple paging `(db_version, seq) > (?, ?)`,
 //!   `apply_changes(conn, &[Change])` with no transaction of its own.
-//! - [`error`] — `Transient`/`Fatal` kinds kept (so the runtime retry
-//!   classifier survives); `Auth` dropped (no credential to fail).
+//! - [`error`] — `Transient`/`Fatal` kinds, so callers can tell a retryable
+//!   lock-contention failure from one that needs intervention.
 //!
 //! The engine tests (`tests/engine_*.rs`) load the **vendored** binary via
 //! [`apply`]/[`bundled_extension_path`] unconditionally on every supported
@@ -58,9 +56,7 @@ pub use error::{Error, ErrorKind};
 pub const CRSQLITE_VERSION: &str = "0.16.3";
 
 /// Load the vendored cr-sqlite engine onto every connection built from
-/// `options` — the same `(SqliteConnectOptions) -> (options, path)`
-/// signature as `hypr_cloudsync::apply`, so db-core's call sites change
-/// only the crate path.
+/// `options`, returning the options and the extracted extension path.
 ///
 /// Extracts the embedded binary for the current target to the cache dir
 /// (see [`bundled_extension_path`]) and registers it as a loadable
@@ -75,9 +71,7 @@ pub fn apply(options: SqliteConnectOptions) -> Result<(SqliteConnectOptions, Pat
 
     // SAFETY: the extension is the vendored vlcn-io v0.16.3 prebuilt
     // release binary — a first-party file this crate ships, verified
-    // against vendor/SHA256SUMS by build.rs, the same trust domain as the
-    // cloudsync prebuilt this loading style was already proven with
-    // (`crates/cloudsync/src/lib.rs`). The crate-level `#![deny(unsafe_code)]`
+    // against vendor/SHA256SUMS by build.rs. The crate-level `#![deny(unsafe_code)]`
     // cannot be violated from this function without the allow below being
     // deleted in review, which is the point of keeping it explicit.
     #[allow(unsafe_code)]

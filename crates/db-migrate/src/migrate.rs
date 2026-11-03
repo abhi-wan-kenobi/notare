@@ -17,7 +17,9 @@ type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 
 struct DbMigrateConnection<'a> {
     db: &'a Db,
-    conn: sqlx::pool::PoolConnection<Sqlite>,
+    // `None` after a CRR alter window closed the connection; the next use
+    // acquires a fresh one, which sees the altered schema.
+    conn: Option<sqlx::pool::PoolConnection<Sqlite>>,
     scopes_by_version: HashMap<i64, MigrationScope>,
 }
 
@@ -29,9 +31,21 @@ impl<'a> DbMigrateConnection<'a> {
     ) -> Self {
         Self {
             db,
-            conn,
+            conn: Some(conn),
             scopes_by_version,
         }
+    }
+
+    async fn take_conn(&mut self) -> Result<sqlx::pool::PoolConnection<Sqlite>, sqlx::Error> {
+        match self.conn.take() {
+            Some(conn) => Ok(conn),
+            None => self.db.pool().acquire().await,
+        }
+    }
+
+    async fn conn(&mut self) -> Result<&mut SqliteConnection, sqlx::Error> {
+        let conn = self.take_conn().await?;
+        Ok(&mut **self.conn.insert(conn))
     }
 }
 
@@ -148,15 +162,15 @@ fn resolve_migrations(
 }
 
 fn validate_step(schema: DbSchema, step: &MigrationStep) -> Result<(), MigrateError> {
-    let MigrationScope::CloudsyncAlter { table_name } = step.scope else {
+    let MigrationScope::CrrAlter { table_name } = step.scope else {
         return Ok(());
     };
 
-    if (schema.validate_cloudsync_table)(table_name) {
+    if (schema.validate_crr_table)(table_name) {
         return Ok(());
     }
 
-    Err(MigrateError::InvalidCloudsyncStep {
+    Err(MigrateError::InvalidCrrStep {
         step_id: step.id,
         table_name,
     })
@@ -180,45 +194,55 @@ fn parse_step_id(step_id: &'static str) -> Result<(i64, &'static str), MigrateEr
     Ok((version, description))
 }
 
-fn cloudsync_error(err: impl std::error::Error + Send + Sync + 'static) -> SqlxMigrateError {
-    SqlxMigrateError::Execute(sqlx::Error::config(err))
-}
-
 impl Migrate for DbMigrateConnection<'_> {
     fn create_schema_if_not_exists<'e>(
         &'e mut self,
         schema_name: &'e str,
     ) -> BoxFuture<'e, Result<(), SqlxMigrateError>> {
-        <SqliteConnection as Migrate>::create_schema_if_not_exists(&mut *self.conn, schema_name)
+        Box::pin(async move {
+            <SqliteConnection as Migrate>::create_schema_if_not_exists(
+                self.conn().await?,
+                schema_name,
+            )
+            .await
+        })
     }
 
     fn ensure_migrations_table<'e>(
         &'e mut self,
         table_name: &'e str,
     ) -> BoxFuture<'e, Result<(), SqlxMigrateError>> {
-        <SqliteConnection as Migrate>::ensure_migrations_table(&mut *self.conn, table_name)
+        Box::pin(async move {
+            <SqliteConnection as Migrate>::ensure_migrations_table(self.conn().await?, table_name)
+                .await
+        })
     }
 
     fn dirty_version<'e>(
         &'e mut self,
         table_name: &'e str,
     ) -> BoxFuture<'e, Result<Option<i64>, SqlxMigrateError>> {
-        <SqliteConnection as Migrate>::dirty_version(&mut *self.conn, table_name)
+        Box::pin(async move {
+            <SqliteConnection as Migrate>::dirty_version(self.conn().await?, table_name).await
+        })
     }
 
     fn list_applied_migrations<'e>(
         &'e mut self,
         table_name: &'e str,
     ) -> BoxFuture<'e, Result<Vec<AppliedMigration>, SqlxMigrateError>> {
-        <SqliteConnection as Migrate>::list_applied_migrations(&mut *self.conn, table_name)
+        Box::pin(async move {
+            <SqliteConnection as Migrate>::list_applied_migrations(self.conn().await?, table_name)
+                .await
+        })
     }
 
     fn lock(&mut self) -> BoxFuture<'_, Result<(), SqlxMigrateError>> {
-        <SqliteConnection as Migrate>::lock(&mut *self.conn)
+        Box::pin(async move { <SqliteConnection as Migrate>::lock(self.conn().await?).await })
     }
 
     fn unlock(&mut self) -> BoxFuture<'_, Result<(), SqlxMigrateError>> {
-        <SqliteConnection as Migrate>::unlock(&mut *self.conn)
+        Box::pin(async move { <SqliteConnection as Migrate>::unlock(self.conn().await?).await })
     }
 
     fn apply<'e>(
@@ -235,35 +259,39 @@ impl Migrate for DbMigrateConnection<'_> {
 
             match scope {
                 MigrationScope::Plain => {
-                    <SqliteConnection as Migrate>::apply(&mut *self.conn, table_name, migration)
+                    <SqliteConnection as Migrate>::apply(self.conn().await?, table_name, migration)
                         .await
                 }
-                MigrationScope::CloudsyncAlter {
-                    table_name: cs_table,
+                MigrationScope::CrrAlter {
+                    table_name: crr_table,
                 } => {
-                    if !self.db.cloudsync_enabled() {
-                        return <SqliteConnection as Migrate>::apply(
-                            &mut *self.conn,
-                            table_name,
-                            migration,
-                        )
-                        .await;
-                    }
-
                     let start = Instant::now();
+                    let db = self.db;
+                    let mut conn = self.take_conn().await?;
 
-                    hypr_db_core::cloudsync_begin_alter_on(&mut *self.conn, cs_table)
+                    let alter = db.begin_crr_alter_on(&mut conn, crr_table).await;
+                    let Some(alter) = alter.map_err(SqlxMigrateError::Execute)? else {
+                        let result =
+                            <SqliteConnection as Migrate>::apply(&mut *conn, table_name, migration)
+                                .await;
+                        self.conn = Some(conn);
+                        return result;
+                    };
+
+                    // Both ways out of the window close `conn`. A failed one
+                    // rolls back with it — including this step's
+                    // `_sqlx_migrations` row, so the step stays unapplied.
+                    if let Err(error) = execute_migration(&mut conn, migration).await {
+                        alter.abort(conn).await;
+                        return Err(error);
+                    }
+                    alter
+                        .commit(conn)
                         .await
-                        .map_err(cloudsync_error)?;
-
-                    execute_migration(&mut self.conn, migration).await?;
-
-                    hypr_db_core::cloudsync_commit_alter_on(&mut *self.conn, cs_table)
-                        .await
-                        .map_err(cloudsync_error)?;
+                        .map_err(SqlxMigrateError::Execute)?;
 
                     let elapsed = start.elapsed();
-                    update_execution_time(&mut self.conn, migration.version, elapsed).await?;
+                    update_execution_time(self.conn().await?, migration.version, elapsed).await?;
 
                     Ok(elapsed)
                 }
@@ -276,7 +304,9 @@ impl Migrate for DbMigrateConnection<'_> {
         table_name: &'e str,
         migration: &'e Migration,
     ) -> BoxFuture<'e, Result<Duration, SqlxMigrateError>> {
-        <SqliteConnection as Migrate>::revert(&mut *self.conn, table_name, migration)
+        Box::pin(async move {
+            <SqliteConnection as Migrate>::revert(self.conn().await?, table_name, migration).await
+        })
     }
 }
 

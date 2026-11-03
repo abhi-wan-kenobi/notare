@@ -73,7 +73,6 @@ hypr-calendar-interface = { path = "crates/calendar-interface", package = "calen
 hypr-chatwoot = { path = "crates/chatwoot", package = "chatwoot" }
 hypr-claude = { path = "crates/claude", package = "claude" }
 hypr-cli-process = { path = "crates/cli-process", package = "cli-process" }
-hypr-cloudsync = { path = "crates/cloudsync", package = "cloudsync" }
 hypr-codex = { path = "crates/codex", package = "codex" }
 hypr-crsqlite = { path = "crates/crsqlite", package = "crsqlite" }
 hypr-cursor = { path = "crates/cursor", package = "cursor" }
