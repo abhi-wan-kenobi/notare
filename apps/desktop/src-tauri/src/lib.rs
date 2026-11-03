@@ -128,7 +128,14 @@ pub async fn main() {
     // https://v2.tauri.app/plugin/deep-linking/#desktop
     // should always be the first plugin
     {
-        builder = builder.plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
+        builder = builder.plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
+            // Windows/Linux deliver a clicked notare:// link as the second
+            // instance's only argument; hand it to the deep-link plugin so a
+            // warm app receives it (macOS uses RunEvent::Opened instead).
+            {
+                use tauri_plugin_deep_link::DeepLinkExt;
+                app.deep_link().handle_cli_arguments(argv.iter());
+            }
             app.windows().show(AppWindow::Main).unwrap();
         }));
     }

@@ -331,10 +331,22 @@
           "markdownDescription": "Denies the stop_callback_server command without any pre-configured scope."
         },
         {
-          "description": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-get-available-deep-links`\n- `allow-start-callback-server`\n- `allow-stop-callback-server`",
+          "description": "Enables the take_pending_pair command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-take-pending-pair",
+          "markdownDescription": "Enables the take_pending_pair command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the take_pending_pair command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-take-pending-pair",
+          "markdownDescription": "Denies the take_pending_pair command without any pre-configured scope."
+        },
+        {
+          "description": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-get-available-deep-links`\n- `allow-start-callback-server`\n- `allow-stop-callback-server`\n- `allow-take-pending-pair`",
           "type": "string",
           "const": "default",
-          "markdownDescription": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-get-available-deep-links`\n- `allow-start-callback-server`\n- `allow-stop-callback-server`"
+          "markdownDescription": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-get-available-deep-links`\n- `allow-start-callback-server`\n- `allow-stop-callback-server`\n- `allow-take-pending-pair`"
         }
       ]
     }

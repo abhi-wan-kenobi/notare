@@ -107,6 +107,11 @@ fn ui_content(deep_link: &DeepLink) -> (bool, &'static str, &'static str) {
             "Subscription updated",
             "Click the button below to return to the app.",
         ),
+        DeepLink::Pair(_) => (
+            true,
+            "Pairing link opened",
+            "Click the button below to return to the app.",
+        ),
         DeepLink::IntegrationCallback(s) if s.status == "success" => (
             true,
             "Connected successfully",

@@ -122,6 +122,14 @@ msgstr ""
 msgid "A neon rim ringed with voice-reactive beads."
 msgstr ""
 
+#: src/settings/sync/index.tsx
+msgid "A pairing link was opened, but device sync isn't available in this build, so it can't be used here."
+msgstr ""
+
+#: src/settings/sync/index.tsx
+msgid "A pairing link was opened, but sync is off. Turn it on above to join with it."
+msgstr ""
+
 #: src/dictation/orb.tsx
 msgid "A quiet graphite disc with a single state dot."
 msgstr ""
