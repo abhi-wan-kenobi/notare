@@ -41,8 +41,10 @@ impl Db {
     /// what converts one.
     ///
     /// Fails on an in-memory database, which cannot survive the connection
-    /// recycling a window ends with. If `crsql_begin_alter` itself fails,
-    /// `conn` is finalized and closes when dropped.
+    /// recycling a window ends with, and while any pooled connection other
+    /// than `conn` is checked out, since a window cannot refresh it. If
+    /// `crsql_begin_alter` itself fails, `conn` is finalized and closes when
+    /// dropped.
     pub async fn begin_crr_alter_on(
         &self,
         conn: &mut PoolConnection<Sqlite>,
@@ -66,6 +68,19 @@ impl Db {
                     format!(
                         "cannot alter CRR {table_name} on an in-memory database: the alter \
                          window must close every connection afterwards"
+                    )
+                    .into(),
+                ));
+            }
+            // `conn` itself is checked out; every other connection must be
+            // idle so `commit` can close it.
+            let checked_out = (self.pool.size() as usize).saturating_sub(self.pool.num_idle());
+            if checked_out > 1 {
+                return Err(sqlx::Error::Configuration(
+                    format!(
+                        "cannot alter CRR {table_name} while {} other pooled connection(s) \
+                         are checked out: they would keep the pre-alter schema",
+                        checked_out - 1
                     )
                     .into(),
                 ));

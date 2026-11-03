@@ -115,7 +115,7 @@ In `crates/db-migrate`:
   ```
 - If sync is disabled or the table has not yet been converted to a CRR, the step executes as standard DDL without entering the alter window (`Db::begin_crr_alter_on` returns `None`); the window never converts a table.
 - **Every window closes connections.** cr-sqlite v0.16.3 caches each connection's view of a CRR's columns and never refreshes it after an alter (probed 2026-11-04): after a committed `ADD COLUMN`, an `UPDATE` fails with `expected 5 values, got 7` on the connection that ran the window and on any connection that wrote to the table before it; only connections opened afterwards see the new schema. So `CrrAlter::commit` finalizes and closes the window's connection and every idle pooled connection, and the runner acquires a fresh one for the next step. A failed DDL or commit closes the window's connection too, which rolls the window (`SAVEPOINT alter_crr`) back — the step stays unapplied and the table stays the same CRR. Pinned in `crates/db-migrate/tests/e2e.rs` (`crsqlite::*`).
-- Consequences: alter windows must run while nothing else holds a pooled connection (migrations in `prepare_schema` at open), and they are refused on in-memory databases, which a fresh connection cannot reach.
+- Consequences: alter windows only run while nothing else holds a pooled connection (migrations in `prepare_schema` at open) — `Db::begin_crr_alter_on` refuses to open one while another connection is checked out — and they are refused on in-memory databases, which a fresh connection cannot reach.
 
 ---
 

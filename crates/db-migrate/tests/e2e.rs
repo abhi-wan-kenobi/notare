@@ -444,6 +444,28 @@ ALTER TABLE widgets ADD COLUMN slug TEXT NOT NULL
         db.close().await;
     }
 
+    /// Audit finding (2026-11-04, muse seat): a connection checked out by
+    /// another caller during the window would keep the pre-alter schema, so
+    /// the window refuses to open rather than diverge silently.
+    #[tokio::test]
+    async fn crr_alter_is_refused_while_another_connection_is_checked_out() {
+        let (_dir, db) = open_synced_widgets().await;
+        let held = db.pool().acquire().await.unwrap();
+
+        let error = migrate(&db, schema(CRR_ALTER_STEPS, widgets_synced))
+            .await
+            .unwrap_err();
+        drop(held);
+
+        assert!(error.to_string().contains("checked out"), "{error}");
+        assert_eq!(applied_versions(&db).await, vec![20260415030101]);
+        assert_eq!(
+            widget_columns(&db).await,
+            vec!["id".to_string(), "name".to_string()]
+        );
+        db.close().await;
+    }
+
     /// On an empty table SQLite accepts `ADD COLUMN ... NOT NULL` without a
     /// DEFAULT, and `crsql_commit_alter` is what rejects it.
     #[tokio::test]
