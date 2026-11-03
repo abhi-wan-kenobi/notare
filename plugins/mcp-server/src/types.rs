@@ -113,17 +113,45 @@ pub struct DailyNoteRow {
     pub updated_at: String,
 }
 
+/// Best lexical (SQL `LIKE`) hit for one meeting: a document (note/summary)
+/// or transcript match.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ContentMatch {
-    pub meeting_id: String,
+pub struct LexicalContentMatch {
     pub source: String,
     pub snippet: String,
     pub score: f32,
+    /// `[[src:<sessionId>@0]]` — lexical matches have no word-level timing.
+    pub citation: String,
+}
+
+/// One semantic (embedding KNN) chunk hit for a meeting, closest-first.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SemanticContentMatch {
+    pub chunk_id: String,
+    pub source_type: String,
+    pub text: String,
+    /// sqlite-vec L2 distance; smaller is closer.
+    pub distance: f32,
+    /// `[[src:<sessionId>@<startMs>]]`, matching the chat citation format.
+    pub citation: String,
+}
+
+/// One meeting's fused lexical + semantic result (mirrors `HybridResult` in
+/// `apps/desktop/src/search/hybrid.ts`).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ContentMatch {
+    pub meeting_id: String,
+    /// Summed RRF score across the arms that matched this meeting.
+    pub rrf_score: f64,
+    pub lexical: Option<LexicalContentMatch>,
+    pub semantic: Vec<SemanticContentMatch>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SearchMeetingContentResult {
     pub query: String,
+    /// `"hybrid (lexical + semantic, RRF k=60)"` or a `"lexical only (…)"`
+    /// explanation of why the semantic arm did not run.
     pub mode: String,
     pub results: Vec<ContentMatch>,
 }

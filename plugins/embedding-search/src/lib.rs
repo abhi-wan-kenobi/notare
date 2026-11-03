@@ -10,6 +10,7 @@
 
 mod commands;
 mod error;
+mod ext;
 mod runtime;
 
 use std::path::PathBuf;
@@ -19,6 +20,7 @@ use serde::{Deserialize, Serialize};
 use tauri::Manager;
 
 pub use error::{Error, Result};
+pub use ext::EmbeddingSearchPluginExt;
 pub use runtime::EmbeddingSearchRuntime;
 
 const PLUGIN_NAME: &str = "embedding-search";

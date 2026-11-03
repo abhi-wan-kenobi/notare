@@ -1,10 +1,19 @@
+use std::collections::HashMap;
+
 use rmcp::handler::server::wrapper::Parameters;
 use rmcp::model::*;
 use rmcp::{ErrorData as McpError, ServerHandler, tool, tool_handler, tool_router};
 use serde::Serialize;
+use tauri_plugin_embedding_search::EmbeddingSearchPluginExt;
 use tauri_plugin_tantivy::TantivyPluginExt;
 
+use crate::rrf::{RRF_K, RankedItem, fuse_arms};
 use crate::types::*;
+
+/// KNN depth for the semantic arm's candidate pool before RRF fusion and
+/// `limit` truncation — matches the dense-arm `k` used by chat pre-retrieval
+/// (`apps/desktop/src/chat/transport/pre-retrieval.ts`).
+const SEMANTIC_KNN_K: u32 = 60;
 
 #[derive(Clone)]
 pub struct NotareMcpServer {
@@ -78,6 +87,94 @@ pub fn extract_snippet(text: &str, query: &str) -> String {
         let end = ceil_char_boundary(text, raw_end);
         let suffix = if end < text.len() { "..." } else { "" };
         format!("{}{suffix}", &text[..end])
+    }
+}
+
+/// Resolve the semantic (embedding KNN) arm: ranked session ids for RRF,
+/// their chunk hits grouped by session (closest-first, as `knn_join`
+/// already returns them), and — when the arm could not run — a reason
+/// string for the result's `mode` field. Never returns an `Err`: a missing
+/// runtime, an undownloaded model, or a search failure all degrade to an
+/// empty arm plus an explanatory reason, so the caller always has lexical
+/// results to fall back to.
+///
+/// `unavailable_reason` is the reason to report when `runtime` is `None`
+/// (the caller knows whether that's "no app context" or "plugin not
+/// registered"; this function only knows what to do once it has a runtime).
+pub(crate) async fn semantic_arm(
+    runtime: Option<std::sync::Arc<tauri_plugin_embedding_search::EmbeddingSearchRuntime>>,
+    unavailable_reason: Option<&str>,
+    query: &str,
+    meeting_ids: Option<&[String]>,
+) -> (
+    Vec<RankedItem>,
+    HashMap<String, Vec<SemanticContentMatch>>,
+    Option<String>,
+) {
+    let mut ranked = Vec::new();
+    let mut by_session: HashMap<String, Vec<SemanticContentMatch>> = HashMap::new();
+
+    let Some(runtime) = runtime else {
+        let reason = unavailable_reason
+            .unwrap_or("embedding-search plugin not registered")
+            .to_string();
+        return (ranked, by_session, Some(reason));
+    };
+
+    match runtime.index_status().await {
+        Err(e) => {
+            tracing::warn!("embedding-search index status failed: {e}");
+            return (
+                ranked,
+                by_session,
+                Some(format!("index status unavailable: {e}")),
+            );
+        }
+        Ok(status) if !status.model_downloaded => {
+            return (
+                ranked,
+                by_session,
+                Some("semantic model not downloaded yet".to_string()),
+            );
+        }
+        Ok(_) => {}
+    }
+
+    match runtime
+        .semantic_search(query.to_string(), SEMANTIC_KNN_K, None)
+        .await
+    {
+        Err(e) => {
+            tracing::warn!("semantic search failed: {e}");
+            (
+                ranked,
+                by_session,
+                Some(format!("semantic search failed: {e}")),
+            )
+        }
+        Ok(hits) => {
+            for hit in hits {
+                if let Some(filter_ids) = meeting_ids
+                    && !filter_ids.contains(&hit.session_id)
+                {
+                    continue;
+                }
+                let start_ms = hit.start_ms.unwrap_or(0);
+                let citation = format!("[[src:{}@{start_ms}]]", hit.session_id);
+                ranked.push(RankedItem::new(hit.session_id.clone()));
+                by_session
+                    .entry(hit.session_id)
+                    .or_default()
+                    .push(SemanticContentMatch {
+                        chunk_id: hit.chunk_id,
+                        source_type: hit.source_type,
+                        text: hit.text,
+                        distance: hit.distance,
+                        citation,
+                    });
+            }
+            (ranked, by_session, None)
+        }
     }
 }
 
@@ -221,7 +318,7 @@ impl NotareMcpServer {
     }
 
     #[tool(
-        description = "Lexical content search across meeting notes and transcripts. Searches notes and transcripts for exact words or phrases. Note: plugins/embedding-search does not expose a hybrid search Rust API, so this searches lexically.",
+        description = "Hybrid content search across meeting notes and transcripts: fuses lexical (SQL LIKE) matches with on-device semantic (embedding KNN) matches via reciprocal rank fusion (k=60), grouped by meeting. Falls back to lexical-only — and says so in `mode` — when the semantic model isn't loaded; never errors solely because semantic search is unavailable. Each match carries a `[[src:<sessionId>@<ms>]]` citation id matching chat's citation format.",
         annotations(
             read_only_hint = true,
             destructive_hint = false,
@@ -234,10 +331,9 @@ impl NotareMcpServer {
         Parameters(params): Parameters<SearchMeetingContentParams>,
     ) -> Result<CallToolResult, McpError> {
         let pattern = format!("%{}%", params.query);
-        let limit = params.limit.unwrap_or(20);
-        let mut matches = Vec::new();
+        let limit = params.limit.unwrap_or(20).max(1);
 
-        // 1. Search session_documents
+        // ---- Lexical arm: documents then transcripts, SQL LIKE. ----
         let doc_rows: Vec<(String, String, String, String)> = sqlx::query_as(
             "SELECT session_id, kind, title, body FROM session_documents WHERE deleted_at IS NULL AND (title LIKE ?1 OR body LIKE ?1) LIMIT 100",
         )
@@ -246,61 +342,97 @@ impl NotareMcpServer {
         .await
         .map_err(internal_err)?;
 
+        let transcript_rows: Vec<(String, String, String)> = sqlx::query_as(
+            "SELECT session_id, memo, words_json FROM transcripts WHERE deleted_at IS NULL AND (memo LIKE ?1 OR words_json LIKE ?1) LIMIT 100",
+        )
+        .bind(&pattern)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(internal_err)?;
+
+        let mut lexical_ranked: Vec<RankedItem> = Vec::new();
+        let mut best_lexical: HashMap<String, LexicalContentMatch> = HashMap::new();
+
         for (session_id, kind, title, body) in doc_rows {
             if let Some(filter_ids) = &params.meeting_ids
                 && !filter_ids.contains(&session_id)
             {
                 continue;
             }
-
-            let snippet = extract_snippet(&body, &params.query);
-            matches.push(ContentMatch {
-                meeting_id: session_id,
-                source: format!("document:{kind}:{title}"),
-                snippet,
-                score: 1.0,
-            });
-            if matches.len() >= limit {
-                break;
-            }
-        }
-
-        // 2. Search transcripts if limit not yet reached
-        if matches.len() < limit {
-            let transcript_rows: Vec<(String, String, String)> = sqlx::query_as(
-                "SELECT session_id, memo, words_json FROM transcripts WHERE deleted_at IS NULL AND (memo LIKE ?1 OR words_json LIKE ?1) LIMIT 100",
-            )
-            .bind(&pattern)
-            .fetch_all(&self.pool)
-            .await
-            .map_err(internal_err)?;
-
-            for (session_id, memo, words_json) in transcript_rows {
-                if let Some(filter_ids) = &params.meeting_ids
-                    && !filter_ids.contains(&session_id)
-                {
-                    continue;
-                }
-
-                let text = if memo.is_empty() { words_json } else { memo };
-                let snippet = extract_snippet(&text, &params.query);
-                matches.push(ContentMatch {
-                    meeting_id: session_id,
-                    source: "transcript".to_string(),
-                    snippet,
-                    score: 0.8,
+            lexical_ranked.push(RankedItem::new(session_id.clone()));
+            best_lexical
+                .entry(session_id.clone())
+                .or_insert_with(|| LexicalContentMatch {
+                    source: format!("document:{kind}:{title}"),
+                    snippet: extract_snippet(&body, &params.query),
+                    score: 1.0,
+                    citation: format!("[[src:{session_id}@0]]"),
                 });
-
-                if matches.len() >= limit {
-                    break;
-                }
-            }
         }
+
+        for (session_id, memo, words_json) in transcript_rows {
+            if let Some(filter_ids) = &params.meeting_ids
+                && !filter_ids.contains(&session_id)
+            {
+                continue;
+            }
+            lexical_ranked.push(RankedItem::new(session_id.clone()));
+            let text = if memo.is_empty() { &words_json } else { &memo };
+            best_lexical
+                .entry(session_id.clone())
+                .or_insert_with(|| LexicalContentMatch {
+                    source: "transcript".to_string(),
+                    snippet: extract_snippet(text, &params.query),
+                    score: 0.8,
+                    citation: format!("[[src:{session_id}@0]]"),
+                });
+        }
+
+        // ---- Semantic arm: on-device embedding KNN, best-effort. A missing
+        // model, an unregistered plugin, or a search failure all degrade to
+        // lexical-only rather than erroring the whole tool call. ----
+        let runtime = self
+            .app_handle
+            .as_ref()
+            .and_then(|app| app.embedding_search());
+        let unavailable_reason = if self.app_handle.is_none() {
+            Some("no app context")
+        } else {
+            None
+        };
+        let (semantic_ranked, mut semantic_by_session, fallback_reason) = semantic_arm(
+            runtime,
+            unavailable_reason,
+            &params.query,
+            params.meeting_ids.as_deref(),
+        )
+        .await;
+
+        let mode = match &fallback_reason {
+            None => "hybrid (lexical + semantic, RRF k=60)".to_string(),
+            Some(reason) => format!("lexical only (semantic unavailable: {reason})"),
+        };
+
+        let fused = fuse_arms(
+            &[("lexical", &lexical_ranked), ("semantic", &semantic_ranked)],
+            RRF_K,
+        );
+
+        let results: Vec<ContentMatch> = fused
+            .into_iter()
+            .take(limit)
+            .map(|entry| ContentMatch {
+                lexical: best_lexical.get(&entry.key).cloned(),
+                semantic: semantic_by_session.remove(&entry.key).unwrap_or_default(),
+                meeting_id: entry.key,
+                rrf_score: entry.score,
+            })
+            .collect();
 
         let output = SearchMeetingContentResult {
             query: params.query,
-            mode: "lexical (plugins/embedding-search does not expose a hybrid API)".to_string(),
-            results: matches,
+            mode,
+            results,
         };
 
         structured(&output)

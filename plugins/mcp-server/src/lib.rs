@@ -2,6 +2,7 @@ pub mod commands;
 pub mod error;
 pub mod ext;
 pub mod http;
+mod rrf;
 pub mod server;
 pub mod stdio_bridge;
 pub mod types;
@@ -422,5 +423,144 @@ mod tests {
             res.is_err(),
             "expected DB error to be surfaced as MCP error"
         );
+    }
+
+    #[tokio::test]
+    async fn test_semantic_arm_falls_back_when_model_not_downloaded() {
+        // Real runtime, no Tauri app needed: exercises the exact
+        // `index_status` -> `model_downloaded` check `search_meeting_content`
+        // relies on to degrade gracefully instead of erroring.
+        let db = std::sync::Arc::new(hypr_db_core::Db::connect_memory_plain().await.unwrap());
+        let runtime =
+            std::sync::Arc::new(tauri_plugin_embedding_search::EmbeddingSearchRuntime::new(
+                db,
+                std::path::PathBuf::from("/nonexistent-model-dir"),
+            ));
+
+        let (ranked, by_session, reason) =
+            server::semantic_arm(Some(runtime), None, "roadmap", None).await;
+
+        assert!(ranked.is_empty());
+        assert!(by_session.is_empty());
+        assert_eq!(reason.as_deref(), Some("semantic model not downloaded yet"));
+    }
+
+    #[tokio::test]
+    async fn test_semantic_arm_reports_caller_supplied_unavailable_reason() {
+        let (ranked, by_session, reason) =
+            server::semantic_arm(None, Some("no app context"), "q", None).await;
+
+        assert!(ranked.is_empty());
+        assert!(by_session.is_empty());
+        assert_eq!(reason.as_deref(), Some("no app context"));
+    }
+
+    #[tokio::test]
+    async fn test_search_meeting_content_falls_back_to_lexical_without_model() {
+        let (_dir, db) = setup_test_db().await;
+        let pool = db.pool().clone();
+
+        sqlx::query(
+            "INSERT INTO sessions (id, title, created_at, updated_at) VALUES ('m-1', 'Roadmap Sync', '2026-11-03T10:00:00Z', '2026-11-03T11:00:00Z')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+        sqlx::query(
+            "INSERT INTO session_documents (id, session_id, kind, title, body) VALUES ('doc-1', 'm-1', 'note', 'Summary', 'Reviewed the Q1 roadmap priorities with the team.')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        // No app_handle at all (the existing production fallback this crate
+        // already relies on for the Tantivy arm of `search_meetings`): the
+        // tool must still return the lexical hit, never error, and explain
+        // why the semantic arm did not run.
+        let server = NotareMcpServer::new(pool, None);
+
+        let res = server
+            .search_meeting_content(Parameters(SearchMeetingContentParams {
+                query: "roadmap priorities".to_string(),
+                meeting_ids: None,
+                limit: Some(10),
+            }))
+            .await
+            .unwrap();
+        let json = serde_json::to_string(&res).unwrap();
+
+        assert!(
+            json.contains("lexical only (semantic unavailable: no app context)"),
+            "mode must explain the fallback: {json}"
+        );
+        assert!(!json.contains("\"mode\":\"hybrid"));
+        assert!(json.contains("\"meeting_id\":\"m-1\""));
+        assert!(json.contains("roadmap priorities"));
+        assert!(json.contains("\"citation\":\"[[src:m-1@0]]\""));
+        assert!(json.contains("\"rrf_score\""));
+    }
+
+    #[tokio::test]
+    async fn test_search_meeting_content_fuses_lexical_sources_by_rrf_rank() {
+        let (_dir, db) = setup_test_db().await;
+        let pool = db.pool().clone();
+
+        // Two sessions both match "launch": m-1 only via its document (rank 0
+        // in the lexical arm), m-2 only via its transcript (rank 0 as well,
+        // since the document loop found nothing for it, then the transcript
+        // loop is where m-2 first appears at rank 1 overall). RRF with a
+        // single arm must preserve that encounter order.
+        for (id, title) in [("m-1", "Launch Review"), ("m-2", "Launch Retro")] {
+            sqlx::query("INSERT INTO sessions (id, title, created_at, updated_at) VALUES (?, ?, '2026-11-03T10:00:00Z', '2026-11-03T11:00:00Z')")
+                .bind(id)
+                .bind(title)
+                .execute(&pool)
+                .await
+                .unwrap();
+        }
+        sqlx::query(
+            "INSERT INTO session_documents (id, session_id, kind, title, body) VALUES ('doc-1', 'm-1', 'note', 'Summary', 'Launch plan finalized.')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+        sqlx::query(
+            "INSERT INTO transcripts (id, session_id, memo, words_json) VALUES ('tr-1', 'm-2', 'Launch retro notes.', '[]')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        let server = NotareMcpServer::new(pool, None);
+        let res = server
+            .search_meeting_content(Parameters(SearchMeetingContentParams {
+                query: "launch".to_string(),
+                meeting_ids: None,
+                limit: Some(10),
+            }))
+            .await
+            .unwrap();
+        let json = serde_json::to_string(&res).unwrap();
+
+        // m-1 (document, rank 0) must outrank m-2 (transcript, rank 1).
+        let m1_pos = json.find("\"meeting_id\":\"m-1\"").unwrap();
+        let m2_pos = json.find("\"meeting_id\":\"m-2\"").unwrap();
+        assert!(
+            m1_pos < m2_pos,
+            "higher-ranked lexical hit must sort first: {json}"
+        );
+
+        // meeting_ids filter excludes m-2.
+        let filtered = server
+            .search_meeting_content(Parameters(SearchMeetingContentParams {
+                query: "launch".to_string(),
+                meeting_ids: Some(vec!["m-1".to_string()]),
+                limit: Some(10),
+            }))
+            .await
+            .unwrap();
+        let filtered_json = serde_json::to_string(&filtered).unwrap();
+        assert!(filtered_json.contains("\"meeting_id\":\"m-1\""));
+        assert!(!filtered_json.contains("\"meeting_id\":\"m-2\""));
     }
 }
