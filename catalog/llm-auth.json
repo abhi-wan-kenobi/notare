@@ -2,7 +2,7 @@
   "providers": [
     {
       "id": "anthropic",
-      "enabled": false,
+      "enabled": true,
       "label": "Anthropic (Claude)",
       "beta_headers": {
         "anthropic-beta": "claude-code-20250219,oauth-2025-04-20"
