@@ -111,6 +111,11 @@ pub const APP_MIGRATION_STEPS: &[hypr_db_migrate::MigrationStep] = &[
         scope: hypr_db_migrate::MigrationScope::Plain,
         sql: include_str!("../migrations/20261102010000_session_briefs.sql"),
     },
+    hypr_db_migrate::MigrationStep {
+        id: "20261103000000_sync_peer_cursors",
+        scope: hypr_db_migrate::MigrationScope::Plain,
+        sql: include_str!("../migrations/20261103000000_sync_peer_cursors.sql"),
+    },
 ];
 
 pub fn schema() -> hypr_db_migrate::DbSchema {
@@ -323,6 +328,7 @@ mod tests {
                 "session_tags",
                 "sessions",
                 "storage_migration_state",
+                "sync_peer_cursors",
                 "tags",
                 "templates",
                 "transcripts",
@@ -629,7 +635,42 @@ mod tests {
         assert!(cloudsync_alter_guard_required("action_items"));
         assert!(cloudsync_alter_guard_required("tags"));
         assert!(cloudsync_alter_guard_required("session_tags"));
-        assert!(!cloudsync_alter_guard_required("calendars"));
+
+        // §25/§26: proven unsafe (concurrent creation duplicates the
+        // entity), not merely unproven. Pinned so a later batch cannot
+        // enable them because "a proof example exists".
+        assert_eq!(
+            NO_GO_TABLES,
+            ["humans", "session_participants", "calendars", "events"]
+        );
+        for table in NO_GO_TABLES {
+            assert!(!cloudsync_alter_guard_required(table), "{table} is NO-GO");
+        }
+
+        // Enabled, eligible-pending-proof and NO-GO are pairwise disjoint,
+        // and every eligible/NO-GO table is a registered table.
+        let synced: std::collections::BTreeSet<&str> = SYNCED_TABLES.iter().copied().collect();
+        assert_eq!(synced, enabled);
+        let eligible: std::collections::BTreeSet<&str> =
+            ELIGIBLE_PENDING_PROOF.iter().copied().collect();
+        let no_go: std::collections::BTreeSet<&str> = NO_GO_TABLES.iter().copied().collect();
+        assert!(enabled.is_disjoint(&eligible), "enabled before its proof");
+        assert!(enabled.is_disjoint(&no_go), "a NO-GO table was enabled");
+        assert!(
+            eligible.is_disjoint(&no_go),
+            "a NO-GO table was marked eligible"
+        );
+        for table in eligible.union(&no_go) {
+            assert!(
+                registry.iter().any(|spec| spec.table_name == *table),
+                "{table} is not a registered table"
+            );
+        }
+        assert!(
+            !registry
+                .iter()
+                .any(|spec| spec.table_name == "sync_peer_cursors")
+        );
     }
 
     #[tokio::test]

@@ -1,4 +1,5 @@
 import { createAnthropic } from "@ai-sdk/anthropic";
+import { wrapLanguageModel } from "ai";
 
 import {
   DEFAULT_CATALOG,
@@ -7,10 +8,11 @@ import {
 } from "./llm-auth-client";
 import { createSubscriptionFetch } from "./subscription-fetch";
 
+/** Offline fallback; the picker reads the catalog's `models` first. */
 export const ANTHROPIC_SUBSCRIPTION_MODELS = [
-  "claude-sonnet-4-5",
-  "claude-opus-4-1",
-  "claude-haiku-4-5",
+  "claude-sonnet-5-5",
+  "claude-opus-5-5",
+  "claude-haiku-5-5",
 ] as const;
 
 export type AnthropicSubscriptionModelId =
@@ -102,5 +104,24 @@ export function createAnthropicSubscriptionModel(
     apiKey: "subscription",
   });
 
-  return provider(modelId);
+  // @ai-sdk/anthropic only uses native structured output (`output_format`)
+  // for model ids it already knows; for newer ids (claude-*-5-5) it falls back
+  // to a forced `tool_choice`, which Sonnet 5.5 rejects ("tool_choice: type
+  // \"tool\" ... not supported", measured 2026-11-03). Force outputFormat.
+  return wrapLanguageModel({
+    model: provider(modelId),
+    middleware: {
+      specificationVersion: "v3",
+      transformParams: async ({ params }) => ({
+        ...params,
+        providerOptions: {
+          ...params.providerOptions,
+          anthropic: {
+            ...params.providerOptions?.anthropic,
+            structuredOutputMode: "outputFormat",
+          },
+        },
+      }),
+    },
+  });
 }

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   createAnthropicSubscriptionFetch,
+  createAnthropicSubscriptionModel,
   transformAnthropicRequestBody,
 } from "./anthropic-subscription";
 import {
@@ -11,7 +12,13 @@ import {
   transformGeminiResponse,
   wrapGeminiRequestBody,
 } from "./gemini-subscription";
-import { createOpenAICodexSubscriptionFetch } from "./openai-codex-subscription";
+import { subscriptionModelIds } from "./llm-auth-client";
+import {
+  createOpenAICodexSubscriptionFetch,
+  reassembleCodexResponse,
+  transformCodexRequestBody,
+  transformCodexResponse,
+} from "./openai-codex-subscription";
 import {
   createSubscriptionFetch,
   extractVendorErrorMessage,
@@ -267,7 +274,7 @@ describe("OpenAI Codex Subscription Provider", () => {
 
     await codexFetch("https://chatgpt.com/backend-api/codex/responses", {
       method: "POST",
-      body: JSON.stringify({ model: "gpt-5-codex", input: "test" }),
+      body: JSON.stringify({ model: "gpt-6.1-sol", input: "test" }),
       headers: { "Content-Type": "application/json" },
     });
 
@@ -276,6 +283,392 @@ describe("OpenAI Codex Subscription Provider", () => {
     expect(headers.get("Authorization")).toBe("Bearer openai-oauth-token-123");
     expect(headers.get("chatgpt-account-id")).toBe("acct-test-456");
     expect(headers.get("OpenAI-Beta")).toBe("responses=experimental");
+  });
+});
+
+function sse(...events: Array<Record<string, unknown>>): string {
+  return events
+    .map((e) => `event: ${String(e.type)}\ndata: ${JSON.stringify(e)}\n\n`)
+    .join("");
+}
+
+const finalResponse = {
+  id: "resp_0a1b",
+  object: "response",
+  status: "completed",
+  model: "gpt-6.1-sol",
+  output: [
+    {
+      id: "msg_0a1b",
+      type: "message",
+      status: "completed",
+      role: "assistant",
+      content: [{ type: "output_text", text: "Hello there", annotations: [] }],
+    },
+  ],
+  usage: { input_tokens: 9, output_tokens: 3, total_tokens: 12 },
+};
+
+const helloStream = (completedOutput: unknown[]) =>
+  sse(
+    {
+      type: "response.created",
+      response: { id: "resp_0a1b", object: "response", status: "in_progress" },
+    },
+    {
+      type: "response.output_item.added",
+      output_index: 0,
+      item: { id: "msg_0a1b", type: "message", role: "assistant", content: [] },
+    },
+    {
+      type: "response.output_text.delta",
+      output_index: 0,
+      content_index: 0,
+      delta: "Hello",
+    },
+    {
+      type: "response.output_text.delta",
+      output_index: 0,
+      content_index: 0,
+      delta: " there",
+    },
+    {
+      type: "response.output_item.done",
+      output_index: 0,
+      item: finalResponse.output[0],
+    },
+    {
+      type: "response.completed",
+      response: { ...finalResponse, output: completedOutput },
+    },
+  );
+
+describe("OpenAI Codex request/response shaping", () => {
+  it("forces store:false and stream:true while keeping the rest of the body", () => {
+    const out = JSON.parse(
+      transformCodexRequestBody(
+        JSON.stringify({
+          model: "gpt-6.1-sol",
+          input: [{ role: "user", content: "hi" }],
+          store: true,
+          stream: false,
+        }),
+      ),
+    );
+    expect(out).toEqual({
+      model: "gpt-6.1-sol",
+      input: [{ role: "user", content: "hi" }],
+      store: false,
+      stream: true,
+    });
+
+    expect(JSON.parse(transformCodexRequestBody("{}"))).toEqual({
+      store: false,
+      stream: true,
+    });
+  });
+
+  it("leaves a non-JSON body untouched", () => {
+    expect(transformCodexRequestBody("not json")).toBe("not json");
+  });
+
+  it("reassembles response.completed into the non-streaming JSON", () => {
+    const { status, body } = reassembleCodexResponse(
+      helloStream(finalResponse.output),
+    );
+    expect(status).toBe(200);
+    expect(body).toEqual(finalResponse);
+  });
+
+  it("fills an empty response.completed output from the streamed items", () => {
+    const { body } = reassembleCodexResponse(helloStream([]));
+    expect(body).toEqual(finalResponse);
+  });
+
+  it("falls back to concatenated text deltas when no terminal event arrived", () => {
+    const text = helloStream([])
+      .split("\n\n")
+      .filter((b) => !b.includes("response.completed"))
+      .filter((b) => !b.includes("response.output_item.done"))
+      .join("\n\n");
+    const { status, body } = reassembleCodexResponse(text) as {
+      status: number;
+      body: {
+        status: string;
+        output: Array<{ content: Array<{ text: string }> }>;
+      };
+    };
+    expect(status).toBe(200);
+    expect(body.status).toBe("completed");
+    expect(body.output[0].content[0].text).toBe("Hello there");
+  });
+
+  it("maps a stream error event to an error payload", () => {
+    const { status, body } = reassembleCodexResponse(
+      sse({ type: "error", code: "rate_limit", message: "slow down" }),
+    );
+    expect(status).toBe(502);
+    expect(body).toEqual({
+      error: { message: "slow down", code: "rate_limit" },
+    });
+  });
+
+  it("passes the SSE through untouched when the caller asked for streaming", async () => {
+    const raw = helloStream(finalResponse.output);
+    const response = new Response(raw, {
+      status: 200,
+      headers: { "content-type": "text/event-stream" },
+    });
+    const out = await transformCodexResponse(response, {
+      requestBody: JSON.stringify({ model: "gpt-6.1-sol", stream: true }),
+    });
+    expect(out).toBe(response);
+    expect(await out.text()).toBe(raw);
+  });
+
+  it("does not touch error responses", async () => {
+    const response = new Response('{"error":{"message":"nope"}}', {
+      status: 400,
+      headers: { "content-type": "application/json" },
+    });
+    const out = await transformCodexResponse(response, {
+      requestBody: JSON.stringify({ model: "x" }),
+    });
+    expect(out).toBe(response);
+  });
+
+  it("generateText-style call: backend gets a streaming, non-stored request and the caller gets plain JSON", async () => {
+    let sentBody: Record<string, unknown> = {};
+    const codexFetch = createOpenAICodexSubscriptionFetch({
+      fetchFn: async (_url, init) => {
+        sentBody = JSON.parse(String(init?.body));
+        return new Response(helloStream(finalResponse.output), {
+          status: 200,
+          headers: {
+            "content-type": "text/event-stream",
+            "content-length": "999",
+          },
+        });
+      },
+      getToken: async () => ({ token: "tok", extra: {} }),
+    });
+
+    const res = await codexFetch(
+      "https://chatgpt.com/backend-api/codex/responses",
+      {
+        method: "POST",
+        body: JSON.stringify({ model: "gpt-6.1-sol", input: "hi" }),
+      },
+    );
+
+    expect(sentBody.store).toBe(false);
+    expect(sentBody.stream).toBe(true);
+    expect(res.headers.get("content-type")).toBe("application/json");
+    expect(await res.json()).toEqual(finalResponse);
+  });
+
+  it("reassembles even when the backend sends no content-type (real Codex behavior without Accept)", async () => {
+    let sentHeaders = new Headers();
+    const codexFetch = createOpenAICodexSubscriptionFetch({
+      fetchFn: async (_url, init) => {
+        sentHeaders = new Headers(init?.headers);
+        // Measured 2026-11-03: chatgpt.com/backend-api/codex/responses
+        // returns the SSE body with no content-type header at all.
+        return new Response(helloStream(finalResponse.output), { status: 200 });
+      },
+      getToken: async () => ({ token: "tok", extra: {} }),
+    });
+
+    const res = await codexFetch(
+      "https://chatgpt.com/backend-api/codex/responses",
+      {
+        method: "POST",
+        body: JSON.stringify({ model: "gpt-6.1-sol", input: "hi" }),
+      },
+    );
+
+    expect(sentHeaders.get("accept")).toBe("text/event-stream");
+    expect(await res.json()).toEqual(finalResponse);
+  });
+
+  it("streamText-style call keeps the event stream", async () => {
+    const raw = helloStream(finalResponse.output);
+    const codexFetch = createOpenAICodexSubscriptionFetch({
+      fetchFn: async () =>
+        new Response(raw, {
+          status: 200,
+          headers: { "content-type": "text/event-stream" },
+        }),
+      getToken: async () => ({ token: "tok", extra: {} }),
+    });
+
+    const res = await codexFetch(
+      "https://chatgpt.com/backend-api/codex/responses",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          model: "gpt-6.1-sol",
+          input: "hi",
+          stream: true,
+        }),
+      },
+    );
+    expect(await res.text()).toBe(raw);
+  });
+});
+
+describe("Codex stream error precedence", () => {
+  it("keeps a completed response when an error event arrives later in the stream", () => {
+    const { status, body } = reassembleCodexResponse(
+      helloStream(finalResponse.output) +
+        sse({ type: "error", code: "late", message: "trailing noise" }),
+    );
+    expect(status).toBe(200);
+    expect(body).toEqual(finalResponse);
+  });
+
+  it("keeps an incomplete response when an error event arrives later", () => {
+    const { status, body } = reassembleCodexResponse(
+      sse({
+        type: "response.incomplete",
+        response: { object: "response", status: "incomplete", output: [] },
+      }) + sse({ type: "error", message: "late" }),
+    );
+    expect(status).toBe(200);
+    expect(body).toMatchObject({ status: "incomplete" });
+  });
+
+  it("still maps an error to 502 when only response.failed follows it", () => {
+    const { status } = reassembleCodexResponse(
+      sse({ type: "error", message: "boom" }) +
+        sse({
+          type: "response.failed",
+          response: { object: "response", status: "failed", output: [] },
+        }),
+    );
+    expect(status).toBe(502);
+  });
+});
+
+describe("Anthropic structured output mode", () => {
+  const requestFor = async (providerOptions?: Record<string, unknown>) => {
+    const bodies: Array<Record<string, unknown>> = [];
+    const fetchFn = vi.fn(async (_url: unknown, init?: RequestInit) => {
+      bodies.push(JSON.parse(init?.body as string));
+      return new Response("{}", { status: 400 });
+    });
+    const model = createAnthropicSubscriptionModel("claude-sonnet-5-5", {
+      fetchFn: fetchFn as unknown as typeof fetch,
+      getToken: async () => ({ token: "t", extra: {} }),
+    });
+    try {
+      await model.doGenerate({
+        prompt: [{ role: "user", content: [{ type: "text", text: "hi" }] }],
+        responseFormat: {
+          type: "json",
+          schema: {
+            type: "object",
+            properties: { a: { type: "string" } },
+            required: ["a"],
+          },
+        },
+        providerOptions: providerOptions as never,
+      });
+    } catch {
+      // The stubbed vendor answers 400; only the request body matters.
+    }
+    return bodies[0];
+  };
+
+  it("sends output_config.format instead of a forced tool_choice for claude-*-5-5", async () => {
+    const body = await requestFor();
+    expect(body.output_config).toMatchObject({
+      format: { type: "json_schema" },
+    });
+    expect(body.tool_choice).toBeUndefined();
+  });
+
+  it("overrides a caller-supplied structuredOutputMode", async () => {
+    const body = await requestFor({
+      anthropic: { structuredOutputMode: "jsonTool" },
+    });
+    expect(body.output_config).toMatchObject({
+      format: { type: "json_schema" },
+    });
+    expect(body.tool_choice).toBeUndefined();
+  });
+});
+
+describe("subscriptionModelIds", () => {
+  const provider = (
+    models: Array<{ id: string; label: string }> | undefined,
+    default_model?: string | null,
+  ) => ({
+    id: "anthropic" as const,
+    enabled: true,
+    label: "x",
+    beta_headers: {},
+    system_prefix: null,
+    base_url: "",
+    notes: "",
+    models,
+    default_model,
+  });
+
+  it("prefers the catalog list and puts the default model first", () => {
+    expect(
+      subscriptionModelIds(
+        provider(
+          [
+            { id: "a", label: "A" },
+            { id: "b", label: "B" },
+            { id: "c", label: "C" },
+          ],
+          "b",
+        ),
+        ["fallback-1"],
+      ),
+    ).toEqual(["b", "a", "c"]);
+  });
+
+  it("keeps catalog order when the default is absent or unknown", () => {
+    const models = [
+      { id: "a", label: "A" },
+      { id: "b", label: "B" },
+    ];
+    expect(subscriptionModelIds(provider(models, null), ["f"])).toEqual([
+      "a",
+      "b",
+    ]);
+    expect(subscriptionModelIds(provider(models, "zzz"), ["f"])).toEqual([
+      "a",
+      "b",
+    ]);
+  });
+
+  it("falls back to the hard-coded list for a catalog without models", () => {
+    expect(subscriptionModelIds(provider(undefined), ["f1", "f2"])).toEqual([
+      "f1",
+      "f2",
+    ]);
+    expect(subscriptionModelIds(provider([]), ["f1"])).toEqual(["f1"]);
+    expect(subscriptionModelIds(undefined, ["f1"])).toEqual(["f1"]);
+  });
+
+  it("lists each model id once", () => {
+    expect(
+      subscriptionModelIds(
+        provider(
+          [
+            { id: "a", label: "A" },
+            { id: "b", label: "B" },
+            { id: "a", label: "A again" },
+          ],
+          "b",
+        ),
+        ["f"],
+      ),
+    ).toEqual(["b", "a"]);
   });
 });
 

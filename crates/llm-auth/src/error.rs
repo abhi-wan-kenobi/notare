@@ -38,6 +38,12 @@ pub enum Error {
     #[error("loopback error: {0}")]
     Loopback(String),
 
+    #[error("could not open the browser: {0}")]
+    OpenBrowser(String),
+
+    #[error("sign-in cancelled")]
+    Cancelled,
+
     #[error("serialization error: {0}")]
     Serialization(String),
 }

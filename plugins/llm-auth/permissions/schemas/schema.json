@@ -355,6 +355,30 @@
           "markdownDescription": "Denies the logout command without any pre-configured scope."
         },
         {
+          "description": "Enables the openrouter_cancel command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-openrouter-cancel",
+          "markdownDescription": "Enables the openrouter_cancel command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the openrouter_cancel command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-openrouter-cancel",
+          "markdownDescription": "Denies the openrouter_cancel command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the openrouter_sign_in command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-openrouter-sign-in",
+          "markdownDescription": "Enables the openrouter_sign_in command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the openrouter_sign_in command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-openrouter-sign-in",
+          "markdownDescription": "Denies the openrouter_sign_in command without any pre-configured scope."
+        },
+        {
           "description": "Enables the start command without any pre-configured scope.",
           "type": "string",
           "const": "allow-start",
@@ -379,10 +403,10 @@
           "markdownDescription": "Denies the status command without any pre-configured scope."
         },
         {
-          "description": "Default permissions for tauri-plugin-llm-auth\n#### This default permission set includes:\n\n- `allow-status`\n- `allow-start`\n- `allow-complete`\n- `allow-cancel`\n- `allow-logout`\n- `allow-access-token`\n- `allow-catalog`",
+          "description": "Default permissions for tauri-plugin-llm-auth\n#### This default permission set includes:\n\n- `allow-status`\n- `allow-start`\n- `allow-complete`\n- `allow-cancel`\n- `allow-logout`\n- `allow-access-token`\n- `allow-catalog`\n- `allow-openrouter-sign-in`\n- `allow-openrouter-cancel`",
           "type": "string",
           "const": "default",
-          "markdownDescription": "Default permissions for tauri-plugin-llm-auth\n#### This default permission set includes:\n\n- `allow-status`\n- `allow-start`\n- `allow-complete`\n- `allow-cancel`\n- `allow-logout`\n- `allow-access-token`\n- `allow-catalog`"
+          "markdownDescription": "Default permissions for tauri-plugin-llm-auth\n#### This default permission set includes:\n\n- `allow-status`\n- `allow-start`\n- `allow-complete`\n- `allow-cancel`\n- `allow-logout`\n- `allow-access-token`\n- `allow-catalog`\n- `allow-openrouter-sign-in`\n- `allow-openrouter-cancel`"
         }
       ]
     }

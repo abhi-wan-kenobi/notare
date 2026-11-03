@@ -2,44 +2,18 @@ use tauri::ipc::Channel;
 
 use crate::{ExecuteProxyResult, ManagedState, QueryEvent, TransactionStatement};
 
-/// Wire shape of [`hypr_db_core::CloudsyncStatus`] for the specta surface —
-/// db-core's own type is serde-only and stays that way (it predates specta
-/// and is used by non-tauri consumers); this mirror keeps the boundary.
+/// Live sync status: whether this database has the cr-sqlite engine loaded
+/// and whether the P2P agent is running.
 #[derive(Debug, Clone, serde::Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct SyncStatusPayload {
-    pub cloudsync_enabled: bool,
-    pub extension_loaded: bool,
-    pub configured: bool,
+    pub engine_loaded: bool,
     pub running: bool,
-    pub network_initialized: bool,
-    pub last_sync_downloaded_count: Option<i64>,
-    pub last_sync_at_ms: Option<u64>,
-    pub has_unsent_changes: Option<bool>,
-    pub last_error: Option<String>,
-    pub consecutive_failures: u32,
-}
-
-impl From<hypr_db_core::CloudsyncStatus> for SyncStatusPayload {
-    fn from(status: hypr_db_core::CloudsyncStatus) -> Self {
-        Self {
-            cloudsync_enabled: status.cloudsync_enabled,
-            extension_loaded: status.extension_loaded,
-            configured: status.configured,
-            running: status.running,
-            network_initialized: status.network_initialized,
-            last_sync_downloaded_count: status.last_sync_downloaded_count,
-            last_sync_at_ms: status.last_sync_at_ms,
-            has_unsent_changes: status.has_unsent_changes,
-            last_error: status.last_error,
-            consecutive_failures: status.consecutive_failures,
-        }
-    }
 }
 
 /// The command result for `sync_status`: the live status when sync is built
-/// in, or a stub carrying just `cloudsync_enabled: false` otherwise, so the
-/// frontend can render one shape in every configuration.
+/// in, or `Unavailable` otherwise, so the frontend can render one shape in
+/// every configuration.
 #[derive(Debug, Clone, serde::Serialize, specta::Type)]
 #[serde(rename_all = "camelCase", tag = "kind")]
 #[allow(dead_code)] // exactly one variant is constructed per feature config
@@ -281,11 +255,11 @@ pub(crate) async fn sync_status(
 ) -> Result<SyncStatusResult, String> {
     #[cfg(all(feature = "sync", sync_platform))]
     {
-        state
-            .sync_status()
-            .await
-            .map(|status| SyncStatusResult::Live(SyncStatusPayload::from(status)))
-            .map_err(|error| error.to_string())
+        let status = state.sync_status().await;
+        Ok(SyncStatusResult::Live(SyncStatusPayload {
+            engine_loaded: status.engine_loaded,
+            running: status.running,
+        }))
     }
     #[cfg(not(all(feature = "sync", sync_platform)))]
     {
@@ -382,6 +356,152 @@ pub(crate) async fn sync_remove_peer(
     {
         state
             .sync_remove_peer(fingerprint)
+            .await
+            .map_err(|error| error.to_string())
+    }
+    #[cfg(not(all(feature = "sync", sync_platform)))]
+    {
+        let _ = (&state, fingerprint);
+        Err("sync is not available in this build".to_string())
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Pairing commands (SYNC-6: QR / link pairing)
+// ---------------------------------------------------------------------------
+
+/// Result of creating a pairing offer.
+#[derive(Debug, Clone, serde::Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct PairingOfferResult {
+    /// The `notare://pair#...` link.
+    pub link: String,
+    /// SVG markup for the QR code encoding the link.
+    pub qr_svg: String,
+    /// Unix timestamp (seconds) when the offer expires.
+    pub expires_at: u64,
+}
+
+/// A pending device waiting for confirmation.
+#[derive(Debug, Clone, serde::Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct PairingPendingDevice {
+    pub device_id: String,
+    pub name: String,
+    pub sas: String,
+    pub expires_at: u64,
+}
+
+/// Status of the pairing subsystem.
+#[derive(Debug, Clone, serde::Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct PairingStatusResult {
+    pub offer_active: bool,
+    pub offer_expires_at: Option<u64>,
+    pub pending: Vec<PairingPendingDevice>,
+}
+
+/// Result of joining via a pairing link.
+#[derive(Debug, Clone, serde::Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct PairingJoinResult {
+    /// The 6-digit SAS code to verify.
+    pub sas: String,
+    /// The offerer's device id (z32 compact).
+    pub device_id: String,
+    /// The offerer's device name.
+    pub device_name: String,
+}
+
+#[tauri::command]
+#[specta::specta]
+pub(crate) async fn pairing_create_offer(
+    state: tauri::State<'_, ManagedState>,
+) -> Result<PairingOfferResult, String> {
+    #[cfg(all(feature = "sync", sync_platform))]
+    {
+        state
+            .pairing_create_offer()
+            .await
+            .map_err(|error| error.to_string())
+    }
+    #[cfg(not(all(feature = "sync", sync_platform)))]
+    {
+        let _ = &state;
+        Err("sync is not available in this build".to_string())
+    }
+}
+
+#[tauri::command]
+#[specta::specta]
+pub(crate) async fn pairing_join(
+    state: tauri::State<'_, ManagedState>,
+    link: String,
+) -> Result<PairingJoinResult, String> {
+    #[cfg(all(feature = "sync", sync_platform))]
+    {
+        state
+            .pairing_join(link)
+            .await
+            .map_err(|error| error.to_string())
+    }
+    #[cfg(not(all(feature = "sync", sync_platform)))]
+    {
+        let _ = (&state, link);
+        Err("sync is not available in this build".to_string())
+    }
+}
+
+#[tauri::command]
+#[specta::specta]
+pub(crate) async fn pairing_status(
+    state: tauri::State<'_, ManagedState>,
+) -> Result<PairingStatusResult, String> {
+    #[cfg(all(feature = "sync", sync_platform))]
+    {
+        state
+            .pairing_status()
+            .await
+            .map_err(|error| error.to_string())
+    }
+    #[cfg(not(all(feature = "sync", sync_platform)))]
+    {
+        let _ = &state;
+        Err("sync is not available in this build".to_string())
+    }
+}
+
+#[tauri::command]
+#[specta::specta]
+pub(crate) async fn pairing_confirm(
+    state: tauri::State<'_, ManagedState>,
+    device_id: String,
+    accept: bool,
+) -> Result<(), String> {
+    #[cfg(all(feature = "sync", sync_platform))]
+    {
+        state
+            .pairing_confirm(device_id, accept)
+            .await
+            .map_err(|error| error.to_string())
+    }
+    #[cfg(not(all(feature = "sync", sync_platform)))]
+    {
+        let _ = (&state, device_id, accept);
+        Err("sync is not available in this build".to_string())
+    }
+}
+
+#[tauri::command]
+#[specta::specta]
+pub(crate) async fn sync_revoke_peer(
+    state: tauri::State<'_, ManagedState>,
+    fingerprint: String,
+) -> Result<bool, String> {
+    #[cfg(all(feature = "sync", sync_platform))]
+    {
+        state
+            .sync_revoke_peer(fingerprint)
             .await
             .map_err(|error| error.to_string())
     }

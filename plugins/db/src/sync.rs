@@ -1,115 +1,127 @@
-//! SYNC-5: the app's sync lifecycle — owning the `P2pAgent` and driving the
-//! cloudsync runtime on top of it.
+//! The app's P2P sync lifecycle: cr-sqlite CRRs plus the protocol-v2
+//! `P2pAgent` serving and pulling them.
 //!
-//! ## Why this module exists (and why it is gated)
+//! ## Why this module is gated
 //!
-//! The C `network_p2p.c` layer discovers its agent via two env vars it reads
-//! on every network call (`NOTARE_SYNC_AGENT_ADDR`, `NOTARE_SYNC_TOKEN`), and
-//! the from-source cloudsync build that layer belongs to is linux/x86_64-only
-//! until SYNC-9. So the whole lifecycle lives behind the opt-in `sync` cargo
-//! feature **and** `cfg(target_os = "linux")`: a default build of this crate —
-//! and of the whole workspace — compiles without an agent, without the env
-//! vars, and with `cloudsync_enabled: false`, byte-identical in behavior to
-//! pre-SYNC-5.
+//! Everything here exists only with the opt-in `sync` cargo feature on the
+//! app's `sync_platform` gate (build-support/sync_app_gate.rs). A default
+//! build opens the database without cr-sqlite and has no agent.
 //!
-//! ## Startup order is load-bearing
+//! ## Startup order
 //!
-//! 1. start the `P2pAgent` (identity + allowlist from `<data_dir>/notare/sync/`)
-//! 2. publish `NOTARE_SYNC_AGENT_ADDR` + `NOTARE_SYNC_TOKEN` — the single
-//!    point of publication; set once, never mutated while the app runs
-//! 3. `cloudsync_configure` — `connection_string` is this device's own
-//!    `p2p://<fingerprint>` (elected-hub topology: a site's own broker serves
-//!    its local pulls), `CloudsyncAuth::None` (iroh's Ed25519 handshake is
-//!    the auth), table registry from `hypr_db_app`
-//! 4. `cloudsync_start` — its `network_init` runs *inside* here and reads the
-//!    env var, so the agent must already be live
+//! 1. `crsql_as_crr` on [`hypr_db_app::SYNCED_TABLES`] — only here, so a
+//!    device that never turns sync on never converts a table.
+//! 2. start the `P2pAgent` (identity + allowlist from `<data_dir>/notare/sync/`)
+//!    over a [`CrsqliteChangeSource`]; it runs its own accept loop and
+//!    periodic all-peers tick.
 //!
-//! ## Teardown order is load-bearing (bug class #101)
+//! ## Teardown order
 //!
-//! The cloudsync extension holds prepared statements against pool
-//! connections; closing the pool first would leave them finalizing against
-//! freed handles. So: `cloudsync_stop` (runs `cloudsync_network_cleanup` +
-//! `cloudsync_terminate`) → drop live queries → `pool().close()` → stop the
-//! agent. [`PluginDbRuntime::shutdown`] performs exactly this sequence.
+//! The agent's sessions read and write the pool, so it stops first; then the
+//! live-query dispatcher; then `Db::close`, which finalizes every cr-sqlite
+//! connection before `sqlite3_close` (an unfinalized close panics sqlx's
+//! worker threads). [`crate::runtime::PluginDbRuntime::shutdown`] performs
+//! exactly this sequence.
+
+use std::sync::Arc;
 
 use hypr_db_core::Db;
 use sync_p2p::{P2pAgent, Peer};
 
-/// How often the background sync loop pulls (ms). The SYNC-5 drain fix means
-/// one tick fully catches a site up, so this is pacing, not correctness.
-const SYNC_INTERVAL_MS: u64 = 2000;
+use crate::change_source::{CrsqliteChangeSource, enable_crr_tables};
 
-/// A started sync stack: the agent, plus the db it serves. Held by
-/// [`crate::runtime::PluginDbRuntime`] while sync is active.
+pub type SyncAgent = P2pAgent<CrsqliteChangeSource>;
+
+/// What `sync_status` reports: whether this database has the engine loaded,
+/// and whether the agent is running.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SyncStatus {
+    pub engine_loaded: bool,
+    pub running: bool,
+}
+
+/// A started sync stack. Held by [`crate::runtime::PluginDbRuntime`] while
+/// sync is active.
 pub struct SyncLifecycle {
-    agent: P2pAgent,
-    db: std::sync::Arc<Db>,
+    agent: SyncAgent,
 }
 
 /// Why a sync lifecycle step failed. Sync start is best-effort in the app: a
 /// failure leaves the app running with sync disabled, not crashed.
 #[derive(Debug, thiserror::Error)]
 pub enum SyncError {
-    #[error("failed to start p2p agent: {0}")]
+    #[error("p2p agent error: {0}")]
     Agent(#[from] sync_p2p::AgentError),
-    #[error("cloudsync runtime error: {0}")]
-    Runtime(#[from] hypr_db_core::CloudsyncRuntimeError),
+    #[error("the database was opened without the cr-sqlite engine")]
+    EngineUnavailable,
+    #[error("sync is not running")]
+    NotRunning,
+    #[error("sync engine error: {0}")]
+    Engine(#[from] hypr_crsqlite::Error),
+    #[error("sync failed with every peer: {0}")]
+    AllPeersFailed(String),
     #[error("peer operation failed: {0}")]
     Peer(String),
 }
 
 impl SyncLifecycle {
-    /// Start sync: agent up → env vars published → cloudsync configured →
-    /// cloudsync started. Order per the module docs.
-    pub async fn start(db: std::sync::Arc<Db>) -> Result<Self, SyncError> {
-        let agent = P2pAgent::start().await?;
-        Self::start_with(db, agent).await
+    /// Start sync on the persisted identity + allowlist with real discovery.
+    pub async fn start(db: Arc<Db>) -> Result<Self, SyncError> {
+        let source = Self::prepare(&db).await?;
+        let agent = P2pAgent::start(source).await?;
+        Ok(Self { agent })
     }
 
-    /// Same startup, on an already-running agent — for tests, which supply an
-    /// agent rooted at a tempdir identity instead of the real
-    /// `<data_dir>/notare/sync/`.
-    pub async fn start_with(db: std::sync::Arc<Db>, agent: P2pAgent) -> Result<Self, SyncError> {
-        // SAFETY: the C layer getenvs `NOTARE_SYNC_AGENT_ADDR` /
-        // `NOTARE_SYNC_TOKEN` per network call, so a `set_var` racing a
-        // `getenv` from cloudsync's threads would be UB. The contract that
-        // makes this sound: exactly one SyncLifecycle per process. In the app
-        // that is structural — one `PluginDbRuntime`, and `start_sync` holds
-        // the runtime's sync mutex across this whole call, while the only
-        // readers (cloudsync's background loop + network calls) spawn inside
-        // the `cloudsync_start` BELOW, after publication. Callers that go
-        // through `start_with` directly (tests) must serialize themselves.
-        unsafe {
-            std::env::set_var("NOTARE_SYNC_AGENT_ADDR", &agent.local_addr);
-            std::env::set_var("NOTARE_SYNC_TOKEN", agent.token());
+    /// Same startup, with the caller choosing identity, allowlist and agent
+    /// configuration — tests use loopback transport and tempdir identities.
+    /// On `AgentTransport::Loopback` the agent's addresses are published to
+    /// the process-local registry, the only way loopback peers resolve it.
+    pub async fn start_with_config(
+        db: Arc<Db>,
+        identity: sync_p2p::Identity,
+        peers: sync_p2p::PeerStore,
+        config: sync_p2p::AgentConfig,
+    ) -> Result<Self, SyncError> {
+        let loopback = config.transport == sync_p2p::AgentTransport::Loopback;
+        let source = Self::prepare(&db).await?;
+        let agent = P2pAgent::start_with_config(identity, peers, source, config).await?;
+        if loopback {
+            sync_p2p::register_direct_addr(agent.node_id(), agent.direct_addresses()).await;
         }
-
-        db.cloudsync_configure(hypr_db_core::CloudsyncRuntimeConfig {
-            connection_string: agent.address(),
-            auth: hypr_db_core::CloudsyncAuth::None,
-            tables: hypr_db_app::cloudsync_table_registry()
-                .iter()
-                .cloned()
-                .collect(),
-            sync_interval_ms: SYNC_INTERVAL_MS,
-            wait_ms: None,
-            max_retries: None,
-        })?;
-
-        db.cloudsync_start().await?;
-
-        Ok(Self { agent, db })
+        Ok(Self { agent })
     }
 
-    /// The cloudsync runtime status.
-    pub async fn status(&self) -> Result<hypr_db_core::CloudsyncStatus, SyncError> {
-        Ok(self.db.cloudsync_status().await?)
+    async fn prepare(db: &Arc<Db>) -> Result<Arc<CrsqliteChangeSource>, SyncError> {
+        if db.crsqlite_path().is_none() {
+            return Err(SyncError::EngineUnavailable);
+        }
+        enable_crr_tables(db).await?;
+        Ok(Arc::new(CrsqliteChangeSource::new(Arc::clone(db))))
     }
 
-    /// One immediate sync round (`cloudsync_trigger_sync` — its wrapper drains
-    /// until the hub reports nothing pending).
+    pub fn agent(&self) -> &SyncAgent {
+        &self.agent
+    }
+
+    /// One immediate round with every allowlisted peer. Returns the number of
+    /// changes pulled; fails only if there were peers and every one failed.
     pub async fn trigger(&self) -> Result<i64, SyncError> {
-        Ok(self.db.cloudsync_trigger_sync().await?)
+        let results = self.agent.sync_all().await;
+        let mut pulled = 0usize;
+        let mut failures = Vec::new();
+        for (peer, result) in &results {
+            match result {
+                Ok(report) => pulled += report.changes_pulled,
+                Err(error) => {
+                    tracing::warn!("sync with {} failed: {error}", peer.to_z32());
+                    failures.push(format!("{}: {error}", peer.to_z32()));
+                }
+            }
+        }
+        if !results.is_empty() && failures.len() == results.len() {
+            return Err(SyncError::AllPeersFailed(failures.join("; ")));
+        }
+        Ok(i64::try_from(pulled).unwrap_or(i64::MAX))
     }
 
     /// The paired-device allowlist.
@@ -117,28 +129,22 @@ impl SyncLifecycle {
         self.agent.peers().list_peers()
     }
 
-    /// This device's fingerprint string (for display / manual pairing,
-    /// SYNC-6): the grouped, dashed display form — matches the not-started
-    /// fallback in `PluginDbRuntime::sync_this_device` so the UI sees one
-    /// consistent shape regardless of whether the lifecycle is running.
+    /// This device's fingerprint string (grouped, dashed display form) —
+    /// matches the not-started fallback in
+    /// `PluginDbRuntime::sync_this_device`.
     pub fn this_device(&self) -> String {
         sync_p2p::Fingerprint::from_pubkey(&self.agent.node_id())
             .as_str()
             .to_string()
     }
 
-    /// Add a peer to this device's allowlist. Returns the peer's node-id
-    /// fingerprint string.
-    pub fn add_peer(
-        &self,
-        fingerprint: &str,
-        label: &str,
-    ) -> Result<String, crate::sync::SyncError> {
+    /// Add a peer to this device's allowlist. Returns the peer's fingerprint.
+    pub fn add_peer(&self, fingerprint: &str, label: &str) -> Result<String, SyncError> {
         let node_id = sync_p2p::Fingerprint::parse(fingerprint)
-            .map_err(|e| crate::sync::SyncError::Peer(format!("invalid fingerprint: {e}")))?;
+            .map_err(|e| SyncError::Peer(format!("invalid fingerprint: {e}")))?;
 
         if node_id == self.agent.node_id() {
-            return Err(crate::sync::SyncError::Peer(
+            return Err(SyncError::Peer(
                 "cannot add this device as its own peer".to_string(),
             ));
         }
@@ -146,7 +152,7 @@ impl SyncLifecycle {
         self.agent
             .peers()
             .add_peer(node_id, label)
-            .map_err(|e| crate::sync::SyncError::Peer(format!("failed to add peer: {e}")))?;
+            .map_err(|e| SyncError::Peer(format!("failed to add peer: {e}")))?;
 
         Ok(sync_p2p::Fingerprint::from_pubkey(&node_id)
             .as_str()
@@ -154,27 +160,19 @@ impl SyncLifecycle {
     }
 
     /// Remove a peer from this device's allowlist. Returns whether it existed.
-    pub fn remove_peer(&self, fingerprint: &str) -> Result<bool, crate::sync::SyncError> {
+    pub fn remove_peer(&self, fingerprint: &str) -> Result<bool, SyncError> {
         let node_id = sync_p2p::Fingerprint::parse(fingerprint)
-            .map_err(|e| crate::sync::SyncError::Peer(format!("invalid fingerprint: {e}")))?;
+            .map_err(|e| SyncError::Peer(format!("invalid fingerprint: {e}")))?;
 
         self.agent
             .peers()
             .remove_peer(&node_id)
-            .map_err(|e| crate::sync::SyncError::Peer(format!("failed to remove peer: {e}")))
+            .map_err(|e| SyncError::Peer(format!("failed to remove peer: {e}")))
     }
 
-    /// Step 1 of the #101 teardown: finalize extension statements before
-    /// anything closes the pool underneath them.
-    pub async fn db_cloudsync_stop(&self) -> Result<(), SyncError> {
-        Ok(self.db.cloudsync_stop().await?)
-    }
-
-    /// Step 4 of the #101 teardown: stop the agent. Split from
-    /// [`Self::db_cloudsync_stop`] so [`PluginDbRuntime::shutdown`] can run
-    /// steps 2 (drop live queries) and 3 (`pool().close()`) between them.
-    pub async fn stop_agent(self) -> Result<(), SyncError> {
+    /// Stop the agent: no new sessions, endpoint closed. Must run before the
+    /// pool closes.
+    pub async fn stop(self) {
         self.agent.stop().await;
-        Ok(())
     }
 }

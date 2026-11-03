@@ -41,8 +41,10 @@ import { GEMINI_SUBSCRIPTION_MODELS } from "~/ai/providers/gemini-subscription";
 import {
   commands as llmAuthCommands,
   DEFAULT_CATALOG,
+  type LlmAuthCatalog,
   type LlmAuthProvider,
   type LlmAuthStatus,
+  subscriptionModelIds,
 } from "~/ai/providers/llm-auth-client";
 import { OPENAI_CODEX_SUBSCRIPTION_MODELS } from "~/ai/providers/openai-codex-subscription";
 import { useAuth } from "~/auth";
@@ -597,12 +599,14 @@ export function getLlmProviderStatus({
   isAuthenticated,
   isPaid,
   authStatuses,
+  catalog,
 }: {
   provider: Provider;
   config?: ProviderConfig;
   isAuthenticated: boolean;
   isPaid: boolean;
   authStatuses?: Partial<Record<LlmAuthProvider, LlmAuthStatus>>;
+  catalog?: LlmAuthCatalog;
 }): ProviderStatus {
   if (isSubscriptionProvider(provider.id)) {
     const pluginId = toLlmAuthProvider(provider.id);
@@ -611,18 +615,20 @@ export function getLlmProviderStatus({
       return { configured: false };
     }
 
-    let models: string[] = [];
+    const catalogProvider = catalog?.providers.find((p) => p.id === pluginId);
+    let fallback: readonly string[] = [];
     switch (provider.id) {
       case "anthropic_subscription":
-        models = [...ANTHROPIC_SUBSCRIPTION_MODELS];
+        fallback = ANTHROPIC_SUBSCRIPTION_MODELS;
         break;
       case "openai_subscription":
-        models = [...OPENAI_CODEX_SUBSCRIPTION_MODELS];
+        fallback = OPENAI_CODEX_SUBSCRIPTION_MODELS;
         break;
       case "gemini_subscription":
-        models = [...GEMINI_SUBSCRIPTION_MODELS];
+        fallback = GEMINI_SUBSCRIPTION_MODELS;
         break;
     }
+    const models = subscriptionModelIds(catalogProvider, fallback);
 
     const result: ListModelsResult = {
       models,
@@ -760,6 +766,16 @@ export function useConfiguredMapping(): Record<string, ProviderStatus> {
 
   const authStatuses = authStatusesQuery.data;
 
+  const catalogQuery = useQuery({
+    queryKey: ["llm-auth", "catalog"],
+    queryFn: async () => {
+      const res = await llmAuthCommands.catalog();
+      return res.status === "ok" ? res.data : DEFAULT_CATALOG;
+    },
+    staleTime: 1000 * 60 * 5,
+  });
+  const catalog = catalogQuery.data ?? DEFAULT_CATALOG;
+
   const mapping = useMemo(() => {
     return Object.fromEntries(
       PROVIDERS.map((provider) => {
@@ -772,11 +788,12 @@ export function useConfiguredMapping(): Record<string, ProviderStatus> {
             isAuthenticated: !!auth?.session,
             isPaid: billing.isPaid,
             authStatuses,
+            catalog,
           }),
         ];
       }),
     ) as Record<string, ProviderStatus>;
-  }, [configuredProviders, auth, billing, authStatuses]);
+  }, [configuredProviders, auth, billing, authStatuses, catalog]);
 
   return mapping;
 }

@@ -10,6 +10,9 @@ import type {
   ListMeetingsInput as GeneratedListMeetingsInput,
   Meeting,
   MeetingPage,
+  PairingJoinResult,
+  PairingOfferResult,
+  PairingStatusResult,
   Recipe,
   SubscriptionRegistration,
   SyncPeer,
@@ -25,6 +28,9 @@ export type {
   LegacyImportReport,
   Meeting,
   MeetingPage,
+  PairingJoinResult,
+  PairingOfferResult,
+  PairingStatusResult,
   Recipe,
   SyncPeer,
   SyncStatusResult,
@@ -150,6 +156,33 @@ export async function syncAddPeer(
 
 export async function syncRemovePeer(fingerprint: string): Promise<boolean> {
   return invoke("plugin:db|sync_remove_peer", { fingerprint });
+}
+
+// SYNC-6: QR / link pairing. `pairingCreateOffer` runs on the offerer;
+// `pairingJoin` runs on the joiner (dials the offerer and returns the SAS
+// code to compare). Neither adds the peer — `pairingConfirm` does, after the
+// user visually confirms the SAS on both devices.
+export async function pairingCreateOffer(): Promise<PairingOfferResult> {
+  return invoke("plugin:db|pairing_create_offer");
+}
+
+export async function pairingJoin(link: string): Promise<PairingJoinResult> {
+  return invoke("plugin:db|pairing_join", { link });
+}
+
+export async function pairingStatus(): Promise<PairingStatusResult> {
+  return invoke("plugin:db|pairing_status");
+}
+
+export async function pairingConfirm(
+  deviceId: string,
+  accept: boolean,
+): Promise<void> {
+  return invoke("plugin:db|pairing_confirm", { deviceId, accept });
+}
+
+export async function syncRevokePeer(fingerprint: string): Promise<boolean> {
+  return invoke("plugin:db|sync_revoke_peer", { fingerprint });
 }
 
 export async function listRecipes(): Promise<Recipe[]> {

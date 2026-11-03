@@ -2,7 +2,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::OnceCell;
 
-use crate::types::{CatalogProvider, CatalogResult, ProviderId};
+use crate::types::{CatalogModel, CatalogProvider, CatalogResult, ProviderId};
 
 pub const DEFAULT_CATALOG_JSON: &str = r#"{
   "providers": [
@@ -15,6 +15,12 @@ pub const DEFAULT_CATALOG_JSON: &str = r#"{
       },
       "system_prefix": "You are Claude Code, Anthropic's official CLI for Claude.",
       "base_url": "https://api.anthropic.com/v1",
+      "models": [
+        { "id": "claude-sonnet-5-5", "label": "Claude Sonnet 5.5" },
+        { "id": "claude-opus-5-5", "label": "Claude Opus 5.5" },
+        { "id": "claude-haiku-5-5", "label": "Claude Haiku 5.5" }
+      ],
+      "default_model": "claude-sonnet-5-5",
       "notes": "Unofficial Claude Code OAuth integration. Feature is OFF by default; the user's consumer account carries the risk."
     },
     {
@@ -26,6 +32,12 @@ pub const DEFAULT_CATALOG_JSON: &str = r#"{
       },
       "system_prefix": null,
       "base_url": "https://chatgpt.com/backend-api/codex",
+      "models": [
+        { "id": "gpt-6.1-sol", "label": "GPT-6.1 Sol" },
+        { "id": "gpt-6.1-terra", "label": "GPT-6.1 Terra" },
+        { "id": "gpt-5.6-luna", "label": "GPT-5.6 Luna" }
+      ],
+      "default_model": "gpt-6.1-sol",
       "notes": "Unofficial Codex OAuth integration using ChatGPT Responses API. Feature is OFF by default; the user's consumer account carries the risk."
     },
     {
@@ -35,6 +47,11 @@ pub const DEFAULT_CATALOG_JSON: &str = r#"{
       "beta_headers": {},
       "system_prefix": null,
       "base_url": "https://cloudcode-pa.googleapis.com/v1internal",
+      "models": [
+        { "id": "gemini-2.5-pro", "label": "Gemini 2.5 Pro" },
+        { "id": "gemini-2.5-flash", "label": "Gemini 2.5 Flash" }
+      ],
+      "default_model": "gemini-2.5-pro",
       "notes": "Unofficial Gemini CLI OAuth integration using Cloud Code Assist. Feature is OFF by default; the user's consumer account carries the risk."
     }
   ]
@@ -48,8 +65,45 @@ pub fn default_catalog() -> CatalogResult {
     parse_catalog(DEFAULT_CATALOG_JSON).expect("embedded catalog JSON must be valid")
 }
 
+/// Parses a catalog, dropping malformed or duplicate `models` entries and a
+/// `default_model` that is not among the remaining models instead of failing
+/// the whole catalog: it is also the providers' kill switch, so one bad
+/// model row must not discard the `enabled` flags next to it.
 pub fn parse_catalog(json: &str) -> Result<CatalogResult, serde_json::Error> {
-    serde_json::from_str(json)
+    let mut value: serde_json::Value = serde_json::from_str(json)?;
+    if let Some(providers) = value
+        .get_mut("providers")
+        .and_then(serde_json::Value::as_array_mut)
+    {
+        for provider in providers.iter_mut().filter_map(|p| p.as_object_mut()) {
+            let models = match provider.get("models").and_then(|m| m.as_array()) {
+                Some(rows) => rows
+                    .iter()
+                    .filter_map(|row| serde_json::from_value::<CatalogModel>(row.clone()).ok())
+                    .collect(),
+                None => Vec::new(),
+            };
+            provider.insert("models".into(), serde_json::to_value(models)?);
+            if !provider.get("default_model").is_some_and(|d| d.is_string()) {
+                provider.remove("default_model");
+            }
+        }
+    }
+
+    let mut catalog: CatalogResult = serde_json::from_value(value)?;
+    for provider in &mut catalog.providers {
+        let mut seen = std::collections::HashSet::new();
+        provider.models.retain_mut(|m| {
+            m.id = m.id.trim().to_string();
+            !m.id.is_empty() && seen.insert(m.id.clone())
+        });
+        provider.default_model = provider
+            .default_model
+            .take()
+            .map(|d| d.trim().to_string())
+            .filter(|d| seen.contains(d));
+    }
+    Ok(catalog)
 }
 
 /// Resolves catalog with override precedence: remote overrides embedded,
@@ -178,5 +232,115 @@ mod tests {
         let resolved = resolve_catalog(DEFAULT_CATALOG_JSON, None);
         assert_eq!(resolved.providers.len(), 3);
         assert!(!resolved.providers[0].enabled);
+    }
+
+    #[test]
+    fn catalog_without_models_field_still_parses() {
+        let old_remote = r#"{
+            "providers": [
+                {
+                    "id": "openai_codex",
+                    "enabled": true,
+                    "label": "Old remote",
+                    "beta_headers": {},
+                    "system_prefix": null,
+                    "base_url": "https://chatgpt.com/backend-api/codex",
+                    "notes": ""
+                }
+            ]
+        }"#;
+
+        let resolved = resolve_catalog(DEFAULT_CATALOG_JSON, Some(old_remote));
+        assert_eq!(resolved.providers.len(), 1);
+        assert_eq!(resolved.providers[0].label, "Old remote");
+        assert!(resolved.providers[0].models.is_empty());
+        assert_eq!(resolved.providers[0].default_model, None);
+    }
+
+    fn assert_model_lists(catalog: &CatalogResult) {
+        for p in &catalog.providers {
+            assert!(!p.models.is_empty(), "{:?} must list models", p.id);
+            let default = p
+                .default_model
+                .as_deref()
+                .unwrap_or_else(|| panic!("{:?} must name a default model", p.id));
+            assert!(
+                p.models.iter().any(|m| m.id == default),
+                "{:?} default model {default} must be in its models list",
+                p.id
+            );
+        }
+    }
+
+    #[test]
+    fn embedded_catalog_lists_models_with_default_among_them() {
+        assert_model_lists(&default_catalog());
+    }
+
+    #[test]
+    fn published_catalog_file_lists_models_with_default_among_them() {
+        let published = parse_catalog(include_str!("../../../catalog/llm-auth.json"))
+            .expect("catalog/llm-auth.json must parse");
+        assert_eq!(published.providers.len(), 3);
+        assert_model_lists(&published);
+
+        let embedded = default_catalog();
+        for p in &published.providers {
+            let e = embedded.providers.iter().find(|e| e.id == p.id).unwrap();
+            assert_eq!(p.models, e.models, "{:?} model list drifted", p.id);
+            assert_eq!(p.default_model, e.default_model);
+        }
+    }
+}
+
+#[cfg(test)]
+mod sanitize_tests {
+    use super::*;
+
+    fn remote(models: &str, default_model: &str) -> String {
+        format!(
+            r#"{{"providers":[{{"id":"anthropic","enabled":true,"label":"x","beta_headers":{{}},
+            "system_prefix":null,"base_url":"https://api.anthropic.com/v1","notes":"",
+            "models":{models},"default_model":{default_model}}}]}}"#
+        )
+    }
+
+    #[test]
+    fn catalog_drops_bad_model_rows_but_keeps_the_provider() {
+        let body = remote(
+            r#"[{"id":"a","label":"A"},{"id":"","label":"empty"},{"id":"  ","label":"blank"},
+                {"label":"no id"},{"id":7,"label":"wrong type"},{"id":"a","label":"dup"},
+                {"id":" b ","label":"B"}]"#,
+            r#""b""#,
+        );
+        let resolved = resolve_catalog(DEFAULT_CATALOG_JSON, Some(&body));
+        assert_eq!(resolved.providers.len(), 1, "remote must still win");
+        let p = &resolved.providers[0];
+        assert!(p.enabled);
+        let ids: Vec<_> = p.models.iter().map(|m| m.id.as_str()).collect();
+        assert_eq!(ids, ["a", "b"]);
+        assert_eq!(p.default_model.as_deref(), Some("b"));
+    }
+
+    #[test]
+    fn catalog_clears_default_model_that_is_not_in_the_list() {
+        let unknown = remote(r#"[{"id":"a","label":"A"}]"#, r#""zzz""#);
+        let p = &resolve_catalog(DEFAULT_CATALOG_JSON, Some(&unknown)).providers[0];
+        assert_eq!(p.models.len(), 1);
+        assert_eq!(p.default_model, None);
+
+        let no_models = remote("[]", r#""a""#);
+        let p = &resolve_catalog(DEFAULT_CATALOG_JSON, Some(&no_models)).providers[0];
+        assert!(p.models.is_empty());
+        assert_eq!(p.default_model, None);
+    }
+
+    #[test]
+    fn catalog_tolerates_wrong_typed_models_and_default_model() {
+        let body = remote(r#""not a list""#, "42");
+        let resolved = resolve_catalog(DEFAULT_CATALOG_JSON, Some(&body));
+        assert_eq!(resolved.providers.len(), 1, "remote must still win");
+        assert!(resolved.providers[0].models.is_empty());
+        assert_eq!(resolved.providers[0].default_model, None);
     }
 }

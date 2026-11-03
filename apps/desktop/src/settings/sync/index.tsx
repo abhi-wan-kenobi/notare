@@ -6,24 +6,40 @@ import {
   CheckIcon,
   CopyIcon,
   Loader2Icon,
+  Link2Icon,
   MonitorSmartphoneIcon,
   PlusIcon,
+  QrCodeIcon,
+  ShieldCheckIcon,
   Trash2Icon,
+  XIcon,
 } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useId, useRef, useState } from "react";
 
 import {
+  pairingConfirm,
+  pairingCreateOffer,
+  pairingJoin,
+  pairingStatus,
   syncAddPeer,
   syncListPeers,
-  syncRemovePeer,
+  syncRevokePeer,
   syncStart,
   syncStatus,
   syncStop,
   syncThisDevice,
+  type PairingJoinResult,
+  type PairingOfferResult,
   type SyncPeer,
   type SyncStatusResult,
 } from "@hypr/plugin-db";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@hypr/ui/components/ui/accordion";
 import { Button } from "@hypr/ui/components/ui/button";
 import {
   Dialog,
@@ -44,6 +60,15 @@ import { useSetSettingValue, useStoredSettingValue } from "~/settings/queries";
 const STATUS_QUERY_KEY = ["settings", "sync", "status"] as const;
 const THIS_DEVICE_QUERY_KEY = ["settings", "sync", "this-device"] as const;
 const PEERS_QUERY_KEY = ["settings", "sync", "peers"] as const;
+const PAIRING_STATUS_QUERY_KEY = [
+  "settings",
+  "sync",
+  "pairing-status",
+] as const;
+
+// How often the offer dialog polls pairing_status() for an incoming join —
+// frequent enough to feel live, rare enough not to hammer the agent.
+const PAIRING_POLL_MS = 1500;
 
 // z-base-32 (RFC-ish, no 0/l/v/2 etc.) — matches sync_p2p::Fingerprint's
 // alphabet. Grouped display form adds dashes every 4 chars; both are valid
@@ -65,6 +90,15 @@ export function isValidFingerprint(raw: string): boolean {
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+function formatCountdown(secondsRemaining: number): string {
+  if (secondsRemaining <= 0) {
+    return "0:00";
+  }
+  const m = Math.floor(secondsRemaining / 60);
+  const s = secondsRemaining % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
 }
 
 export function SettingsSync() {
@@ -159,6 +193,10 @@ function SyncSettingsContent({
     queryFn: syncListPeers,
   });
 
+  const invalidatePeers = () => {
+    void queryClient.invalidateQueries({ queryKey: PEERS_QUERY_KEY });
+  };
+
   return (
     <div className="flex flex-col gap-6">
       <SettingsPageTitle title={<Trans>Devices</Trans>} />
@@ -175,8 +213,7 @@ function SyncSettingsContent({
       <p className="text-muted-foreground text-xs">
         <Trans>
           Pair another one of your devices to sync sessions between them
-          directly, without going through a server. Both devices need to add
-          each other's fingerprint before they'll sync.
+          directly, without going through a server.
         </Trans>
       </p>
 
@@ -200,25 +237,43 @@ function SyncSettingsContent({
           </p>
         )}
 
-        <ThisDeviceSection
-          fingerprint={thisDeviceQuery.data}
-          isLoading={thisDeviceQuery.isLoading}
-          error={thisDeviceQuery.error}
-          disabled={!syncEnabled}
-        />
-
-        <AddDeviceForm
-          disabled={!syncEnabled}
-          onAdded={() => {
-            void queryClient.invalidateQueries({ queryKey: PEERS_QUERY_KEY });
-          }}
-        />
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <PairDeviceSection
+            disabled={!syncEnabled}
+            onPaired={invalidatePeers}
+          />
+          <JoinWithLinkSection
+            disabled={!syncEnabled}
+            onJoined={invalidatePeers}
+          />
+        </div>
 
         <PairedDevicesList
           peers={peersQuery.data ?? []}
           isLoading={peersQuery.isLoading}
           disabled={!syncEnabled}
         />
+
+        <Accordion type="single" collapsible className="flex flex-col">
+          <AccordionItem value="advanced" className="border-none">
+            <AccordionTrigger className="text-muted-foreground py-2 text-xs font-medium hover:no-underline">
+              <Trans>Advanced: manual fingerprint pairing</Trans>
+            </AccordionTrigger>
+            <AccordionContent className="flex flex-col gap-6 pt-2">
+              <ThisDeviceSection
+                fingerprint={thisDeviceQuery.data}
+                isLoading={thisDeviceQuery.isLoading}
+                error={thisDeviceQuery.error}
+                disabled={!syncEnabled}
+              />
+
+              <AddDeviceForm
+                disabled={!syncEnabled}
+                onAdded={invalidatePeers}
+              />
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
       </motion.div>
     </div>
   );
@@ -306,19 +361,11 @@ function SyncStatusLine({
         ])}
       />
       <span>{status.running ? t`Sync running` : t`Sync idle`}</span>
-      {status.lastSyncAtMs != null && (
+      {!status.engineLoaded && (
         <>
           <span aria-hidden="true">·</span>
           <span>
-            {t`Last synced ${formatDistanceToNow(new Date(status.lastSyncAtMs), { addSuffix: true })}`}
-          </span>
-        </>
-      )}
-      {status.hasUnsentChanges && (
-        <>
-          <span aria-hidden="true">·</span>
-          <span>
-            <Trans>Unsent changes pending</Trans>
+            <Trans>Sync engine not loaded on this build</Trans>
           </span>
         </>
       )}
@@ -339,14 +386,12 @@ function ThisDeviceSection({
 }) {
   const { t } = useLingui();
   const [copied, setCopied] = useState(false);
-  const copyResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const copyResetRef = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
 
   useEffect(() => {
-    return () => {
-      if (copyResetRef.current) {
-        clearTimeout(copyResetRef.current);
-      }
-    };
+    return () => clearTimeout(copyResetRef.current);
   }, []);
 
   const handleCopy = async () => {
@@ -357,13 +402,16 @@ function ThisDeviceSection({
       await writeText(fingerprint);
     } catch {
       // Fall back to the browser clipboard when the plugin is unavailable.
-      await navigator.clipboard.writeText(fingerprint);
+      try {
+        await navigator.clipboard.writeText(fingerprint);
+      } catch {
+        sonnerToast.error(t`Couldn't copy to clipboard`);
+        return;
+      }
     }
     setCopied(true);
     sonnerToast.success(t`Copied to clipboard`);
-    if (copyResetRef.current) {
-      clearTimeout(copyResetRef.current);
-    }
+    clearTimeout(copyResetRef.current);
     copyResetRef.current = setTimeout(() => setCopied(false), 1500);
   };
 
@@ -536,6 +584,399 @@ function AddDeviceForm({
   );
 }
 
+// ---------------------------------------------------------------------------
+// SYNC-6: QR / link pairing
+// ---------------------------------------------------------------------------
+
+/// Shared SAS confirmation view: shows the peer's name and the 6-digit code,
+/// with Confirm/Reject buttons. Used both by the offerer (after someone
+/// joins their offer) and the joiner (after dialing an offer).
+function SasConfirm({
+  deviceName,
+  sas,
+  onConfirm,
+  onReject,
+  isPending,
+}: {
+  deviceName: string;
+  sas: string;
+  onConfirm: () => void;
+  onReject: () => void;
+  isPending: boolean;
+}) {
+  return (
+    <div className="flex flex-col items-center gap-4 py-2">
+      <ShieldCheckIcon className="text-muted-foreground size-8" />
+      <div className="text-center">
+        <p className="text-sm font-medium">
+          <Trans>Confirm with {deviceName || "the other device"}</Trans>
+        </p>
+        <p className="text-muted-foreground mt-1 text-xs">
+          <Trans>Make sure this code matches on both devices.</Trans>
+        </p>
+      </div>
+      <p
+        className="font-mono text-3xl font-semibold tracking-[0.3em]"
+        data-testid="sas-code"
+      >
+        {sas}
+      </p>
+      <div className="flex w-full gap-2">
+        <Button
+          type="button"
+          variant="ghost"
+          className="flex-1"
+          onClick={onReject}
+          disabled={isPending}
+        >
+          <XIcon className="size-3.5" />
+          <Trans>Reject</Trans>
+        </Button>
+        <Button
+          type="button"
+          className="flex-1"
+          onClick={onConfirm}
+          disabled={isPending}
+        >
+          {isPending ? (
+            <Loader2Icon className="size-3.5 animate-spin" />
+          ) : (
+            <CheckIcon className="size-3.5" />
+          )}
+          <Trans>Confirm</Trans>
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function PairDeviceSection({
+  disabled,
+  onPaired,
+}: {
+  disabled: boolean;
+  onPaired: () => void;
+}) {
+  const { t } = useLingui();
+  const [open, setOpen] = useState(false);
+  const [offer, setOffer] = useState<PairingOfferResult | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+  const [copied, setCopied] = useState(false);
+  const copyResetRef = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
+
+  useEffect(() => {
+    return () => clearTimeout(copyResetRef.current);
+  }, []);
+
+  const createOffer = useMutation({
+    mutationFn: pairingCreateOffer,
+    onSuccess: (result) => setOffer(result),
+  });
+
+  const createOfferRef = useRef(createOffer.mutate);
+  createOfferRef.current = createOffer.mutate;
+
+  useEffect(() => {
+    if (open) {
+      setOffer(null);
+      createOfferRef.current();
+    }
+  }, [open]);
+
+  // Tick every second while the dialog is open, to drive the countdown.
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [open]);
+
+  const secondsRemaining = offer
+    ? Math.max(0, offer.expiresAt - Math.floor(now / 1000))
+    : 0;
+  const expired = offer != null && secondsRemaining <= 0;
+
+  // Poll pairing_status() while the dialog is open and the offer hasn't
+  // expired, watching for a joiner's proof to produce a pending confirmation.
+  const statusQuery = useQuery({
+    queryKey: PAIRING_STATUS_QUERY_KEY,
+    queryFn: pairingStatus,
+    enabled: open && offer != null && !expired,
+    refetchInterval: PAIRING_POLL_MS,
+  });
+
+  const pending = statusQuery.data?.pending[0];
+
+  const confirmMutation = useMutation({
+    mutationFn: ({ deviceId, accept }: { deviceId: string; accept: boolean }) =>
+      pairingConfirm(deviceId, accept),
+    onSuccess: (_void, variables) => {
+      if (variables.accept) {
+        sonnerToast.success(t`Device paired`);
+        onPaired();
+      }
+      setOpen(false);
+    },
+  });
+
+  const handleCopyLink = async () => {
+    if (!offer) {
+      return;
+    }
+    try {
+      await writeText(offer.link);
+    } catch {
+      try {
+        await navigator.clipboard.writeText(offer.link);
+      } catch {
+        sonnerToast.error(t`Couldn't copy to clipboard`);
+        return;
+      }
+    }
+    setCopied(true);
+    sonnerToast.success(t`Link copied`);
+    clearTimeout(copyResetRef.current);
+    copyResetRef.current = setTimeout(() => setCopied(false), 1500);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <Button
+        type="button"
+        variant="outline"
+        className="flex-1"
+        disabled={disabled}
+        onClick={() => setOpen(true)}
+      >
+        <QrCodeIcon className="size-3.5" />
+        <Trans>Pair a device</Trans>
+      </Button>
+
+      <DialogContent className="max-w-xs">
+        <DialogHeader>
+          <DialogTitle>
+            {pending ? (
+              <Trans>Confirm pairing</Trans>
+            ) : (
+              <Trans>Pair a device</Trans>
+            )}
+          </DialogTitle>
+          <DialogDescription>
+            {pending ? (
+              <Trans>
+                Someone scanned your code. Compare the numbers below.
+              </Trans>
+            ) : (
+              <Trans>Scan this on the other device, or copy the link.</Trans>
+            )}
+          </DialogDescription>
+        </DialogHeader>
+
+        {pending ? (
+          <SasConfirm
+            deviceName={pending.name}
+            sas={pending.sas}
+            isPending={confirmMutation.isPending}
+            onConfirm={() =>
+              confirmMutation.mutate({
+                deviceId: pending.deviceId,
+                accept: true,
+              })
+            }
+            onReject={() =>
+              confirmMutation.mutate({
+                deviceId: pending.deviceId,
+                accept: false,
+              })
+            }
+          />
+        ) : createOffer.isError ? (
+          <div className="flex flex-col items-center gap-3 py-4">
+            <p className="text-xs text-red-500">
+              {errorMessage(createOffer.error)}
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => createOffer.mutate()}
+            >
+              <Trans>Try again</Trans>
+            </Button>
+          </div>
+        ) : createOffer.isPending || !offer ? (
+          <div className="flex min-h-48 items-center justify-center">
+            <Loader2Icon className="text-muted-foreground size-5 animate-spin" />
+          </div>
+        ) : expired ? (
+          <div className="flex flex-col items-center gap-3 py-4">
+            <p className="text-muted-foreground text-xs">
+              <Trans>This code expired.</Trans>
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => createOffer.mutate()}
+            >
+              <Trans>Generate a new code</Trans>
+            </Button>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center gap-3">
+            <img
+              // Generated server-side by the `qrcode` crate from the offer
+              // link we also render as text below. Rendered as an <img> data
+              // URI (never dangerouslySetInnerHTML) so a malicious SVG can't
+              // reach the DOM or execute script.
+              src={`data:image/svg+xml;utf8,${encodeURIComponent(offer.qrSvg)}`}
+              alt={t`Pairing QR code`}
+              className="size-40"
+            />
+            <div className="flex w-full items-center gap-2">
+              <code className="border-border bg-muted min-w-0 flex-1 truncate rounded-lg border px-3 py-2 font-mono text-xs">
+                {offer.link}
+              </code>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={() => void handleCopyLink()}
+                aria-label={t`Copy link`}
+              >
+                {copied ? (
+                  <CheckIcon className="size-4" />
+                ) : (
+                  <CopyIcon className="size-4" />
+                )}
+              </Button>
+            </div>
+            <p className="text-muted-foreground text-xs">
+              <Trans>Expires in {formatCountdown(secondsRemaining)}</Trans>
+            </p>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function JoinWithLinkSection({
+  disabled,
+  onJoined,
+}: {
+  disabled: boolean;
+  onJoined: () => void;
+}) {
+  const { t } = useLingui();
+  const [link, setLink] = useState("");
+  const [outcome, setOutcome] = useState<PairingJoinResult | null>(null);
+
+  const joinMutation = useMutation({
+    mutationFn: pairingJoin,
+    onSuccess: (result) => setOutcome(result),
+  });
+
+  const addPeer = useMutation({
+    mutationFn: ({
+      fingerprint,
+      label,
+    }: {
+      fingerprint: string;
+      label: string;
+    }) => syncAddPeer(fingerprint, label),
+    onSuccess: () => {
+      sonnerToast.success(t`Device paired`);
+      setOutcome(null);
+      setLink("");
+      onJoined();
+    },
+  });
+
+  return (
+    <>
+      <form
+        className="flex flex-1 gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (link.trim().length > 0) {
+            joinMutation.mutate(link.trim());
+          }
+        }}
+      >
+        <Input
+          value={link}
+          onChange={(e) => setLink(e.target.value)}
+          placeholder={t`Paste a pairing link…`}
+          aria-label={t`Pairing link`}
+          disabled={disabled}
+          className="font-mono text-xs"
+        />
+        <Button
+          type="submit"
+          variant="outline"
+          disabled={
+            disabled || link.trim().length === 0 || joinMutation.isPending
+          }
+        >
+          {joinMutation.isPending ? (
+            <Loader2Icon className="size-3.5 animate-spin" />
+          ) : (
+            <Link2Icon className="size-3.5" />
+          )}
+          <Trans>Join</Trans>
+        </Button>
+      </form>
+
+      {joinMutation.isError && (
+        <p className="text-xs text-red-500">
+          {errorMessage(joinMutation.error)}
+        </p>
+      )}
+
+      <Dialog
+        open={outcome !== null}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen && !addPeer.isPending) {
+            setOutcome(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-xs">
+          <DialogHeader>
+            <DialogTitle>
+              <Trans>Confirm pairing</Trans>
+            </DialogTitle>
+            <DialogDescription>
+              <Trans>Compare the numbers shown on both devices.</Trans>
+            </DialogDescription>
+          </DialogHeader>
+          {outcome && (
+            <SasConfirm
+              deviceName={outcome.deviceName}
+              sas={outcome.sas}
+              isPending={addPeer.isPending}
+              onConfirm={() =>
+                addPeer.mutate({
+                  fingerprint: outcome.deviceId,
+                  label: outcome.deviceName,
+                })
+              }
+              onReject={() => setOutcome(null)}
+            />
+          )}
+          {addPeer.error && (
+            <p className="text-xs text-red-500">
+              {errorMessage(addPeer.error)}
+            </p>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
 function PairedDevicesList({
   peers,
   isLoading,
@@ -549,8 +990,11 @@ function PairedDevicesList({
   const queryClient = useQueryClient();
   const [pendingRemove, setPendingRemove] = useState<SyncPeer | null>(null);
 
+  // Revoke (not a soft remove): closes the §12-class gap where a stale
+  // pairing offer or a peer's locally-cached allowlist entry could let a
+  // removed device re-add itself. See sync_p2p::peers::PeerStore::revoke.
   const removePeer = useMutation({
-    mutationFn: (nodeId: string) => syncRemovePeer(nodeId),
+    mutationFn: (nodeId: string) => syncRevokePeer(nodeId),
     onSuccess: () => {
       setPendingRemove(null);
       void queryClient.invalidateQueries({ queryKey: PEERS_QUERY_KEY });
@@ -625,7 +1069,8 @@ function PairedDevicesList({
             <DialogDescription className="text-foreground w-full text-center text-[13px] leading-[1.36]">
               <Trans>
                 "{pendingRemove?.label || t`Unnamed device`}" will no longer be
-                able to sync with this device. You can pair it again later.
+                able to sync with this device, and can't re-pair with a saved
+                link. You'd need to pair it again from scratch.
               </Trans>
             </DialogDescription>
           </DialogHeader>
