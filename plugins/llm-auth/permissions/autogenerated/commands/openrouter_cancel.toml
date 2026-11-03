@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-openrouter-cancel"
+description = "Enables the openrouter_cancel command without any pre-configured scope."
+commands.allow = ["openrouter_cancel"]
+
+[[permission]]
+identifier = "deny-openrouter-cancel"
+description = "Denies the openrouter_cancel command without any pre-configured scope."
+commands.deny = ["openrouter_cancel"]

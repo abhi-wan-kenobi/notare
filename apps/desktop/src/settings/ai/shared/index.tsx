@@ -145,6 +145,7 @@ export function NonHyprProviderCard({
   providers,
   providerContext,
   testConnection,
+  signIn,
 }: {
   config: ProviderConfig;
   providerType: ProviderType;
@@ -156,6 +157,10 @@ export function NonHyprProviderCard({
   // 5). A render prop so this shared card stays provider-agnostic — the
   // caller owns what the probe actually does.
   testConnection?: (values: { base_url: string; api_key: string }) => ReactNode;
+  // Optional browser sign-in rendered above the API key field. `setApiKey`
+  // syncs the form after the key was stored out-of-band; without it the
+  // form's stale value would overwrite the key on the next edit.
+  signIn?: (api: { setApiKey: (apiKey: string) => void }) => ReactNode;
 }) {
   const { t } = useLingui();
   const billing = useBillingAccess();
@@ -247,6 +252,9 @@ export function NonHyprProviderCard({
           {testConnection?.({
             base_url: form.state.values.base_url,
             api_key: form.state.values.api_key,
+          })}
+          {signIn?.({
+            setApiKey: (apiKey) => form.setFieldValue("api_key", apiKey),
           })}
           {showApiKey && (
             <form.Field name="api_key">

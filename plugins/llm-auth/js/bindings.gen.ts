@@ -61,6 +61,26 @@ async catalog() : Promise<Result<CatalogResult, string>> {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
+},
+/**
+ * Browser sign-in with OpenRouter. The API key goes from the token exchange
+ * straight into the keyring; it is never returned to the webview.
+ */
+async openrouterSignIn() : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:llm-auth|openrouter_sign_in") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async openrouterCancel() : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:llm-auth|openrouter_cancel") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 }
 }
 
@@ -86,7 +106,13 @@ export type AuthMode = "loopback" | "paste"
  * Authentication status for a provider.
  */
 export type AuthStatus = { signed_in: boolean; account_label: string | null; expires_at: string | null }
-export type CatalogProvider = { id: ProviderId; enabled: boolean; label: string; beta_headers: Partial<{ [key in string]: string }>; system_prefix: string | null; base_url: string; notes: string }
+export type CatalogModel = { id: string; label: string }
+export type CatalogProvider = { id: ProviderId; enabled: boolean; label: string; beta_headers: Partial<{ [key in string]: string }>; system_prefix: string | null; base_url: string; notes: string; 
+/**
+ * Models offered in the subscription picker. Absent in catalogs
+ * published before this field existed, hence the default.
+ */
+models?: CatalogModel[]; default_model?: string | null }
 /**
  * Dynamic catalog of supported LLM auth providers.
  */

@@ -6,6 +6,8 @@ const COMMANDS: &[&str] = &[
     "logout",
     "access_token",
     "catalog",
+    "openrouter_sign_in",
+    "openrouter_cancel",
 ];
 
 fn main() {

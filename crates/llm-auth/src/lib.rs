@@ -14,6 +14,7 @@ pub mod clock;
 pub mod error;
 pub mod jwt;
 pub mod manager;
+pub mod openrouter;
 pub mod store;
 pub mod types;
 

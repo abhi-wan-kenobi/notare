@@ -6,6 +6,7 @@ import {
 } from "./llm-auth-client";
 import { createSubscriptionFetch } from "./subscription-fetch";
 
+/** Offline fallback; the picker reads the catalog's `models` first. */
 export const GEMINI_SUBSCRIPTION_MODELS = [
   "gemini-2.5-pro",
   "gemini-2.5-flash",

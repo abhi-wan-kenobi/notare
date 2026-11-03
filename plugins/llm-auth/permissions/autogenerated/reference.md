@@ -11,6 +11,8 @@ Default permissions for tauri-plugin-llm-auth
 - `allow-logout`
 - `allow-access-token`
 - `allow-catalog`
+- `allow-openrouter-sign-in`
+- `allow-openrouter-cancel`
 
 ## Permission Table
 
@@ -147,6 +149,58 @@ Enables the logout command without any pre-configured scope.
 <td>
 
 Denies the logout command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`llm-auth:allow-openrouter-cancel`
+
+</td>
+<td>
+
+Enables the openrouter_cancel command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`llm-auth:deny-openrouter-cancel`
+
+</td>
+<td>
+
+Denies the openrouter_cancel command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`llm-auth:allow-openrouter-sign-in`
+
+</td>
+<td>
+
+Enables the openrouter_sign_in command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`llm-auth:deny-openrouter-sign-in`
+
+</td>
+<td>
+
+Denies the openrouter_sign_in command without any pre-configured scope.
 
 </td>
 </tr>
