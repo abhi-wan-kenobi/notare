@@ -40,23 +40,28 @@ impl SqlValue {
     /// trusted input — a malformed or malicious row must error the sync
     /// session, not crash the process.
     pub fn decode(value: sqlx::sqlite::SqliteValueRef<'_>) -> Result<Self, Error> {
-        use sqlx::Decode;
-
+        // Fully qualified: in a workspace build sqlx's Postgres driver is
+        // also linked, which makes plain `i64::decode(value)` ambiguous (E0283,
+        // macOS `cargo test --workspace`, 2026-11-04).
         let info = value.type_info();
         let name = info.name();
         let decoded = match name {
             "NULL" => Self::Null,
             "INTEGER" => Self::Integer(
-                i64::decode(value).map_err(|e| Error::Decode(format!("INTEGER: {e}")))?,
+                <i64 as sqlx::Decode<Sqlite>>::decode(value)
+                    .map_err(|e| Error::Decode(format!("INTEGER: {e}")))?,
             ),
-            "REAL" => {
-                Self::Real(f64::decode(value).map_err(|e| Error::Decode(format!("REAL: {e}")))?)
-            }
-            "TEXT" => {
-                Self::Text(String::decode(value).map_err(|e| Error::Decode(format!("TEXT: {e}")))?)
-            }
+            "REAL" => Self::Real(
+                <f64 as sqlx::Decode<Sqlite>>::decode(value)
+                    .map_err(|e| Error::Decode(format!("REAL: {e}")))?,
+            ),
+            "TEXT" => Self::Text(
+                <String as sqlx::Decode<Sqlite>>::decode(value)
+                    .map_err(|e| Error::Decode(format!("TEXT: {e}")))?,
+            ),
             "BLOB" => Self::Blob(
-                Vec::<u8>::decode(value).map_err(|e| Error::Decode(format!("BLOB: {e}")))?,
+                <Vec<u8> as sqlx::Decode<Sqlite>>::decode(value)
+                    .map_err(|e| Error::Decode(format!("BLOB: {e}")))?,
             ),
             other => return Err(Error::Decode(format!("unexpected storage class {other:?}"))),
         };
