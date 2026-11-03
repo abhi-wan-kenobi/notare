@@ -169,13 +169,9 @@ local-llm-vulkan = ["tauri-plugin-local-llm/local-llm-vulkan"]
 tauri-plugin-local-stt = { workspace = true, features = ["whisper-cpp", "parakeet-onnx", "voxtral-llama"] }
 
 # SYNC-5: P2P sync on the app's CI-proven sync-platform gate — linux/x86_64,
-# macOS (aarch64/x86_64), windows/x86_64 (§22 widening of the original
-# linux/x86_64-only gate; see plugins/db/Cargo.toml and
-# build-support/sync_app_gate.rs). The from-source cloudsync build the `sync`
-# feature enables panics on any target outside `crates/cloudsync/build.rs`'s
-# `supported()`, and this app gate is a strict subset of that (excludes
-# linux/aarch64, which `supported()` admits but which has no CI proof yet —
-# see docs/internal/sync-p2p.md §21.7/§22).
+# macOS (aarch64/x86_64), windows/x86_64: the four targets
+# `crates/crsqlite/vendor/` carries a prebuilt cr-sqlite engine for (see
+# plugins/db/Cargo.toml and build-support/sync_app_gate.rs).
 #
 # Cargo target tables cannot reference the `sync_platform` cfg emitted by
 # `build.rs` (dependency resolution happens before any build script runs),

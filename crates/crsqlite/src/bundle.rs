@@ -1,20 +1,18 @@
 //! Vendored prebuilt cr-sqlite binaries: target selection + cache-dir
 //! extraction.
 //!
-//! Ported from `crates/cloudsync/src/bundle.rs` (the `#154`-class fix),
-//! renamed for the cr-sqlite engine. The four `sync_platform` targets carry a
-//! prebuilt loadable extension from the vlcn-io `v0.16.3` release under
-//! `vendor/<target>/`; this module embeds the current target's binary with
-//! `include_bytes!` and extracts it to
+//! The four `sync_platform` targets carry a prebuilt loadable extension from
+//! the vlcn-io `v0.16.3` release under `vendor/<target>/`; this module embeds
+//! the current target's binary with `include_bytes!` and extracts it to
 //! `dirs::cache_dir()/notare/crsqlite/<version>/<target>/crsqlite.{so,dylib,dll}`
-//! on first use.
+//! on first use (the `#154`-class fix).
 //!
-//! Deliberately NOT carried from cloudsync's bundle.rs: the `from-source`
-//! OUT_DIR staging (no build.rs C build exists for cr-sqlite — packaging 1b,
-//! a static link, is the optional later path), the `resources/cloudsync`
-//! app-bundle probing, and any `tauri.conf.json` resource entry. The
-//! extension never needs to be staged next to the executable because the
-//! cache dir is writable everywhere we run — the #154 class cannot recur.
+//! There is deliberately no `OUT_DIR` staging (no build.rs C build exists
+//! for cr-sqlite — packaging 1b, a static link, is the optional later path),
+//! no app-bundle `resources/` probing, and no `tauri.conf.json` resource
+//! entry. The extension never needs to be staged next to the executable
+//! because the cache dir is writable everywhere we run — the #154 class
+//! cannot recur.
 
 use std::fs;
 use std::path::PathBuf;

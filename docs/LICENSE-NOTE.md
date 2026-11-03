@@ -1,28 +1,14 @@
 # License & Legal Diligence Note
 
-_Status: final 2026-07-14; extended 2026-08-28 with a sqlite-sync / ELv2
-determination that was **re-opened 2026-09-02** (see "Sync engine" below). All
-licenses verified from the actual repos & HF model cards, not from memory._
+_Status: final 2026-07-14; extended 2026-08-28; re-opened 2026-09-02; settled 2026-09-07 and resolved in 0.6.6 / 0.6.7 by migrating to cr-sqlite (MIT) and deleting `crates/cloudsync` (see "Sync engine" below). All licenses verified from the actual repos & HF model cards, not from memory._
 
-## Sync engine: sqlite-sync (Elastic License 2.0) — RE-OPENED 2026-09-02
+## Sync engine: sqlite-sync (Elastic License 2.0) — RESOLVED: MIGRATED TO CR-SQLITE (2026-09-07 / 0.6.7)
 
-> **This section previously read "CLEARED 2026-08-28 / Determination: PERMITTED".
-> That determination has been withdrawn.** It rested on a second-hand summary — the
-> exact evidence gap the note itself flagged — and SQLite Cloud's written reply of
-> 2026-09-02 contradicts it. The prior text is preserved in git history; do not act
-> on it. **Sync must not ship until this is resolved.**
+> **Resolution (2026-09-07 / 2026-11-04)**: Following SQLite Cloud's written denial of 2026-09-02 refusing a licence for our custom P2P network layer, Notare abandoned sqlite-sync and migrated to **cr-sqlite** (vlcn-io v0.16.3, MIT) and Protocol v2 in release 0.6.6. In release 0.6.7, the legacy vendored tree under `crates/cloudsync/` was completely removed. This section preserves the historical record of the ELv2 diligence and the refusal that led to the engine swap.
 
-The v0.6 P2P sync work is built on **sqlite-sync v1.0.12** (SQLite Cloud), vendored
-at `crates/cloudsync/vendor/` (upstream SHA `6694c2e8`). Unlike everything else in
-this document it is **not** an OSI-approved licence: it is **Elastic License 2.0**
-(ELv2) — source-available, with the headline restriction that you may not "provide
-the software to third parties as a hosted or managed service."
+During early v0.6 P2P sync development, sync was prototyped on **sqlite-sync v1.0.12** (SQLite Cloud), historically vendored at `crates/cloudsync/vendor/` (upstream SHA `6694c2e8`). Unlike everything else in this document it was **not** an OSI-approved licence: it was **Elastic License 2.0** (ELv2) — source-available, with the headline restriction that you may not "provide the software to third parties as a hosted or managed service."
 
-**Why this needed a determination.** Notare is MIT. It embeds the extension, builds
-it *from source* (required for the custom P2P network layer — see
-`docs/internal/sync-p2p.md`), and replaces the upstream transport entirely. That
-combination is more than plain redistribution, so it was treated as a blocking gate
-(**risk R1**, the only cycle-killing risk in the v0.6 plan) rather than assumed.
+**Why this needed a determination.** Notare is MIT. Embedding the extension, building it from source (which was required for the custom P2P network layer — see `docs/internal/archive/sync-p2p-cloudsync-era.md`), and replacing the upstream transport entirely went beyond plain redistribution. It was treated as a blocking gate (**risk R1**, the only cycle-killing risk in the v0.6 plan) rather than assumed.
 
 ### Timeline
 
@@ -30,49 +16,16 @@ combination is more than plain redistribution, so it was treated as a blocking g
 |---|---|
 | 2026-08-28 | Recorded here as **PERMITTED**, from a summary of a conversation with SQLite Cloud. Flagged at the time as resting on a second-hand source. |
 | 2026-09-02 | **Marco Bambini (SQLite Cloud) replied in writing:** *"The short answer is, unfortunately, no, you cannot use your network layer with our technology."* |
-| 2026-09-02 | Follow-up drafted — asking whether that is an ELv2 reading or a product position, and whether a commercial licence exists. **Not yet sent.** |
+| 2026-09-07 | Swap to cr-sqlite (vlcn-io v0.16.3, MIT) and protocol v2 approved. Implemented in 0.6.6; legacy `crates/cloudsync` deleted in 0.6.7. |
 
-**Current status: NOT PERMITTED, pending clarification.** The denial lands precisely
-on the seam v0.6's sync is built on: the documented Custom Network Layer
-(`CLOUDSYNC_OMIT_CURL` + `network_send_buffer` / `network_receive_buffer`),
-implemented in `crates/cloudsync/build/network_p2p.c`. It is not a peripheral
-restriction — it is the integration point.
+**Final status: RESOLVED — sqlite-sync abandoned; migrated to cr-sqlite (MIT).** The denial confirmed that SQLite Cloud would not permit our custom network layer (`CLOUDSYNC_OMIT_CURL` + `network_send_buffer` / `network_receive_buffer` in `network_p2p.c`). Because that integration was the foundation of the P2P transport, the refusal stopped all use of sqlite-sync.
 
-**Consequences:**
+**Consequences & Outcome:**
 
-- **sqlite-sync is no longer settled as the v0.6 CRDT engine.** Sync is deferred to
-  0.7 (`docs/release/0.7-sync-gate.md`); 0.6 ships without it. No code change was
-  needed to effect that — `release.yaml` never built the `sync` feature, so the
-  stack has never reached a user.
-- **cr-sqlite (vlcn-io, MIT) is live fallback scope again.** The previous "dead
-  scope — do not re-plan onto it" instruction is withdrawn. A contingency scoping
-  pass exists; its headline findings are that the app's six synced tables clear
-  cr-sqlite's compatibility gate on paper (no FKs, no unique indices beyond the PK,
-  no AUTOINCREMENT, NOT NULL columns already carry DEFAULTs), that `STRICT`-table
-  behaviour is **unverified** and gates everything, and that upstream cr-sqlite has
-  had no substantive work since 2024-01-17.
-- ELv2 is **not** MIT. Notare's own MIT licence is unaffected, but the vendored
-  tree is separately licensed and must keep its upstream LICENSE file and notices
-  intact. Do not represent the bundled extension as MIT. **This holds regardless of
-  how the determination resolves**, for as long as the tree is vendored.
-- The restriction that must never be violated: **do not offer sqlite-sync to third
-  parties as a hosted or managed service.** The planned notare.dev rendezvous /
-  relay Worker is deliberately outside this line — it brokers discovery and
-  store-and-forwards opaque ciphertext blobs; it never runs sqlite-sync and never
-  sees plaintext (E2E covenant, v0.6 plan §3.5).
-- If the product ever grows a hosted sync service, no determination recorded here
-  covers it, and it must be re-opened with SQLite Cloud.
-
-**To close this out, in order:**
-
-1. Send the drafted follow-up; archive **both** SQLite Cloud replies (email or
-   support-ticket export) alongside this note, so whatever the outcome rests on a
-   primary source rather than a summary of one.
-2. If a commercial licence is offered, price it against the swap cost before
-   assuming either is cheaper.
-3. If the denial stands, the vendored tree under `crates/cloudsync/` is removed
-   rather than left in place unused.
-
+- **sqlite-sync was abandoned as the CRDT engine.** Sync was deferred from 0.6 to 0.7 (`docs/release/0.7-sync-gate.md`) while the swap to cr-sqlite (vlcn-io v0.16.3, MIT) was completed in 0.6.6.
+- **cr-sqlite (vlcn-io, MIT) replaced sqlite-sync.** All synced tables (`crates/db-app`) were validated against cr-sqlite's compatibility rules and STRICT schema requirements (`crates/crsqlite/tests/strict_roundtrip.rs`, `docs/internal/sync-p2p.md §30`).
+- **Complete removal in 0.6.7:** As decided in step 3 of the original contingency plan, the entire vendored tree under `crates/cloudsync/`, the custom C network layer (`network_p2p.c`), the `from-source` build feature, and the `cloudsync_from_source_*` CI jobs were deleted from the repository in release 0.6.7.
+- Notare's sync stack is now entirely under permissive licensing (cr-sqlite is MIT; `crates/sync-p2p` and Notare are MIT). No ELv2 or proprietary restrictions remain.
 **Process lesson worth keeping:** this note recorded a blocking legal gate as
 cleared on a second-hand summary, and a full release cycle (~75 of 115 commits since
 v0.5.2) was built on it. A gate that can kill a cycle needs its primary source

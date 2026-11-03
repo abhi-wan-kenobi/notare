@@ -8,7 +8,7 @@ CREATE TABLE widgets (
 )
 "#;
 
-const CREATE_CLOUDSYNC_WIDGETS_SQL: &str = r#"
+const CREATE_SYNCED_WIDGETS_SQL: &str = r#"
 CREATE TABLE widgets (
     id TEXT PRIMARY KEY NOT NULL,
     name TEXT NOT NULL DEFAULT ''
@@ -75,31 +75,31 @@ const INVALID_STEP_ID_SCHEMA_STEPS: &[MigrationStep] = &[MigrationStep {
     sql: CREATE_WIDGETS_SQL,
 }];
 
-const CLOUDSYNC_BASE_STEPS: &[MigrationStep] = &[MigrationStep {
+const SYNCED_BASE_STEPS: &[MigrationStep] = &[MigrationStep {
     id: "20260415030101_create_widgets",
     scope: MigrationScope::Plain,
-    sql: CREATE_CLOUDSYNC_WIDGETS_SQL,
+    sql: CREATE_SYNCED_WIDGETS_SQL,
 }];
 
-const CLOUDSYNC_ALTER_STEPS: &[MigrationStep] = &[
+const CRR_ALTER_STEPS: &[MigrationStep] = &[
     MigrationStep {
         id: "20260415030101_create_widgets",
         scope: MigrationScope::Plain,
-        sql: CREATE_CLOUDSYNC_WIDGETS_SQL,
+        sql: CREATE_SYNCED_WIDGETS_SQL,
     },
     MigrationStep {
         id: "20260415030102_add_slug",
-        scope: MigrationScope::CloudsyncAlter {
+        scope: MigrationScope::CrrAlter {
             table_name: "widgets",
         },
         sql: ADD_SLUG_SQL,
     },
 ];
 
-fn schema(steps: &'static [MigrationStep], validate_cloudsync_table: fn(&str) -> bool) -> DbSchema {
+fn schema(steps: &'static [MigrationStep], validate_crr_table: fn(&str) -> bool) -> DbSchema {
     DbSchema {
         steps,
-        validate_cloudsync_table,
+        validate_crr_table,
     }
 }
 
@@ -224,13 +224,13 @@ async fn invalid_manifest_metadata_is_rejected() {
 }
 
 #[tokio::test]
-async fn cloudsync_alter_scope_falls_back_to_plain_when_cloudsync_is_disabled() {
+async fn crr_alter_scope_runs_plain_without_crsqlite() {
     let db = open_plain_db().await;
 
-    migrate(&db, schema(CLOUDSYNC_BASE_STEPS, widgets_synced))
+    migrate(&db, schema(SYNCED_BASE_STEPS, widgets_synced))
         .await
         .unwrap();
-    migrate(&db, schema(CLOUDSYNC_ALTER_STEPS, widgets_synced))
+    migrate(&db, schema(CRR_ALTER_STEPS, widgets_synced))
         .await
         .unwrap();
 
@@ -244,46 +244,253 @@ async fn cloudsync_alter_scope_falls_back_to_plain_when_cloudsync_is_disabled() 
     );
 }
 
-#[cfg(any(
-    all(test, target_os = "macos", target_arch = "aarch64"),
-    all(test, target_os = "macos", target_arch = "x86_64"),
-    all(test, target_os = "linux", target_env = "gnu", target_arch = "aarch64"),
-    all(test, target_os = "linux", target_env = "gnu", target_arch = "x86_64"),
-    all(
-        test,
-        target_os = "linux",
-        target_env = "musl",
-        target_arch = "aarch64"
-    ),
-    all(test, target_os = "linux", target_env = "musl", target_arch = "x86_64"),
-    all(test, target_os = "windows", target_arch = "x86_64"),
-))]
 #[tokio::test]
-async fn cloudsync_alter_scope_runs_successfully_on_a_cloudsync_table() {
-    let db = Db::connect_memory().await.unwrap();
+async fn crr_alter_step_on_an_unsynced_table_is_rejected() {
+    let db = open_plain_db().await;
 
-    migrate(&db, schema(CLOUDSYNC_BASE_STEPS, widgets_synced))
+    let error = migrate(&db, schema(CRR_ALTER_STEPS, never_synced))
+        .await
+        .unwrap_err();
+
+    assert!(matches!(
+        error,
+        MigrateError::InvalidCrrStep {
+            step_id: "20260415030102_add_slug",
+            table_name: "widgets",
+        }
+    ));
+    assert!(widget_columns(&db).await.is_empty());
+}
+
+#[cfg(any(
+    all(target_os = "linux", target_arch = "x86_64"),
+    all(target_os = "macos", target_arch = "aarch64"),
+    all(target_os = "macos", target_arch = "x86_64"),
+    all(target_os = "windows", target_arch = "x86_64"),
+))]
+mod crsqlite {
+    use super::*;
+    use hypr_db_core::{DbOpenOptions, DbStorage};
+
+    const ADD_SLUG_WITHOUT_DEFAULT_SQL: &str = r#"
+ALTER TABLE widgets ADD COLUMN slug TEXT NOT NULL
+"#;
+
+    const FAILING_CRR_ALTER_STEPS: &[MigrationStep] = &[
+        MigrationStep {
+            id: "20260415030101_create_widgets",
+            scope: MigrationScope::Plain,
+            sql: CREATE_SYNCED_WIDGETS_SQL,
+        },
+        MigrationStep {
+            id: "20260415030102_add_slug",
+            scope: MigrationScope::CrrAlter {
+                table_name: "widgets",
+            },
+            sql: ADD_SLUG_WITHOUT_DEFAULT_SQL,
+        },
+    ];
+
+    // File-backed: an alter window closes connections, and a fresh
+    // connection to `sqlite::memory:` would be a different, empty database.
+    async fn open_crsqlite_db() -> (tempfile::TempDir, Db) {
+        let dir = tempfile::tempdir().unwrap();
+        let db = Db::open_crsqlite(DbOpenOptions {
+            storage: DbStorage::Local(&dir.path().join("app.db")),
+            journal_mode_wal: true,
+            foreign_keys: true,
+            max_connections: Some(2),
+        })
         .await
         .unwrap();
+        (dir, db)
+    }
 
-    db.cloudsync_init("widgets", None, None).await.unwrap();
+    async fn changed_columns(db: &Db) -> Vec<String> {
+        sqlx::query_scalar(
+            "SELECT DISTINCT cid FROM crsql_changes WHERE \"table\" = 'widgets' ORDER BY cid",
+        )
+        .fetch_all(db.pool())
+        .await
+        .unwrap()
+    }
 
-    let enabled: bool = sqlx::query_scalar("SELECT cloudsync_is_enabled('widgets')")
-        .fetch_one(db.pool())
+    async fn insert_widget(db: &Db, id: &str) {
+        sqlx::query("INSERT INTO widgets (id, name) VALUES (?, 'widget')")
+            .bind(id)
+            .execute(db.pool())
+            .await
+            .unwrap();
+    }
+
+    async fn open_synced_widgets() -> (tempfile::TempDir, Db) {
+        let (dir, db) = open_crsqlite_db().await;
+        migrate(&db, schema(SYNCED_BASE_STEPS, widgets_synced))
+            .await
+            .unwrap();
+        hypr_crsqlite::as_crr(db.pool(), "widgets").await.unwrap();
+        (dir, db)
+    }
+
+    /// After a failed `CrrAlter` step: nothing of it is applied, the table
+    /// is still the same CRR (new writes track only the real columns), and
+    /// the corrected step then applies.
+    async fn assert_failed_alter_left_the_crr_intact(db: &Db, error: MigrateError) {
+        assert!(matches!(error, MigrateError::SqlxMigrate(_)), "{error:?}");
+        assert_eq!(applied_versions(db).await, vec![20260415030101]);
+        assert_eq!(
+            widget_columns(db).await,
+            vec!["id".to_string(), "name".to_string()]
+        );
+        insert_widget(db, "w1").await;
+        assert_eq!(changed_columns(db).await, vec!["name"]);
+
+        migrate(db, schema(CRR_ALTER_STEPS, widgets_synced))
+            .await
+            .unwrap();
+        assert_eq!(
+            applied_versions(db).await,
+            vec![20260415030101, 20260415030102]
+        );
+        sqlx::query("UPDATE widgets SET slug = 'w-1' WHERE id = 'w1'")
+            .execute(db.pool())
+            .await
+            .unwrap();
+        assert_eq!(changed_columns(db).await, vec!["name", "slug"]);
+    }
+
+    #[tokio::test]
+    async fn crr_alter_scope_keeps_new_columns_tracked_on_a_crr() {
+        let (_dir, db) = open_synced_widgets().await;
+        // Writes on both pooled connections before the alter, so each one's
+        // cr-sqlite state describes the old schema when the window opens.
+        {
+            let mut a = db.pool().acquire().await.unwrap();
+            let mut b = db.pool().acquire().await.unwrap();
+            for (conn, id) in [(&mut a, "w0"), (&mut b, "w1")] {
+                sqlx::query("INSERT INTO widgets (id, name) VALUES (?, 'widget')")
+                    .bind(id)
+                    .execute(&mut **conn)
+                    .await
+                    .unwrap();
+            }
+        }
+
+        migrate(&db, schema(CRR_ALTER_STEPS, widgets_synced))
+            .await
+            .unwrap();
+
+        let mut a = db.pool().acquire().await.unwrap();
+        let mut b = db.pool().acquire().await.unwrap();
+        for (conn, id) in [(&mut a, "w0"), (&mut b, "w1")] {
+            sqlx::query("UPDATE widgets SET slug = ? WHERE id = ?")
+                .bind(format!("{id}-slug"))
+                .bind(id)
+                .execute(&mut **conn)
+                .await
+                .unwrap();
+        }
+        sqlx::query("INSERT INTO widgets (id, name, slug) VALUES ('w2', 'widget', 'w-2')")
+            .execute(&mut *a)
+            .await
+            .unwrap();
+        drop((a, b));
+
+        assert_eq!(
+            applied_versions(&db).await,
+            vec![20260415030101, 20260415030102]
+        );
+        assert_eq!(changed_columns(&db).await, vec!["name", "slug"]);
+        db.close().await;
+    }
+
+    #[tokio::test]
+    async fn crr_alter_scope_does_not_convert_a_table_that_is_not_a_crr() {
+        let (_dir, db) = open_crsqlite_db().await;
+
+        migrate(&db, schema(CRR_ALTER_STEPS, widgets_synced))
+            .await
+            .unwrap();
+
+        assert_eq!(
+            widget_columns(&db).await,
+            vec!["id".to_string(), "name".to_string(), "slug".to_string()]
+        );
+        assert!(!hypr_crsqlite::is_crr(db.pool(), "widgets").await.unwrap());
+        db.close().await;
+    }
+
+    #[tokio::test]
+    async fn crr_alter_on_an_in_memory_crr_is_refused() {
+        let db = Db::open_crsqlite(DbOpenOptions {
+            storage: DbStorage::Memory,
+            journal_mode_wal: false,
+            foreign_keys: true,
+            max_connections: Some(1),
+        })
         .await
         .unwrap();
-    assert!(enabled);
+        migrate(&db, schema(SYNCED_BASE_STEPS, widgets_synced))
+            .await
+            .unwrap();
+        hypr_crsqlite::as_crr(db.pool(), "widgets").await.unwrap();
 
-    migrate(&db, schema(CLOUDSYNC_ALTER_STEPS, widgets_synced))
-        .await
-        .unwrap();
+        let error = migrate(&db, schema(CRR_ALTER_STEPS, widgets_synced))
+            .await
+            .unwrap_err();
 
-    assert_eq!(
-        applied_versions(&db).await,
-        vec![20260415030101, 20260415030102]
-    );
-    assert_eq!(
-        widget_columns(&db).await,
-        vec!["id".to_string(), "name".to_string(), "slug".to_string()]
-    );
+        assert!(error.to_string().contains("in-memory"), "{error}");
+        assert_eq!(applied_versions(&db).await, vec![20260415030101]);
+        db.close().await;
+    }
+
+    /// Audit finding (2026-11-04, muse seat): a connection checked out by
+    /// another caller during the window would keep the pre-alter schema, so
+    /// the window refuses to open rather than diverge silently.
+    #[tokio::test]
+    async fn crr_alter_is_refused_while_another_connection_is_checked_out() {
+        let (_dir, db) = open_synced_widgets().await;
+        let held = db.pool().acquire().await.unwrap();
+
+        let error = migrate(&db, schema(CRR_ALTER_STEPS, widgets_synced))
+            .await
+            .unwrap_err();
+        drop(held);
+
+        assert!(error.to_string().contains("checked out"), "{error}");
+        assert_eq!(applied_versions(&db).await, vec![20260415030101]);
+        assert_eq!(
+            widget_columns(&db).await,
+            vec!["id".to_string(), "name".to_string()]
+        );
+        db.close().await;
+    }
+
+    /// On an empty table SQLite accepts `ADD COLUMN ... NOT NULL` without a
+    /// DEFAULT, and `crsql_commit_alter` is what rejects it.
+    #[tokio::test]
+    async fn failed_crr_alter_commit_leaves_the_crr_intact() {
+        let (_dir, db) = open_synced_widgets().await;
+
+        let error = migrate(&db, schema(FAILING_CRR_ALTER_STEPS, widgets_synced))
+            .await
+            .unwrap_err();
+
+        assert_failed_alter_left_the_crr_intact(&db, error).await;
+        db.close().await;
+    }
+
+    /// With a row present SQLite itself rejects the same DDL.
+    #[tokio::test]
+    async fn failed_crr_alter_ddl_leaves_the_crr_intact() {
+        let (_dir, db) = open_synced_widgets().await;
+        insert_widget(&db, "w0").await;
+
+        let error = migrate(&db, schema(FAILING_CRR_ALTER_STEPS, widgets_synced))
+            .await
+            .unwrap_err();
+
+        assert_failed_alter_left_the_crr_intact(&db, error).await;
+        db.close().await;
+    }
 }

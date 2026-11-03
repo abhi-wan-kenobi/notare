@@ -588,7 +588,6 @@ mod tests {
     async fn open_test_db() -> hypr_db_core::Db {
         let db = hypr_db_core::Db::open(hypr_db_core::DbOpenOptions {
             storage: hypr_db_core::DbStorage::Memory,
-            cloudsync_enabled: false,
             journal_mode_wal: true,
             foreign_keys: true,
             max_connections: Some(1),
@@ -599,7 +598,7 @@ mod tests {
             &db,
             hypr_db_migrate::DbSchema {
                 steps: crate::APP_MIGRATION_STEPS,
-                validate_cloudsync_table: crate::cloudsync_alter_guard_required,
+                validate_crr_table: crate::crr_alter_guard_required,
             },
         )
         .await
@@ -675,7 +674,6 @@ mod tests {
 
         let db = Db::open(hypr_db_core::DbOpenOptions {
             storage: hypr_db_core::DbStorage::Memory,
-            cloudsync_enabled: false,
             journal_mode_wal: true,
             foreign_keys: true,
             max_connections: Some(1),
@@ -686,7 +684,7 @@ mod tests {
             &db,
             hypr_db_migrate::DbSchema {
                 steps: APP_MIGRATION_STEPS,
-                validate_cloudsync_table: crate::cloudsync_alter_guard_required,
+                validate_crr_table: crate::crr_alter_guard_required,
             },
         )
         .await

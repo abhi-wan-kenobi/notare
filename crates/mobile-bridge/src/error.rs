@@ -4,16 +4,12 @@ pub enum BridgeError {
     Closed,
     #[error("invalid params json: {reason}")]
     InvalidParamsJson { reason: String },
-    #[error("invalid cloudsync config json: {reason}")]
-    InvalidCloudsyncConfigJson { reason: String },
     #[error("params json must encode an array")]
     ParamsMustBeArray,
     #[error("failed to open database: {reason}")]
     OpenFailed { reason: String },
     #[error("query failed: {reason}")]
     QueryFailed { reason: String },
-    #[error("cloudsync failed: {reason}")]
-    CloudsyncFailed { reason: String },
     #[error("failed to serialize payload: {reason}")]
     SerializationFailed { reason: String },
 }
@@ -41,18 +37,6 @@ pub(crate) fn execute_error(error: hypr_db_execute::Error) -> BridgeError {
 
 pub(crate) fn reactive_error(error: hypr_db_reactive::Error) -> BridgeError {
     BridgeError::QueryFailed {
-        reason: error.to_string(),
-    }
-}
-
-pub(crate) fn cloudsync_error(error: impl std::fmt::Display) -> BridgeError {
-    BridgeError::CloudsyncFailed {
-        reason: error.to_string(),
-    }
-}
-
-pub(crate) fn cloudsync_runtime_error(error: hypr_db_core::CloudsyncRuntimeError) -> BridgeError {
-    BridgeError::CloudsyncFailed {
         reason: error.to_string(),
     }
 }

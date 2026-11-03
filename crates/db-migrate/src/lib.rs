@@ -21,7 +21,7 @@ mod tests {
     fn empty_schema() -> DbSchema {
         DbSchema {
             steps: &[],
-            validate_cloudsync_table: |_table| false,
+            validate_crr_table: |_table| false,
         }
     }
 
@@ -29,7 +29,6 @@ mod tests {
     async fn migrate_bootstraps_migration_history() {
         let db = Db::open(DbOpenOptions {
             storage: DbStorage::Memory,
-            cloudsync_enabled: false,
             journal_mode_wal: true,
             foreign_keys: true,
             max_connections: Some(1),

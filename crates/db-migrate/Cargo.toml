@@ -10,4 +10,9 @@ sqlx = { workspace = true, features = ["runtime-tokio", "sqlite", "sqlite-unbund
 thiserror = { workspace = true }
 
 [dev-dependencies]
+# `CrrAlter` only opens an alter window with the cr-sqlite engine loaded.
+hypr-crsqlite = { workspace = true }
+hypr-db-core = { workspace = true, features = ["crsqlite"] }
+
+tempfile = { workspace = true }
 tokio = { workspace = true, features = ["rt", "macros"] }

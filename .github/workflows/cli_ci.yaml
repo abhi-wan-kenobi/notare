@@ -14,7 +14,6 @@ on:
       - apps/web/netlify.toml
       - apps/web/public/llms.txt
       - crates/agent-access/**
-      - crates/cloudsync/**
       - crates/crsqlite/**
       - crates/cli-docs/**
       - crates/db-app/**
@@ -39,7 +38,6 @@ on:
       - apps/web/netlify.toml
       - apps/web/public/llms.txt
       - crates/agent-access/**
-      - crates/cloudsync/**
       - crates/crsqlite/**
       - crates/cli-docs/**
       - crates/db-app/**
@@ -79,8 +77,8 @@ jobs:
           cargo test --locked -p agent-access
           cargo test --locked -p anarlog-cli
           cargo test --locked -p db-app --lib
-          cargo test --locked -p db-core --lib
-          cargo test --locked -p db-migrate --lib
+          cargo test --locked -p db-core
+          cargo test --locked -p db-migrate
           cargo test --locked -p tiptap
       - run: |
           cargo clippy --locked \

@@ -1,17 +1,15 @@
 //! cr-sqlite (vlcn-io v0.16.3) function surface.
 //!
-//! Mirrors the shape of `hypr_cloudsync`'s `src/api.rs` (generic over
-//! `Executor` so both `&Pool` and `&mut Tx` call sites work), with the
-//! cr-sqlite names. Per the 2026-09-07 plan:
+//! Generic over `Executor` so both `&Pool` and `&mut Tx` call sites work.
+//! Per the 2026-09-07 plan:
 //!
-//! - `as_crr` / `is_crr` replace cloudsync's `enable` / `is_enabled`:
-//!   `is_crr` checks `<table>__crsql_clock` in `sqlite_master` (cr-sqlite
-//!   has no "is this table enabled" function).
+//! - `is_crr` checks `<table>__crsql_clock` in `sqlite_master` (cr-sqlite
+//!   has no "is this table a CRR" function).
 //! - `load_probe` = `SELECT crsql_site_id()` — cr-sqlite v0.16.3 exposes no
 //!   `crsql_version()` (probed 2026-09-07, recorded in sync-p2p.md §30), so
 //!   site_id is the presence check.
-//! - `begin_alter`/`commit_alter` carry over: `MigrationScope::CloudsyncAlter`
-//!   (db-migrate) forwards to them unchanged.
+//! - `begin_alter`/`commit_alter` back db-migrate's `MigrationScope::CrrAlter`
+//!   (through db-core's `Db::begin_crr_alter_on`).
 //! - `finalize` exists because cr-sqlite caches prepared statements per
 //!   connection; the close-behaviour probe (tests/close_behaviour.rs) pinned
 //!   the finalize-sweep-before-close pool policy.
@@ -94,8 +92,8 @@ where
 
 /// Begin a schema alteration on a CRR table (`crsql_begin_alter`). Between
 /// begin and commit, changes to the table's schema are not tracked as CRDT
-/// changes; db-migrate's `MigrationScope::CloudsyncAlter` wraps every ALTER
-/// to a synced table in this pair.
+/// changes; db-migrate's `MigrationScope::CrrAlter` wraps every ALTER to a
+/// synced CRR in this pair (via db-core's `Db::begin_crr_alter_on`).
 pub async fn begin_alter<'e, E>(executor: E, table_name: &str) -> Result<(), Error>
 where
     E: Executor<'e, Database = Sqlite>,

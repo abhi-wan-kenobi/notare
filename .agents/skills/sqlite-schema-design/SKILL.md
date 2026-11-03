@@ -1,221 +1,181 @@
 ---
 name: sqlite-schema-design
-description: Design or review schemas for `crates/cloudsync` using SQLite Sync constraints, not generic SQLite advice. Use when adding synced tables, changing synced columns, or planning CloudSync-safe migrations.
+description: Design or review schemas for cr-sqlite CRRs using conflict-free replicated relation constraints, not generic SQLite advice. Use when adding synced tables, changing synced columns, or planning CRR-safe migrations.
 metadata:
   internal: true
 ---
 
 ## Goal
 
-Design tables that behave correctly under SQLite Sync's CRDT replication model.
+Design tables and migrations that behave correctly under cr-sqlite's Conflict-free Replicated Relation (CRR) replication model.
 
-This skill is specifically for CloudSync-backed schemas:
+This skill is specifically for cr-sqlite CRR-backed schemas in Notare:
 
-- tables are initialized through `cloudsync_init(...)`
-- sync is enabled with `cloudsync_enable(...)`
-- identifiers should be generated with `cloudsync_uuid()`
-- schema changes must go through `cloudsync_begin_alter(...)` and `cloudsync_commit_alter(...)`
-- local and cloud databases must keep the same schema
+- Synced-table policy is centralized in `crates/db-app` (`SYNCED_TABLES`, `ELIGIBLE_PENDING_PROOF`, `NO_GO_TABLES`).
+- Tables become CRRs via `crsql_as_crr` only when the user turns sync on (`plugins/db/src/change_source.rs::enable_crr_tables`).
+- Primary keys must be application-generated `TEXT PRIMARY KEY NOT NULL` (UUIDv4) or deterministically derived.
+- DDL altering a synced table must use db-migrate's `MigrationScope::CrrAlter { table_name }` (`crsql_begin_alter` / `crsql_commit_alter`).
+- Secondary unique indices are rejected by cr-sqlite; all required non-PK columns must have explicit `DEFAULT`s.
 
-Do not treat this as ordinary SQLite schema design. SQLite Sync imposes extra rules around keys, defaults, foreign keys, and schema evolution.
+Do not treat this as ordinary SQLite schema design. cr-sqlite imposes strict rules around primary keys, column defaults, unique indices, and schema evolution windows.
+
+---
 
 ## Workflow
 
-### 1. Decide Whether The Table Is Synced
+### 1. Classify The Table According To App Policy
 
-Before proposing DDL, classify the table:
+Before proposing DDL, classify the table according to `crates/db-app` policy (`crates/db-app/src/sync_tables.rs`):
 
-- synced application data: must satisfy SQLite Sync constraints
-- local-only cache or ephemeral state: should usually stay out of CloudSync
+1. **`SYNCED_TABLES`**: Actively converted to CRRs when sync is turned on.
+   - Current tables: `sessions`, `session_documents`, `transcripts`, `action_items`, `tags`, `session_tags`.
+   - **Rule**: Every table added here must have a proven convergence proof verifying merge behavior under concurrent edits and tombstones.
+2. **`ELIGIBLE_PENDING_PROOF`**: Structurally eligible for sync but not yet enabled.
+   - Current tables: `organizations`, `templates`, `chat_groups`, `chat_messages`.
+   - Never add to `SYNCED_TABLES` before a convergence proof is established.
+3. **`NO_GO_TABLES`**: Proven unsafe to sync due to duplicate entity creation under concurrency.
+   - Current tables: `humans`, `session_participants`, `calendars`, `events`.
+   - Never add to `SYNCED_TABLES` without deterministic primary key backfills.
+4. **Local-Only / Ephemeral Tables**:
+   - Ledger tables, vector index tables (`embedding_vector_map`), caches, and cursor tracking (`sync_peer_cursors`) remain non-CRRs.
 
-Only apply this skill to synced tables or to tables that may become synced soon.
+---
 
-### 2. Require A Stable, Globally Unique Primary Key
-
-For synced tables:
-
-- always declare an explicit primary key
-- prefer `TEXT PRIMARY KEY NOT NULL`
-- generate ids with `cloudsync_uuid()`
-- do not use auto-incrementing integer ids
-
-SQLite Sync docs explicitly recommend UUIDv7-style globally unique ids for CRDT workloads. Integer autoincrement ids are a bad fit because multiple devices can create rows independently.
-
-```sql
-CREATE TABLE document (
-  id TEXT PRIMARY KEY NOT NULL DEFAULT (cloudsync_uuid()),
-  workspace_id TEXT NOT NULL,
-  title TEXT NOT NULL DEFAULT '',
-  body TEXT NOT NULL DEFAULT '',
-  archived INTEGER NOT NULL DEFAULT 0,
-  created_at INTEGER NOT NULL DEFAULT (unixepoch()),
-  updated_at INTEGER NOT NULL DEFAULT (unixepoch())
-) STRICT;
-```
-
-If the environment cannot use a function call in `DEFAULT`, generate the id in application code, but still use `cloudsync_uuid()` as the canonical id strategy.
-
-### 3. Make Inserts Merge-Safe With Real Defaults
-
-SQLite Sync best practices call out a non-obvious CRDT constraint: merges can happen column-by-column, so missing values are much more dangerous than in a single-node SQLite app.
+### 2. Primary Key Strategy: App-Generated UUIDs
 
 For synced tables:
 
-- every non-primary-key `NOT NULL` column should have a meaningful `DEFAULT`
-- avoid required columns that only application code knows how to populate
-- prefer simple scalar defaults over nullable columns when the field is logically always present
+- Always declare:
+  ```sql
+  id TEXT PRIMARY KEY NOT NULL
+  ```
+- **Explicit `NOT NULL` is required**: In SQLite `STRICT` mode, cr-sqlite rejects primary keys without an explicit `NOT NULL` constraint.
+- **Do not use autoincrementing integers**: Autoincrement integers collide across devices creating rows offline.
+- **Mint IDs in application code**: Generate IDs via `uuid::Uuid::new_v4().to_string()` in Rust or `crypto.randomUUID()` in TypeScript.
+- **Do not rely on SQL helper functions**: Do not use custom SQL UUID functions. Mint IDs before inserting rows.
 
-Good:
+---
 
-```sql
-title TEXT NOT NULL DEFAULT ''
-archived INTEGER NOT NULL DEFAULT 0
-sort_order INTEGER NOT NULL DEFAULT 0
+### 3. Deterministic IDs for Find-Or-Create Rows
+
+A critical CRDT defect occurs when entities are created behind a local `NOT EXISTS (...)` check using random UUIDs:
+
+- Two offline devices independently create the same logical entity (e.g. adding a person with the same email, or a calendar poller inserting an event with the same external tracking ID).
+- Both devices pass their local `NOT EXISTS` check and mint different random UUIDs.
+- After replication, both rows exist forever. No CRDT merge engine can unify two distinct primary keys.
+
+**Required Solution**: Derive primary keys deterministically from the entity's domain identity using domain-separated hashes (`crates/db-app/src/id_backfill.rs`):
+
+```text
+humans.id               = "h_"  + hex(sha256("notare:human:v1:"       + norm_email))[0..32]
+organizations.id        = "o_"  + hex(sha256("notare:org:v1:"         + norm_name))[0..32]
+session_participants.id = "sp_" + hex(sha256("notare:participant:v1:" + session_id + "\n" + member_key))[0..32]
 ```
 
-Bad:
+Where:
+- `norm_email = lower(trim(email))` after Unicode NFC normalization.
+- `norm_name = lower(trim(name))`.
+- If an entity cannot be identified deterministically (e.g. `calendars` and `events` where external provider IDs live in non-PK columns), it is classified as `NO_GO_TABLES` until the schema is refactored.
 
+---
+
+### 4. Make Inserts Merge-Safe With Explicit Defaults
+
+cr-sqlite replicates and merges column-by-column through `crsql_changes`. When a row insert merges on a remote node, missing or omitted columns receive their schema default values:
+
+- **Every non-primary-key `NOT NULL` column must have an explicit `DEFAULT`**.
+- cr-sqlite's `crsql_as_crr` explicitly rejects tables with a `NOT NULL` column lacking a `DEFAULT` (e.g. `voice_profiles` is rejected by the engine with `"NOT NULL column without a DEFAULT"`).
+- Prefer simple scalar defaults over nullable columns when the field is logically always present.
+
+**Good**:
 ```sql
-title TEXT NOT NULL
+title TEXT NOT NULL DEFAULT '',
+archived INTEGER NOT NULL DEFAULT 0,
+created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+```
+
+**Bad**:
+```sql
+title TEXT NOT NULL,
 archived INTEGER NOT NULL
 ```
 
-without defaults on a synced table.
+---
 
-### 4. Keep The Local And Cloud Schemas Identical
+### 5. No Secondary Unique Constraints
 
-The getting-started docs require the local synced database and the SQLite Cloud database to share the same schema.
+- **cr-sqlite rejects tables with secondary unique indices**: The engine fails `crsql_as_crr` if any `UNIQUE` index or constraint exists besides the primary key (e.g. `embedding_vector_map` is rejected with `"unique indices"`).
+- Uniqueness across multiple columns must be enforced through application logic or by making the unique tuple part of a deterministic primary key.
 
-When designing or reviewing a schema:
+---
 
-- treat local and remote DDL as one contract
-- do not introduce "client-only" columns on synced tables
-- do not rely on drift being harmless
-- ensure migrations are applied consistently before sync resumes
+### 6. Be Conservative With Foreign Keys
 
-If a field is only needed locally, it likely belongs in a separate non-synced table.
+- CRDT changes replicate and apply out-of-order and asynchronously across devices.
+- Cascading deletes (`ON DELETE CASCADE`) interact unpredictably with CRDT tombstones.
+- If foreign keys are present:
+  - Avoid cascading delete actions on synced tables.
+  - Make foreign key columns nullable if child records can arrive before parents.
+  - Rely on application-level soft deletes (`deleted_at TEXT`) or cr-sqlite row tombstones (`cid = "-1"`).
 
-### 5. Be Conservative With Foreign Keys
+---
 
-SQLite Sync best practices explicitly warn that foreign keys can interact poorly with CRDT replication.
+### 7. Execute DDL Inside `MigrationScope::CrrAlter`
 
-Use foreign keys on synced tables only when the integrity guarantee is worth the operational cost.
-
-If you keep them:
-
-- make child foreign key columns nullable when the relationship is optional
-- if a foreign key column has a `DEFAULT`, that default must be `NULL` or reference an actually valid parent row
-- avoid fake sentinel ids such as `'root'` unless that parent row is guaranteed to exist everywhere
-- index the child foreign key columns
-
-Prefer ownership patterns that tolerate out-of-order arrival between related rows.
-
-### 6. Avoid Triggers And Implicit Write Logic On Synced Tables
-
-SQLite Sync best practices advise minimizing triggers because they make replicated writes harder to reason about.
-
-For synced tables:
-
-- avoid triggers that mutate synced columns
-- avoid hidden side effects on insert or update
-- prefer explicit application writes
-- keep derived or bookkeeping writes in non-synced tables if possible
-
-If a trigger is unavoidable, review it as part of the replication design, not as a local SQLite convenience.
-
-### 7. Scope Uniqueness For RLS And Multi-Tenant Sync
-
-The introduction docs emphasize row-level security and multi-tenant access patterns.
-
-That changes uniqueness design:
-
-- if the real rule is "unique per workspace/user/team", encode that as a composite constraint
-- avoid globally unique business keys unless they truly span all tenants
-
-Prefer:
+Altering the schema of a table that has already been converted to a CRR requires executing the DDL within a cr-sqlite alter window:
 
 ```sql
-UNIQUE (workspace_id, slug)
+SELECT crsql_begin_alter('table_name');
+-- execute ALTER TABLE statements
+SELECT crsql_commit_alter('table_name');
 ```
 
-over:
+In Notare's migration system (`crates/db-migrate` & `crates/db-app`):
+- Declare the migration step with `MigrationScope::CrrAlter { table_name }`:
+  ```rust
+  hypr_db_migrate::MigrationStep {
+      id: "20260723130000_action_items_v2",
+      scope: hypr_db_migrate::MigrationScope::CrrAlter {
+          table_name: "action_items",
+      },
+      sql: include_str!("../migrations/20260723130000_action_items_v2.sql"),
+  }
+  ```
+- `db-migrate` ensures connection affinity: `crsql_begin_alter`, the DDL, and `crsql_commit_alter` execute sequentially on the same checked-out connection handle.
+- If the table is not currently a CRR (e.g. on a device where sync was never enabled), `db-migrate` runs the DDL as normal SQLite execution without invoking the alter window.
 
-```sql
-slug TEXT UNIQUE
-```
+---
 
-when data is tenant-scoped.
+### 8. Respect STRICT Mode
 
-### 8. Keep Schema Changes Inside The CloudSync Alter Window
+Notare schemas enforce SQLite `STRICT` mode. Under cr-sqlite:
+- Primary key must be `id TEXT PRIMARY KEY NOT NULL`.
+- All column types must be valid STRICT types (`INTEGER`, `REAL`, `TEXT`, `BLOB`, `ANY`).
+- cr-sqlite's value codec (`SqlValue`) decodes SQLite runtime storage classes directly, preserving numeric and binary precision across nodes.
 
-Schema changes for synced databases are not ordinary `ALTER TABLE` work. Use:
-
-1. `cloudsync_begin_alter('table_name')`
-2. perform the schema change
-3. `cloudsync_commit_alter('table_name')`
-
-Design implications:
-
-- favor additive changes over destructive rewrites
-- prefer adding columns with safe defaults
-- avoid migrations that temporarily violate sync invariants
-- plan rollouts so every replica can move cleanly to the new shape
-
-When reviewing a migration plan, reject any synced-table schema change that skips the CloudSync alter flow.
-
-### 9. Keep Sync Metadata Out Of Your Domain Schema
-
-SQLite Sync already exposes its own metadata and helpers:
-
-- `cloudsync_siteid()`
-- `cloudsync_db_version()`
-- `cloudsync_version()`
-- `cloudsync_is_enabled()`
-
-Do not duplicate these concepts as app-managed columns on synced tables unless there is a very specific product requirement.
-
-### 10. Separate Network Lifecycle From Schema Design
-
-The API set includes network setup and sync transport functions such as:
-
-- `cloudsync_network_init(...)`
-- `cloudsync_network_set_token(...)`
-- `cloudsync_network_set_apikey(...)`
-- `cloudsync_network_sync(...)`
-- `cloudsync_network_has_unsent_changes()`
-
-These matter operationally, but they are not substitutes for sound schema design.
-
-Do not design tables that assume:
-
-- sync is always online
-- rows arrive in lockstep
-- dependent rows replicate in a single transaction boundary visible to all peers
-
-Assume offline creation, delayed delivery, retries, and independent merges.
+---
 
 ## Design Defaults For Synced Tables
 
-Unless the user explicitly asks otherwise:
+Unless explicitly approved otherwise:
 
-- `TEXT PRIMARY KEY NOT NULL`
-- ids generated with `cloudsync_uuid()`
-- `STRICT` tables
-- explicit `DEFAULT` on every non-key `NOT NULL` column
-- composite uniqueness for tenant-scoped identifiers
-- minimal or no triggers
-- cautious foreign key usage
-- separate non-synced tables for local UI/cache state
+```sql
+CREATE TABLE example_entity (
+    id TEXT PRIMARY KEY NOT NULL,
+    workspace_id TEXT NOT NULL DEFAULT '',
+    title TEXT NOT NULL DEFAULT '',
+    content TEXT NOT NULL DEFAULT '',
+    deleted_at TEXT,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+) STRICT;
+```
 
-## Review Checklist
-
-When reviewing a CloudSync schema, ask:
-
-- Does every synced table have a globally unique primary key strategy?
-- Are new rows creatable independently on multiple devices?
-- Do all non-key required columns have defaults that make replicated inserts safe?
-- Would the schema still behave correctly if related rows arrive out of order?
-- Are foreign keys optional where replication ordering can vary?
-- Are tenant-scoped uniqueness rules modeled as composite constraints?
-- Does the migration plan use `cloudsync_begin_alter` / `cloudsync_commit_alter`?
-- Is any local-only state incorrectly mixed into a synced table?
+Checklist:
+- `id TEXT PRIMARY KEY NOT NULL` (app-generated UUIDv4 or deterministic hash).
+- `STRICT` mode enabled.
+- Every non-PK `NOT NULL` column carries an explicit `DEFAULT`.
+- No secondary `UNIQUE` indices or constraints.
+- No `ON DELETE CASCADE` foreign keys.
+- Migration declared with `MigrationScope::CrrAlter { table_name }`.
+- Table registered in `crates/db-app/src/sync_tables.rs`.
