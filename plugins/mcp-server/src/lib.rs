@@ -36,24 +36,31 @@ pub fn init() -> tauri::plugin::TauriPlugin<tauri::Wry> {
     tauri::plugin::Builder::new(PLUGIN_NAME)
         .invoke_handler(specta_builder.invoke_handler())
         .setup(move |app, _api| {
-            let pool = app
+            // Never panic in setup: a missing dependency or unreadable store must
+            // not take the whole app down (0.6.2 did exactly that).
+            let Some(pool) = app
                 .try_state::<tauri_plugin_db::ManagedState>()
                 .map(|s| s.pool().clone())
-                .expect("tauri-plugin-db must be initialized before tauri-plugin-mcp-server");
+            else {
+                tracing::error!("tauri-plugin-db is not initialized; MCP server disabled");
+                return Ok(());
+            };
 
             let manager = McpServerManager::new(pool, app.clone());
 
-            // If enabled in settings, auto-start
-            if let Ok(settings) = manager.get_settings()
-                && settings.enabled
-            {
-                let mgr = manager.clone();
-                let port = settings.port;
-                tauri::async_runtime::spawn(async move {
-                    if let Err(e) = mgr.restart(port).await {
-                        tracing::error!("Failed to auto-start MCP server: {e}");
-                    }
-                });
+            // Auto-start only reads the plain store (no keyring) so a disabled
+            // server never costs a keychain prompt at launch.
+            match manager.autostart_config() {
+                Ok((true, port)) => {
+                    let mgr = manager.clone();
+                    tauri::async_runtime::spawn(async move {
+                        if let Err(e) = mgr.restart(port).await {
+                            tracing::error!("Failed to auto-start MCP server: {e}");
+                        }
+                    });
+                }
+                Ok((false, _)) => {}
+                Err(e) => tracing::warn!("MCP server settings unreadable at startup: {e}"),
             }
 
             app.manage(manager);

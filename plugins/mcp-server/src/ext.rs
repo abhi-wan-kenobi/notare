@@ -99,6 +99,15 @@ impl McpServerManager {
         Ok(new_token)
     }
 
+    /// `(enabled, port)` from the plain store only — no keyring. Used at app
+    /// startup so a disabled server never triggers a keychain prompt.
+    pub fn autostart_config(&self) -> Result<(bool, u16)> {
+        let store = self.scoped()?;
+        let enabled = store.get::<bool>(StoreKey::Enabled)?.unwrap_or(false);
+        let port = store.get::<u16>(StoreKey::Port)?.unwrap_or(DEFAULT_PORT);
+        Ok((enabled, if port == 0 { DEFAULT_PORT } else { port }))
+    }
+
     pub fn get_settings(&self) -> Result<McpServerSettings> {
         let store = self.scoped()?;
         let enabled = store.get::<bool>(StoreKey::Enabled)?.unwrap_or(false);
