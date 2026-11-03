@@ -10,6 +10,7 @@ import { searchContacts } from "~/contacts/queries";
 import { useRegisterTools } from "~/contexts/tool";
 import { takePendingWelcomeSession } from "~/onboarding/welcome-note";
 import { useSearchEngine } from "~/search/contexts/engine";
+import { useBriefsScheduler } from "~/services/briefs";
 import { initEnhancerService } from "~/services/enhancer";
 import { useTaskModel } from "~/services/llm-router";
 import { useConfigValue } from "~/shared/config";
@@ -44,8 +45,17 @@ export function ClassicMainServices() {
       <MainListenerControlBridge />
       <ToolRegistration />
       <EnhancerInit />
+      <BriefsScheduler />
     </>
   );
+}
+
+// Lives here, not in TaskManager: useBriefsScheduler → useTaskModel →
+// useLLMConnection → useAuth, and TaskManager renders outside <App />'s
+// providers (0.6.2/0.6.3 crashed the main window on this).
+function BriefsScheduler() {
+  useBriefsScheduler();
+  return null;
 }
 
 function ToolRegistration() {
