@@ -27,7 +27,7 @@ All tools are read-only and idempotent. No writes to the SQLite database occur v
 | `get_meeting` | `id` (string) | Retrieve one meeting with its canonical note, summaries, participants, and action items. |
 | `get_meeting_transcript` | `id` (string), `offset` (optional int), `limit` (optional int, default 200) | Bounded page of transcript words and readable text for a meeting. |
 | `search_meetings` | `query` (string), `limit` (optional int), `offset` (optional int) | Full-text search across meetings using the on-device Tantivy search index. |
-| `search_meeting_content` | `query` (string), `meeting_ids` (optional array of strings), `limit` (optional int) | Lexical content search across meeting notes and transcripts for exact phrases and keywords. *(Note: plugins/embedding-search only exposes KNN semantic search without a hybrid reciprocal-rank fusion Rust API, so content search runs lexically).* |
+| `search_meeting_content` | `query` (string), `meeting_ids` (optional array of strings), `limit` (optional int, default 20) | Hybrid content search across meeting notes and transcripts: fuses lexical (SQL `LIKE`) and on-device semantic (embedding KNN) matches with Reciprocal Rank Fusion (k=60), grouped by meeting and ordered by fused score. Falls back to lexical-only — reported in the result's `mode` field — when the semantic model isn't downloaded or loaded yet; never errors solely because semantic search is unavailable. Each match carries a `[[src:<sessionId>@<ms>]]` citation id, matching the format used in chat. |
 | `list_recipes` | *(none)* | List all available AI prompt recipes in Notare. |
 | `get_daily_note` | `date` (string, `YYYY-MM-DD`) | Retrieve the daily note for a specific calendar date. |
 
