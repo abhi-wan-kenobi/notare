@@ -1,38 +1,69 @@
 ---
 title: "Record meetings"
-description: "Start, follow, and finish a meeting without adding a bot to the call."
+description: "Prepare with briefs, record without bots, and capture audio and notes locally."
+---
+
+Notare records your microphone and system audio directly from your machine without adding a bot to the call. Each meeting is stored locally with your notes, transcript, and generated summary.
+
+## Pre-meeting briefs
+
+Before upcoming meetings, Notare can automatically synthesize background context so you walk into the call prepared:
+
+- **Attendee background:** Detects attendees and their organizations from calendar event invites.
+- **Previous outcomes:** Summarizes the outcomes of recent discussions with the same participants, with citation chips linking to prior recordings.
+- **Open action items:** Lists pending tasks and commitments from earlier meetings.
+- **Suggested questions:** Generates relevant discussion topics based on past conversations.
+
+### Configuring briefs
+
+1. Open **Settings → Intelligence**.
+2. Scroll to **Pre-Meeting Briefs** and enable **Generate pre-meeting briefs**.
+3. Set your preferred **Preparation window** (how far in advance briefs are generated: 2, 4, 8, 12, or 24 hours before event start).
+
+Briefs appear as a collapsible card on upcoming calendar event popovers and in the meeting note header. You can click the refresh icon to regenerate a brief or click **X** to dismiss it.
+
 ---
 
 ## Start recording
 
 Choose the path that matches the meeting:
 
-- **Calendar event with a meeting link:** open the event note and click **Join & record**. Anarlog opens the call and starts listening.
-- **In-person meeting or call already open:** open the event note and click **Record**.
-- **Unscheduled conversation:** create a **New Note**, then click **Record**.
+- **Calendar event with a meeting link:** Open the event note and click **Join & record**. Notare opens the call in your browser or conferencing app and starts listening.
+- **In-person meeting or call already open:** Open the event note and click **Record**.
+- **Unscheduled conversation:** Create a **New Note** and click **Record**.
 
-Anarlog records your microphone and system audio. It does not join the meeting as a participant.
+Notare captures system audio (the other speakers) and your microphone locally.
 
 <Warning>
-  Make sure you have permission to record. Consent rules depend on where you and the other participants are located.
+  Make sure you have permission to record. Consent requirements vary depending on your local jurisdiction and participant locations.
 </Warning>
+
+---
 
 ## During the meeting
 
-Use **Memos** for your own notes. You can keep them rough: the generated summary uses the conversation and your memo as context.
+- **Memos:** Type rough notes while the call is in progress. The generated summary combines your typed notes with the full conversation transcript.
+- **Transcript:** Follow the live transcript if your transcription model supports real-time decoding. Models marked **After recording** process audio after you click stop.
+- **Floating bar:** Enable **Show floating bar** in **Settings → App** to monitor audio levels and control recording from a minimal overlay window.
 
-Open **Transcript** to follow live text when your selected transcription model supports it. Models marked **After recording** process the audio when you stop.
-
-If you enabled **Show floating bar** in **Settings → App**, you can control recording without keeping the full Anarlog window open.
+---
 
 ## Finish the meeting
 
-Click **Stop listening**. Anarlog saves the recording according to your retention setting, finishes the transcript, and creates a summary when an Intelligence model is configured.
+Click **Stop listening** when the call ends:
 
-You can resume a finished meeting from the same top-right control if the conversation continues.
+1. Audio is saved according to your retention settings (**Settings → Storage**).
+2. The final transcript is reconciled and saved.
+3. Your configured Intelligence model generates a structured summary.
+
+If a meeting restarts or extends after stopping, click **Resume** from the top-right controls to continue in the same note.
+
+---
 
 ## Use an existing recording
 
-Create or open an empty note, click the **•••** menu, then choose **Upload audio** or **Upload transcript**.
+To transcribe or summarize pre-recorded audio:
 
-For automatic start and stop controls, open **Settings → App → Meetings**.
+1. Create or open an empty note.
+2. Click the **•••** overflow menu in the note header.
+3. Choose **Upload audio** (supports common audio files) or **Upload transcript**.

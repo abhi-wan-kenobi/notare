@@ -51,13 +51,16 @@ version ships.
 | 🎙️ **Meeting mode** | Captures system + mic audio locally; live transcription; no bot joins your call |
 | ⚡ **GPU transcription** | whisper.cpp with Vulkan (AMD/Intel/NVIDIA) — fast local STT on Windows *and* Linux |
 | ⌨️ **Dictation mode** | Push-to-talk anywhere; text is typed at your cursor, with output cleanup options |
-| 📝 **Notepad-first AI** | Your own notes are enhanced with the transcript as context — bring your own LLM (Ollama / OpenAI-compatible / Anthropic) |
+| 📝 **Notepad-first AI** | Your rough notes enhanced with transcripts — pre-meeting briefs, 25-template gallery, and follow-up email drafts |
+| 💬 **Grounded Chat** | Search across meetings with scope filters, timestamped citation audio playback, and slash recipes |
+| 🧠 **Flexible AI setup** | Local offline models (Ollama/LM Studio), BYO API keys, official OpenRouter sign-in, subscriptions (Claude/ChatGPT/Gemini), or omp gateway |
 | 📁 **Plain Markdown** | Notes written straight into any folder — point it at your Obsidian vault |
-| 📅 **Calendar context** | Google Calendar via **your own** OAuth client — no shared middleman app |
+| 📅 **Calendar & Email** | One-click Google & Outlook multi-account sync; opt-in Gmail follow-up drafts |
+| 🤖 **MCP server** | Built-in streamable HTTP & stdio bridge for Claude Desktop, Cursor, and agents |
+| 🔄 **Device sync (preview)** | Direct peer-to-peer sync with QR pairing and 6-digit code confirmation |
 | 🖥️ **Companion STT server** | Optional Docker server (NVIDIA CUDA + AMD Vulkan) with an OpenAI-compatible `/v1/audio/transcriptions` API and web model admin |
 | 🔒 **Zero telemetry** | Analytics compiled out at build time; no accounts; nothing leaves your machine unless *you* configure a remote backend |
 | 🪪 **MIT licensed** | Fork-friendly, forever |
-
 ## Screenshots
 
 *TODO — coming with the next release.*
