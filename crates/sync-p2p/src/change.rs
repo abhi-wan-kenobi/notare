@@ -12,8 +12,10 @@
 use serde::{Deserialize, Serialize};
 
 /// A SQLite value as it appears in `crsql_changes.pk` / `.val`.
+///
+/// Deliberately a plain (externally tagged) enum: the wire format is postcard,
+/// which cannot decode serde's `tag`/`content` representations.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(tag = "t", content = "v")]
 pub enum WireValue {
     Null,
     Integer(i64),

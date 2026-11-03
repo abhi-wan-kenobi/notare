@@ -8,17 +8,17 @@ links = "tauri-plugin-db"
 description = ""
 
 [features]
-# SYNC-5: opt-in P2P sync. Turns on the sync-p2p dependency and cloudsync's
-# from-source path, on the app's CI-proven sync-platform gate (linux/x86_64,
-# macOS aarch64/x86_64, windows/x86_64 as of the app-gate widening in §22;
-# see build-support/sync_app_gate.rs) — everything sync-related in this crate
-# is additionally cfg-gated on `sync_platform`, so a default build is
-# byte-identical in behavior to pre-SYNC-5 (no agent, no env vars,
-# cloudsync_enabled: false). Must stay default-OFF: cargo unifies features
-# across the workspace, and from-source panics on unsupported targets.
-sync = ["dep:sync-p2p", "hypr-cloudsync/from-source"]
+# Opt-in P2P sync: the sync-p2p agent plus the cr-sqlite engine (db-core's
+# `crsqlite` feature, which embeds the vendored extension), on the app's
+# CI-proven sync-platform gate (linux/x86_64, macOS aarch64/x86_64,
+# windows/x86_64; see build-support/sync_app_gate.rs). Everything
+# sync-related in this crate is additionally cfg-gated on `sync_platform`, so
+# a default build opens the database without any extension. Must stay
+# default-OFF: cargo unifies features across the workspace.
+sync = ["dep:sync-p2p", "dep:hypr-crsqlite", "hypr-db-core/crsqlite"]
 
 [dependencies]
+hostname = "0.4"
 hypr-agent-access = { workspace = true }
 hypr-db-app = { workspace = true }
 hypr-db-core = { workspace = true }
@@ -42,16 +42,10 @@ tokio = { workspace = true, features = ["sync"] }
 tracing = { workspace = true }
 uuid = { workspace = true, features = ["v4"] }
 
-# Target-gated to the app's CI-proven sync gate (SYNC-9/§21 -> app-gate
-# widening, §22): linux/x86_64, macOS (both arches), windows/x86_64. cloudsync
-# is a dep only so the `sync` feature can turn on `from-source` — feature
-# unification propagates it to db-core's hypr-cloudsync usage.
-#
-# NOT the same set as `crates/cloudsync/build.rs`'s `supported()` (which also
-# admits linux/aarch64): that function only claims the C transport compiles;
-# this table gates what the shipped app is allowed to try, and linux/aarch64
-# has no CI proof yet (docs/internal/sync-p2p.md §21.7/§22). Widen it here
-# only once that changes.
+# Target-gated to the app's CI-proven sync gate: linux/x86_64, macOS (both
+# arches), windows/x86_64 — the four targets `crates/crsqlite/vendor/`
+# carries a prebuilt engine for. linux/aarch64 has neither a vendored binary
+# nor CI proof. Widen it here only once that changes.
 #
 # Cargo resolves `[target.'cfg(...)'.dependencies]` before any build script
 # runs, so this cannot reference the `sync_platform` cfg emitted by
@@ -67,7 +61,7 @@ uuid = { workspace = true, features = ["v4"] }
 # Linux/x86_64 never surfaced it because both cfgs are true there.
 [target.'cfg(any(all(target_os = "linux", target_arch = "x86_64"), all(target_os = "macos", target_arch = "aarch64"), all(target_os = "macos", target_arch = "x86_64"), all(target_os = "windows", target_arch = "x86_64")))'.dependencies]
 sync-p2p = { workspace = true, optional = true }
-hypr-cloudsync = { workspace = true, optional = true }
+hypr-crsqlite = { workspace = true, optional = true }
 
 [dev-dependencies]
 anyhow = { workspace = true }
@@ -75,12 +69,16 @@ serde_json = { workspace = true }
 tempfile = { workspace = true }
 tokio = { workspace = true, features = ["macros", "rt", "sync", "time"] }
 
-# SYNC-5 lifecycle-ordering test: drives the real from-source cloudsync
-# extension + P2pAgent, so it is gated on the `sync` feature like the code it
-# pins (linux/x86_64 only). Never compiled into a default test run.
+# Lifecycle test: drives the real cr-sqlite engine + loopback P2pAgents, so
+# it is gated on the `sync` feature like the code it pins.
 [[test]]
 name = "sync_lifecycle"
 path = "tests/sync_lifecycle.rs"
+required-features = ["sync"]
+
+[[test]]
+name = "change_source"
+path = "tests/change_source.rs"
 required-features = ["sync"]
 
 [build-dependencies]

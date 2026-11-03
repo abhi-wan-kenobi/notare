@@ -129,10 +129,10 @@ impl PluginDbRuntime {
         self.live_query_runtime.unsubscribe(subscription_id).await
     }
 
-    /// SYNC-5: start the P2P sync stack (agent + cloudsync). Only exists when
-    /// the `sync` feature is on AND the target is on the app's sync-platform
-    /// gate (§22); elsewhere the db was opened with `cloudsync_enabled:
-    /// false` and this is never callable.
+    /// Start the P2P sync stack (CRRs + agent). Only exists when the `sync`
+    /// feature is on AND the target is on the app's sync-platform gate;
+    /// elsewhere the db was opened without cr-sqlite and this is never
+    /// callable.
     #[cfg(all(feature = "sync", sync_platform))]
     pub async fn start_sync(&self) -> std::result::Result<(), crate::sync::SyncError> {
         let mut guard = self.sync.lock().await;
@@ -144,66 +144,50 @@ impl PluginDbRuntime {
         Ok(())
     }
 
-    /// Install a sync lifecycle on an already-running agent — the seam the
-    /// lifecycle test uses, so it never touches the real
-    /// `<data_dir>/notare/sync/` identity the app's `start_sync` would load.
+    /// Start sync with an explicit identity, allowlist and agent config — the
+    /// seam tests use, so they never touch the real `<data_dir>/notare/sync/`
+    /// identity the app's `start_sync` would load.
     #[cfg(all(feature = "sync", sync_platform))]
-    pub async fn start_sync_with(
+    pub async fn start_sync_with_config(
         &self,
-        agent: sync_p2p::P2pAgent,
+        identity: sync_p2p::Identity,
+        peers: sync_p2p::PeerStore,
+        config: sync_p2p::AgentConfig,
     ) -> std::result::Result<(), crate::sync::SyncError> {
         let mut guard = self.sync.lock().await;
         if guard.is_some() {
             return Ok(());
         }
-        let lifecycle = SyncLifecycle::start_with(std::sync::Arc::clone(&self.db), agent).await?;
+        let lifecycle = SyncLifecycle::start_with_config(
+            std::sync::Arc::clone(&self.db),
+            identity,
+            peers,
+            config,
+        )
+        .await?;
         *guard = Some(lifecycle);
         Ok(())
     }
 
-    /// Runtime opt-out: stop the sync lifecycle while the app keeps running,
-    /// so flipping the setting off takes effect immediately (SYNC's runtime
-    /// opt-in). Reuses `SyncLifecycle`'s own teardown steps 1 and 4 (the
-    /// `db_cloudsync_stop` → `stop_agent` half of the #101 sequence in
-    /// [`Self::shutdown`]) but — unlike `shutdown` — leaves the live-query
-    /// dispatcher and the pool open, since those are app-wide resources the
-    /// rest of the running app still needs. A no-op if sync was never
-    /// started.
-    ///
-    /// `db_cloudsync_stop` failing must never skip `stop_agent`: the guard
-    /// above already took the lifecycle out of `self.sync`, so a bailout
-    /// here (via `?`) would leak a P2P agent that is still live — still
-    /// bound to the network and, in `Discovered` mode, still publishing
-    /// itself — while the rest of the app believes sync is off. So this
-    /// warns and continues through `cloudsync_stop`, same as `shutdown`, and
-    /// only propagates `stop_agent`'s own error (the step that actually
-    /// matters for "is this device still reachable").
+    /// Runtime opt-out: stop the agent while the app keeps running, so
+    /// flipping the setting off takes effect immediately. Leaves the pool and
+    /// live queries up (app-wide resources) and the CRR tables converted —
+    /// their change tracking is local and costs nothing without a peer. A
+    /// no-op if sync was never started.
     #[cfg(all(feature = "sync", sync_platform))]
     pub async fn stop_sync(&self) -> std::result::Result<(), crate::sync::SyncError> {
-        let lifecycle = {
-            let mut guard = self.sync.lock().await;
-            guard.take()
-        };
-
-        let Some(lifecycle) = lifecycle else {
-            return Ok(());
-        };
-
-        if let Err(error) = lifecycle.db_cloudsync_stop().await {
-            tracing::warn!("stop_sync: db_cloudsync_stop failed: {error}");
+        let lifecycle = self.sync.lock().await.take();
+        if let Some(lifecycle) = lifecycle {
+            lifecycle.stop().await;
         }
-
-        lifecycle.stop_agent().await
+        Ok(())
     }
 
     #[cfg(all(feature = "sync", sync_platform))]
-    pub async fn sync_status(
-        &self,
-    ) -> std::result::Result<hypr_db_core::CloudsyncStatus, crate::sync::SyncError> {
-        let guard = self.sync.lock().await;
-        match guard.as_ref() {
-            Some(lifecycle) => Ok(lifecycle.status().await?),
-            None => Ok(self.db.cloudsync_status().await?),
+    pub async fn sync_status(&self) -> crate::sync::SyncStatus {
+        crate::sync::SyncStatus {
+            engine_loaded: self.db.crsqlite_path().is_some(),
+            running: self.sync.lock().await.is_some(),
         }
     }
 
@@ -211,30 +195,57 @@ impl PluginDbRuntime {
     pub async fn sync_trigger(&self) -> std::result::Result<i64, crate::sync::SyncError> {
         let guard = self.sync.lock().await;
         match guard.as_ref() {
-            Some(lifecycle) => Ok(lifecycle.trigger().await?),
-            None => Ok(self.db.cloudsync_trigger_sync().await?),
+            Some(lifecycle) => lifecycle.trigger().await,
+            None => Err(crate::sync::SyncError::NotRunning),
+        }
+    }
+
+    /// Run `f` against the running agent, holding the sync mutex for the
+    /// whole call (so start/stop/shutdown wait behind it). `None` when sync
+    /// is not running. Call with an async closure: `with_agent(async |agent|
+    /// agent.pair_with(&offer).await)`.
+    #[cfg(all(feature = "sync", sync_platform))]
+    pub(crate) async fn with_agent<R>(
+        &self,
+        f: impl AsyncFnOnce(&crate::sync::SyncAgent) -> R,
+    ) -> Option<R> {
+        let guard = self.sync.lock().await;
+        match guard.as_ref() {
+            Some(lifecycle) => Some(f(lifecycle.agent()).await),
+            None => None,
+        }
+    }
+
+    /// Run `f` against this device's peer allowlist: the running agent's
+    /// store (so a live agent sees the change) or, with sync stopped, the
+    /// on-disk store.
+    #[cfg(all(feature = "sync", sync_platform))]
+    pub(crate) async fn with_peer_store<R>(
+        &self,
+        f: impl FnOnce(&sync_p2p::PeerStore) -> R,
+    ) -> std::result::Result<R, crate::sync::SyncError> {
+        let guard = self.sync.lock().await;
+        match guard.as_ref() {
+            Some(lifecycle) => Ok(f(lifecycle.agent().peers())),
+            None => {
+                let store = sync_p2p::PeerStore::load_or_create()
+                    .map_err(|e| crate::sync::SyncError::Agent(e.into()))?;
+                Ok(f(&store))
+            }
         }
     }
 
     #[cfg(all(feature = "sync", sync_platform))]
     pub async fn sync_list_peers(&self) -> Vec<sync_p2p::Peer> {
-        // The agent's PeerStore is a cheap Arc clone over the same on-disk
-        // allowlist; reading it does not need the lifecycle up.
-        let guard = self.sync.lock().await;
-        match guard.as_ref() {
-            Some(lifecycle) => lifecycle.list_peers(),
-            None => sync_p2p::PeerStore::load_or_create()
-                .map(|peers| peers.list_peers())
-                .unwrap_or_default(),
-        }
+        self.with_peer_store(|store| store.list_peers())
+            .await
+            .unwrap_or_default()
     }
 
     #[cfg(all(feature = "sync", sync_platform))]
     pub async fn sync_this_device(&self) -> std::result::Result<String, crate::sync::SyncError> {
         // Must await the mutex, never blocking_lock: the command runs on an
-        // async worker, and start_sync/shutdown hold this mutex across awaits
-        // (network init) — a blocking acquire would stall the executor thread,
-        // or deadlock it outright on a current_thread runtime.
+        // async worker, and start_sync/shutdown hold this mutex across awaits.
         let guard = self.sync.lock().await;
         match guard.as_ref() {
             Some(lifecycle) => Ok(lifecycle.this_device()),
@@ -304,11 +315,10 @@ impl PluginDbRuntime {
         }
     }
 
-    /// The #101 teardown sequence, exactly once and in order:
-    /// `cloudsync_stop` → stop live-query dispatcher → `pool().close()` →
-    /// stop agent. Best-effort: a step that fails must not block the rest —
-    /// the remaining steps are what actually release resources the OS would
-    /// otherwise reclaim at process death.
+    /// The teardown sequence, exactly once and in order: stop the agent (its
+    /// sessions use the pool) → stop the live-query dispatcher → `Db::close`
+    /// (finalizes cr-sqlite's per-connection statements, then closes).
+    /// Best-effort: a step that fails must not block the rest.
     ///
     /// The runtime stays behind its Arc (Tauri's state map holds a clone for
     /// the whole app lifetime, so it cannot be uniquely unwound here); the
@@ -316,37 +326,13 @@ impl PluginDbRuntime {
     /// exactly that reason.
     pub async fn shutdown(&self) {
         #[cfg(all(feature = "sync", sync_platform))]
-        let lifecycle = {
-            let mut guard = self.sync.lock().await;
-            guard.take()
-        };
-
-        #[cfg(all(feature = "sync", sync_platform))]
-        if let Some(lifecycle) = lifecycle.as_ref() {
-            // (1) cloudsync_stop first: the extension finalizes prepared
-            // statements against live pool connections here.
-            if let Err(error) = lifecycle.db_cloudsync_stop().await {
-                tracing::warn!("sync shutdown: cloudsync_stop failed: {error}");
-            }
+        if let Some(lifecycle) = self.sync.lock().await.take() {
+            lifecycle.stop().await;
         }
 
-        // (2) live queries hold pool connections open and their dispatcher
-        // holds a Db handle — stop it before closing the pool. Runs on the
-        // default path too: closing a pool under a live dispatcher is what
-        // #101 is about, sync or not.
         self.live_query_runtime.shutdown();
 
-        // (3) the pool itself.
-        self.db.pool().close().await;
-
-        // (4) the agent last: the C layer is gone, nothing relays through it
-        // anymore.
-        #[cfg(all(feature = "sync", sync_platform))]
-        if let Some(lifecycle) = lifecycle {
-            if let Err(error) = lifecycle.stop_agent().await {
-                tracing::warn!("sync shutdown: stop agent failed: {error}");
-            }
-        }
+        self.db.close().await;
     }
 }
 
@@ -373,47 +359,49 @@ fn bind_params<'q>(
     query
 }
 
-/// Whether this build would attempt to load the cloudsync extension.
-///
-/// SYNC-5: cloudsync is only loadable in the from-source build, which the
-/// `sync` feature turns on, on the app's sync-platform gate (§22). Every
-/// other configuration must keep opening exactly as before — no extension,
-/// no env vars. Must match the `sync_platform` cfg exactly (previously
-/// checked only `target_os = "linux"`, without the arch/OS set the dependency
-/// graph actually gates on — a latent `cloudsync_enabled: true` claim on a
-/// target where nothing loads).
-pub const fn cloudsync_available() -> bool {
+/// Whether this build opens the app db with the cr-sqlite engine loaded:
+/// only with the `sync` feature on the app's sync-platform gate. Every other
+/// configuration opens exactly as before — no extension.
+pub const fn crsqlite_available() -> bool {
     cfg!(all(feature = "sync", sync_platform))
 }
 
 pub async fn open_app_db(db_path: Option<&Path>) -> Result<Db> {
-    open_app_db_with_cloudsync(db_path, cloudsync_available()).await
+    open_app_db_with_crsqlite(db_path, crsqlite_available()).await
 }
 
-/// Open the app db with cloudsync explicitly on or off.
+/// Open the app db with the cr-sqlite engine explicitly on or off.
 ///
-/// The `false` case is the recovery path: a cloudsync build whose extension
-/// cannot be loaded must still be able to open the database and run as a
-/// plain local notes app. Reserving that decision for the caller keeps the
-/// distinction honest — if this fails with cloudsync OFF too, the database
-/// itself is broken and that is genuinely fatal.
-pub async fn open_app_db_with_cloudsync(
-    db_path: Option<&Path>,
-    cloudsync_enabled: bool,
-) -> Result<Db> {
+/// Loading the engine converts no table; `start_sync` does that, and only
+/// when the user turned sync on. The `false` case is the recovery path: a
+/// build whose extension cannot be loaded must still open the database and
+/// run as a plain local notes app. If this fails with the engine OFF too,
+/// the database itself is broken and that is genuinely fatal. `true` is
+/// ignored in builds where [`crsqlite_available`] is false.
+pub async fn open_app_db_with_crsqlite(db_path: Option<&Path>, crsqlite: bool) -> Result<Db> {
     let storage = match db_path {
         Some(path) => DbStorage::Local(path),
         None => DbStorage::Memory,
     };
-
-    let db = Db::open(DbOpenOptions {
+    let options = DbOpenOptions {
         storage,
-        cloudsync_enabled,
+        cloudsync_enabled: false,
         journal_mode_wal: true,
         foreign_keys: true,
         max_connections: Some(4),
-    })
-    .await?;
+    };
+
+    #[cfg(all(feature = "sync", sync_platform))]
+    let db = if crsqlite {
+        Db::open_crsqlite(options).await?
+    } else {
+        Db::open(options).await?
+    };
+    #[cfg(not(all(feature = "sync", sync_platform)))]
+    let db = {
+        let _ = crsqlite;
+        Db::open(options).await?
+    };
 
     hypr_db_app::prepare_schema(&db).await?;
 

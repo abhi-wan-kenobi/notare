@@ -15,9 +15,13 @@ const mocks = vi.hoisted(() => ({
   syncThisDevice: vi.fn(),
   syncListPeers: vi.fn(),
   syncAddPeer: vi.fn(),
-  syncRemovePeer: vi.fn(),
+  syncRevokePeer: vi.fn(),
   syncStart: vi.fn(),
   syncStop: vi.fn(),
+  pairingCreateOffer: vi.fn(),
+  pairingJoin: vi.fn(),
+  pairingStatus: vi.fn(),
+  pairingConfirm: vi.fn(),
   syncEnabled: undefined as boolean | undefined,
   setSyncEnabled: vi.fn(),
 }));
@@ -27,9 +31,13 @@ vi.mock("@hypr/plugin-db", () => ({
   syncThisDevice: mocks.syncThisDevice,
   syncListPeers: mocks.syncListPeers,
   syncAddPeer: mocks.syncAddPeer,
-  syncRemovePeer: mocks.syncRemovePeer,
+  syncRevokePeer: mocks.syncRevokePeer,
   syncStart: mocks.syncStart,
   syncStop: mocks.syncStop,
+  pairingCreateOffer: mocks.pairingCreateOffer,
+  pairingJoin: mocks.pairingJoin,
+  pairingStatus: mocks.pairingStatus,
+  pairingConfirm: mocks.pairingConfirm,
 }));
 
 vi.mock("~/settings/queries", () => ({
@@ -67,6 +75,8 @@ import { isValidFingerprint, SettingsSync } from "./index";
 const VALID_FINGERPRINT =
   "ybndrfg8ejkmcpqxot1uwisza345h769ybndrfg8ejkmcpqxot1u";
 const VALID_FINGERPRINT_GROUPED = "ybnd-rfg8-ejkm-cpqx-ot1u";
+const OTHER_FINGERPRINT =
+  "8ejkmcpqxot1uwisza345h769ybndrfg8ejkmcpqxot1uwisza34";
 
 function renderPage() {
   const queryClient = new QueryClient({
@@ -81,6 +91,16 @@ function renderPage() {
       <SettingsSync />
     </QueryClientProvider>,
   );
+}
+
+// The manual-fingerprint form lives under the collapsed "Advanced" accordion;
+// expand it before interacting with "Peer fingerprint" / "Device label".
+async function openAdvanced() {
+  const trigger = await screen.findByText(
+    "Advanced: manual fingerprint pairing",
+  );
+  fireEvent.click(trigger);
+  await screen.findByLabelText("Peer fingerprint");
 }
 
 describe("isValidFingerprint", () => {
@@ -138,82 +158,98 @@ describe("SettingsSync", () => {
     expect(mocks.syncListPeers).not.toHaveBeenCalled();
   });
 
-  it("does not call sync_add_peer for an invalid fingerprint", async () => {
-    mocks.syncStatus.mockResolvedValue({ kind: "live", running: false });
-    mocks.syncThisDevice.mockResolvedValue(VALID_FINGERPRINT_GROUPED);
-    mocks.syncListPeers.mockResolvedValue([]);
+  describe("manual fingerprint pairing (Advanced)", () => {
+    it("does not call sync_add_peer for an invalid fingerprint", async () => {
+      mocks.syncStatus.mockResolvedValue({
+        kind: "live",
+        engineLoaded: true,
+        running: false,
+      });
+      mocks.syncThisDevice.mockResolvedValue(VALID_FINGERPRINT_GROUPED);
+      mocks.syncListPeers.mockResolvedValue([]);
 
-    renderPage();
+      renderPage();
+      await openAdvanced();
 
-    const fingerprintInput = await screen.findByLabelText("Peer fingerprint");
-    fireEvent.change(fingerprintInput, {
-      target: { value: "not-a-fingerprint" },
+      const fingerprintInput = screen.getByLabelText("Peer fingerprint");
+      fireEvent.change(fingerprintInput, {
+        target: { value: "not-a-fingerprint" },
+      });
+
+      await waitFor(() =>
+        expect(
+          screen.getByText("Enter a valid 52-character fingerprint"),
+        ).toBeTruthy(),
+      );
+
+      const addButton = screen.getByRole("button", { name: /Add device/ });
+      expect((addButton as HTMLButtonElement).disabled).toBe(true);
+
+      fireEvent.click(addButton);
+      expect(mocks.syncAddPeer).not.toHaveBeenCalled();
     });
 
-    await waitFor(() =>
-      expect(
-        screen.getByText("Enter a valid 52-character fingerprint"),
-      ).toBeTruthy(),
-    );
+    it("adds a peer and refreshes the paired-devices list on success", async () => {
+      mocks.syncStatus.mockResolvedValue({
+        kind: "live",
+        engineLoaded: true,
+        running: false,
+      });
+      mocks.syncThisDevice.mockResolvedValue(VALID_FINGERPRINT_GROUPED);
+      mocks.syncListPeers.mockResolvedValueOnce([]).mockResolvedValueOnce([
+        {
+          nodeId: VALID_FINGERPRINT,
+          fingerprint: VALID_FINGERPRINT_GROUPED,
+          label: "Work laptop",
+          addedAt: 1000,
+          lastSeen: 0,
+        },
+      ]);
+      mocks.syncAddPeer.mockResolvedValue(VALID_FINGERPRINT_GROUPED);
 
-    const addButton = screen.getByRole("button", { name: /Add device/ });
-    expect((addButton as HTMLButtonElement).disabled).toBe(true);
+      renderPage();
+      await openAdvanced();
 
-    fireEvent.click(addButton);
-    expect(mocks.syncAddPeer).not.toHaveBeenCalled();
+      await waitFor(() =>
+        expect(screen.getByText("No devices paired yet.")).toBeTruthy(),
+      );
+
+      // Grouped + mixed-case input: the component must normalize this to the
+      // compact lowercase form before calling sync_add_peer, not forward it
+      // as-is (the validator checks the normalized form; submission must match).
+      const groupedMixedCase = `${VALID_FINGERPRINT.slice(0, 4).toUpperCase()}-${VALID_FINGERPRINT.slice(4)}`;
+      fireEvent.change(screen.getByLabelText("Peer fingerprint"), {
+        target: { value: groupedMixedCase },
+      });
+      fireEvent.change(screen.getByLabelText("Device label"), {
+        target: { value: "Work laptop" },
+      });
+
+      const addButton = await screen.findByRole("button", {
+        name: /Add device/,
+      });
+      await waitFor(() =>
+        expect((addButton as HTMLButtonElement).disabled).toBe(false),
+      );
+      fireEvent.click(addButton);
+
+      await waitFor(() =>
+        expect(mocks.syncAddPeer).toHaveBeenCalledWith(
+          VALID_FINGERPRINT,
+          "Work laptop",
+        ),
+      );
+      await waitFor(() => expect(mocks.syncListPeers).toHaveBeenCalledTimes(2));
+      await waitFor(() => expect(screen.getByText("Work laptop")).toBeTruthy());
+    });
   });
 
-  it("adds a peer and refreshes the paired-devices list on success", async () => {
-    mocks.syncStatus.mockResolvedValue({ kind: "live", running: false });
-    mocks.syncThisDevice.mockResolvedValue(VALID_FINGERPRINT_GROUPED);
-    mocks.syncListPeers.mockResolvedValueOnce([]).mockResolvedValueOnce([
-      {
-        nodeId: VALID_FINGERPRINT,
-        fingerprint: VALID_FINGERPRINT_GROUPED,
-        label: "Work laptop",
-        addedAt: 1000,
-        lastSeen: 0,
-      },
-    ]);
-    mocks.syncAddPeer.mockResolvedValue(VALID_FINGERPRINT_GROUPED);
-
-    renderPage();
-
-    await waitFor(() =>
-      expect(screen.getByText("No devices paired yet.")).toBeTruthy(),
-    );
-
-    // Grouped + mixed-case input: the component must normalize this to the
-    // compact lowercase form before calling sync_add_peer, not forward it
-    // as-is (the validator checks the normalized form; submission must match).
-    const groupedMixedCase = `${VALID_FINGERPRINT.slice(0, 4).toUpperCase()}-${VALID_FINGERPRINT.slice(4)}`;
-    fireEvent.change(screen.getByLabelText("Peer fingerprint"), {
-      target: { value: groupedMixedCase },
+  it("requires confirmation before removing a paired device, then revokes it (not a soft remove)", async () => {
+    mocks.syncStatus.mockResolvedValue({
+      kind: "live",
+      engineLoaded: true,
+      running: false,
     });
-    fireEvent.change(screen.getByLabelText("Device label"), {
-      target: { value: "Work laptop" },
-    });
-
-    const addButton = await screen.findByRole("button", {
-      name: /Add device/,
-    });
-    await waitFor(() =>
-      expect((addButton as HTMLButtonElement).disabled).toBe(false),
-    );
-    fireEvent.click(addButton);
-
-    await waitFor(() =>
-      expect(mocks.syncAddPeer).toHaveBeenCalledWith(
-        VALID_FINGERPRINT,
-        "Work laptop",
-      ),
-    );
-    await waitFor(() => expect(mocks.syncListPeers).toHaveBeenCalledTimes(2));
-    await waitFor(() => expect(screen.getByText("Work laptop")).toBeTruthy());
-  });
-
-  it("requires confirmation before removing a paired device, then drops it from the list", async () => {
-    mocks.syncStatus.mockResolvedValue({ kind: "live", running: false });
     mocks.syncThisDevice.mockResolvedValue(VALID_FINGERPRINT_GROUPED);
     mocks.syncListPeers
       .mockResolvedValueOnce([
@@ -226,7 +262,7 @@ describe("SettingsSync", () => {
         },
       ])
       .mockResolvedValueOnce([]);
-    mocks.syncRemovePeer.mockResolvedValue(true);
+    mocks.syncRevokePeer.mockResolvedValue(true);
 
     renderPage();
 
@@ -236,7 +272,7 @@ describe("SettingsSync", () => {
     fireEvent.click(removeButton);
 
     expect(screen.getByText("Remove this device?")).toBeTruthy();
-    expect(mocks.syncRemovePeer).not.toHaveBeenCalled();
+    expect(mocks.syncRevokePeer).not.toHaveBeenCalled();
 
     fireEvent.click(
       within(screen.getByRole("dialog")).getByRole("button", {
@@ -245,7 +281,7 @@ describe("SettingsSync", () => {
     );
 
     await waitFor(() =>
-      expect(mocks.syncRemovePeer).toHaveBeenCalledWith(VALID_FINGERPRINT),
+      expect(mocks.syncRevokePeer).toHaveBeenCalledWith(VALID_FINGERPRINT),
     );
     await waitFor(() => expect(screen.queryByText("Work laptop")).toBeNull());
     await waitFor(() =>
@@ -253,10 +289,201 @@ describe("SettingsSync", () => {
     );
   });
 
+  describe("QR / link pairing", () => {
+    beforeEach(() => {
+      mocks.syncStatus.mockResolvedValue({
+        kind: "live",
+        engineLoaded: true,
+        running: false,
+      });
+      mocks.syncThisDevice.mockResolvedValue(VALID_FINGERPRINT_GROUPED);
+      mocks.syncListPeers.mockResolvedValue([]);
+    });
+
+    it("opening 'Pair a device' creates an offer and shows the QR and link", async () => {
+      const expiresAt = Math.floor(Date.now() / 1000) + 600;
+      mocks.pairingCreateOffer.mockResolvedValue({
+        link: "notare://pair#abc123",
+        qrSvg: "<svg data-testid='qr'></svg>",
+        expiresAt,
+      });
+      mocks.pairingStatus.mockResolvedValue({
+        offerActive: true,
+        offerExpiresAt: expiresAt,
+        pending: [],
+      });
+
+      renderPage();
+
+      const pairButton = await screen.findByRole("button", {
+        name: /Pair a device/,
+      });
+      fireEvent.click(pairButton);
+
+      await waitFor(() =>
+        expect(mocks.pairingCreateOffer).toHaveBeenCalledTimes(1),
+      );
+      await waitFor(() =>
+        expect(screen.getByText("notare://pair#abc123")).toBeTruthy(),
+      );
+      expect(screen.getByText(/Expires in \d+:\d{2}/)).toBeTruthy();
+    });
+
+    it("shows the SAS confirmation once a joiner's proof lands, and confirming adds the peer", async () => {
+      const expiresAt = Math.floor(Date.now() / 1000) + 600;
+      mocks.pairingCreateOffer.mockResolvedValue({
+        link: "notare://pair#abc123",
+        qrSvg: "<svg></svg>",
+        expiresAt,
+      });
+      mocks.pairingStatus.mockResolvedValue({
+        offerActive: true,
+        offerExpiresAt: expiresAt,
+        pending: [
+          {
+            deviceId: OTHER_FINGERPRINT,
+            name: "Pixel 8",
+            sas: "482913",
+            expiresAt: expiresAt + 120,
+          },
+        ],
+      });
+      mocks.pairingConfirm.mockResolvedValue(undefined);
+      mocks.syncListPeers.mockResolvedValueOnce([]).mockResolvedValueOnce([
+        {
+          nodeId: OTHER_FINGERPRINT,
+          fingerprint: OTHER_FINGERPRINT,
+          label: "Pixel 8",
+          addedAt: 1000,
+          lastSeen: 0,
+        },
+      ]);
+
+      renderPage();
+
+      fireEvent.click(
+        await screen.findByRole("button", { name: /Pair a device/ }),
+      );
+
+      await waitFor(() => expect(screen.getByText("482913")).toBeTruthy());
+      expect(screen.getByText(/Pixel 8/)).toBeTruthy();
+
+      fireEvent.click(screen.getByRole("button", { name: /Confirm/ }));
+
+      await waitFor(() =>
+        expect(mocks.pairingConfirm).toHaveBeenCalledWith(
+          OTHER_FINGERPRINT,
+          true,
+        ),
+      );
+      await waitFor(() => expect(screen.queryByText("482913")).toBeNull());
+    });
+
+    it("rejecting the SAS confirmation does not add the peer", async () => {
+      const expiresAt = Math.floor(Date.now() / 1000) + 600;
+      mocks.pairingCreateOffer.mockResolvedValue({
+        link: "notare://pair#abc123",
+        qrSvg: "<svg></svg>",
+        expiresAt,
+      });
+      mocks.pairingStatus.mockResolvedValue({
+        offerActive: true,
+        offerExpiresAt: expiresAt,
+        pending: [
+          {
+            deviceId: OTHER_FINGERPRINT,
+            name: "Unknown",
+            sas: "999999",
+            expiresAt: expiresAt + 120,
+          },
+        ],
+      });
+      mocks.pairingConfirm.mockResolvedValue(undefined);
+
+      renderPage();
+
+      fireEvent.click(
+        await screen.findByRole("button", { name: /Pair a device/ }),
+      );
+
+      await waitFor(() => expect(screen.getByText("999999")).toBeTruthy());
+
+      fireEvent.click(screen.getByRole("button", { name: /Reject/ }));
+
+      await waitFor(() =>
+        expect(mocks.pairingConfirm).toHaveBeenCalledWith(
+          OTHER_FINGERPRINT,
+          false,
+        ),
+      );
+      expect(mocks.syncAddPeer).not.toHaveBeenCalled();
+    });
+
+    it("joining via a pasted link shows the SAS and, once confirmed, adds the offerer as a peer", async () => {
+      mocks.pairingJoin.mockResolvedValue({
+        sas: "135790",
+        deviceId: OTHER_FINGERPRINT,
+        deviceName: "Work laptop",
+      });
+      mocks.syncAddPeer.mockResolvedValue(OTHER_FINGERPRINT);
+
+      renderPage();
+
+      const linkInput = await screen.findByLabelText("Pairing link");
+      fireEvent.change(linkInput, {
+        target: { value: "notare://pair#xyz" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: /Join/ }));
+
+      await waitFor(() =>
+        expect(mocks.pairingJoin).toHaveBeenCalledWith(
+          "notare://pair#xyz",
+          expect.anything(),
+        ),
+      );
+      await waitFor(() => expect(screen.getByText("135790")).toBeTruthy());
+
+      fireEvent.click(screen.getByRole("button", { name: /Confirm/ }));
+
+      await waitFor(() =>
+        expect(mocks.syncAddPeer).toHaveBeenCalledWith(
+          OTHER_FINGERPRINT,
+          "Work laptop",
+        ),
+      );
+    });
+
+    it("rejecting a join's SAS does not add the peer", async () => {
+      mocks.pairingJoin.mockResolvedValue({
+        sas: "246810",
+        deviceId: OTHER_FINGERPRINT,
+        deviceName: "Unknown device",
+      });
+
+      renderPage();
+
+      const linkInput = await screen.findByLabelText("Pairing link");
+      fireEvent.change(linkInput, {
+        target: { value: "notare://pair#xyz" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: /Join/ }));
+
+      await waitFor(() => expect(screen.getByText("246810")).toBeTruthy());
+
+      fireEvent.click(screen.getByRole("button", { name: /Reject/ }));
+
+      expect(mocks.syncAddPeer).not.toHaveBeenCalled();
+    });
+  });
+
   describe("sync_enabled runtime gate", () => {
     it("defaults to off: the toggle starts unchecked, no start/stop call is made, and the pairing UI is inert", async () => {
       mocks.syncEnabled = undefined;
-      mocks.syncStatus.mockResolvedValue({ kind: "live", running: false });
+      mocks.syncStatus.mockResolvedValue({
+        kind: "live",
+        engineLoaded: true,
+        running: false,
+      });
       mocks.syncThisDevice.mockResolvedValue(VALID_FINGERPRINT_GROUPED);
       mocks.syncListPeers.mockResolvedValue([]);
 
@@ -269,10 +496,22 @@ describe("SettingsSync", () => {
       expect(mocks.syncStart).not.toHaveBeenCalled();
       expect(mocks.syncStop).not.toHaveBeenCalled();
 
-      const fingerprintInput = (await screen.findByLabelText(
-        "Peer fingerprint",
-      )) as HTMLInputElement;
-      expect(fingerprintInput.disabled).toBe(true);
+      expect(
+        (
+          screen.getByRole("button", {
+            name: /Pair a device/,
+          }) as HTMLButtonElement
+        ).disabled,
+      ).toBe(true);
+      expect(
+        (screen.getByLabelText("Pairing link") as HTMLInputElement).disabled,
+      ).toBe(true);
+
+      await openAdvanced();
+      expect(
+        (screen.getByLabelText("Peer fingerprint") as HTMLInputElement)
+          .disabled,
+      ).toBe(true);
       expect(
         (screen.getByLabelText("Device label") as HTMLInputElement).disabled,
       ).toBe(true);
@@ -287,7 +526,11 @@ describe("SettingsSync", () => {
 
     it("turning sync on persists the setting and starts the agent without requiring a restart", async () => {
       mocks.syncEnabled = false;
-      mocks.syncStatus.mockResolvedValue({ kind: "live", running: false });
+      mocks.syncStatus.mockResolvedValue({
+        kind: "live",
+        engineLoaded: true,
+        running: false,
+      });
       mocks.syncThisDevice.mockResolvedValue(VALID_FINGERPRINT_GROUPED);
       mocks.syncListPeers.mockResolvedValue([]);
 
@@ -306,15 +549,22 @@ describe("SettingsSync", () => {
       // app restart needed.
       await waitFor(() =>
         expect(
-          (screen.getByLabelText("Peer fingerprint") as HTMLInputElement)
-            .disabled,
+          (
+            screen.getByRole("button", {
+              name: /Pair a device/,
+            }) as HTMLButtonElement
+          ).disabled,
         ).toBe(false),
       );
     });
 
     it("turning sync off persists the setting and stops the agent without requiring a restart", async () => {
       mocks.syncEnabled = true;
-      mocks.syncStatus.mockResolvedValue({ kind: "live", running: true });
+      mocks.syncStatus.mockResolvedValue({
+        kind: "live",
+        engineLoaded: true,
+        running: true,
+      });
       mocks.syncThisDevice.mockResolvedValue(VALID_FINGERPRINT_GROUPED);
       mocks.syncListPeers.mockResolvedValue([]);
 
@@ -331,15 +581,22 @@ describe("SettingsSync", () => {
 
       await waitFor(() =>
         expect(
-          (screen.getByLabelText("Peer fingerprint") as HTMLInputElement)
-            .disabled,
+          (
+            screen.getByRole("button", {
+              name: /Pair a device/,
+            }) as HTMLButtonElement
+          ).disabled,
         ).toBe(true),
       );
     });
 
     it("reverts the setting and re-disables the pairing UI if the agent fails to start", async () => {
       mocks.syncEnabled = false;
-      mocks.syncStatus.mockResolvedValue({ kind: "live", running: false });
+      mocks.syncStatus.mockResolvedValue({
+        kind: "live",
+        engineLoaded: true,
+        running: false,
+      });
       mocks.syncThisDevice.mockResolvedValue(VALID_FINGERPRINT_GROUPED);
       mocks.syncListPeers.mockResolvedValue([]);
       mocks.syncStart.mockRejectedValue(new Error("agent failed to start"));
@@ -371,8 +628,11 @@ describe("SettingsSync", () => {
       );
       await waitFor(() =>
         expect(
-          (screen.getByLabelText("Peer fingerprint") as HTMLInputElement)
-            .disabled,
+          (
+            screen.getByRole("button", {
+              name: /Pair a device/,
+            }) as HTMLButtonElement
+          ).disabled,
         ).toBe(true),
       );
       expect(

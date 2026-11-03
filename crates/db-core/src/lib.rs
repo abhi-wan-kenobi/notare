@@ -37,6 +37,12 @@ pub enum DbOpenError {
     Sqlx(#[from] sqlx::Error),
     #[error(transparent)]
     Cloudsync(#[from] hypr_cloudsync::Error),
+    #[cfg(feature = "crsqlite")]
+    #[error(transparent)]
+    Crsqlite(#[from] hypr_crsqlite::Error),
+    #[cfg(feature = "crsqlite")]
+    #[error("cloudsync and cr-sqlite cannot both be loaded on one database")]
+    EngineConflict,
 }
 
 pub type ManagedDb = std::sync::Arc<Db>;
@@ -47,6 +53,7 @@ pub struct Db {
     pub(crate) cloudsync_enabled: bool,
     pub(crate) cloudsync_path: Option<PathBuf>,
     pub(crate) cloudsync_runtime: Arc<Mutex<CloudsyncRuntimeState>>,
+    pub(crate) crsqlite_path: Option<PathBuf>,
     pub(crate) pool: SqlitePool,
     change_notifier: hypr_db_change::ChangeNotifier,
 }
@@ -58,6 +65,7 @@ impl std::fmt::Debug for Db {
             .field("cloudsync_enabled", &self.cloudsync_enabled)
             .field("cloudsync_path", &self.cloudsync_path)
             .field("cloudsync_runtime", &*runtime)
+            .field("crsqlite_path", &self.crsqlite_path)
             .field("change_notifier", &true)
             .finish_non_exhaustive()
     }
@@ -83,7 +91,42 @@ impl Drop for Db {
 impl Db {
     pub async fn open(options: DbOpenOptions<'_>) -> Result<Self, DbOpenError> {
         let (change_notifier, pool_options) = hypr_db_change::ChangeNotifier::new();
-        connect_with_options(&options, pool_options, change_notifier).await
+        connect_with_options(&options, pool_options, change_notifier, false).await
+    }
+
+    /// Open with the cr-sqlite engine loaded on every pooled connection.
+    ///
+    /// Loading makes no table a CRR — that is `crsqlite::as_crr`, a separate
+    /// opt-in. The pool never recycles connections on its own (no idle
+    /// timeout, no max lifetime): cr-sqlite's per-connection statement cache
+    /// must be finalized before `sqlite3_close`, so connections may only
+    /// close through [`Db::close`].
+    #[cfg(feature = "crsqlite")]
+    pub async fn open_crsqlite(options: DbOpenOptions<'_>) -> Result<Self, DbOpenError> {
+        if options.cloudsync_enabled {
+            return Err(DbOpenError::EngineConflict);
+        }
+        let (change_notifier, pool_options) = hypr_db_change::ChangeNotifier::new();
+        connect_with_options(&options, pool_options, change_notifier, true).await
+    }
+
+    /// Path of the loaded cr-sqlite extension, if this db was opened with
+    /// [`Db::open_crsqlite`].
+    pub fn crsqlite_path(&self) -> Option<&Path> {
+        self.crsqlite_path.as_deref()
+    }
+
+    /// Close the pool. With cr-sqlite loaded, every connection is finalized
+    /// first; a plain `pool().close()` on such a db panics sqlx's worker
+    /// threads ("unable to close due to unfinalized statements"). Stop every
+    /// user of the pool (live queries, sync sessions) before calling.
+    pub async fn close(&self) {
+        #[cfg(feature = "crsqlite")]
+        if self.crsqlite_path.is_some() {
+            hypr_crsqlite::close_pool(&self.pool).await;
+            return;
+        }
+        self.pool.close().await;
     }
 
     pub fn change_notifier(&self) -> &hypr_db_change::ChangeNotifier {
@@ -108,6 +151,7 @@ impl Db {
             cloudsync_enabled: true,
             cloudsync_path: Some(cloudsync_path),
             cloudsync_runtime: Arc::new(Mutex::new(CloudsyncRuntimeState::default())),
+            crsqlite_path: None,
             pool,
             change_notifier,
         })
@@ -128,6 +172,7 @@ impl Db {
             cloudsync_enabled: true,
             cloudsync_path: Some(cloudsync_path),
             cloudsync_runtime: Arc::new(Mutex::new(CloudsyncRuntimeState::default())),
+            crsqlite_path: None,
             pool,
             change_notifier,
         })
@@ -148,6 +193,7 @@ impl Db {
             cloudsync_enabled: false,
             cloudsync_path: None,
             cloudsync_runtime: Arc::new(Mutex::new(CloudsyncRuntimeState::default())),
+            crsqlite_path: None,
             pool,
             change_notifier,
         })
@@ -166,6 +212,7 @@ impl Db {
             cloudsync_enabled: false,
             cloudsync_path: None,
             cloudsync_runtime: Arc::new(Mutex::new(CloudsyncRuntimeState::default())),
+            crsqlite_path: None,
             pool,
             change_notifier,
         })
@@ -185,6 +232,7 @@ impl Db {
             cloudsync_enabled: false,
             cloudsync_path: None,
             cloudsync_runtime: Arc::new(Mutex::new(CloudsyncRuntimeState::default())),
+            crsqlite_path: None,
             pool,
             change_notifier,
         })
@@ -199,6 +247,7 @@ async fn connect_with_options(
     options: &DbOpenOptions<'_>,
     pool_options: SqlitePoolOptions,
     change_notifier: hypr_db_change::ChangeNotifier,
+    crsqlite: bool,
 ) -> Result<Db, DbOpenError> {
     let mut connect_options = match options.storage {
         DbStorage::Local(path) => {
@@ -228,6 +277,16 @@ async fn connect_with_options(
         (connect_options, None)
     };
 
+    #[cfg(feature = "crsqlite")]
+    let (connect_options, crsqlite_path) = if crsqlite {
+        let (connect_options, crsqlite_path) = hypr_crsqlite::apply(connect_options)?;
+        (connect_options, Some(crsqlite_path))
+    } else {
+        (connect_options, None)
+    };
+    #[cfg(not(feature = "crsqlite"))]
+    let crsqlite_path: Option<PathBuf> = None;
+
     let mut pool_options = pool_options;
     match options.storage {
         DbStorage::Memory => {
@@ -250,12 +309,16 @@ async fn connect_with_options(
     if options.cloudsync_enabled {
         pool_options = pool_options.max_connections(1);
     }
+    if crsqlite {
+        pool_options = pool_options.idle_timeout(None).max_lifetime(None);
+    }
     let pool = pool_options.connect_with(connect_options).await?;
 
     Ok(Db {
         cloudsync_enabled: options.cloudsync_enabled,
         cloudsync_path,
         cloudsync_runtime: Arc::new(Mutex::new(CloudsyncRuntimeState::default())),
+        crsqlite_path,
         pool,
         change_notifier,
     })

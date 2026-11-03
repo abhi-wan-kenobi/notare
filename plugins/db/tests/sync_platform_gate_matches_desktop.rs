@@ -4,7 +4,7 @@
 //! textually identical (Cargo resolves target-cfg dependency tables before
 //! any build script runs, so they can't just reference the `sync_platform`
 //! rustc-cfg both crates' Rust code is gated on). If the two tables drift,
-//! the app can resolve `sync-p2p`/`hypr-cloudsync` on one platform set while
+//! the app can resolve `sync-p2p`/`hypr-crsqlite` on one platform set while
 //! `sync_platform` (see build-support/sync_app_gate.rs) gates the actual
 //! code on another — a divergent gate, silent until someone builds on the
 //! mismatched platform. This test makes the drift a compile-time-adjacent

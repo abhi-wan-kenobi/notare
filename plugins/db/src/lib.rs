@@ -1,13 +1,17 @@
+#[cfg(all(feature = "sync", sync_platform))]
+pub mod change_source;
 mod commands;
 mod error;
 mod import;
+#[cfg(all(feature = "sync", sync_platform))]
+mod pairing;
 mod runtime;
 #[cfg(all(feature = "sync", sync_platform))]
 pub mod sync;
 
 pub use commands::{Recipe, UpsertRecipeInput, list_recipes_db};
 pub use error::{Error, Result};
-pub use runtime::{PluginDbRuntime, cloudsync_available, open_app_db, open_app_db_with_cloudsync};
+pub use runtime::{PluginDbRuntime, crsqlite_available, open_app_db, open_app_db_with_crsqlite};
 use tauri::Manager;
 
 const PLUGIN_NAME: &str = "db";
@@ -146,6 +150,11 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
             commands::sync_remove_peer,
             commands::sync_start,
             commands::sync_stop,
+            commands::pairing_create_offer,
+            commands::pairing_join,
+            commands::pairing_status,
+            commands::pairing_confirm,
+            commands::sync_revoke_peer,
             commands::list_recipes,
             commands::upsert_recipe,
             commands::delete_recipe,

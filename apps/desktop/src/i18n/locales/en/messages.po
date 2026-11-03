@@ -20,8 +20,8 @@ msgstr "\"{0}\" will be permanently deleted. This cannot be undone."
 
 #. placeholder {0}: pendingRemove?.label || t`Unnamed device`
 #: src/settings/sync/index.tsx
-msgid "\"{0}\" will no longer be able to sync with this device. You can pair it again later."
-msgstr "\"{0}\" will no longer be able to sync with this device. You can pair it again later."
+msgid "\"{0}\" will no longer be able to sync with this device, and can't re-pair with a saved link. You'd need to pair it again from scratch."
+msgstr "\"{0}\" will no longer be able to sync with this device, and can't re-pair with a saved link. You'd need to pair it again from scratch."
 
 #: src/settings/mcp/index.tsx
 msgid "(default: 8787)"
@@ -247,6 +247,10 @@ msgstr "Additional spoken languages"
 #: src/settings/ai/shared/index.tsx
 msgid "Advanced"
 msgstr "Advanced"
+
+#: src/settings/sync/index.tsx
+msgid "Advanced: manual fingerprint pairing"
+msgstr "Advanced: manual fingerprint pairing"
 
 #: src/settings/ai/llm/scoped-models.tsx
 msgid "Advanced: per-task models"
@@ -678,6 +682,10 @@ msgstr "Company"
 msgid "Compare Free and Pro before you sign in."
 msgstr "Compare Free and Pro before you sign in."
 
+#: src/settings/sync/index.tsx
+msgid "Compare the numbers shown on both devices."
+msgstr "Compare the numbers shown on both devices."
+
 #: src/settings/ai/llm/subscription-card.tsx
 msgid "Complete"
 msgstr "Complete"
@@ -714,8 +722,18 @@ msgstr "Configure the title, scope, and prompt template for this recipe."
 
 #: src/onboarding/folder-location.tsx
 #: src/session/components/note-input/transcript/renderer/speaker-assign.tsx
+#: src/settings/sync/index.tsx
 msgid "Confirm"
 msgstr "Confirm"
+
+#: src/settings/sync/index.tsx
+msgid "Confirm pairing"
+msgstr "Confirm pairing"
+
+#. placeholder {0}: deviceName || "the other device"
+#: src/settings/sync/index.tsx
+msgid "Confirm with {0}"
+msgstr "Confirm with {0}"
 
 #. placeholder {0}: config.displayName
 #. placeholder {0}: integration.displayName
@@ -801,6 +819,10 @@ msgstr "Copy JSON"
 #: src/session/components/note-input/header.tsx
 msgid "Copy latest live chunk"
 msgstr "Copy latest live chunk"
+
+#: src/settings/sync/index.tsx
+msgid "Copy link"
+msgstr "Copy link"
 
 #. placeholder {0}: shortcutHints.latest
 #. placeholder {1}: shortcutHints.full
@@ -988,6 +1010,10 @@ msgstr "Detection delay"
 #: src/settings/sync/index.tsx
 msgid "Device label"
 msgstr "Device label"
+
+#: src/settings/sync/index.tsx
+msgid "Device paired"
+msgstr "Device paired"
 
 #: src/settings/sync/index.tsx
 msgid "Device sync isn't available in this build"
@@ -1280,6 +1306,11 @@ msgstr "Exclude apps from detection"
 msgid "Expand live transcript"
 msgstr "Expand live transcript"
 
+#. placeholder {0}: formatCountdown(secondsRemaining)
+#: src/settings/sync/index.tsx
+msgid "Expires in {0}"
+msgstr "Expires in {0}"
+
 #: src/session/components/outer-header/overflow/export-modal.tsx
 #: src/session/components/outer-header/overflow/index.tsx
 #: src/settings/personalization/dictionary-settings.tsx
@@ -1435,6 +1466,10 @@ msgstr "Gateway found, but requires authentication. Run <0>omp auth-gateway toke
 #: src/sidebar/settings.tsx
 msgid "General"
 msgstr "General"
+
+#: src/settings/sync/index.tsx
+msgid "Generate a new code"
+msgstr "Generate a new code"
 
 #: src/settings/ai/llm/briefs.tsx
 msgid "Generate pre-meeting briefs"
@@ -1664,6 +1699,10 @@ msgstr "Intelligence"
 msgid "Job Title"
 msgstr "Job Title"
 
+#: src/settings/sync/index.tsx
+msgid "Join"
+msgstr "Join"
+
 #: src/session/components/outer-header/index.tsx
 msgid "Join & record"
 msgstr "Join & record"
@@ -1725,11 +1764,6 @@ msgstr "Language for summaries, chats, and AI-generated responses"
 msgid "Last seen {0}"
 msgstr "Last seen {0}"
 
-#. placeholder {0}: formatDistanceToNow(new Date(status.lastSyncAtMs), { addSuffix: true })
-#: src/settings/sync/index.tsx
-msgid "Last synced {0}"
-msgstr "Last synced {0}"
-
 #: src/session/components/note-input/header.tsx
 #: src/stt/useLiveTranscriptCopyShortcuts.ts
 msgid "Latest transcript chunk copied"
@@ -1746,6 +1780,10 @@ msgstr "Legacy JSON and Markdown files were removed"
 #: src/settings/general/theme.tsx
 msgid "Light"
 msgstr "Light"
+
+#: src/settings/sync/index.tsx
+msgid "Link copied"
+msgstr "Link copied"
 
 #: src/contacts/details.tsx
 msgid "LinkedIn"
@@ -1847,6 +1885,10 @@ msgstr "Low confidence"
 #: src/settings/general/main-language.tsx
 msgid "Main language"
 msgstr "Main language"
+
+#: src/settings/sync/index.tsx
+msgid "Make sure this code matches on both devices."
+msgstr "Make sure this code matches on both devices."
 
 #: src/onboarding/permissions.tsx
 msgid "Manage"
@@ -2442,12 +2484,20 @@ msgid "Override the timezone used for the sidebar timeline"
 msgstr "Override the timezone used for the sidebar timeline"
 
 #: src/settings/sync/index.tsx
-msgid "Pair another one of your devices to sync sessions between them directly, without going through a server. Both devices need to add each other's fingerprint before they'll sync."
-msgstr "Pair another one of your devices to sync sessions between them directly, without going through a server. Both devices need to add each other's fingerprint before they'll sync."
+msgid "Pair a device"
+msgstr "Pair a device"
+
+#: src/settings/sync/index.tsx
+msgid "Pair another one of your devices to sync sessions between them directly, without going through a server."
+msgstr "Pair another one of your devices to sync sessions between them directly, without going through a server."
 
 #: src/settings/sync/index.tsx
 msgid "Paired devices"
 msgstr "Paired devices"
+
+#: src/settings/sync/index.tsx
+msgid "Pairing link"
+msgstr "Pairing link"
 
 #: src/session/components/note-input/transcript/renderer/speaker-assign.tsx
 #: src/session/components/outer-header/overflow/export-modal.tsx
@@ -2457,6 +2507,10 @@ msgstr "Participants"
 #: src/dictation/orb.tsx
 msgid "Particles"
 msgstr "Particles"
+
+#: src/settings/sync/index.tsx
+msgid "Paste a pairing link…"
+msgstr "Paste a pairing link…"
 
 #: src/settings/dictation/index.tsx
 msgid "Paste at cursor"
@@ -2675,6 +2729,10 @@ msgstr "Regenerate"
 msgid "Regenerate message"
 msgstr "Regenerate message"
 
+#: src/settings/sync/index.tsx
+msgid "Reject"
+msgstr "Reject"
+
 #: src/contacts/details.tsx
 msgid "Related Notes"
 msgstr "Related Notes"
@@ -2858,6 +2916,10 @@ msgstr "Save"
 #: src/session/components/outer-header/metadata/date.tsx
 msgid "Save date"
 msgstr "Save date"
+
+#: src/settings/sync/index.tsx
+msgid "Scan this on the other device, or copy the link."
+msgstr "Scan this on the other device, or copy the link."
 
 #: src/settings/recipes/index.tsx
 msgid "Scope"
@@ -3232,6 +3294,10 @@ msgstr "Soft lavender striations turning over a sphere."
 msgid "Software Engineer"
 msgstr "Software Engineer"
 
+#: src/settings/sync/index.tsx
+msgid "Someone scanned your code. Compare the numbers below."
+msgstr "Someone scanned your code. Compare the numbers below."
+
 #: src/snippets/index.tsx
 msgid "Something went wrong loading your dictation history. Try again in a moment."
 msgstr "Something went wrong loading your dictation history. Try again in a moment."
@@ -3390,6 +3456,10 @@ msgid "Symbols"
 msgstr "Symbols"
 
 #: src/settings/sync/index.tsx
+msgid "Sync engine not loaded on this build"
+msgstr "Sync engine not loaded on this build"
+
+#: src/settings/sync/index.tsx
 msgid "Sync idle"
 msgstr "Sync idle"
 
@@ -3477,6 +3547,10 @@ msgstr "These instructions take priority over the selected template when they co
 #: src/chat/components/message/loading.tsx
 msgid "Thinking..."
 msgstr "Thinking..."
+
+#: src/settings/sync/index.tsx
+msgid "This code expired."
+msgstr "This code expired."
 
 #: src/settings/dictation/shortcut-recorder.tsx
 msgid "This combination cannot be used as a global shortcut. Try another one."
@@ -3650,10 +3724,6 @@ msgstr "Unofficial"
 #: src/snippets/entry-row.tsx
 msgid "Unpin"
 msgstr "Unpin"
-
-#: src/settings/sync/index.tsx
-msgid "Unsent changes pending"
-msgstr "Unsent changes pending"
 
 #: src/search/page/index.tsx
 #: src/session/components/outer-header/overflow/export-modal.tsx

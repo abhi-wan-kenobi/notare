@@ -288,13 +288,13 @@ pub async fn main() {
             }
 
             // The db is opened before tracing exists (see `db::open_desktop_db`),
-            // so a cloudsync-extension failure there had nowhere to go at the
+            // so a sync-engine load failure there had nowhere to go at the
             // time. Surface it now that the tracing plugin is registered —
             // otherwise the app silently runs as a plain local notes app with
             // no indication of why sync never works.
-            if let Some(reason) = db::CLOUDSYNC_DEGRADED.get() {
+            if let Some(reason) = db::SYNC_ENGINE_DEGRADED.get() {
                 tracing::error!(
-                    "cloudsync extension failed to load; opened the database without it and sync is unavailable: {reason}"
+                    "cr-sqlite sync engine failed to load; opened the database without it and sync is unavailable: {reason}"
                 );
             }
 
@@ -395,10 +395,10 @@ pub async fn main() {
                 }
             }
 
-            // SYNC-5: run the #101 teardown (cloudsync_stop → drop live
-            // queries → pool close → stop agent) with a hard bound —
-            // `RunEvent::Exit` is synchronous, so the app must not hang here
-            // on a stuck teardown; better to leak than to never exit.
+            // Sync teardown (stop agent → drop live queries → finalize and
+            // close the pool) with a hard bound — `RunEvent::Exit` is
+            // synchronous, so the app must not hang here on a stuck teardown;
+            // better to leak than to never exit.
             #[cfg(all(feature = "sync", sync_platform))]
             shutdown_sync(app);
 
@@ -485,9 +485,9 @@ fn shutdown_sync(app: &tauri::AppHandle) {
 
     use tauri::Manager;
 
-    /// Upper bound on the whole teardown sequence. Generous (a full
-    /// `cloudsync_stop` finalizes extension statements and waits for the
-    /// background task to join) but finite.
+    /// Upper bound on the whole teardown sequence. Generous (the pool close
+    /// waits for in-flight sync sessions to release their connections) but
+    /// finite.
     const SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(5);
 
     // try_state, not state: `RunEvent::Exit` must never panic on the way out —

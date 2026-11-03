@@ -182,6 +182,46 @@ async syncStop() : Promise<Result<null, string>> {
     else return { status: "error", error: e  as any };
 }
 },
+async pairingCreateOffer() : Promise<Result<PairingOfferResult, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:db|pairing_create_offer") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async pairingJoin(link: string) : Promise<Result<PairingJoinResult, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:db|pairing_join", { link }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async pairingStatus() : Promise<Result<PairingStatusResult, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:db|pairing_status") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async pairingConfirm(deviceId: string, accept: boolean) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:db|pairing_confirm", { deviceId, accept }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async syncRevokePeer(fingerprint: string) : Promise<Result<boolean, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:db|sync_revoke_peer", { fingerprint }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async listRecipes() : Promise<Result<Recipe[], string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("plugin:db|list_recipes") };
@@ -238,6 +278,46 @@ export type Meeting = { id: string; title: string; kind: string; status: string;
 export type MeetingListItem = { id: string; title: string; kind: string; status: string; created_at: string; updated_at: string; started_at: string; ended_at: string; series_id: string }
 export type MeetingPage = { meetings: MeetingListItem[]; pagination: Pagination }
 export type Pagination = { offset: number; limit: number; returned: number; total: number | null; next_offset: number | null }
+/**
+ * Result of joining via a pairing link.
+ */
+export type PairingJoinResult = { 
+/**
+ * The 6-digit SAS code to verify.
+ */
+sas: string; 
+/**
+ * The offerer's device id (z32 compact).
+ */
+deviceId: string; 
+/**
+ * The offerer's device name.
+ */
+deviceName: string }
+/**
+ * Result of creating a pairing offer.
+ */
+export type PairingOfferResult = { 
+/**
+ * The `notare://pair#...` link.
+ */
+link: string; 
+/**
+ * SVG markup for the QR code encoding the link.
+ */
+qrSvg: string; 
+/**
+ * Unix timestamp (seconds) when the offer expires.
+ */
+expiresAt: number }
+/**
+ * A pending device waiting for confirmation.
+ */
+export type PairingPendingDevice = { deviceId: string; name: string; sas: string; expiresAt: number }
+/**
+ * Status of the pairing subsystem.
+ */
+export type PairingStatusResult = { offerActive: boolean; offerExpiresAt: number | null; pending: PairingPendingDevice[] }
 export type Participant = { human_id: string; display_name: string; email: string; role: string; job_title: string; organization_id: string; organization_name: string }
 export type QueryEvent = { event: "result"; data: JsonValue[] } | { event: "error"; data: string }
 export type Recipe = { id: string; title: string; prompt: string; scope: string; builtin: boolean; createdAt: string; updatedAt: string }
@@ -252,15 +332,14 @@ export type SubscriptionRegistration = { id: string; analysis: DependencyAnalysi
  */
 export type SyncPeer = { nodeId: string; fingerprint: string; label: string; addedAt: number; lastSeen: number }
 /**
- * Wire shape of [`hypr_db_core::CloudsyncStatus`] for the specta surface —
- * db-core's own type is serde-only and stays that way (it predates specta
- * and is used by non-tauri consumers); this mirror keeps the boundary.
+ * Live sync status: whether this database has the cr-sqlite engine loaded
+ * and whether the P2P agent is running.
  */
-export type SyncStatusPayload = { cloudsyncEnabled: boolean; extensionLoaded: boolean; configured: boolean; running: boolean; networkInitialized: boolean; lastSyncDownloadedCount: number | null; lastSyncAtMs: number | null; hasUnsentChanges: boolean | null; lastError: string | null; consecutiveFailures: number }
+export type SyncStatusPayload = { engineLoaded: boolean; running: boolean }
 /**
  * The command result for `sync_status`: the live status when sync is built
- * in, or a stub carrying just `cloudsync_enabled: false` otherwise, so the
- * frontend can render one shape in every configuration.
+ * in, or `Unavailable` otherwise, so the frontend can render one shape in
+ * every configuration.
  */
 export type SyncStatusResult = ({ kind: "live" } & SyncStatusPayload) | { kind: "unavailable" }
 export type TAURI_CHANNEL<TSend> = null

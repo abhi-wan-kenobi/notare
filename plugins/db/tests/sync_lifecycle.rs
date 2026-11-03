@@ -1,350 +1,239 @@
-//! SYNC-5 lifecycle ordering: the start and stop sequences are load-bearing,
-//! and nothing in the type system enforces them. This pins both.
-//!
-//! **Startup** (agent → env vars → configure → start): the C layer reads
-//! `NOTARE_SYNC_AGENT_ADDR` + `NOTARE_SYNC_TOKEN` on every network call, so a
-//! `cloudsync_start` that runs before the agent is up — or before the env
-//! vars are published — makes the first background `network_sync` tick fail
-//! against a dead socket, which kills the background loop (it breaks on any
-//! non-transient error). The test pins the *observable* consequence: after
-//! `SyncLifecycle::start`, an immediate `trigger()` succeeds end-to-end, which
-//! is only possible if the agent was already serving and the env vars were
-//! already published.
-//!
-//! **Teardown** (#101): `cloudsync_stop` must run before `pool().close()`.
-//! The extension holds prepared statements against pool connections; closing
-//! the pool first would finalize them against freed handles. After
-//! `shutdown()`, status must report `network_initialized: false` (the flag
-//! `cloudsync_stop` only clears on a successful cleanup+terminate) and the
-//! pool must be closed.
-//!
-//! Env vars are process-global, so the whole file serializes on one static
-//! lock; tests run in the same binary can never interleave.
-//!
-//! Requires the `sync` feature, on the app's sync-platform gate (§22) — see
-//! the crate's Cargo.toml.
+//! Sync lifecycle through `PluginDbRuntime`: two app databases with the
+//! cr-sqlite engine, each with its own loopback `P2pAgent`, syncing over real
+//! iroh/QUIC on 127.0.0.1 (relay disabled, no external network).
 
 #![cfg(all(feature = "sync", sync_platform))]
 
 use std::sync::Arc;
-use std::sync::OnceLock;
 
-use hypr_db_core::{Db, DbOpenOptions, DbStorage};
-use sync_p2p::{Identity, P2pAgent, PeerStore, register_direct_addr};
-use tauri_plugin_db::sync::SyncLifecycle;
+use sync_p2p::{AgentConfig, AgentTransport, Identity, PeerStore};
+use tauri_plugin_db::PluginDbRuntime;
+use tauri_plugin_db::sync::SyncError;
 
-/// Serialize env-var publication across all tests in this binary.
-fn lifecycle_env_lock() -> &'static tokio::sync::Mutex<()> {
-    static LOCK: OnceLock<tokio::sync::Mutex<()>> = OnceLock::new();
-    LOCK.get_or_init(|| tokio::sync::Mutex::new(()))
+struct Device {
+    runtime: Arc<PluginDbRuntime>,
+    identity_dir: tempfile::TempDir,
+    _db_dir: tempfile::TempDir,
 }
 
-/// A tempdir-rooted identity + agent, so the test never touches the real
-/// `<data_dir>/notare/sync/` device key or allowlist.
-async fn test_agent() -> (tempfile::TempDir, P2pAgent) {
-    let dir = tempfile::tempdir().unwrap();
-    let identity = Identity::load_or_create_in(dir.path()).unwrap();
-    let peers = PeerStore::load_or_create_in(dir.path()).unwrap();
-    let agent = P2pAgent::start_with(identity, peers).await.unwrap();
-    register_direct_addr(agent.node_id(), agent.direct_addresses()).await;
-    (dir, agent)
+impl Device {
+    async fn open(crsqlite: bool) -> Self {
+        let db_dir = tempfile::tempdir().unwrap();
+        let db = tauri_plugin_db::open_app_db_with_crsqlite(
+            Some(&db_dir.path().join("app.db")),
+            crsqlite,
+        )
+        .await
+        .unwrap();
+        Self {
+            runtime: Arc::new(PluginDbRuntime::new(Arc::new(db))),
+            identity_dir: tempfile::tempdir().unwrap(),
+            _db_dir: db_dir,
+        }
+    }
+
+    fn identity(&self) -> Identity {
+        Identity::load_or_create_in(self.identity_dir.path()).unwrap()
+    }
+
+    async fn start(&self) -> Result<(), SyncError> {
+        let identity = self.identity();
+        let peers = PeerStore::load_or_create_in(self.identity_dir.path()).unwrap();
+        let config = AgentConfig {
+            transport: AgentTransport::Loopback,
+            tick_interval: None,
+            ..AgentConfig::default()
+        };
+        self.runtime
+            .start_sync_with_config(identity, peers, config)
+            .await
+    }
+
+    async fn fingerprint(&self) -> String {
+        self.runtime.sync_this_device().await.unwrap()
+    }
+
+    async fn exec(&self, sql: &str) {
+        sqlx::query(sqlx::AssertSqlSafe(sql))
+            .execute(self.runtime.pool())
+            .await
+            .unwrap();
+    }
+
+    async fn count(&self, sql: &str) -> i64 {
+        sqlx::query_scalar(sqlx::AssertSqlSafe(sql))
+            .fetch_one(self.runtime.pool())
+            .await
+            .unwrap()
+    }
 }
 
-/// A cloudsync-enabled db on a tempdir file (the same open options the app
-/// uses when the `sync` feature is on).
-async fn test_db(dir: &tempfile::TempDir) -> Arc<Db> {
-    let db_path = dir.path().join("lifecycle.db");
-    let db = Db::open(DbOpenOptions {
-        storage: DbStorage::Local(&db_path),
-        cloudsync_enabled: true,
-        journal_mode_wal: true,
-        foreign_keys: true,
-        max_connections: Some(4),
-    })
-    .await
-    .unwrap();
-    hypr_db_app::prepare_schema(&db).await.unwrap();
-    Arc::new(db)
+async fn paired() -> (Device, Device) {
+    let a = Device::open(true).await;
+    let b = Device::open(true).await;
+    a.start().await.unwrap();
+    b.start().await.unwrap();
+    a.runtime
+        .sync_add_peer(b.fingerprint().await, "B".into())
+        .await
+        .unwrap();
+    b.runtime
+        .sync_add_peer(a.fingerprint().await, "A".into())
+        .await
+        .unwrap();
+    (a, b)
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn start_runs_the_agent_before_cloudsync_and_stop_shuts_down_in_order() {
-    let _env = lifecycle_env_lock().lock().await;
+async fn a_write_on_one_device_reaches_the_other_through_the_agent() {
+    let (a, b) = paired().await;
 
-    // ---- startup: agent up, then cloudsync on top of it ----
-    let (agent_dir, agent) = test_agent().await;
-    let db_dir = tempfile::tempdir().unwrap();
-    let db = test_db(&db_dir).await;
+    a.exec("INSERT INTO sessions (id, title) VALUES ('s1', 'from A')")
+        .await;
+    a.exec("INSERT INTO tags (id, name) VALUES ('t1', 'work')")
+        .await;
+    b.exec("INSERT INTO sessions (id, title) VALUES ('s2', 'from B')")
+        .await;
 
-    let lifecycle = SyncLifecycle::start_with(Arc::clone(&db), agent)
-        .await
-        .unwrap();
+    let pulled = b.runtime.sync_trigger().await.unwrap();
+    assert!(pulled > 0, "B must pull A's changes");
 
-    // The agent was already live when cloudsync started, so an immediate
-    // trigger must succeed through it end-to-end. This is the observable
-    // consequence of "agent before cloudsync_start": a check against a dead
-    // socket would fail the trigger.
-    let received = lifecycle.trigger().await.unwrap();
+    for device in [&a, &b] {
+        assert_eq!(device.count("SELECT COUNT(*) FROM sessions").await, 2);
+        assert_eq!(
+            device
+                .count("SELECT COUNT(*) FROM tags WHERE id = 't1'")
+                .await,
+            1
+        );
+    }
     assert_eq!(
-        received, 0,
-        "first trigger after start must succeed (nothing pending yet)"
+        b.count("SELECT COUNT(*) FROM sync_peer_cursors WHERE db_version > 0")
+            .await,
+        1,
+        "B persisted its cursor into A's stream"
     );
 
-    // Status pins the whole startup state.
-    let status = lifecycle.status().await.unwrap();
-    assert!(status.cloudsync_enabled, "extension loaded");
-    assert!(status.configured, "runtime configured");
-    assert!(status.running, "background loop running");
-    assert!(status.network_initialized, "network_init ran");
-    assert_eq!(status.last_error, None, "no error after startup");
+    // Nothing new: the next round transfers nothing and duplicates nothing.
+    assert_eq!(b.runtime.sync_trigger().await.unwrap(), 0);
+    assert_eq!(a.runtime.sync_trigger().await.unwrap(), 0);
+    assert_eq!(b.count("SELECT COUNT(*) FROM sessions").await, 2);
 
-    // ---- teardown: #101 order ----
-    lifecycle.db_cloudsync_stop().await.unwrap();
-
-    let status = lifecycle.status().await.unwrap();
-    assert!(
-        !status.running,
-        "cloudsync_stop must stop the background loop"
-    );
-    assert!(
-        !status.network_initialized,
-        "cloudsync_stop must run cleanup+terminate (clears network_initialized)"
-    );
-
-    // cloudsync_stop ran before the pool close — now close it.
-    db.pool().close().await;
-    // The agent is stopped last.
-    lifecycle.stop_agent().await.unwrap();
-
-    drop(agent_dir);
-    drop(db_dir);
+    a.runtime.shutdown().await;
+    b.runtime.shutdown().await;
+    assert!(a.runtime.pool().is_closed());
+    assert!(b.runtime.pool().is_closed());
 }
 
-/// A second lifecycle on the same agent shape pins that `take()` in
-/// `PluginDbRuntime::shutdown` hands the owned `Option` to the teardown steps
-/// (auditors once read `guard.take()` as "discard" and claimed step 1 never
-/// runs) — and exercises the `sync_this_device`/`sync_list_peers` fallbacks on
-/// a runtime whose lifecycle is not up.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn runtime_teardown_runs_every_step_and_fallbacks_answer_without_lifecycle() {
-    let _env = lifecycle_env_lock().lock().await;
+async fn trigger_fails_when_the_only_peer_is_unreachable() {
+    let (a, b) = paired().await;
+    b.runtime.stop_sync().await.unwrap();
 
-    let (agent_dir, agent) = test_agent().await;
-    let db_dir = tempfile::tempdir().unwrap();
-    let db = test_db(&db_dir).await;
-    let runtime = tauri_plugin_db::PluginDbRuntime::new(std::sync::Arc::clone(&db));
+    let error = a.runtime.sync_trigger().await.unwrap_err();
+    assert!(matches!(error, SyncError::AllPeersFailed(_)), "{error}");
 
-    // Before start_sync: the fallbacks answer from disk, not from a lifecycle.
-    let device = runtime.sync_this_device().await.unwrap();
-    assert!(
-        !device.is_empty(),
-        "fallback identity fingerprint should be a non-empty z32, got {device:?}"
-    );
-    assert!(
-        runtime.sync_list_peers().await.is_empty(),
-        "fresh allowlist has no peers"
-    );
-
-    runtime.start_sync_with(agent).await.unwrap();
-    let status = runtime.sync_status().await.unwrap();
-    assert!(status.running, "lifecycle started");
-
-    runtime.shutdown().await;
-
-    // shutdown ran cloudsync_stop before closing the pool: the db-level
-    // status must show the stopped state, and the pool must be closed.
-    let status = db.cloudsync_status().await.unwrap();
-    assert!(
-        !status.running && !status.network_initialized,
-        "shutdown must have run cloudsync_stop (take() must hand the lifecycle to the steps, not discard it)"
-    );
-
-    drop(agent_dir);
-    drop(db_dir);
+    a.runtime.shutdown().await;
+    b.runtime.shutdown().await;
 }
 
-/// SYNC-6: `SyncLifecycle::add_peer` must reject garbage input, must refuse
-/// to pair a device with itself (the allowlist gates real peers, not a
-/// self-loop), and must accept a fingerprint in either the grouped (dashed,
-/// display) or compact (ungrouped) form — the UI shows grouped, but
-/// `Fingerprint::parse` round-trips both, and `add_peer` must not narrow that.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn add_peer_rejects_invalid_fingerprint_and_self_but_accepts_grouped_or_compact() {
-    let _env = lifecycle_env_lock().lock().await;
+async fn stop_sync_keeps_the_pool_and_sync_can_restart() {
+    let device = Device::open(true).await;
+    device.runtime.stop_sync().await.unwrap();
+    assert!(matches!(
+        device.runtime.sync_trigger().await.unwrap_err(),
+        SyncError::NotRunning
+    ));
 
-    let (agent_dir, agent) = test_agent().await;
-    let own_fingerprint = sync_p2p::Fingerprint::from_pubkey(&agent.node_id())
-        .as_str()
-        .to_string();
-    let db_dir = tempfile::tempdir().unwrap();
-    let db = test_db(&db_dir).await;
-    let lifecycle = SyncLifecycle::start_with(Arc::clone(&db), agent)
-        .await
-        .unwrap();
+    device.start().await.unwrap();
+    let fingerprint = device.fingerprint().await;
+    assert!(device.runtime.sync_status().await.running);
+
+    // A second start while running is a no-op, not an agent swap.
+    device.start().await.unwrap();
+    assert_eq!(device.fingerprint().await, fingerprint);
+
+    device.runtime.stop_sync().await.unwrap();
+    let status = device.runtime.sync_status().await;
+    assert!(!status.running);
+    assert!(status.engine_loaded);
+    assert!(!device.runtime.pool().is_closed());
+    device
+        .exec("INSERT INTO sessions (id, title) VALUES ('after-stop', 'x')")
+        .await;
+
+    device.start().await.unwrap();
+    assert!(device.runtime.sync_status().await.running);
+
+    device.runtime.shutdown().await;
+    assert!(device.runtime.pool().is_closed());
+    assert!(!device.runtime.sync_status().await.running);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn start_sync_refuses_a_database_opened_without_the_engine() {
+    let device = Device::open(false).await;
+    assert!(!device.runtime.sync_status().await.engine_loaded);
+
+    let error = device.start().await.unwrap_err();
+    assert!(matches!(error, SyncError::EngineUnavailable), "{error}");
+    assert!(!device.runtime.sync_status().await.running);
+    assert_eq!(
+        device
+            .count("SELECT COUNT(*) FROM sqlite_master WHERE name LIKE '%__crsql_clock'")
+            .await,
+        0,
+        "no table was converted"
+    );
+
+    device.runtime.shutdown().await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn add_peer_rejects_garbage_and_self_and_remove_reports_existence() {
+    let device = Device::open(true).await;
+    device.start().await.unwrap();
+    let runtime = &device.runtime;
 
     assert!(
-        lifecycle
-            .add_peer("not-a-real-fingerprint!!", "bad")
+        runtime
+            .sync_add_peer("not-a-real-fingerprint!!".into(), "bad".into())
+            .await
+            .is_err()
+    );
+    assert!(
+        runtime
+            .sync_add_peer(device.fingerprint().await, "myself".into())
+            .await
             .is_err(),
-        "garbage input must be rejected"
+        "a device must not add itself"
     );
 
-    assert!(
-        lifecycle.add_peer(&own_fingerprint, "myself").is_err(),
-        "a device must not be able to add itself as its own peer"
-    );
-
-    // Two distinct peer identities: one added via the grouped (dashed) form,
-    // one via the compact (ungrouped) form.
     let peer_a_dir = tempfile::tempdir().unwrap();
     let peer_a = Identity::load_or_create_in(peer_a_dir.path()).unwrap();
     let peer_b_dir = tempfile::tempdir().unwrap();
     let peer_b = Identity::load_or_create_in(peer_b_dir.path()).unwrap();
 
     let grouped = peer_a.fingerprint().as_str().to_string();
-    assert!(grouped.contains('-'), "sanity: grouped form is dashed");
-    let resolved = lifecycle.add_peer(&grouped, "Peer A").unwrap();
     assert_eq!(
-        resolved,
-        peer_a.fingerprint().as_str(),
-        "add_peer returns the resolved grouped fingerprint"
+        runtime
+            .sync_add_peer(grouped.clone(), "Peer A".into())
+            .await
+            .unwrap(),
+        grouped
     );
-
-    let compact = peer_b.fingerprint().compact();
-    assert!(!compact.contains('-'), "sanity: compact form is ungrouped");
-    lifecycle.add_peer(&compact, "Peer B").unwrap();
-
-    let peers = lifecycle.list_peers();
-    assert_eq!(peers.len(), 2, "both grouped- and compact-form adds landed");
-    assert!(peers.iter().any(|p| p.node_id == peer_a.id()));
+    runtime
+        .sync_add_peer(peer_b.fingerprint().compact(), "Peer B".into())
+        .await
+        .unwrap();
+    let peers = runtime.sync_list_peers().await;
+    assert_eq!(peers.len(), 2);
     assert!(peers.iter().any(|p| p.node_id == peer_b.id()));
 
-    drop(agent_dir);
-    drop(db_dir);
-}
-
-/// Runtime opt-out (the desktop `sync_enabled` setting toggled off while the
-/// app keeps running): `PluginDbRuntime::stop_sync` must run the same
-/// `db_cloudsync_stop` → `stop_agent` order `shutdown` uses, but must NOT
-/// touch the pool or the live-query dispatcher — those are app-wide and the
-/// rest of the running app still needs them. Also pins that it is a no-op
-/// when sync was never started, and that a fresh `start_sync_with` after a
-/// `stop_sync` works (the toggle can be flipped back on in the same run).
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn stop_sync_tears_down_the_lifecycle_without_closing_the_pool() {
-    let _env = lifecycle_env_lock().lock().await;
-
-    // A no-op stop_sync before anything ever started must succeed quietly.
-    let db_dir = tempfile::tempdir().unwrap();
-    let db = test_db(&db_dir).await;
-    let runtime = tauri_plugin_db::PluginDbRuntime::new(Arc::clone(&db));
-    runtime.stop_sync().await.unwrap();
-
-    let (agent_dir, agent) = test_agent().await;
-    runtime.start_sync_with(agent).await.unwrap();
-    let status = runtime.sync_status().await.unwrap();
-    assert!(status.running, "lifecycle started");
-
-    runtime.stop_sync().await.unwrap();
-
-    let status = db.cloudsync_status().await.unwrap();
-    assert!(
-        !status.running && !status.network_initialized,
-        "stop_sync must have run db_cloudsync_stop"
-    );
-
-    // The pool must still be open — a runtime opt-out must not disturb the
-    // rest of the running app.
-    sqlx::query("SELECT 1")
-        .fetch_one(db.pool())
-        .await
-        .expect("pool must stay open after stop_sync");
-
-    // Flipping the setting back on in the same run must work.
-    let (agent_dir2, agent2) = test_agent().await;
-    runtime.start_sync_with(agent2).await.unwrap();
-    let status = runtime.sync_status().await.unwrap();
-    assert!(status.running, "restart after stop_sync must succeed");
+    assert!(runtime.sync_remove_peer(grouped.clone()).await.unwrap());
+    assert!(!runtime.sync_remove_peer(grouped).await.unwrap());
+    assert_eq!(runtime.sync_list_peers().await.len(), 1);
 
     runtime.shutdown().await;
-
-    drop(agent_dir);
-    drop(agent_dir2);
-    drop(db_dir);
-}
-
-/// `PluginDbRuntime::start_sync`/`start_sync_with` must be idempotent: a
-/// second call while already running is a documented no-op (`if
-/// guard.is_some() { return Ok(()); }`), not a silent agent swap. Pins the
-/// observable consequence — the second agent never replaces the first — so
-/// a future regression (e.g. dropping the `is_some()` guard) shows up as a
-/// changed fingerprint rather than passing silently.
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn start_sync_is_idempotent_and_does_not_swap_in_a_second_agent() {
-    let _env = lifecycle_env_lock().lock().await;
-
-    let (agent_dir, agent) = test_agent().await;
-    let db_dir = tempfile::tempdir().unwrap();
-    let db = test_db(&db_dir).await;
-    let runtime = tauri_plugin_db::PluginDbRuntime::new(Arc::clone(&db));
-
-    runtime.start_sync_with(agent).await.unwrap();
-    let first_device = runtime.sync_this_device().await.unwrap();
-
-    let (agent_dir2, agent2) = test_agent().await;
-    runtime.start_sync_with(agent2).await.unwrap();
-    let second_device = runtime.sync_this_device().await.unwrap();
-
-    assert_eq!(
-        first_device, second_device,
-        "a second start_sync_with while running must not replace the lifecycle"
-    );
-
-    runtime.shutdown().await;
-
-    drop(agent_dir);
-    drop(agent_dir2);
-    drop(db_dir);
-}
-
-/// SYNC-6: `SyncLifecycle::remove_peer` reports whether the peer actually
-/// existed — `false` for an unknown fingerprint, `true` (once) for a peer
-/// that was paired, and `false` again on a second removal of the same peer.
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn remove_peer_reports_existence_and_is_idempotent() {
-    let _env = lifecycle_env_lock().lock().await;
-
-    let (agent_dir, agent) = test_agent().await;
-    let db_dir = tempfile::tempdir().unwrap();
-    let db = test_db(&db_dir).await;
-    let lifecycle = SyncLifecycle::start_with(Arc::clone(&db), agent)
-        .await
-        .unwrap();
-
-    let unknown_dir = tempfile::tempdir().unwrap();
-    let unknown = Identity::load_or_create_in(unknown_dir.path()).unwrap();
-    assert!(
-        !lifecycle
-            .remove_peer(unknown.fingerprint().as_str())
-            .unwrap(),
-        "removing a peer that was never added reports false"
-    );
-
-    let peer_dir = tempfile::tempdir().unwrap();
-    let peer = Identity::load_or_create_in(peer_dir.path()).unwrap();
-    lifecycle
-        .add_peer(peer.fingerprint().as_str(), "Peer")
-        .unwrap();
-
-    assert!(
-        lifecycle.remove_peer(peer.fingerprint().as_str()).unwrap(),
-        "removing a known peer reports true"
-    );
-    assert!(
-        !lifecycle.remove_peer(peer.fingerprint().as_str()).unwrap(),
-        "removing the same peer twice is a no-op the second time"
-    );
-
-    drop(agent_dir);
-    drop(db_dir);
 }

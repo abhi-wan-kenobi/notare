@@ -3,8 +3,14 @@ name = "db-core"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+crsqlite = ["dep:hypr-crsqlite"]
+
 [dependencies]
 hypr-cloudsync = { workspace = true }
+# Optional so builds without P2P sync do not embed the cr-sqlite binary;
+# `tauri-plugin-db/sync` turns it on.
+hypr-crsqlite = { workspace = true, optional = true }
 hypr-db-change = { workspace = true }
 
 backon = { workspace = true }
