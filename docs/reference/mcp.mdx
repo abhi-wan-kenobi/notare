@@ -1,45 +1,74 @@
 ---
 title: "MCP reference"
-description: "Tools, resources, limits, and transport details exposed by Anarlog MCP."
+description: "Tools, parameters, and transport details exposed by Notare's MCP server."
 ---
 
-Run the server with `anarlog mcp`. It uses the MCP `2024-11-05` protocol over stdio. Every tool is read-only, non-destructive, idempotent, and local-only.
+Notare exposes an embedded Model Context Protocol (MCP) server accessible via HTTP streamable transport (`http://127.0.0.1:<port>`) with Bearer token authentication, or via the `notare-mcp` stdio bridge.
 
-## Tools
+Every tool is read-only, non-destructive, and local-only.
+
+For client configuration recipes and transport details, see [MCP for agents](/agents/mcp) and the [MCP Server Guide](../MCP.md).
+
+## Available tools
 
 ### `list_meetings`
 
+List recent meetings with pagination and optional filtering.
+
 | Parameter | Type | Default | Notes |
-| --- | --- | --- | --- |
-| `query` | string | — | Case-insensitive title or meeting ID substring. |
-| `series_id` | string | — | Exact recurring series ID. |
-| `limit` | integer | `20` | Clamped to `1..200`. |
-| `offset` | integer | `0` | Number of results to skip. |
+|---|---|---|---|
+| `query` | string | `null` | Case-insensitive title or meeting ID substring. |
+| `limit` | integer | `20` | Maximum number of meetings to return. |
+| `offset` | integer | `0` | Number of records to skip. |
 
 ### `get_meeting`
 
-Accepts required string `meeting_id`. Returns meeting metadata, the canonical note, summaries, participants, and action items. Transcript words are intentionally separate.
+Retrieve full meeting details for a specific session.
+
+| Parameter | Type | Default | Notes |
+|---|---|---|---|
+| `id` | string | required | The unique meeting/session ID. |
+
+Returns meeting metadata, note content, generated summaries, participants, and action items.
 
 ### `get_meeting_transcript`
 
+Fetch transcript text and word-level timestamps.
+
 | Parameter | Type | Default | Notes |
-| --- | --- | --- | --- |
-| `meeting_id` | string | required | A returned Anarlog meeting ID. |
-| `offset` | integer | `0` | Word offset. |
-| `limit` | integer | `200` | Clamped to `1..500`. |
+|---|---|---|---|
+| `id` | string | required | The unique meeting/session ID. |
+| `offset` | integer | `0` | Word offset for pagination. |
+| `limit` | integer | `200` | Maximum number of words to return. |
 
-The result includes `meeting_id`, `text`, `words`, and a `pagination` object. Pagination contains `offset`, `limit`, `returned`, `total`, and `next_offset`. A missing `pagination.next_offset` means the page reached the end.
+### `search_meetings`
 
-### `get_recurring_meeting_history`
+Search meetings using Notare's on-device Tantivy full-text index.
 
-Accepts required string `meeting_id` plus optional integer `limit` and `offset`. The limit defaults to 20 and is clamped to `1..200`; the offset defaults to 0.
+| Parameter | Type | Default | Notes |
+|---|---|---|---|
+| `query` | string | required | Search query string. |
+| `limit` | integer | `20` | Maximum results to return. |
+| `offset` | integer | `0` | Result pagination offset. |
 
-## Resources
+### `search_meeting_content`
 
-| URI | MIME type | Content |
-| --- | --- | --- |
-| `anarlog://meetings/{meeting_id}` | `text/markdown` | Meeting detail without transcript text. |
-| `anarlog://meetings/{meeting_id}/transcript{?offset,limit}` | `text/plain` | A bounded transcript page. |
-| `anarlog://series/{series_id}` | `text/markdown` | Up to 100 meetings in a recurring series. |
+Perform lexical keyword search across meeting notes and transcript text.
 
-Resource listing returns recent meeting resources in pages of 20. Its cursor is a numeric result offset.
+| Parameter | Type | Default | Notes |
+|---|---|---|---|
+| `query` | string | required | Keyword or exact phrase to find. |
+| `meeting_ids` | string[] | `null` | Optional list of specific meeting IDs to restrict search to. |
+| `limit` | integer | `20` | Maximum matches to return. |
+
+### `list_recipes`
+
+List all available AI prompt recipes configured in Notare. Takes no parameters.
+
+### `get_daily_note`
+
+Retrieve the daily note for a specific date.
+
+| Parameter | Type | Default | Notes |
+|---|---|---|---|
+| `date` | string | required | Date string formatted as `YYYY-MM-DD`. |

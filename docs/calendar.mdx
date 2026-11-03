@@ -1,36 +1,103 @@
 ---
-title: "Connect a calendar"
-description: "Bring upcoming meetings into Anarlog and start them from one place."
+title: "Connect calendars and email"
+description: "Sync events from Google Calendar, Outlook, and Apple Calendar, and configure Gmail follow-up drafts."
 ---
 
-Open **Calendar** in the sidebar, add an account, and enable the calendars you want Anarlog to show. Connected events appear in the calendar and timeline.
+Notare connects directly to calendar and email services from your local computer via local loopback (`127.0.0.1`). There are no intermediate cloud servers or proxies; calendar and email data never pass through third-party infrastructure.
 
-Anarlog uses calendar events for titles, times, participants, reminders, and meeting links. It does not add a bot to your calls.
+All initial calendar permissions are **read-only**.
 
-## Apple Calendar
-
-Apple Calendar is available on macOS.
-
-1. Choose **Apple Calendar**.
-2. Allow Calendar access when macOS asks.
-3. Enable the calendars you want to see.
-
-If access was denied, open **Settings → Permissions** in Anarlog. Use **Open** beside Calendar to change the macOS permission.
+---
 
 ## Google Calendar
 
-1. Sign in to Anarlog.
-2. Choose **Google Calendar**, then finish authorization in your browser.
-3. Return to Anarlog and enable the calendars you want to sync.
+Notare supports one-click connection in official builds and allows connecting multiple accounts simultaneously.
+
+### One-click sign-in (official builds)
+
+1. Open **Calendar** in the sidebar or go to **Settings → Calendar**.
+2. Under **Google**, click **Sign in with Google**.
+3. Your default browser opens Google's OAuth consent screen for Notare.
+4. Select your account and grant read-only permissions (`calendar.readonly` and `calendar.events.readonly`).
+5. Return to Notare. Your calendars appear within a few seconds. **Tick the calendars you want** to display.
+
+### Multi-account support
+
+You can connect both personal and work Google accounts:
+- Click **+ Add Google account** in **Settings → Calendar** to authenticate additional accounts.
+- Refresh tokens are isolated per account in your operating system's native keychain (`google-calendar/oauth/<email>`).
+- Manage or disconnect individual accounts at any time by clicking **Remove** next to that account.
+
+### "Google hasn't verified this app" screen
+
+Until Google completes the OAuth verification review for our first-party client, you may see an **"unverified app"** notice in your browser during sign-in. This is normal while the app is in verification or testing mode:
+
+1. Click **Advanced** in small text near the bottom left of the Google page.
+2. Click **Go to Notare (unsafe)**.
+3. Review the permissions and click **Continue**.
+
+<Note>
+  **7-day token expiration:** While Google keeps the OAuth client in testing mode, Google automatically expires refresh tokens after **7 days**. If Notare reports that calendar events are no longer updating, go to **Settings → Calendar** and click **Sign in with Google** again to refresh the session.
+</Note>
+
+### Bring your own Google client
+
+If you build from source or prefer using your own Google Cloud project credentials, click **Advanced: use your own OAuth client** in **Settings → Calendar**. For step-by-step instructions on creating a Google Cloud Desktop app credential, see the [Google Calendar setup guide](GOOGLE-CALENDAR.md).
+
+---
 
 ## Outlook Calendar
 
-1. Sign in to Anarlog.
-2. Choose **Outlook Calendar**, then finish authorization in your browser.
-3. Return to Anarlog and enable the calendars you want to sync.
+Notare connects directly to Microsoft 365 and personal Outlook accounts using native PKCE authentication.
+
+### One-click sign-in (official builds)
+
+1. Go to **Settings → Calendar** (or open the Calendar sidebar).
+2. Under **Outlook**, click **Sign in with Microsoft**.
+3. In your browser, log in with your Microsoft account (personal `@outlook.com` / `@hotmail.com` or corporate Microsoft 365 / Entra ID).
+4. Approve the requested read-only permissions (`User.Read` and `Calendars.Read`).
+5. Return to Notare and toggle the calendars you want to sync.
+
+### Multi-account support
+
+- Connect multiple Microsoft accounts by clicking **+ Add Microsoft account**.
+- Credentials and refresh tokens are isolated per account in your OS keychain under `outlook-calendar/oauth/<email>`.
+- Disconnect accounts individually using the **Remove** button.
+
+### Bring your own Entra client ID
+
+If your organization's IT policy restricts third-party app consents or you run a custom build, click **Advanced: use your own Application (client) ID** and enter your Entra ID client ID. See the [Outlook Calendar setup guide](OUTLOOK-CALENDAR.md) for full configuration steps.
+
+---
+
+## Apple Calendar
+
+Apple Calendar integration is available on macOS and accesses calendar accounts configured in macOS System Settings:
+
+1. In Notare, select **Apple Calendar** under **Settings → Calendar**.
+2. Allow calendar access when macOS displays the system permission dialog.
+3. Enable the calendars you want to see in Notare.
+
+If access was previously denied, open **System Settings → Privacy & Security → Calendars** on your Mac to grant permission.
+
+---
+
+## Gmail drafts (opt-in beta)
+
+Notare includes an optional Gmail integration specifically for creating **follow-up email drafts** after meetings.
 
 <Note>
-  Google and Outlook connections are included with Anarlog Pro. Apple Calendar uses the calendar accounts already connected to your Mac.
+  **Strict privacy boundaries:**
+  - **Separate integration:** Connecting or disconnecting Gmail has no effect on Google Calendar.
+  - **Draft-only permission (`gmail.compose`):** Notare can only create draft messages in your account. It **cannot read** your inbox, cannot read received messages, and **never automatically sends** emails.
+  - **Review before sending:** Drafts appear in your Gmail drafts folder so you can review and edit them yourself before hitting send.
 </Note>
 
-If events are missing, refresh the calendar list, confirm the calendar is enabled, and reconnect any account marked **Reconnect required**.
+### Connecting Gmail
+
+1. Open **Settings → Integrations → Gmail (beta)**.
+2. Click **Connect Account**.
+3. Authorize the `gmail.compose` scope in your browser.
+4. Once connected, meeting follow-up drafts generated via **••• → Follow-up email** will be created directly in your Gmail drafts.
+
+For more technical details and security considerations, see the [Gmail integration guide](GMAIL.md).

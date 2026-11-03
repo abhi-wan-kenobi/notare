@@ -1,46 +1,94 @@
 ---
 title: "MCP for agents"
-description: "Connect an MCP client to local Anarlog meeting context over stdio."
+description: "Connect external AI assistants like Claude Desktop and Cursor to Notare via the Model Context Protocol."
 ---
 
-The MCP server runs inside the `anarlog` executable and communicates over standard input and output. It does not open a port or send meeting data to a hosted service.
+Notare includes an embedded, read-only Model Context Protocol (MCP) server that exposes your local meeting notes, summaries, transcripts, recipes, and daily notes to external assistants such as Claude Desktop, Cursor, and CLI agent tools.
 
-## Configure a client
+For the comprehensive architecture, security model, and tool schemas, see the complete [MCP Server Guide](../MCP.md).
 
-Use this generic MCP configuration:
+---
+
+## Architecture
+
+The MCP integration offers two transport options:
+
+1. **In-app streamable HTTP server:**
+   - Runs inside the Notare desktop application.
+   - Listens on `127.0.0.1:<port>` (default port is `8787`, configurable in **Settings → MCP Server**).
+   - Enforces Bearer token authentication (`Authorization: Bearer <token>`). Tokens are stored in your OS keychain.
+   - Strictly binds to loopback (`127.0.0.1`); never accessible from external networks.
+
+2. **Stdio bridge (`notare-mcp`):**
+   - For clients like Claude Desktop that communicate over standard input/output (`stdio`).
+   - A lightweight companion binary that proxies requests to the desktop application's loopback HTTP server using your bearer token.
+
+---
+
+## Client configuration
+
+Enable the MCP server under **Settings → MCP Server** in Notare, then copy your generated bearer token.
+
+### Claude Desktop
+
+Edit your Claude Desktop configuration file:
+- **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
+- **Linux:** `~/.config/Claude/claude_desktop_config.json`
+
+Add the `notare` server:
 
 ```json
 {
   "mcpServers": {
-    "anarlog": {
-      "command": "anarlog",
-      "args": ["mcp"]
+    "notare": {
+      "command": "notare-mcp",
+      "args": [
+        "--port",
+        "8787",
+        "--token",
+        "YOUR_BEARER_TOKEN"
+      ]
     }
   }
 }
 ```
 
-If `anarlog` is not on the client's `PATH`, use the executable's absolute path as `command`. Restart the client after changing its configuration.
+<Note>
+  You can click **Copy Claude config** directly from **Settings → MCP Server** in Notare to copy a pre-filled configuration snippet with your active port and token.
+</Note>
 
-For a custom database path:
+### Cursor
+
+Edit `~/.cursor/mcp.json` (or workspace `.cursor/mcp.json`):
 
 ```json
 {
   "mcpServers": {
-    "anarlog": {
-      "command": "anarlog",
-      "args": ["--db-path", "/path/to/app.db", "mcp"]
+    "notare": {
+      "url": "http://127.0.0.1:8787",
+      "headers": {
+        "Authorization": "Bearer YOUR_BEARER_TOKEN"
+      }
     }
   }
 }
 ```
 
-## Use tools deliberately
+---
 
-Start with `list_meetings`, then pass the returned `id` to `get_meeting`. Only call `get_meeting_transcript` if notes and summaries do not contain the required evidence.
+## Available tools (read-only)
 
-Transcript pages default to 200 words and cap at 500 words. Continue from `pagination.next_offset` only when the next page is necessary.
+All tools are read-only and non-destructive:
 
-Use `get_recurring_meeting_history` with a known meeting ID when a task depends on earlier meetings in the same series.
+| Tool name | Description |
+|---|---|
+| `list_meetings` | List recent meetings with pagination and optional search filter. |
+| `get_meeting` | Retrieve meeting metadata, notes, summaries, participants, and action items. |
+| `get_meeting_transcript` | Retrieve bounded transcript text and word timestamps. |
+| `search_meetings` | Full-text search across meetings using the on-device Tantivy index. |
+| `search_meeting_content` | Lexical search across meeting notes and transcripts for exact phrases. |
+| `list_recipes` | List all available AI prompt recipes. |
+| `get_daily_note` | Retrieve the daily note for a specific `YYYY-MM-DD` date. |
 
-See the [MCP reference](/reference/mcp) for exact parameters and resources.
+See the [MCP reference](/reference/mcp) and the full [MCP Server Guide](../MCP.md) for parameter details.

@@ -1,7 +1,7 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
-  "name": "Anarlog",
+  "name": "Notare",
   "colors": {
     "primary": "#74540F",
     "light": "#946F25",
@@ -10,7 +10,7 @@
   "favicon": "/favicon.svg",
   "seo": {
     "metatags": {
-      "canonical": "https://docs.anarlog.so"
+      "canonical": "https://docs.notare.dev"
     }
   },
   "navigation": {
@@ -20,8 +20,8 @@
         "pages": ["index", "quickstart"]
       },
       {
-        "group": "Using Anarlog",
-        "pages": ["meetings", "notes", "calendar", "ai-setup"]
+        "group": "Using Notare",
+        "pages": ["meetings", "notes", "chat", "calendar", "ai-setup", "sync"]
       },
       {
         "group": "CLI and agents",
@@ -53,13 +53,13 @@
     "global": {
       "anchors": [
         {
-          "anchor": "Anarlog",
-          "href": "https://anarlog.so",
+          "anchor": "Notare",
+          "href": "https://notare.dev",
           "icon": "house"
         },
         {
           "anchor": "GitHub",
-          "href": "https://github.com/fastrepl/anarlog",
+          "href": "https://github.com/abhi-wan-kenobi/notare",
           "icon": "github"
         }
       ]
@@ -72,14 +72,14 @@
   "navbar": {
     "links": [
       {
-        "label": "Support",
-        "href": "mailto:hello@anarlog.so"
+        "label": "Roadmap",
+        "href": "https://github.com/users/abhi-wan-kenobi/projects/1"
       }
     ],
     "primary": {
       "type": "button",
-      "label": "Download Anarlog",
-      "href": "https://anarlog.so/download"
+      "label": "Download Notare",
+      "href": "https://github.com/abhi-wan-kenobi/notare/releases/latest"
     }
   },
   "contextual": {
@@ -96,7 +96,7 @@
   },
   "footer": {
     "socials": {
-      "github": "https://github.com/fastrepl/anarlog"
+      "github": "https://github.com/abhi-wan-kenobi/notare"
     }
   }
 }

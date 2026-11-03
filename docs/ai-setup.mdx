@@ -1,54 +1,153 @@
 ---
 title: "Transcription and AI"
-description: "Choose how Anarlog turns audio into text and text into useful notes."
+description: "Configure local transcription models, bring your own API keys, sign in with OpenRouter, or connect subscriptions."
 ---
 
-Anarlog uses two model settings:
+Notare separates audio transcription from language model intelligence:
 
-- **Transcription** turns meeting audio into a transcript.
-- **Intelligence** creates summaries and powers chat.
+- **Transcription** converts meeting audio into text using local on-device whisper models or a companion STT server.
+- **Intelligence** generates structured meeting summaries, pre-meeting briefs, follow-up emails, and answers questions in chat.
 
-Open **Settings → Transcription** or **Settings → Intelligence** to choose a provider and model.
+Configure these under **Settings → Transcription** and **Settings → Intelligence**.
 
-## Choose a setup
+## Intelligence providers
+
+You can power Notare's intelligence features with local offline models, your own API keys, OpenRouter, your existing AI subscriptions, or the `omp` gateway.
 
 <CardGroup cols={2}>
-  <Card title="Anarlog Cloud" icon="cloud">
-    Sign in and choose Anarlog for the quickest setup. Hosted models require Pro.
+  <Card title="Local language models" icon="server">
+    Connect Ollama or LM Studio to run summaries and chat entirely offline on your computer.
   </Card>
-  <Card title="On-device transcription" icon="laptop">
-    Download a supported local model from Transcription. Local models are available on supported Apple Silicon Macs.
+  <Card title="Bring your own API key" icon="key">
+    Use direct API keys with OpenAI, Anthropic, Google Gemini, Mistral, Azure, or Cloudflare.
   </Card>
-  <Card title="Your API key" icon="key">
-    Configure a provider, enter its API key, then select it under Model being used.
+  <Card title="Sign in with OpenRouter" icon="route">
+    Connect with one click via official OAuth to access hundreds of hosted models.
   </Card>
-  <Card title="Local language model" icon="server">
-    Connect LM Studio or Ollama to generate summaries on your computer.
+  <Card title="Use my subscription" icon="user-check">
+    Unofficial sign-in using your Claude, ChatGPT, or Google consumer subscription.
   </Card>
 </CardGroup>
 
-Models labeled **Live** show text during the meeting. Models labeled **After recording** transcribe after you stop.
+---
 
-## LM Studio
+## Local language models
 
-1. Install [LM Studio](https://lmstudio.ai/download) and download a model.
-2. Start its local server on port `1234` and enable CORS.
-3. In Anarlog, open **Settings → Intelligence → Configure Providers → LM Studio**.
-4. Select the LM Studio model under **Model being used**.
+Local models keep your meeting text, summaries, and chat completely on your machine.
 
-## Ollama
+### Ollama
 
-1. Install [Ollama](https://ollama.com/download).
-2. Start it and pull a model:
+1. Install [Ollama](https://ollama.com/download) and start the service:
 
    ```bash
    ollama serve
    ollama pull llama3.2
    ```
 
-3. In Anarlog, open **Settings → Intelligence → Configure Providers → Ollama**.
-4. Select the Ollama model under **Model being used**.
+2. In Notare, open **Settings → Intelligence → Configure Providers → Ollama**.
+3. Confirm the base URL (`http://127.0.0.1:11434/v1`).
+4. Select your pulled model under **Model being used**.
+
+### LM Studio
+
+1. Install [LM Studio](https://lmstudio.ai/download) and load your desired model.
+2. In LM Studio's Local Server tab, start the server on port `1234` and ensure **CORS** is enabled.
+3. In Notare, open **Settings → Intelligence → Configure Providers → LM Studio**.
+4. Confirm the base URL (`http://127.0.0.1:1234/v1`).
+5. Select the LM Studio model under **Model being used**.
+
+---
+
+## Bring your own API keys
+
+If you prefer hosted cloud models, you can enter your own API keys:
+
+1. Open **Settings → Intelligence → Configure Providers**.
+2. Select your provider:
+   - **OpenAI**: Enter your `sk-...` API key.
+   - **Anthropic**: Enter your Anthropic API key.
+   - **Google Gemini**: Enter your Google AI Studio API key.
+   - **Mistral**: Enter your Mistral API key.
+   - **Azure OpenAI**: Enter your endpoint URL and API key.
+   - **Azure AI Foundry**: Enter your resource base URL and API key.
+   - **Cloudflare Workers AI**: Enter your account-specific gateway URL and API token.
+   - **Custom**: Connect any OpenAI-compatible endpoint.
+3. Select your model under **Model being used**.
+
+All API keys are encrypted and stored in your operating system's native keychain (macOS Keychain, Windows Credential Manager, or Secret Service on Linux).
+
+---
+
+## Sign in with OpenRouter (official)
+
+Notare supports official OAuth sign-in with [OpenRouter](https://openrouter.ai), giving you access to hundreds of models through a single balance:
+
+1. Open **Settings → Intelligence → Configure Providers → OpenRouter**.
+2. Click **Sign in with OpenRouter**.
+3. Your default web browser opens OpenRouter's official authorization screen.
+4. Authorize Notare. An API key is generated and securely saved to your operating system's keychain via local loopback.
+5. Choose your desired model under **Model being used**.
+
+<Note>
+  You can also manually paste an existing OpenRouter API key into the input field below the sign-in button if preferred.
+</Note>
+
+---
+
+## Use my subscription (unofficial)
+
+Under **Settings → Intelligence → Configure Providers → Use my subscription (unofficial)**, Notare allows you to sign in with your existing consumer subscription (Claude Pro/Team, ChatGPT Plus/Team, or Google Gemini):
+
+- **Anthropic (Subscription)**: Signs in using OAuth credentials for Claude Code CLI.
+- **OpenAI Codex (Subscription)**: Signs in using OAuth credentials for ChatGPT Codex CLI with the Responses API.
+- **Google Gemini (Subscription)**: Signs in using OAuth credentials for Gemini CLI / Cloud Code Assist.
+
+### Risks and terms
+
+Before using subscription credentials, you must acknowledge the disclosure notice:
+
+<Warning>
+  **Important risks of subscription sign-ins:**
+  - **Unofficial and not endorsed:** This integration is not endorsed, certified, or supported by Anthropic, OpenAI, or Google.
+  - **CLI credential reuse:** The app authenticates using client identifiers originally intended for the vendors' command-line developer tools.
+  - **Account risk:** AI vendors may modify, rate-limit, or terminate CLI access at any time. Using these credentials in third-party desktop software carries the risk of affecting your account standing under each vendor's terms of service.
+  - **Catalog kill switch:** If a vendor changes their API or deprecates CLI access, Notare's remote model catalog may disable ChatGPT or Gemini subscription options to prevent unexpected errors.
+  - **Data transmission:** Your prompts, notes, and transcripts are transmitted directly to the respective vendor's cloud endpoints (e.g. `api.anthropic.com` or `chatgpt.com`).
+</Warning>
+
+### Signing in
+
+1. In **Configure Providers**, expand **Use my subscription (unofficial)**.
+2. Click **Sign in** next to your provider and accept the risk disclosure.
+3. Your browser opens the vendor's authorization prompt. Log in and approve the request.
+4. If the browser does not redirect automatically to Notare, copy the authorization code from the browser redirect URL and paste it into the code input in Notare.
+5. Once signed in, select the subscription model under **Model being used**.
+
+---
+
+## omp Gateway provider
+
+If you run the `omp` agent gateway locally on your machine or private network, you can connect Notare directly to it:
+
+1. Start your local gateway:
+
+   ```bash
+   omp auth-gateway serve --bind=127.0.0.1:4000
+   ```
+
+2. In Notare, open **Settings → Intelligence → Configure Providers → omp Gateway**.
+3. Set the **Base URL** (defaults to `http://127.0.0.1:4000/v1`).
+4. Enter your bearer token:
+   - Run `omp auth-gateway token` to print your bearer token.
+   - If your gateway was started with `--no-auth`, the API key field is optional.
+5. Click **Detect** to probe the gateway. Notare will test connectivity and display the count of available models.
+6. Select your preferred model under **Model being used**.
+
+---
 
 ## What leaves your computer
 
-Your app data remains local. Local transcription and local Intelligence providers process content on your computer. If you select Anarlog Cloud or another hosted provider, Anarlog sends the audio or text needed for that request to the selected provider.
+Notare is local-first:
+
+- If you select **on-device Whisper** for transcription and **Ollama** or **LM Studio** for intelligence, **nothing leaves your computer**.
+- If you configure a hosted provider (OpenAI, Anthropic, OpenRouter, or subscriptions), meeting audio or text needed for transcription and summarization is sent directly to that provider's endpoints. Notare operates no intermediate proxy servers.

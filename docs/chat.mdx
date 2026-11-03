@@ -1,0 +1,70 @@
+---
+title: "Chat and Recipes"
+description: "Ask questions across your meetings, navigate citations, and use prompt recipes."
+---
+
+Notare includes an integrated AI assistant that can query your notes and transcripts. You can ask questions about the current meeting or query your entire meeting history.
+
+Open Chat from the right sidebar or using the chat icon in any note.
+
+## Scope selector
+
+The scope selector in the chat toolbar controls which meetings and transcripts the AI can search and reference:
+
+- **This meeting:** Default when viewing an open note. Restricts retrieval strictly to the current meeting note and its audio transcript.
+- **Selected:** Scopes queries to a specific set of manually selected meetings.
+- **Person:** Filters context to meetings involving a specific participant or attendee.
+- **Organization:** Filters context to meetings involving attendees from a specific company or domain.
+- **Everything:** Default when opening chat without a note open. Searches across your entire local database of meetings, notes, and transcripts.
+
+To switch scope, click the scope button in the chat header and choose an option.
+
+---
+
+## Interactive citation chips
+
+When the assistant answers questions based on meeting transcripts, it grounds facts with timestamped citations:
+
+- Citations appear in the message as interactive chips (for example, `Meeting · 14:22`).
+- Clicking a citation chip immediately opens the referenced meeting note and seeks the audio recording to that exact millisecond.
+- You can listen to what was said firsthand to verify context and tone.
+
+---
+
+## Recipes
+
+Recipes are reusable prompt templates that run common queries against your notes without retyping long instructions.
+
+### Using recipes in chat
+
+1. In the chat message input, type `/` at the beginning of a line or after a space.
+2. The **Recipes** slash menu opens above the input box.
+3. Start typing to filter recipes by title or prompt content (for example, `/action` or `/decision`).
+4. Use the **Up** and **Down** arrow keys to highlight a recipe, then press **Enter** or **Tab** to apply it.
+5. The recipe chip appears in your message input. Add any additional instructions if needed, then send.
+
+### Built-in recipes
+
+Notare includes built-in recipes ready to use:
+
+- **Action items:** Extracts tasks, owners, and due dates from the meeting.
+- **Key decisions:** Summarizes decisions made, rationale, and alternatives discussed.
+- **Follow-up email draft:** Prepares a professional recap and next steps for attendees.
+- **Customer objections:** Surfaces concerns raised by external participants.
+- **Weekly digest:** Aggregates progress and blockers across meetings.
+- **Questions I didn't ask:** Highlights unaddressed topics or gaps in the discussion.
+- **Pre-meeting brief:** Synthesizes attendee context and past discussion topics.
+
+### Managing recipes
+
+You can create and customize recipes under **Settings → Recipes**:
+
+1. Open **Settings → Recipes**.
+2. Click **New Recipe** (or click the duplicate icon on an existing recipe to start from a template).
+3. Fill in the recipe fields:
+   - **Title:** The name displayed in the slash menu.
+   - **Scope:** Choose **Single meeting** (runs against one note) or **Multiple meetings** (runs across multi-meeting contexts).
+   - **Prompt:** The system instructions. You can include `{{selection}}` to inject highlighted text or note context.
+4. Click **Save**.
+
+Your custom recipes immediately become available in the chat `/` menu.
