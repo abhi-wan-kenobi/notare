@@ -24,6 +24,10 @@ import { ExportModal } from "./export-modal";
 import { FollowupEmail } from "./followup";
 import { Listening } from "./listening";
 import { ShowInFinder } from "./misc";
+import {
+  ScheduleFollowupDialog,
+  ScheduleFollowupMenuItem,
+} from "./schedule-followup";
 
 import { openFloatingMeetingPanel } from "~/meeting-float/host";
 import {
@@ -49,6 +53,7 @@ export function OverflowButton({
 }) {
   const [open, setOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isScheduleFollowupOpen, setIsScheduleFollowupOpen] = useState(false);
   const hasTranscript = useHasTranscript(sessionId);
   const currentNoteHasContent = useCurrentNoteHasContent(
     sessionId,
@@ -119,6 +124,12 @@ export function OverflowButton({
               sessionId={sessionId}
               onSelect={() => setOpen(false)}
             />
+            <ScheduleFollowupMenuItem
+              onSelect={() => {
+                setOpen(false);
+                setIsScheduleFollowupOpen(true);
+              }}
+            />
             <DropdownMenuSeparator />
             {showListeningAction && (
               <Listening sessionId={sessionId} hasTranscript={hasTranscript} />
@@ -178,6 +189,11 @@ export function OverflowButton({
         currentView={currentView}
         open={isExportModalOpen}
         onOpenChange={setIsExportModalOpen}
+      />
+      <ScheduleFollowupDialog
+        sessionId={sessionId}
+        open={isScheduleFollowupOpen}
+        onOpenChange={setIsScheduleFollowupOpen}
       />
     </>
   );
