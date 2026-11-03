@@ -41,6 +41,14 @@ pub struct CreateEventInput {
     pub location: Option<String>,
     pub notes: Option<String>,
     pub url: Option<String>,
+    /// Invited attendees. Apple/ics calendars ignore this (no write API for guests).
+    pub attendees: Option<Vec<EventAttendeeInput>>,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, specta::Type)]
+pub struct EventAttendeeInput {
+    pub email: String,
+    pub name: Option<String>,
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, specta::Type)]

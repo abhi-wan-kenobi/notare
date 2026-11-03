@@ -332,6 +332,15 @@ fn list_apple_events(
 
 #[cfg(target_os = "macos")]
 fn create_apple_event(input: CreateEventInput) -> Result<String, Error> {
+    if input.attendees.as_ref().is_some_and(|a| !a.is_empty()) {
+        // Apple's EventKit create path has no attendee/guest API, so silently
+        // dropping them here would invite nobody while reporting success.
+        return Err(Error::UnsupportedOperation {
+            operation: "create_event with attendees",
+            provider: CalendarProviderType::Apple,
+        });
+    }
+
     let handle = hypr_apple_calendar::Handle::new();
 
     let start_date = parse_datetime(&input.started_at, "started_at")?;
