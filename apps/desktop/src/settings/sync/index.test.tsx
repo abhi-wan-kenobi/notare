@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -70,6 +71,7 @@ vi.mock("@lingui/react/macro", () => ({
 }));
 
 import { isValidFingerprint, SettingsSync } from "./index";
+import { usePendingPairLink } from "./pending-pair-link";
 
 // 52 z-base-32 chars, the exact compact-form length sync_p2p::Fingerprint expects.
 const VALID_FINGERPRINT =
@@ -706,6 +708,125 @@ describe("SettingsSync", () => {
       // The status line must refetch on failure too, not just success —
       // otherwise it can keep showing a stale pre-attempt read.
       await waitFor(() => expect(mocks.syncStatus).toHaveBeenCalledTimes(2));
+    });
+  });
+
+  describe("pairing link opened from the OS", () => {
+    const LIVE_STATUS = {
+      kind: "live",
+      engineLoaded: true,
+      running: false,
+    };
+
+    beforeEach(() => {
+      usePendingPairLink.getState().clear();
+      mocks.syncThisDevice.mockResolvedValue(VALID_FINGERPRINT_GROUPED);
+      mocks.syncListPeers.mockResolvedValue([]);
+    });
+
+    afterEach(() => {
+      usePendingPairLink.getState().clear();
+    });
+
+    it("pre-fills the link and starts the join, ending at the confirmation numbers", async () => {
+      mocks.syncStatus.mockResolvedValue(LIVE_STATUS);
+      mocks.pairingJoin.mockResolvedValue({
+        sas: "112233",
+        deviceId: OTHER_FINGERPRINT,
+        deviceName: "Phone",
+      });
+      usePendingPairLink.getState().set("notare://pair#opened");
+
+      renderPage();
+
+      await waitFor(() =>
+        expect(mocks.pairingJoin).toHaveBeenCalledWith(
+          "notare://pair#opened",
+          expect.anything(),
+        ),
+      );
+      await waitFor(() => expect(screen.getByText("112233")).toBeTruthy());
+      expect(
+        (screen.getByLabelText("Pairing link") as HTMLInputElement).value,
+      ).toBe("notare://pair#opened");
+      // Consumed: it must not start a second join on the next render.
+      expect(usePendingPairLink.getState().link).toBeNull();
+      expect(mocks.pairingJoin).toHaveBeenCalledTimes(1);
+    });
+
+    it("starts the join when the link arrives while the page is already open", async () => {
+      mocks.syncStatus.mockResolvedValue(LIVE_STATUS);
+      mocks.pairingJoin.mockResolvedValue({
+        sas: "445566",
+        deviceId: OTHER_FINGERPRINT,
+        deviceName: "Phone",
+      });
+
+      renderPage();
+      await screen.findByLabelText("Pairing link");
+      expect(mocks.pairingJoin).not.toHaveBeenCalled();
+
+      act(() => usePendingPairLink.getState().set("notare://pair#warm"));
+
+      await waitFor(() =>
+        expect(mocks.pairingJoin).toHaveBeenCalledWith(
+          "notare://pair#warm",
+          expect.anything(),
+        ),
+      );
+      await waitFor(() => expect(screen.getByText("445566")).toBeTruthy());
+    });
+
+    it("explains that sync is off, holds the link, and joins once sync is turned on", async () => {
+      mocks.syncEnabled = false;
+      mocks.syncStatus.mockResolvedValue(LIVE_STATUS);
+      mocks.pairingJoin.mockResolvedValue({
+        sas: "778899",
+        deviceId: OTHER_FINGERPRINT,
+        deviceName: "Phone",
+      });
+      usePendingPairLink.getState().set("notare://pair#held");
+
+      renderPage();
+
+      await waitFor(() =>
+        expect(
+          screen.getByText(/pairing link was opened, but sync is off/i),
+        ).toBeTruthy(),
+      );
+      expect(mocks.pairingJoin).not.toHaveBeenCalled();
+
+      fireEvent.click(
+        await screen.findByRole("switch", {
+          name: "Enable device sync (experimental)",
+        }),
+      );
+
+      await waitFor(() =>
+        expect(mocks.pairingJoin).toHaveBeenCalledWith(
+          "notare://pair#held",
+          expect.anything(),
+        ),
+      );
+      await waitFor(() => expect(screen.getByText("778899")).toBeTruthy());
+      expect(
+        screen.queryByText(/pairing link was opened, but sync is off/i),
+      ).toBeNull();
+    });
+
+    it("says so when this build has no device sync, and drops the link", async () => {
+      mocks.syncStatus.mockResolvedValue({ kind: "unavailable" });
+      usePendingPairLink.getState().set("notare://pair#nope");
+
+      renderPage();
+
+      await waitFor(() =>
+        expect(
+          screen.getByText(/pairing link was opened, but device sync isn't/i),
+        ).toBeTruthy(),
+      );
+      expect(usePendingPairLink.getState().link).toBeNull();
+      expect(mocks.pairingJoin).not.toHaveBeenCalled();
     });
   });
 });
