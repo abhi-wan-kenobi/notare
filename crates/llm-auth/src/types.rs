@@ -75,4 +75,16 @@ pub struct CatalogProvider {
     pub system_prefix: Option<String>,
     pub base_url: String,
     pub notes: String,
+    /// Models offered in the subscription picker. Absent in catalogs
+    /// published before this field existed, hence the default.
+    #[serde(default)]
+    pub models: Vec<CatalogModel>,
+    #[serde(default)]
+    pub default_model: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize, specta::Type)]
+pub struct CatalogModel {
+    pub id: String,
+    pub label: String,
 }

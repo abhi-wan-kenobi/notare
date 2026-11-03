@@ -476,6 +476,7 @@ msgstr ""
 
 #: src/onboarding/transcription.tsx
 #: src/settings/ai/llm/disclosure-modal.tsx
+#: src/settings/ai/llm/openrouter-sign-in.tsx
 #: src/settings/ai/llm/select.tsx
 #: src/settings/ai/llm/subscription-card.tsx
 #: src/settings/general/account.tsx
@@ -2454,6 +2455,10 @@ msgstr ""
 msgid "or"
 msgstr ""
 
+#: src/settings/ai/llm/openrouter-sign-in.tsx
+msgid "Or enter an API key manually below."
+msgstr ""
+
 #: src/settings/dictation/index.tsx
 msgid "Orb style"
 msgstr ""
@@ -3231,6 +3236,10 @@ msgstr ""
 msgid "Sign in to your account"
 msgstr ""
 
+#: src/settings/ai/llm/openrouter-sign-in.tsx
+msgid "Sign in with OpenRouter"
+msgstr ""
+
 #: src/settings/ai/llm/configure.tsx
 msgid "Sign in with your Claude, ChatGPT, or Google account to use your subscription directly without entering API keys."
 msgstr ""
@@ -3857,6 +3866,10 @@ msgstr ""
 
 #: src/contacts/organization-details.tsx
 msgid "View LinkedIn profile"
+msgstr ""
+
+#: src/settings/ai/llm/openrouter-sign-in.tsx
+msgid "Waiting for OpenRouter in your browser…"
 msgstr ""
 
 #: src/dictation/orb.tsx

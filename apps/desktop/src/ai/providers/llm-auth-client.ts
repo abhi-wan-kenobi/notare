@@ -66,6 +66,12 @@ export const DEFAULT_CATALOG: LlmAuthCatalog = {
       system_prefix:
         "You are Claude Code, Anthropic's official CLI for Claude.",
       base_url: "https://api.anthropic.com/v1",
+      models: [
+        { id: "claude-sonnet-5-5", label: "Claude Sonnet 5.5" },
+        { id: "claude-opus-5-5", label: "Claude Opus 5.5" },
+        { id: "claude-haiku-5-5", label: "Claude Haiku 5.5" },
+      ],
+      default_model: "claude-sonnet-5-5",
       notes: "Unofficial subscription access via Claude Code OAuth",
     },
     {
@@ -77,6 +83,12 @@ export const DEFAULT_CATALOG: LlmAuthCatalog = {
       },
       system_prefix: null,
       base_url: "https://chatgpt.com/backend-api/codex",
+      models: [
+        { id: "gpt-6.1-sol", label: "GPT-6.1 Sol" },
+        { id: "gpt-6.1-terra", label: "GPT-6.1 Terra" },
+        { id: "gpt-5.6-luna", label: "GPT-5.6 Luna" },
+      ],
+      default_model: "gpt-6.1-sol",
       notes: "Unofficial subscription access via ChatGPT Codex OAuth",
     },
     {
@@ -86,6 +98,11 @@ export const DEFAULT_CATALOG: LlmAuthCatalog = {
       beta_headers: {},
       system_prefix: null,
       base_url: "https://cloudcode-pa.googleapis.com",
+      models: [
+        { id: "gemini-2.5-pro", label: "Gemini 2.5 Pro" },
+        { id: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
+      ],
+      default_model: "gemini-2.5-pro",
       notes: "Unofficial subscription access via Gemini CLI OAuth",
     },
   ],
@@ -101,7 +118,26 @@ export const commands = {
   accessToken: (provider: LlmAuthProvider) =>
     pluginCommands.accessToken(provider),
   catalog: () => pluginCommands.catalog(),
+  openrouterSignIn: () => pluginCommands.openrouterSignIn(),
+  openrouterCancel: () => pluginCommands.openrouterCancel(),
 };
+
+/**
+ * Model ids for a subscription picker. The catalog list wins (default model
+ * first); `fallback` only applies when the catalog has none, e.g. an older
+ * published catalog that predates `models`.
+ */
+export function subscriptionModelIds(
+  catalogProvider: LlmAuthCatalogProvider | undefined,
+  fallback: readonly string[],
+): string[] {
+  const ids = (catalogProvider?.models ?? []).map((m) => m.id);
+  if (ids.length === 0) return [...fallback];
+  const preferred = catalogProvider?.default_model;
+  return preferred && ids.includes(preferred)
+    ? [preferred, ...ids.filter((id) => id !== preferred)]
+    : ids;
+}
 
 export async function unwrap<T>(
   promise: Promise<Result<T, string>>,

@@ -11,6 +11,7 @@ import { Badge } from "@hypr/ui/components/ui/badge";
 import { Button } from "@hypr/ui/components/ui/button";
 
 import { useLlmSettings } from "./context";
+import { OpenRouterSignIn } from "./openrouter-sign-in";
 import {
   ProviderId,
   PROVIDERS,
@@ -62,6 +63,11 @@ export function ConfigureProviders() {
                       apiKey={values.api_key}
                     />
                   )
+                : undefined
+            }
+            signIn={
+              provider.id === "openrouter"
+                ? ({ setApiKey }) => <OpenRouterSignIn setApiKey={setApiKey} />
                 : undefined
             }
           />

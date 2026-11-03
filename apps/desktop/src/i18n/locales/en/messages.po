@@ -476,6 +476,7 @@ msgstr "Can transcribe while the meeting is happening."
 
 #: src/onboarding/transcription.tsx
 #: src/settings/ai/llm/disclosure-modal.tsx
+#: src/settings/ai/llm/openrouter-sign-in.tsx
 #: src/settings/ai/llm/select.tsx
 #: src/settings/ai/llm/subscription-card.tsx
 #: src/settings/general/account.tsx
@@ -2454,6 +2455,10 @@ msgstr "Open Settings"
 msgid "or"
 msgstr "or"
 
+#: src/settings/ai/llm/openrouter-sign-in.tsx
+msgid "Or enter an API key manually below."
+msgstr "Or enter an API key manually below."
+
 #: src/settings/dictation/index.tsx
 msgid "Orb style"
 msgstr "Orb style"
@@ -3231,6 +3236,10 @@ msgstr "Sign in to unlock cloud transcription and AI models, plus Pro features l
 msgid "Sign in to your account"
 msgstr "Sign in to your account"
 
+#: src/settings/ai/llm/openrouter-sign-in.tsx
+msgid "Sign in with OpenRouter"
+msgstr "Sign in with OpenRouter"
+
 #: src/settings/ai/llm/configure.tsx
 msgid "Sign in with your Claude, ChatGPT, or Google account to use your subscription directly without entering API keys."
 msgstr "Sign in with your Claude, ChatGPT, or Google account to use your subscription directly without entering API keys."
@@ -3858,6 +3867,10 @@ msgstr "View all in Snippets"
 #: src/contacts/organization-details.tsx
 msgid "View LinkedIn profile"
 msgstr "View LinkedIn profile"
+
+#: src/settings/ai/llm/openrouter-sign-in.tsx
+msgid "Waiting for OpenRouter in your browser…"
+msgstr "Waiting for OpenRouter in your browser…"
 
 #: src/dictation/orb.tsx
 msgid "Warm petals that bloom and breathe with your voice."

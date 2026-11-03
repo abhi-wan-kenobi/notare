@@ -11,6 +11,7 @@ use crate::adapters::{anthropic, gemini, openai_codex};
 use crate::catalog::CatalogManager;
 use crate::clock::{Clock, SystemClock, should_refresh};
 use crate::error::Error;
+use crate::openrouter;
 use crate::store::TokenStore;
 use crate::types::{
     AccessTokenResult, AuthMode, AuthStatus, CatalogResult, ProviderId, StartFlowResult,
@@ -238,6 +239,24 @@ impl<S: TokenStore, C: Clock> LlmAuthManager<S, C> {
         let mut flows = self.active_flows.write().await;
         flows.remove(&provider);
         Ok(())
+    }
+
+    /// Official "Sign in with OpenRouter" PKCE flow. Returns the API key; the
+    /// caller owns where it is stored. Not catalog-gated: this is OpenRouter's
+    /// documented OAuth for apps, not an unofficial integration.
+    pub async fn openrouter_sign_in<O, F>(&self, open: O, cancel: F) -> Result<String, Error>
+    where
+        O: FnOnce(String) -> Result<(), String>,
+        F: Future<Output = ()>,
+    {
+        openrouter::sign_in(
+            &self.http,
+            &openrouter::Endpoints::default(),
+            open,
+            cancel,
+            openrouter::REDIRECT_TIMEOUT,
+        )
+        .await
     }
 
     /// Logout and delete stored tokens, revoking if vendor supports it.

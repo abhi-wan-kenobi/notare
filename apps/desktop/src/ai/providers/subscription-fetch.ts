@@ -108,7 +108,14 @@ export type SubscriptionFetchOptions = {
     token?: LlmAuthToken,
   ) => string | Promise<string>;
   rewriteUrl?: (url: string) => string;
-  transformResponse?: (response: Response) => Promise<Response> | Response;
+  /**
+   * `context.requestBody` is the body as the caller sent it, before
+   * `transformBody` ran — lets a response transform know what was asked for.
+   */
+  transformResponse?: (
+    response: Response,
+    context: { requestBody: string | undefined },
+  ) => Promise<Response> | Response;
   fetchFn?: typeof fetch;
   getToken?: () => Promise<LlmAuthToken>;
 };
@@ -187,6 +194,10 @@ export function createSubscriptionFetch(
       headers,
       body,
     };
+    const finish = (res: Response) =>
+      options.transformResponse
+        ? options.transformResponse(res, { requestBody: bufferedBody })
+        : res;
 
     let response = await baseFetch(url, requestInit);
 
@@ -251,9 +262,7 @@ export function createSubscriptionFetch(
             if (retryResponse.status === 403 || retryResponse.status === 429) {
               await handleVendorErrorToast(retryResponse);
             }
-            return options.transformResponse
-              ? await options.transformResponse(retryResponse)
-              : retryResponse;
+            return await finish(retryResponse);
           }
           response = retryResponse;
         }
@@ -262,21 +271,15 @@ export function createSubscriptionFetch(
       }
 
       sonnerToast.error(`${originalVendorMsg}. Please sign in again.`);
-      return options.transformResponse
-        ? await options.transformResponse(response)
-        : response;
+      return await finish(response);
     }
 
     // 403 / 429 handling: toast vendor message
     if (response.status === 403 || response.status === 429) {
       await handleVendorErrorToast(response);
-      return options.transformResponse
-        ? await options.transformResponse(response)
-        : response;
+      return await finish(response);
     }
 
-    return options.transformResponse
-      ? await options.transformResponse(response)
-      : response;
+    return await finish(response);
   };
 }

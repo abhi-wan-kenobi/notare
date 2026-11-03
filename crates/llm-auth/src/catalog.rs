@@ -15,6 +15,12 @@ pub const DEFAULT_CATALOG_JSON: &str = r#"{
       },
       "system_prefix": "You are Claude Code, Anthropic's official CLI for Claude.",
       "base_url": "https://api.anthropic.com/v1",
+      "models": [
+        { "id": "claude-sonnet-5-5", "label": "Claude Sonnet 5.5" },
+        { "id": "claude-opus-5-5", "label": "Claude Opus 5.5" },
+        { "id": "claude-haiku-5-5", "label": "Claude Haiku 5.5" }
+      ],
+      "default_model": "claude-sonnet-5-5",
       "notes": "Unofficial Claude Code OAuth integration. Feature is OFF by default; the user's consumer account carries the risk."
     },
     {
@@ -26,6 +32,12 @@ pub const DEFAULT_CATALOG_JSON: &str = r#"{
       },
       "system_prefix": null,
       "base_url": "https://chatgpt.com/backend-api/codex",
+      "models": [
+        { "id": "gpt-6.1-sol", "label": "GPT-6.1 Sol" },
+        { "id": "gpt-6.1-terra", "label": "GPT-6.1 Terra" },
+        { "id": "gpt-5.6-luna", "label": "GPT-5.6 Luna" }
+      ],
+      "default_model": "gpt-6.1-sol",
       "notes": "Unofficial Codex OAuth integration using ChatGPT Responses API. Feature is OFF by default; the user's consumer account carries the risk."
     },
     {
@@ -35,6 +47,11 @@ pub const DEFAULT_CATALOG_JSON: &str = r#"{
       "beta_headers": {},
       "system_prefix": null,
       "base_url": "https://cloudcode-pa.googleapis.com/v1internal",
+      "models": [
+        { "id": "gemini-2.5-pro", "label": "Gemini 2.5 Pro" },
+        { "id": "gemini-2.5-flash", "label": "Gemini 2.5 Flash" }
+      ],
+      "default_model": "gemini-2.5-pro",
       "notes": "Unofficial Gemini CLI OAuth integration using Cloud Code Assist. Feature is OFF by default; the user's consumer account carries the risk."
     }
   ]
@@ -178,5 +195,63 @@ mod tests {
         let resolved = resolve_catalog(DEFAULT_CATALOG_JSON, None);
         assert_eq!(resolved.providers.len(), 3);
         assert!(!resolved.providers[0].enabled);
+    }
+
+    #[test]
+    fn catalog_without_models_field_still_parses() {
+        let old_remote = r#"{
+            "providers": [
+                {
+                    "id": "openai_codex",
+                    "enabled": true,
+                    "label": "Old remote",
+                    "beta_headers": {},
+                    "system_prefix": null,
+                    "base_url": "https://chatgpt.com/backend-api/codex",
+                    "notes": ""
+                }
+            ]
+        }"#;
+
+        let resolved = resolve_catalog(DEFAULT_CATALOG_JSON, Some(old_remote));
+        assert_eq!(resolved.providers.len(), 1);
+        assert_eq!(resolved.providers[0].label, "Old remote");
+        assert!(resolved.providers[0].models.is_empty());
+        assert_eq!(resolved.providers[0].default_model, None);
+    }
+
+    fn assert_model_lists(catalog: &CatalogResult) {
+        for p in &catalog.providers {
+            assert!(!p.models.is_empty(), "{:?} must list models", p.id);
+            let default = p
+                .default_model
+                .as_deref()
+                .unwrap_or_else(|| panic!("{:?} must name a default model", p.id));
+            assert!(
+                p.models.iter().any(|m| m.id == default),
+                "{:?} default model {default} must be in its models list",
+                p.id
+            );
+        }
+    }
+
+    #[test]
+    fn embedded_catalog_lists_models_with_default_among_them() {
+        assert_model_lists(&default_catalog());
+    }
+
+    #[test]
+    fn published_catalog_file_lists_models_with_default_among_them() {
+        let published = parse_catalog(include_str!("../../../catalog/llm-auth.json"))
+            .expect("catalog/llm-auth.json must parse");
+        assert_eq!(published.providers.len(), 3);
+        assert_model_lists(&published);
+
+        let embedded = default_catalog();
+        for p in &published.providers {
+            let e = embedded.providers.iter().find(|e| e.id == p.id).unwrap();
+            assert_eq!(p.models, e.models, "{:?} model list drifted", p.id);
+            assert_eq!(p.default_model, e.default_model);
+        }
     }
 }

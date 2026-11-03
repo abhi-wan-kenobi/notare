@@ -3,13 +3,16 @@ mod error;
 mod keyring_store;
 
 use hypr_llm_auth::LlmAuthManager;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 pub use error::Error;
 pub use keyring_store::KeyringTokenStore;
 
 pub struct LlmAuthState<R: tauri::Runtime> {
     pub manager: Arc<LlmAuthManager<KeyringTokenStore<R>>>,
+    /// Cancels the in-flight OpenRouter sign-in. Replacing it drops the
+    /// previous sender, which cancels the previous flow too.
+    pub openrouter_cancel: Mutex<Option<tokio::sync::oneshot::Sender<()>>>,
 }
 
 const PLUGIN_NAME: &str = "llm-auth";
@@ -25,6 +28,8 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
             commands::logout::<tauri::Wry>,
             commands::access_token::<tauri::Wry>,
             commands::catalog::<tauri::Wry>,
+            commands::openrouter_sign_in::<tauri::Wry>,
+            commands::openrouter_cancel::<tauri::Wry>,
         ])
         .error_handling(tauri_specta::ErrorHandlingMode::Result)
 }
@@ -38,7 +43,10 @@ pub fn init<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
             use tauri::Manager;
             let store = Arc::new(KeyringTokenStore::new(app.clone()));
             let manager = Arc::new(LlmAuthManager::new(store));
-            app.manage(LlmAuthState { manager });
+            app.manage(LlmAuthState {
+                manager,
+                openrouter_cancel: Mutex::new(None),
+            });
             Ok(())
         })
         .build()

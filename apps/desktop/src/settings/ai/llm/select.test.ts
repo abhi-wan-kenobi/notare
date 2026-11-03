@@ -70,4 +70,56 @@ describe("getLlmProviderStatus", () => {
     expect(status.configured).toBe(true);
     expect(status.listModels).toBeTypeOf("function");
   });
+
+  describe("subscription model lists", () => {
+    const signedIn = {
+      openai_codex: { signed_in: true, account_label: null, expires_at: null },
+    };
+    const catalogWith = (models?: Array<{ id: string; label: string }>) => ({
+      providers: [
+        {
+          id: "openai_codex" as const,
+          enabled: true,
+          label: "OpenAI",
+          beta_headers: {},
+          system_prefix: null,
+          base_url: "",
+          notes: "",
+          models,
+          default_model: "gpt-b",
+        },
+      ],
+    });
+
+    test("lists the catalog models, default first", async () => {
+      const status = getLlmProviderStatus({
+        provider: provider("openai_subscription"),
+        isAuthenticated: false,
+        isPaid: false,
+        authStatuses: signedIn,
+        catalog: catalogWith([
+          { id: "gpt-a", label: "A" },
+          { id: "gpt-b", label: "B" },
+        ]),
+      });
+
+      expect((await status.listModels!()).models).toEqual(["gpt-b", "gpt-a"]);
+    });
+
+    test("uses the built-in list when the catalog has no models", async () => {
+      const status = getLlmProviderStatus({
+        provider: provider("openai_subscription"),
+        isAuthenticated: false,
+        isPaid: false,
+        authStatuses: signedIn,
+        catalog: catalogWith(undefined),
+      });
+
+      expect((await status.listModels!()).models).toEqual([
+        "gpt-6.1-sol",
+        "gpt-6.1-terra",
+        "gpt-5.6-luna",
+      ]);
+    });
+  });
 });
