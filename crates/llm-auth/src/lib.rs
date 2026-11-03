@@ -34,9 +34,17 @@ mod tests {
     #[tokio::test]
     async fn start_refuses_disabled_provider() {
         let store = Arc::new(MemoryTokenStore::new());
-        let manager = LlmAuthManager::new(store);
+        // Point the remote override at a closed loopback port so this test
+        // checks the embedded default (all disabled) instead of whatever
+        // catalog/llm-auth.json on `main` says today.
+        let manager = LlmAuthManager::with_clock_and_catalog(
+            store,
+            Arc::new(clock::SystemClock),
+            catalog::CatalogManager::with_override_url("http://127.0.0.1:9/catalog.json".into()),
+            reqwest::Client::new(),
+        );
 
-        // All providers are disabled by default
+        // All providers are disabled in the embedded catalog
         let res = manager.start(ProviderId::Anthropic).await;
         assert!(matches!(
             res,
