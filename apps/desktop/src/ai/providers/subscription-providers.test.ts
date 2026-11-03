@@ -134,7 +134,12 @@ describe("Anthropic Subscription Provider", () => {
     await anthropicFetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       body: originalBody,
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        // What @ai-sdk/anthropic adds; Anthropic rejects OAuth calls carrying these.
+        "x-api-key": "subscription",
+        "anthropic-dangerous-direct-browser-access": "true",
+      },
     });
 
     expect(capturedUrl).toBe("https://api.anthropic.com/v1/messages");
@@ -144,9 +149,11 @@ describe("Anthropic Subscription Provider", () => {
       "claude-code-20250219,oauth-2025-04-20",
     );
     expect(headers.get("anthropic-version")).toBe("2023-06-01");
-    expect(headers.get("anthropic-dangerous-direct-browser-access")).toBe(
-      "true",
-    );
+    expect(headers.get("x-api-key")).toBeNull();
+    expect(headers.get("anthropic-dangerous-direct-browser-access")).toBeNull();
+    // Empty Origin tells tauri-plugin-http (unsafe-headers) to drop its
+    // automatic `Origin: tauri://localhost`, which triggers Anthropic's CORS block.
+    expect(headers.get("Origin")).toBe("");
 
     const parsedBody = JSON.parse(String(capturedInit?.body));
     expect(parsedBody.system[0]).toEqual({

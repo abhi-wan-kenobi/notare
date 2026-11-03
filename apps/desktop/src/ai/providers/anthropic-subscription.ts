@@ -73,15 +73,14 @@ export function createAnthropicSubscriptionFetch(
     provider: "anthropic",
     fetchFn: options.fetchFn,
     getToken: options.getToken,
-    injectHeaders: (token) => {
-      const headers: Record<string, string> = {
-        Authorization: `Bearer ${token}`,
-        "anthropic-version": "2023-06-01",
-        "anthropic-dangerous-direct-browser-access": "true",
-        ...betaHeaders,
-      };
-      return headers;
-    },
+    // OAuth requests must look like the official CLI's: bearer token only —
+    // no browser-access flag, no x-api-key (the SDK inserts a placeholder).
+    dropHeaders: ["x-api-key", "anthropic-dangerous-direct-browser-access"],
+    injectHeaders: (token) => ({
+      Authorization: `Bearer ${token}`,
+      "anthropic-version": "2023-06-01",
+      ...betaHeaders,
+    }),
     transformBody: (bodyText) =>
       transformAnthropicRequestBody(bodyText, systemPrefix),
   });

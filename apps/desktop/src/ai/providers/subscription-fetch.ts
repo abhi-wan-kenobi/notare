@@ -8,6 +8,17 @@ import {
   type LlmAuthToken,
 } from "./llm-auth-client";
 
+/**
+ * tauri-plugin-http stamps every request with `Origin: tauri://localhost`.
+ * Anthropic rejects OAuth calls that carry an Origin ("CORS requests are not
+ * allowed for this Organization"); the official CLIs never send one. With the
+ * plugin's `unsafe-headers` feature (enabled in the workspace), an empty Origin
+ * makes it drop the header entirely.
+ */
+export function stripBrowserOrigin(headers: Headers): void {
+  headers.set("Origin", "");
+}
+
 export async function extractVendorErrorMessage(
   response: Response,
 ): Promise<string> {
@@ -89,6 +100,8 @@ export type SubscriptionFetchOptions = {
     token: string,
     extra: Partial<Record<string, string>>,
   ) => Record<string, string>;
+  /** Headers the underlying SDK adds that must not reach the vendor. */
+  dropHeaders?: string[];
   transformBody?: (
     bodyText: string,
     extra?: Partial<Record<string, string>>,
@@ -150,6 +163,8 @@ export function createSubscriptionFetch(
         headers.set(key, value);
       }
     }
+    for (const name of options.dropHeaders ?? []) headers.delete(name);
+    stripBrowserOrigin(headers);
 
     let bodyInput: BodyInit | null | undefined = init?.body;
     if (
@@ -211,6 +226,10 @@ export function createSubscriptionFetch(
               retryHeaders.set(key, value);
             }
           }
+          for (const name of options.dropHeaders ?? []) {
+            retryHeaders.delete(name);
+          }
+          stripBrowserOrigin(retryHeaders);
 
           let retryBody: BodyInit | undefined = bufferedBody;
           if (options.transformBody && bufferedBody !== undefined) {
