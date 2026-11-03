@@ -490,6 +490,87 @@ async fn page_that_does_not_advance_the_cursor_cannot_loop_the_puller() {
 }
 
 #[tokio::test]
+async fn non_empty_page_that_does_not_advance_the_cursor_is_rejected_unapplied() {
+    let source = Arc::new(FakeSource::new(1));
+    let (mut peer, handle) = RawPeer::start(Arc::clone(&source), cfg(10));
+    let (after, _) = peer.handshake().await;
+    let stale = Message::Changes(WirePage {
+        changes: vec![row(1)],
+        next: after,
+        more: false,
+    });
+    peer.writer().send(&stale).await.unwrap();
+
+    assert!(matches!(
+        handle.await.unwrap(),
+        Err(SessionError::Violation(_))
+    ));
+    assert_eq!(source.apply_calls(), 0);
+}
+
+async fn recv_changes(peer: &mut RawPeer) -> WirePage {
+    match peer.r.recv().await.unwrap() {
+        Some(Message::Changes(p)) => p,
+        other => panic!("expected Changes, got {other:?}"),
+    }
+}
+
+#[tokio::test]
+async fn serve_done_resets_so_a_pull_after_an_acked_final_page_is_still_served() {
+    let source = Arc::new(FakeSource::new(1));
+    source.write_many("t", "k", 2);
+    let (mut peer, handle) = RawPeer::start(Arc::clone(&source), cfg(10));
+    let (after, _) = peer.handshake().await;
+
+    // Pull everything as one final page and ack it: serving looks complete.
+    let pull_all = Message::Pull {
+        after: WireCursor::default(),
+        limit: 10,
+    };
+    peer.writer().send(&pull_all).await.unwrap();
+    let all = recv_changes(&mut peer).await;
+    assert!(!all.more);
+    let ack = Message::Ack { cursor: all.next };
+    peer.writer().send(&ack).await.unwrap();
+
+    // Pull again one row at a time: this page is not final.
+    let pull_one = Message::Pull {
+        after: WireCursor::default(),
+        limit: 1,
+    };
+    peer.writer().send(&pull_one).await.unwrap();
+    let first = recv_changes(&mut peer).await;
+    assert!(first.more);
+
+    // Finish the session's own pull with an empty final page.
+    let empty_final = Message::Changes(WirePage {
+        changes: vec![],
+        next: after,
+        more: false,
+    });
+    peer.writer().send(&empty_final).await.unwrap();
+    assert!(matches!(
+        peer.r.recv().await.unwrap(),
+        Some(Message::Ack { .. })
+    ));
+
+    // The session must still serve the rest of the re-opened direction.
+    let pull_rest = Message::Pull {
+        after: first.next,
+        limit: 1,
+    };
+    peer.writer().send(&pull_rest).await.unwrap();
+    let rest = recv_changes(&mut peer).await;
+    assert!(!rest.more);
+    let ack = Message::Ack { cursor: rest.next };
+    peer.writer().send(&ack).await.unwrap();
+    peer.w.shutdown().await.unwrap();
+
+    let report = handle.await.unwrap().unwrap();
+    assert_eq!(report.pages_served, 3);
+}
+
+#[tokio::test]
 async fn silent_peer_times_out() {
     let source = Arc::new(FakeSource::new(1));
     let config = SessionConfig {

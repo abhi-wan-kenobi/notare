@@ -174,10 +174,16 @@ impl PluginDbRuntime {
     /// live queries up (app-wide resources) and the CRR tables converted —
     /// their change tracking is local and costs nothing without a peer. A
     /// no-op if sync was never started.
+    ///
+    /// Holds the sync mutex for the whole call, across `lifecycle.stop()`'s
+    /// await: releasing it between `take()` and `stop()` let a concurrent
+    /// `start_sync_with_config` see the slot empty and start a second
+    /// `SyncLifecycle` — two agents writing cr-sqlite's CRR state on the
+    /// same pool at once — while the first was still shutting down.
     #[cfg(all(feature = "sync", sync_platform))]
     pub async fn stop_sync(&self) -> std::result::Result<(), crate::sync::SyncError> {
-        let lifecycle = self.sync.lock().await.take();
-        if let Some(lifecycle) = lifecycle {
+        let mut guard = self.sync.lock().await;
+        if let Some(lifecycle) = guard.take() {
             lifecycle.stop().await;
         }
         Ok(())
@@ -326,8 +332,16 @@ impl PluginDbRuntime {
     /// exactly that reason.
     pub async fn shutdown(&self) {
         #[cfg(all(feature = "sync", sync_platform))]
-        if let Some(lifecycle) = self.sync.lock().await.take() {
-            lifecycle.stop().await;
+        {
+            // Bound to a variable, not inlined into the `if let` scrutinee:
+            // this must hold the lock across `stop().await` (same reason as
+            // `stop_sync`), and relying on `if let`'s temporary-lifetime
+            // extension to do that silently is exactly the shape a future
+            // edit could change without noticing.
+            let mut guard = self.sync.lock().await;
+            if let Some(lifecycle) = guard.take() {
+                lifecycle.stop().await;
+            }
         }
 
         self.live_query_runtime.shutdown();

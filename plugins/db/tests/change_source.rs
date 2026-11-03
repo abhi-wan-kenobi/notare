@@ -94,7 +94,7 @@ impl Node {
         rows.iter()
             .map(|row| {
                 (0..row.len())
-                    .map(|i| hypr_crsqlite::SqlValue::decode(row.try_get_raw(i).unwrap()))
+                    .map(|i| hypr_crsqlite::SqlValue::decode(row.try_get_raw(i).unwrap()).unwrap())
                     .collect()
             })
             .collect()

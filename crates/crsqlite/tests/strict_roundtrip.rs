@@ -683,11 +683,14 @@ async fn codec_covers_every_storage_class_without_the_extension() {
     let r = row.try_get_raw(2).unwrap();
     let t = row.try_get_raw(3).unwrap();
     let bl = row.try_get_raw(4).unwrap();
-    assert_eq!(SqlValue::decode(n), SqlValue::Null);
-    assert_eq!(SqlValue::decode(i), SqlValue::Integer(7));
-    assert_eq!(SqlValue::decode(r), SqlValue::Real(0.25));
-    assert_eq!(SqlValue::decode(t), SqlValue::Text("x".into()));
-    assert_eq!(SqlValue::decode(bl), SqlValue::Blob(vec![0x00, 0xff]));
+    assert_eq!(SqlValue::decode(n).unwrap(), SqlValue::Null);
+    assert_eq!(SqlValue::decode(i).unwrap(), SqlValue::Integer(7));
+    assert_eq!(SqlValue::decode(r).unwrap(), SqlValue::Real(0.25));
+    assert_eq!(SqlValue::decode(t).unwrap(), SqlValue::Text("x".into()));
+    assert_eq!(
+        SqlValue::decode(bl).unwrap(),
+        SqlValue::Blob(vec![0x00, 0xff])
+    );
     assert_eq!(row.columns().len(), 5);
 
     pool.close().await;

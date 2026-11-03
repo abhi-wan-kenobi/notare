@@ -329,6 +329,70 @@ describe("SettingsSync", () => {
       expect(screen.getByText(/Expires in \d+:\d{2}/)).toBeTruthy();
     });
 
+    it("renders the QR as a safe img, never injecting the SVG markup into the DOM (regression: QR SVG dangerouslySetInnerHTML)", async () => {
+      const expiresAt = Math.floor(Date.now() / 1000) + 600;
+      const maliciousSvg =
+        '<svg onload="window.__pwned = true"><script>window.__pwned = true;</script></svg>';
+      mocks.pairingCreateOffer.mockResolvedValue({
+        link: "notare://pair#abc123",
+        qrSvg: maliciousSvg,
+        expiresAt,
+      });
+      mocks.pairingStatus.mockResolvedValue({
+        offerActive: true,
+        offerExpiresAt: expiresAt,
+        pending: [],
+      });
+
+      renderPage();
+
+      fireEvent.click(
+        await screen.findByRole("button", { name: /Pair a device/ }),
+      );
+
+      const img = await screen.findByRole("img", { name: /Pairing QR code/ });
+      expect(img.getAttribute("src")).toBe(
+        `data:image/svg+xml;utf8,${encodeURIComponent(maliciousSvg)}`,
+      );
+      const dialog = screen.getByRole("dialog");
+      expect(document.querySelector("script")).toBeNull();
+      expect(dialog.querySelector("script")).toBeNull();
+      expect(dialog.querySelector("[onload]")).toBeNull();
+      const windowWithPwnedFlag = window as unknown as { __pwned?: boolean }; // test-only global set if the malicious SVG executed
+      expect(windowWithPwnedFlag.__pwned).toBeUndefined();
+    });
+
+    it("shows an error with a retry button when offer creation fails, instead of spinning forever (regression: createOffer.isError unreachable)", async () => {
+      mocks.pairingCreateOffer.mockRejectedValueOnce(new Error("offline"));
+
+      renderPage();
+
+      fireEvent.click(
+        await screen.findByRole("button", { name: /Pair a device/ }),
+      );
+
+      await waitFor(() => expect(screen.getByText("offline")).toBeTruthy());
+      const retryButton = screen.getByRole("button", { name: /Try again/ });
+
+      const expiresAt = Math.floor(Date.now() / 1000) + 600;
+      mocks.pairingCreateOffer.mockResolvedValueOnce({
+        link: "notare://pair#retry",
+        qrSvg: "<svg></svg>",
+        expiresAt,
+      });
+      mocks.pairingStatus.mockResolvedValue({
+        offerActive: true,
+        offerExpiresAt: expiresAt,
+        pending: [],
+      });
+
+      fireEvent.click(retryButton);
+
+      await waitFor(() =>
+        expect(screen.getByText("notare://pair#retry")).toBeTruthy(),
+      );
+    });
+
     it("shows the SAS confirmation once a joiner's proof lands, and confirming adds the peer", async () => {
       const expiresAt = Math.floor(Date.now() / 1000) + 600;
       mocks.pairingCreateOffer.mockResolvedValue({

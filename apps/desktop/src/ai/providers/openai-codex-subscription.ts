@@ -71,9 +71,12 @@ function parseSseEvents(text: string): SseEvent[] {
 
 /**
  * Collapses a Responses API SSE stream into the JSON a non-streaming call
- * returns. `response.completed` carries the final object; if the backend
- * leaves its `output` empty the streamed output items fill it in, and when
- * there is no terminal event at all the text deltas are concatenated.
+ * returns. A `response.completed`/`response.incomplete` event carries the
+ * final object and wins over any `error` event, so a late error cannot turn
+ * a finished response into a 502; if the backend leaves its `output` empty
+ * the streamed output items fill it in. Without such a terminal event an
+ * `error` event maps to a 502, then `response.failed` is passed through, and
+ * with no terminal at all the text deltas are concatenated.
  */
 export function reassembleCodexResponse(sseText: string): {
   status: number;
@@ -81,7 +84,18 @@ export function reassembleCodexResponse(sseText: string): {
 } {
   const events = parseSseEvents(sseText);
 
-  const errorEvent = events.find((e) => e.type === "error");
+  const finished = [...events]
+    .reverse()
+    .find(
+      (e) =>
+        (e.type === "response.completed" || e.type === "response.incomplete") &&
+        e.response &&
+        typeof e.response === "object",
+    );
+
+  const errorEvent = finished
+    ? undefined
+    : events.find((e) => e.type === "error");
   if (errorEvent) {
     return {
       status: 502,
@@ -107,16 +121,16 @@ export function reassembleCodexResponse(sseText: string): {
   }
   const streamedItems = items.filter((item) => item !== undefined);
 
-  const terminal = [...events]
-    .reverse()
-    .find(
-      (e) =>
-        (e.type === "response.completed" ||
-          e.type === "response.incomplete" ||
-          e.type === "response.failed") &&
-        e.response &&
-        typeof e.response === "object",
-    );
+  const terminal =
+    finished ??
+    [...events]
+      .reverse()
+      .find(
+        (e) =>
+          e.type === "response.failed" &&
+          e.response &&
+          typeof e.response === "object",
+      );
   if (terminal) {
     const response = { ...(terminal.response as Record<string, unknown>) };
     if (

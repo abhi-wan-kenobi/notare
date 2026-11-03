@@ -131,7 +131,7 @@ export function subscriptionModelIds(
   catalogProvider: LlmAuthCatalogProvider | undefined,
   fallback: readonly string[],
 ): string[] {
-  const ids = (catalogProvider?.models ?? []).map((m) => m.id);
+  const ids = [...new Set((catalogProvider?.models ?? []).map((m) => m.id))];
   if (ids.length === 0) return [...fallback];
   const preferred = catalogProvider?.default_model;
   return preferred && ids.includes(preferred)

@@ -36,11 +36,18 @@ pub enum Error {
     UnsupportedBundledCrsqlite,
     #[error("the bundled crsqlite extension path is not valid UTF-8: {0}")]
     NonUtf8ExtensionPath(String),
+    #[error("crsql_site_id() returned {0} bytes, expected 16")]
+    InvalidSiteId(usize),
+    #[error("failed to decode a crsql_changes value: {0}")]
+    Decode(String),
 }
 
 impl Error {
     pub fn kind(&self) -> ErrorKind {
         match self {
+            // Pool contention is the same class of "another connection has
+            // it, back off and retry" as SQLITE_BUSY/LOCKED.
+            Self::Sqlx(sqlx::Error::PoolTimedOut) => ErrorKind::Transient,
             Self::Sqlx(sqlx_err) => {
                 if let Some(code) = extract_error_code(sqlx_err) {
                     classify_error_code(code)
@@ -64,8 +71,14 @@ fn extract_error_code(err: &sqlx::Error) -> Option<i64> {
 
 /// SQLite primary error codes (native, < 10_000 — cr-sqlite raises no
 /// engine-specific extension codes on the paths this crate drives).
+///
+/// `sqlx::Error::Database::code()` returns the *extended* result code
+/// (sqlx-sqlite calls `sqlite3_extended_errcode`, not the primary one), so
+/// WAL contention routinely shows up as `SQLITE_BUSY_RECOVERY` (261) or
+/// `SQLITE_BUSY_SNAPSHOT` (517), not bare `SQLITE_BUSY` (5) — mask to the
+/// low byte to recover the primary code before matching.
 fn classify_error_code(code: i64) -> ErrorKind {
-    match code {
+    match code & 0xff {
         // SQLITE_BUSY (5) / SQLITE_LOCKED (6): another connection holds the
         // lock (WAL allows one writer; a sync apply racing a local write is
         // exactly this). Backoff and retry.

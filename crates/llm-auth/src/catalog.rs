@@ -2,7 +2,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::OnceCell;
 
-use crate::types::{CatalogProvider, CatalogResult, ProviderId};
+use crate::types::{CatalogModel, CatalogProvider, CatalogResult, ProviderId};
 
 pub const DEFAULT_CATALOG_JSON: &str = r#"{
   "providers": [
@@ -65,8 +65,45 @@ pub fn default_catalog() -> CatalogResult {
     parse_catalog(DEFAULT_CATALOG_JSON).expect("embedded catalog JSON must be valid")
 }
 
+/// Parses a catalog, dropping malformed or duplicate `models` entries and a
+/// `default_model` that is not among the remaining models instead of failing
+/// the whole catalog: it is also the providers' kill switch, so one bad
+/// model row must not discard the `enabled` flags next to it.
 pub fn parse_catalog(json: &str) -> Result<CatalogResult, serde_json::Error> {
-    serde_json::from_str(json)
+    let mut value: serde_json::Value = serde_json::from_str(json)?;
+    if let Some(providers) = value
+        .get_mut("providers")
+        .and_then(serde_json::Value::as_array_mut)
+    {
+        for provider in providers.iter_mut().filter_map(|p| p.as_object_mut()) {
+            let models = match provider.get("models").and_then(|m| m.as_array()) {
+                Some(rows) => rows
+                    .iter()
+                    .filter_map(|row| serde_json::from_value::<CatalogModel>(row.clone()).ok())
+                    .collect(),
+                None => Vec::new(),
+            };
+            provider.insert("models".into(), serde_json::to_value(models)?);
+            if !provider.get("default_model").is_some_and(|d| d.is_string()) {
+                provider.remove("default_model");
+            }
+        }
+    }
+
+    let mut catalog: CatalogResult = serde_json::from_value(value)?;
+    for provider in &mut catalog.providers {
+        let mut seen = std::collections::HashSet::new();
+        provider.models.retain_mut(|m| {
+            m.id = m.id.trim().to_string();
+            !m.id.is_empty() && seen.insert(m.id.clone())
+        });
+        provider.default_model = provider
+            .default_model
+            .take()
+            .map(|d| d.trim().to_string())
+            .filter(|d| seen.contains(d));
+    }
+    Ok(catalog)
 }
 
 /// Resolves catalog with override precedence: remote overrides embedded,
@@ -253,5 +290,57 @@ mod tests {
             assert_eq!(p.models, e.models, "{:?} model list drifted", p.id);
             assert_eq!(p.default_model, e.default_model);
         }
+    }
+}
+
+#[cfg(test)]
+mod sanitize_tests {
+    use super::*;
+
+    fn remote(models: &str, default_model: &str) -> String {
+        format!(
+            r#"{{"providers":[{{"id":"anthropic","enabled":true,"label":"x","beta_headers":{{}},
+            "system_prefix":null,"base_url":"https://api.anthropic.com/v1","notes":"",
+            "models":{models},"default_model":{default_model}}}]}}"#
+        )
+    }
+
+    #[test]
+    fn catalog_drops_bad_model_rows_but_keeps_the_provider() {
+        let body = remote(
+            r#"[{"id":"a","label":"A"},{"id":"","label":"empty"},{"id":"  ","label":"blank"},
+                {"label":"no id"},{"id":7,"label":"wrong type"},{"id":"a","label":"dup"},
+                {"id":" b ","label":"B"}]"#,
+            r#""b""#,
+        );
+        let resolved = resolve_catalog(DEFAULT_CATALOG_JSON, Some(&body));
+        assert_eq!(resolved.providers.len(), 1, "remote must still win");
+        let p = &resolved.providers[0];
+        assert!(p.enabled);
+        let ids: Vec<_> = p.models.iter().map(|m| m.id.as_str()).collect();
+        assert_eq!(ids, ["a", "b"]);
+        assert_eq!(p.default_model.as_deref(), Some("b"));
+    }
+
+    #[test]
+    fn catalog_clears_default_model_that_is_not_in_the_list() {
+        let unknown = remote(r#"[{"id":"a","label":"A"}]"#, r#""zzz""#);
+        let p = &resolve_catalog(DEFAULT_CATALOG_JSON, Some(&unknown)).providers[0];
+        assert_eq!(p.models.len(), 1);
+        assert_eq!(p.default_model, None);
+
+        let no_models = remote("[]", r#""a""#);
+        let p = &resolve_catalog(DEFAULT_CATALOG_JSON, Some(&no_models)).providers[0];
+        assert!(p.models.is_empty());
+        assert_eq!(p.default_model, None);
+    }
+
+    #[test]
+    fn catalog_tolerates_wrong_typed_models_and_default_model() {
+        let body = remote(r#""not a list""#, "42");
+        let resolved = resolve_catalog(DEFAULT_CATALOG_JSON, Some(&body));
+        assert_eq!(resolved.providers.len(), 1, "remote must still win");
+        assert!(resolved.providers[0].models.is_empty());
+        assert_eq!(resolved.providers[0].default_model, None);
     }
 }

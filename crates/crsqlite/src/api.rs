@@ -83,14 +83,8 @@ where
         .fetch_one(executor)
         .await;
     match result {
-        Ok(site_id) => {
-            assert_eq!(
-                site_id.len(),
-                16,
-                "crsql_site_id() must return a 16-byte site id"
-            );
-            Ok(true)
-        }
+        Ok(site_id) if site_id.len() == 16 => Ok(true),
+        Ok(site_id) => Err(Error::InvalidSiteId(site_id.len())),
         Err(sqlx::Error::Database(db_err)) if db_err.message().contains("no such function") => {
             Ok(false)
         }
@@ -143,8 +137,13 @@ where
     Ok(())
 }
 
-/// How long [`close_pool`] waits for checked-out connections to come back
-/// before falling back to a plain `pool.close()`.
+/// How long [`close_pool`] waits, past which it logs a warning, for
+/// checked-out connections to come back. Every connection is still
+/// finalized before it closes — there is no fallback that skips finalize;
+/// `pool.close()` on this crate's sqlx version blocks until every checked-
+/// out connection returns anyway (`Pool::close` acquires every permit
+/// before raw-closing idle connections), and a raw close without
+/// `crsql_finalize` panics sqlx's worker thread.
 const CLOSE_POOL_DEADLINE: std::time::Duration = std::time::Duration::from_secs(5);
 
 /// Close a pool whose connections have the cr-sqlite extension loaded,
@@ -152,16 +151,27 @@ const CLOSE_POOL_DEADLINE: std::time::Duration = std::time::Duration::from_secs(
 ///
 /// Only idle connections are taken (`try_acquire` never opens a new one);
 /// each is detached, finalized and closed individually. Checked-out
-/// connections are waited for, up to [`CLOSE_POOL_DEADLINE`] — callers stop
-/// the pool's users first so the wait is normally zero. The pool must be
-/// built with `idle_timeout(None)` and `max_lifetime(None)`: a connection
-/// the pool reaps on its own is closed without being finalized.
+/// connections are waited for — callers stop the pool's users first so the
+/// wait is normally zero; past [`CLOSE_POOL_DEADLINE`] a warning is logged
+/// once so a caller that forgot to stop a user is visible, but the wait
+/// continues rather than falling through to a raw `pool.close()`, which
+/// would finalize nothing and risk the sqlx panic this function exists to
+/// avoid. The pool must be built with `idle_timeout(None)` and
+/// `max_lifetime(None)`: a connection the pool reaps on its own is closed
+/// without being finalized.
 pub async fn close_pool(pool: &sqlx::SqlitePool) {
     let deadline = tokio::time::Instant::now() + CLOSE_POOL_DEADLINE;
+    let mut warned = false;
     while pool.size() > 0 && !pool.is_closed() {
         let Some(conn) = pool.try_acquire() else {
-            if tokio::time::Instant::now() >= deadline {
-                break;
+            if !warned && tokio::time::Instant::now() >= deadline {
+                tracing::warn!(
+                    "crsqlite::close_pool: still waiting on {} checked-out connection(s) \
+                     after {CLOSE_POOL_DEADLINE:?}; a caller did not stop using the pool \
+                     before closing it",
+                    pool.size(),
+                );
+                warned = true;
             }
             tokio::time::sleep(std::time::Duration::from_millis(10)).await;
             continue;

@@ -37,6 +37,8 @@ use iroh::PublicKey;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+use crate::identity::Fingerprint;
+
 const PEERS_FILE: &str = "peers.json";
 
 /// Errors from loading or mutating the peer allowlist.
@@ -116,19 +118,34 @@ impl PeerStore {
     }
 
     /// Open a specific file path.
+    ///
+    /// Revocation wins over the allowlist: a peer listed in both (a hand edit,
+    /// or a file written by an older build) is dropped from the allowlist.
     fn open_path(path: &Path) -> Result<Self, PeersError> {
         let file = match std::fs::read(path) {
             Ok(bytes) => serde_json::from_slice::<PeersFile>(&bytes)?,
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => PeersFile::default(),
             Err(e) => return Err(PeersError::Io(e)),
         };
-        let allowed = file.peers.iter().map(|p| *p.node_id.as_bytes()).collect();
+        // Normalize hand-entered dashed/spaced ids to the compact form lookups
+        // use; keep anything unparseable verbatim rather than lose an entry.
+        let revoked: HashSet<String> = file
+            .revoked
+            .into_iter()
+            .map(|s| Fingerprint::parse(&s).map(|pk| pk.to_z32()).unwrap_or(s))
+            .collect();
+        let peers: Vec<Peer> = file
+            .peers
+            .into_iter()
+            .filter(|p| !revoked.contains(&p.node_id.to_z32()))
+            .collect();
+        let allowed = peers.iter().map(|p| *p.node_id.as_bytes()).collect();
         Ok(Self {
             inner: Arc::new(RwLock::new(PeerStoreInner {
                 path: path.to_path_buf(),
                 allowed,
-                peers: file.peers,
-                revoked: file.revoked,
+                peers,
+                revoked,
             })),
         })
     }
@@ -156,6 +173,9 @@ impl PeerStore {
 
     /// Add (or, if already present, update the label of) a peer. Returns the
     /// peer as stored. Rejects peers whose id is in the revoked set.
+    ///
+    /// Every mutation is written to disk before it is applied in memory, so a
+    /// failed write leaves both unchanged.
     pub fn add_peer(
         &self,
         node_id: PublicKey,
@@ -166,24 +186,23 @@ impl PeerStore {
             return Err(PeersError::Revoked);
         }
         let label = label.into();
-        let added_at = now_secs();
-        // Update-in-place vs. insert: decide and apply first, releasing the
-        // mutable borrow of `g.peers` before we touch `g` again to persist.
-        let stored = if let Some(existing) = g.peers.iter_mut().find(|p| p.node_id == node_id) {
+        let mut peers = g.peers.clone();
+        let stored = if let Some(existing) = peers.iter_mut().find(|p| p.node_id == node_id) {
             existing.label = label;
             existing.clone()
         } else {
             let peer = Peer {
                 node_id,
                 label,
-                added_at,
+                added_at: now_secs(),
                 last_seen: 0,
             };
-            g.peers.push(peer.clone());
-            g.allowed.insert(*node_id.as_bytes());
+            peers.push(peer.clone());
             peer
         };
-        g.persist_snapshot()?;
+        persist(&g.path, &peers, &g.revoked)?;
+        g.peers = peers;
+        g.allowed.insert(*node_id.as_bytes());
         Ok(stored)
     }
 
@@ -192,14 +211,19 @@ impl PeerStore {
     /// [`Self::revoke`].
     pub fn remove_peer(&self, node_id: &PublicKey) -> Result<bool, PeersError> {
         let mut g = self.inner.write().expect("peer store lock poisoned");
-        let before = g.peers.len();
-        g.peers.retain(|p| &p.node_id != node_id);
-        g.allowed.remove(node_id.as_bytes());
-        let removed = g.peers.len() < before;
-        if removed {
-            g.persist_snapshot()?;
+        if !g.peers.iter().any(|p| &p.node_id == node_id) {
+            return Ok(false);
         }
-        Ok(removed)
+        let peers: Vec<Peer> = g
+            .peers
+            .iter()
+            .filter(|p| &p.node_id != node_id)
+            .cloned()
+            .collect();
+        persist(&g.path, &peers, &g.revoked)?;
+        g.peers = peers;
+        g.allowed.remove(node_id.as_bytes());
+        Ok(true)
     }
 
     /// Revoke a peer: remove it from the allowlist AND record it in the
@@ -207,24 +231,31 @@ impl PeerStore {
     /// offer). Returns whether the peer was in the allowlist.
     pub fn revoke(&self, node_id: &PublicKey) -> Result<bool, PeersError> {
         let mut g = self.inner.write().expect("peer store lock poisoned");
-        let before = g.peers.len();
-        g.peers.retain(|p| &p.node_id != node_id);
-        g.allowed.remove(node_id.as_bytes());
-        g.revoked.insert(node_id.to_z32());
-        let removed = g.peers.len() < before;
+        let removed = g.peers.iter().any(|p| &p.node_id == node_id);
+        let peers: Vec<Peer> = g
+            .peers
+            .iter()
+            .filter(|p| &p.node_id != node_id)
+            .cloned()
+            .collect();
+        let mut revoked = g.revoked.clone();
+        revoked.insert(node_id.to_z32());
         // Always persist — even if the peer wasn't in the list, we need
         // the revoked entry written.
-        g.persist_snapshot()?;
+        persist(&g.path, &peers, &revoked)?;
+        g.peers = peers;
+        g.revoked = revoked;
+        g.allowed.remove(node_id.as_bytes());
         Ok(removed)
     }
 
-    /// Whether `device_id` (z-base-32 compact) is in the revoked set.
-    pub fn is_revoked(&self, device_id: &str) -> bool {
+    /// Whether `node_id` is in the revoked set.
+    pub fn is_revoked(&self, node_id: &PublicKey) -> bool {
         self.inner
             .read()
             .expect("peer store lock poisoned")
             .revoked
-            .contains(device_id)
+            .contains(&node_id.to_z32())
     }
 
     /// Record that `node_id` was just seen on a successful connection.
@@ -236,29 +267,28 @@ impl PeerStore {
         peer.last_seen = now_secs();
         // Best-effort persist; a failed last_seen write must not tear down a
         // working connection.
-        let _ = g.persist_snapshot();
+        let _ = persist(&g.path, &g.peers, &g.revoked);
     }
 }
 
-impl PeerStoreInner {
-    /// Build a snapshot of the current state and write it to disk.
-    fn persist_snapshot(&self) -> Result<(), PeersError> {
-        let file = PeersFile {
-            peers: self.peers.clone(),
-            revoked: self.revoked.clone(),
-        };
-        let bytes = serde_json::to_vec_pretty(&file)?;
-        // Temp file + rename so a crash mid-write can't corrupt the allowlist.
-        let dir = self.path.parent().unwrap_or_else(|| Path::new("."));
-        let tmp = dir.join(format!(
-            ".{PEERS_FILE}.{}.{}.tmp",
-            std::process::id(),
-            tmp_counter()
-        ));
-        std::fs::write(&tmp, &bytes)?;
-        std::fs::rename(&tmp, &self.path)?;
-        Ok(())
+/// Write `peers` + `revoked` to `path` (temp file + rename, so a crash
+/// mid-write can't corrupt the allowlist).
+fn persist(path: &Path, peers: &[Peer], revoked: &HashSet<String>) -> Result<(), PeersError> {
+    #[derive(Serialize)]
+    struct PeersFileRef<'a> {
+        peers: &'a [Peer],
+        revoked: &'a HashSet<String>,
     }
+    let bytes = serde_json::to_vec_pretty(&PeersFileRef { peers, revoked })?;
+    let dir = path.parent().unwrap_or_else(|| Path::new("."));
+    let tmp = dir.join(format!(
+        ".{PEERS_FILE}.{}.{}.tmp",
+        std::process::id(),
+        tmp_counter()
+    ));
+    std::fs::write(&tmp, &bytes)?;
+    std::fs::rename(&tmp, path)?;
+    Ok(())
 }
 
 fn tmp_counter() -> u64 {
@@ -283,7 +313,7 @@ mod pubkey_serde {
     use iroh::PublicKey;
     use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-    use crate::identity::Fingerprint;
+    use super::Fingerprint;
 
     pub fn serialize<S: Serializer>(pk: &PublicKey, s: S) -> Result<S::Ok, S::Error> {
         Fingerprint::from_pubkey(pk).as_str().serialize(s)
@@ -395,7 +425,7 @@ mod tests {
         // Revoke Alice — she's removed AND recorded.
         assert!(store.revoke(&a).unwrap());
         assert!(!store.is_allowed(&a));
-        assert!(store.is_revoked(&a.to_z32()));
+        assert!(store.is_revoked(&a));
 
         // Cannot re-add a revoked peer.
         let result = store.add_peer(a, "Alice again");
@@ -404,7 +434,7 @@ mod tests {
 
         // Revoked set persists across reload.
         let store2 = PeerStore::load_or_create_in(dir.path()).unwrap();
-        assert!(store2.is_revoked(&a.to_z32()));
+        assert!(store2.is_revoked(&a));
         assert!(matches!(
             store2.add_peer(a, "retry"),
             Err(PeersError::Revoked)
@@ -420,10 +450,66 @@ mod tests {
         // Revoking a peer that was never added is valid — it prevents
         // future addition from a stale offer.
         assert!(!store.revoke(&a).unwrap());
-        assert!(store.is_revoked(&a.to_z32()));
+        assert!(store.is_revoked(&a));
         assert!(matches!(
             store.add_peer(a, "nope"),
             Err(PeersError::Revoked)
         ));
+    }
+
+    #[test]
+    fn revoked_wins_over_allowed_on_load() {
+        let dir = tempfile::tempdir().unwrap();
+        let a = pk();
+        let b = pk();
+        let dashed_a = Fingerprint::from_pubkey(&a).as_str().to_string();
+        let json = serde_json::json!({
+            "peers": [
+                { "node_id": dashed_a, "label": "Alice", "added_at": 1 },
+                { "node_id": b.to_z32(), "label": "Bob", "added_at": 1 },
+            ],
+            // Hand-written in the dashed display form.
+            "revoked": [dashed_a],
+        });
+        std::fs::write(dir.path().join(PEERS_FILE), json.to_string()).unwrap();
+
+        let store = PeerStore::load_or_create_in(dir.path()).unwrap();
+        assert!(!store.is_allowed(&a), "revoked peer must not be dialable");
+        assert!(store.is_revoked(&a));
+        assert!(store.is_allowed(&b));
+        assert_eq!(store.list_peers().len(), 1);
+        assert!(matches!(store.add_peer(a, "x"), Err(PeersError::Revoked)));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn failed_persist_leaves_memory_unchanged() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let dir = tempfile::tempdir().unwrap();
+        let store = PeerStore::load_or_create_in(dir.path()).unwrap();
+        let a = pk();
+        let b = pk();
+        store.add_peer(a, "Alice").unwrap();
+
+        let set_mode = |mode| {
+            std::fs::set_permissions(dir.path(), std::fs::Permissions::from_mode(mode)).unwrap()
+        };
+        set_mode(0o555);
+        let added = store.add_peer(b, "Bob");
+        let revoked = store.revoke(&a);
+        let removed = store.remove_peer(&a);
+        set_mode(0o755);
+
+        assert!(matches!(added, Err(PeersError::Io(_))), "{added:?}");
+        assert!(!store.is_allowed(&b), "unpersisted add must not allow");
+        assert!(matches!(revoked, Err(PeersError::Io(_))), "{revoked:?}");
+        assert!(matches!(removed, Err(PeersError::Io(_))), "{removed:?}");
+        assert!(store.is_allowed(&a));
+        assert!(
+            !store.is_revoked(&a),
+            "memory matches disk after a failed revoke"
+        );
+        assert_eq!(store.list_peers().len(), 1);
     }
 }

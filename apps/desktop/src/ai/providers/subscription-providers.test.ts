@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   createAnthropicSubscriptionFetch,
+  createAnthropicSubscriptionModel,
   transformAnthropicRequestBody,
 } from "./anthropic-subscription";
 import {
@@ -516,6 +517,88 @@ describe("OpenAI Codex request/response shaping", () => {
   });
 });
 
+describe("Codex stream error precedence", () => {
+  it("keeps a completed response when an error event arrives later in the stream", () => {
+    const { status, body } = reassembleCodexResponse(
+      helloStream(finalResponse.output) +
+        sse({ type: "error", code: "late", message: "trailing noise" }),
+    );
+    expect(status).toBe(200);
+    expect(body).toEqual(finalResponse);
+  });
+
+  it("keeps an incomplete response when an error event arrives later", () => {
+    const { status, body } = reassembleCodexResponse(
+      sse({
+        type: "response.incomplete",
+        response: { object: "response", status: "incomplete", output: [] },
+      }) + sse({ type: "error", message: "late" }),
+    );
+    expect(status).toBe(200);
+    expect(body).toMatchObject({ status: "incomplete" });
+  });
+
+  it("still maps an error to 502 when only response.failed follows it", () => {
+    const { status } = reassembleCodexResponse(
+      sse({ type: "error", message: "boom" }) +
+        sse({
+          type: "response.failed",
+          response: { object: "response", status: "failed", output: [] },
+        }),
+    );
+    expect(status).toBe(502);
+  });
+});
+
+describe("Anthropic structured output mode", () => {
+  const requestFor = async (providerOptions?: Record<string, unknown>) => {
+    const bodies: Array<Record<string, unknown>> = [];
+    const fetchFn = vi.fn(async (_url: unknown, init?: RequestInit) => {
+      bodies.push(JSON.parse(init?.body as string));
+      return new Response("{}", { status: 400 });
+    });
+    const model = createAnthropicSubscriptionModel("claude-sonnet-5-5", {
+      fetchFn: fetchFn as unknown as typeof fetch,
+      getToken: async () => ({ token: "t", extra: {} }),
+    });
+    try {
+      await model.doGenerate({
+        prompt: [{ role: "user", content: [{ type: "text", text: "hi" }] }],
+        responseFormat: {
+          type: "json",
+          schema: {
+            type: "object",
+            properties: { a: { type: "string" } },
+            required: ["a"],
+          },
+        },
+        providerOptions: providerOptions as never,
+      });
+    } catch {
+      // The stubbed vendor answers 400; only the request body matters.
+    }
+    return bodies[0];
+  };
+
+  it("sends output_config.format instead of a forced tool_choice for claude-*-5-5", async () => {
+    const body = await requestFor();
+    expect(body.output_config).toMatchObject({
+      format: { type: "json_schema" },
+    });
+    expect(body.tool_choice).toBeUndefined();
+  });
+
+  it("overrides a caller-supplied structuredOutputMode", async () => {
+    const body = await requestFor({
+      anthropic: { structuredOutputMode: "jsonTool" },
+    });
+    expect(body.output_config).toMatchObject({
+      format: { type: "json_schema" },
+    });
+    expect(body.tool_choice).toBeUndefined();
+  });
+});
+
 describe("subscriptionModelIds", () => {
   const provider = (
     models: Array<{ id: string; label: string }> | undefined,
@@ -570,6 +653,22 @@ describe("subscriptionModelIds", () => {
     ]);
     expect(subscriptionModelIds(provider([]), ["f1"])).toEqual(["f1"]);
     expect(subscriptionModelIds(undefined, ["f1"])).toEqual(["f1"]);
+  });
+
+  it("lists each model id once", () => {
+    expect(
+      subscriptionModelIds(
+        provider(
+          [
+            { id: "a", label: "A" },
+            { id: "b", label: "B" },
+            { id: "a", label: "A again" },
+          ],
+          "b",
+        ),
+        ["f"],
+      ),
+    ).toEqual(["b", "a"]);
   });
 });
 

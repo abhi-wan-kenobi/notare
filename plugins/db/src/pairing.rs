@@ -51,11 +51,11 @@ impl PluginDbRuntime {
                     .pairing()
                     .create_offer(&agent.node_id(), device_name.clone());
                 let link = offer.encode_link();
-                let qr = sync_p2p::pairing::qr_svg(&link).unwrap_or_default();
-                (link, qr, offer.expires_at)
+                let qr = sync_p2p::pairing::qr_svg(&link)?;
+                Ok::<_, sync_p2p::PairingError>((link, qr, offer.expires_at))
             })
             .await
-            .ok_or(PairingCommandError::AgentNotRunning)?;
+            .ok_or(PairingCommandError::AgentNotRunning)??;
 
         Ok(PairingOfferResult {
             link: offer_link,

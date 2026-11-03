@@ -319,6 +319,10 @@ async fn pairing_requires_an_active_offer_and_the_offer_secret() {
     // pending confirmation, NOT yet allowlisted.
     let outcome = joiner.agent.pair_with(&offer).await.unwrap();
     assert_eq!(outcome.offerer.device_id, offerer.z32());
+    assert_eq!(
+        outcome.offerer.name, "offerer",
+        "AcceptMsg carries the offerer's real device name"
+    );
     let pending = offerer.agent.pairing().status().pending_confirmations;
     assert_eq!(pending.len(), 1);
     assert_eq!(pending[0].device_id, joiner.z32());
@@ -342,4 +346,22 @@ async fn pairing_alpn_does_not_open_the_sync_protocol_to_strangers() {
     assert!(stranger.agent.sync_with(&offerer.id()).await.is_err());
     assert_eq!(offerer.source.changes_since_calls(), 0);
     assert_eq!(stranger.source.row_count(), 0);
+}
+
+#[tokio::test]
+async fn zero_tick_interval_is_refused_instead_of_panicking_the_tick_task() {
+    let dir = tempfile::tempdir().unwrap();
+    let config = AgentConfig {
+        transport: AgentTransport::Loopback,
+        tick_interval: Some(Duration::ZERO),
+        ..AgentConfig::default()
+    };
+    let result = P2pAgent::start_with_config(
+        Identity::load_or_create_in(dir.path()).unwrap(),
+        PeerStore::load_or_create_in(dir.path()).unwrap(),
+        Arc::new(FakeSource::new(1)),
+        config,
+    )
+    .await;
+    assert!(matches!(result, Err(AgentError::ZeroTickInterval)));
 }

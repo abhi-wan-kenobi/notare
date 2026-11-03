@@ -851,6 +851,10 @@ msgstr "Could not connect."
 msgid "Could not start trial"
 msgstr "Could not start trial"
 
+#: src/settings/sync/index.tsx
+msgid "Couldn't copy to clipboard"
+msgstr "Couldn't copy to clipboard"
+
 #: src/snippets/index.tsx
 msgid "Couldn't delete snippet"
 msgstr "Couldn't delete snippet"
@@ -2504,6 +2508,10 @@ msgstr "Paired devices"
 msgid "Pairing link"
 msgstr "Pairing link"
 
+#: src/settings/sync/index.tsx
+msgid "Pairing QR code"
+msgstr "Pairing QR code"
+
 #: src/session/components/note-input/transcript/renderer/speaker-assign.tsx
 #: src/session/components/outer-header/overflow/export-modal.tsx
 msgid "Participants"
@@ -3698,6 +3706,10 @@ msgstr "Trial"
 #: src/onboarding/account/after-login.tsx
 msgid "Trial activated - 14 days of Pro"
 msgstr "Trial activated - 14 days of Pro"
+
+#: src/settings/sync/index.tsx
+msgid "Try again"
+msgstr "Try again"
 
 #: src/dictation/orb.tsx
 msgid "Twin cobalt rings inside a soft glowing halo."

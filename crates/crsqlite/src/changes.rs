@@ -34,28 +34,33 @@ pub enum SqlValue {
 impl SqlValue {
     /// Decode one SQLite value by its runtime storage class.
     ///
-    /// # Panics
-    /// On an unexpected storage class or on invalid UTF-8 in a TEXT value
-    /// (the app schema guarantees TEXT columns hold UTF-8 — the same
-    /// contract the spike's codec pinned).
-    pub fn decode(value: sqlx::sqlite::SqliteValueRef<'_>) -> Self {
+    /// Fails (rather than panics) on an unexpected storage class or invalid
+    /// UTF-8 in a TEXT value: `val` can carry a peer's write applied
+    /// through `apply_changes`, and a remote `crsql_changes` row is not
+    /// trusted input — a malformed or malicious row must error the sync
+    /// session, not crash the process.
+    pub fn decode(value: sqlx::sqlite::SqliteValueRef<'_>) -> Result<Self, Error> {
         use sqlx::Decode;
 
         let info = value.type_info();
-        match info.name() {
+        let name = info.name();
+        let decoded = match name {
             "NULL" => Self::Null,
-            "INTEGER" => {
-                Self::Integer(i64::decode(value).expect("decode INTEGER storage class as i64"))
+            "INTEGER" => Self::Integer(
+                i64::decode(value).map_err(|e| Error::Decode(format!("INTEGER: {e}")))?,
+            ),
+            "REAL" => {
+                Self::Real(f64::decode(value).map_err(|e| Error::Decode(format!("REAL: {e}")))?)
             }
-            "REAL" => Self::Real(f64::decode(value).expect("decode REAL storage class as f64")),
             "TEXT" => {
-                Self::Text(String::decode(value).expect("decode TEXT storage class as String"))
+                Self::Text(String::decode(value).map_err(|e| Error::Decode(format!("TEXT: {e}")))?)
             }
-            "BLOB" => {
-                Self::Blob(Vec::<u8>::decode(value).expect("decode BLOB storage class as Vec<u8>"))
-            }
-            other => panic!("unexpected storage class in crsql_changes.val: {other}"),
-        }
+            "BLOB" => Self::Blob(
+                Vec::<u8>::decode(value).map_err(|e| Error::Decode(format!("BLOB: {e}")))?,
+            ),
+            other => return Err(Error::Decode(format!("unexpected storage class {other:?}"))),
+        };
+        Ok(decoded)
     }
 
     /// Bind this value as the next query argument.
@@ -138,15 +143,24 @@ pub struct ChangesPage {
 /// [`apply_changes`].
 const CHANGES_COLUMNS: &str = r#""table", pk, cid, val, col_version, db_version, site_id, cl, seq"#;
 
+/// Hard ceiling on [`pull_changes`]'s `limit`, independent of the caller's
+/// request. Keeps `i64::try_from(limit + 1)` for the `LIMIT ?` probe row
+/// (see [`pull_changes`]) well inside `i64` with room to spare, regardless
+/// of what a caller passes.
+const MAX_PULL_LIMIT: usize = 100_000;
+
 /// Pull the next page of changes strictly after `after`, excluding
 /// `exclude_site`'s own changes when given (the requesting peer's — serving
 /// a peer must never feed it its own writes back).
 ///
 /// Paging is by the `(db_version, seq)` tuple, so consecutive pages tile the
 /// stream exactly: a change is returned by one page or the next, never both
-/// and never neither. `limit` caps the page in rows (clamped to ≥1); `more`
-/// is exact — one extra row is probed, so a page that ends precisely at the
-/// stream's tail reports `more == false`.
+/// and never neither. `limit` caps the page in rows, clamped to
+/// `1..=MAX_PULL_LIMIT` — the sync-p2p session layer already clamps the
+/// page size it asks for to its own `max_page_size` (5000 by default)
+/// before calling this, so the ceiling here is defense in depth for other
+/// callers, not a live path. `more` is exact — one extra row is probed, so
+/// a page that ends precisely at the stream's tail reports `more == false`.
 pub async fn pull_changes<'e, E>(
     executor: E,
     after: Cursor,
@@ -156,8 +170,8 @@ pub async fn pull_changes<'e, E>(
 where
     E: Executor<'e, Database = Sqlite>,
 {
-    let limit = limit.max(1);
-    let probe = i64::try_from(limit).unwrap_or(i64::MAX - 1) + 1;
+    let limit = limit.clamp(1, MAX_PULL_LIMIT);
+    let probe = i64::try_from(limit + 1).expect("MAX_PULL_LIMIT + 1 fits in i64");
     let sql = format!(
         r#"SELECT {CHANGES_COLUMNS}
            FROM crsql_changes
@@ -179,9 +193,9 @@ where
     for row in rows.into_iter().take(limit) {
         changes.push(Change {
             table: row.try_get(0)?,
-            pk: SqlValue::decode(row.try_get_raw(1)?),
+            pk: SqlValue::decode(row.try_get_raw(1)?)?,
             cid: row.try_get(2)?,
-            val: SqlValue::decode(row.try_get_raw(3)?),
+            val: SqlValue::decode(row.try_get_raw(3)?)?,
             col_version: row.try_get(4)?,
             db_version: row.try_get(5)?,
             site_id: row.try_get(6)?,
@@ -271,24 +285,56 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(
-            SqlValue::decode(row.try_get_raw(0).unwrap()),
+            SqlValue::decode(row.try_get_raw(0).unwrap()).unwrap(),
             SqlValue::Null
         );
         assert_eq!(
-            SqlValue::decode(row.try_get_raw(1).unwrap()),
+            SqlValue::decode(row.try_get_raw(1).unwrap()).unwrap(),
             SqlValue::Integer(7)
         );
         assert_eq!(
-            SqlValue::decode(row.try_get_raw(2).unwrap()),
+            SqlValue::decode(row.try_get_raw(2).unwrap()).unwrap(),
             SqlValue::Real(0.25)
         );
         assert_eq!(
-            SqlValue::decode(row.try_get_raw(3).unwrap()),
+            SqlValue::decode(row.try_get_raw(3).unwrap()).unwrap(),
             SqlValue::Text("x".into())
         );
         assert_eq!(
-            SqlValue::decode(row.try_get_raw(4).unwrap()),
+            SqlValue::decode(row.try_get_raw(4).unwrap()).unwrap(),
             SqlValue::Blob(vec![0x00, 0xff])
+        );
+
+        pool.close().await;
+    }
+
+    /// cr-sqlite synced data comes from other devices via `apply_changes`,
+    /// so a `crsql_changes.val` with SQLite TEXT storage class but non-UTF8
+    /// bytes (SQLite itself does not enforce UTF-8 in TEXT) must error, not
+    /// crash `pull_changes`'s decode of the sync apply path.
+    #[tokio::test]
+    async fn decode_errors_instead_of_panicking_on_invalid_utf8_text() {
+        let pool = sqlx::sqlite::SqlitePoolOptions::new()
+            .max_connections(1)
+            .connect_with(
+                sqlx::sqlite::SqliteConnectOptions::new()
+                    .filename(":memory:")
+                    .create_if_missing(true),
+            )
+            .await
+            .unwrap();
+
+        // CAST(x'ff' AS TEXT) gives SQLite TEXT storage class holding the
+        // single byte 0xff, which is not valid UTF-8 on its own.
+        let row = sqlx::query("SELECT CAST(x'ff' AS TEXT)")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+
+        let result = SqlValue::decode(row.try_get_raw(0).unwrap());
+        assert!(
+            matches!(result, Err(Error::Decode(_))),
+            "expected a Decode error, got {result:?}"
         );
 
         pool.close().await;

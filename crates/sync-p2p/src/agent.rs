@@ -71,6 +71,10 @@ pub enum AgentError {
     Session(#[from] SessionError),
     #[error("pairing: {0}")]
     Pairing(String),
+    #[error("tick interval must be non-zero")]
+    ZeroTickInterval,
+    #[error("sync task failed: {0}")]
+    Task(String),
 }
 
 /// How the agent's iroh endpoint finds and is found by peers. See
@@ -102,7 +106,8 @@ pub enum AgentTransport {
 pub struct AgentConfig {
     pub transport: AgentTransport,
     /// Period of the all-peers sync tick; `None` disables the tick (sessions
-    /// then only happen via [`P2pAgent::sync_with`] / inbound dials).
+    /// then only happen via [`P2pAgent::sync_with`] / inbound dials). Must be
+    /// non-zero.
     pub tick_interval: Option<Duration>,
     pub session: SessionConfig,
     /// This device's display name, sent to the other side during pairing.
@@ -179,6 +184,9 @@ impl<S: ChangeSource> P2pAgent<S> {
         source: Arc<S>,
         config: AgentConfig,
     ) -> Result<Self, AgentError> {
+        if config.tick_interval.is_some_and(|d| d.is_zero()) {
+            return Err(AgentError::ZeroTickInterval);
+        }
         // The secret key IS the device identity key — iroh's NodeId/EndpointId
         // derives from it — in both modes.
         let endpoint = match config.transport {
@@ -334,15 +342,22 @@ impl<S: ChangeSource> Inner<S> {
 
     async fn sync_all(self: &Arc<Self>) -> Vec<(PublicKey, Result<SessionReport, AgentError>)> {
         let mut set = JoinSet::new();
+        let mut task_peers = HashMap::new();
         for peer in self.peers.list_peers() {
             let inner = Arc::clone(self);
             let id = peer.node_id;
-            set.spawn(async move { (id, inner.sync_with(&id).await) });
+            let handle = set.spawn(async move { (id, inner.sync_with(&id).await) });
+            task_peers.insert(handle.id(), id);
         }
         let mut out = Vec::new();
         while let Some(joined) = set.join_next().await {
-            if let Ok(r) = joined {
-                out.push(r);
+            match joined {
+                Ok(r) => out.push(r),
+                Err(e) => {
+                    if let Some(peer) = task_peers.get(&e.id()) {
+                        out.push((*peer, Err(AgentError::Task(e.to_string()))));
+                    }
+                }
             }
         }
         out
@@ -436,10 +451,7 @@ impl<S: ChangeSource> Inner<S> {
                 .pairing
                 .handle_join(&join, &|id| self.peers.is_revoked(id))
             {
-                Ok((mut accept, _sas)) => {
-                    accept.name = self.config.device_name.clone();
-                    PairingReply::Accept(accept)
-                }
+                Ok((accept, _sas)) => PairingReply::Accept(accept),
                 Err(e) => PairingReply::Reject(RejectMsg {
                     reason: e.to_string(),
                 }),
@@ -468,6 +480,7 @@ impl<S: ChangeSource> Inner<S> {
             return Err(AgentError::SelfPeer);
         }
         let own_id = self.identity.id().to_z32();
+        let offerer_z32 = offerer.to_z32();
         let conn = self
             .dial_peer(&offerer, PAIRING_ALPN)
             .await
@@ -480,7 +493,7 @@ impl<S: ChangeSource> Inner<S> {
             let join = JoinMsg {
                 device_id: own_id.clone(),
                 name: self.config.device_name.clone(),
-                proof: compute_proof(&offer.secret, &own_id, &offer.device_id),
+                proof: compute_proof(&offer.secret, &own_id, &offerer_z32),
             };
             let io_err = |e: std::io::Error| AgentError::Pairing(e.to_string());
             write_json_frame(&mut send, &join).await.map_err(io_err)?;
@@ -493,12 +506,12 @@ impl<S: ChangeSource> Inner<S> {
                 PairingReply::Accept(accept) => {
                     // The authenticated connection is the offerer we dialed;
                     // anything else claiming to accept is not to be trusted.
-                    if accept.device_id != offerer.to_z32() {
+                    if accept.device_id != offerer_z32 {
                         return Err(AgentError::Pairing(
                             "accept names a different device than the one dialed".into(),
                         ));
                     }
-                    let sas = compute_sas(&own_id, &offer.device_id, &offer.secret);
+                    let sas = compute_sas(&own_id, &offerer_z32, &offer.secret);
                     Ok(PairingOutcome {
                         offerer: accept,
                         sas,
@@ -614,8 +627,15 @@ async fn accept_loop<S: ChangeSource>(inner: Arc<Inner<S>>) {
                 Err(_) => return,
             };
             let remote = conn.remote_id();
-            if conn.alpn() == PAIRING_ALPN {
+            // Dispatch strictly on the negotiated ALPN: pairing is the only
+            // protocol open to non-allowlisted peers, sync the only other one.
+            let alpn = conn.alpn();
+            if alpn == PAIRING_ALPN {
                 inner.serve_pairing(conn).await;
+                return;
+            }
+            if alpn != SYNC_ALPN {
+                conn.close(iroh::endpoint::VarInt::from_u32(1), b"unsupported alpn");
                 return;
             }
             if !inner.peers.is_allowed(&remote) {

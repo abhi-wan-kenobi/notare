@@ -200,7 +200,7 @@ impl<S: ChangeSource> SyncSession<S> {
                     )
                     .await;
                 }
-                let _ = io.writer.shutdown().await;
+                let _ = tokio::time::timeout(io.timeout, io.writer.shutdown()).await;
             }
         }
         result
@@ -267,6 +267,9 @@ impl<S: ChangeSource> SyncSession<S> {
         while !(pull_done && serve_done) {
             match io.next("peer message").await? {
                 Message::Pull { after: from, limit } => {
+                    // A new Pull reopens our serving direction until the page it
+                    // produces is final and acked, even after an earlier final page.
+                    serve_done = false;
                     let mut lim = (limit as usize).clamp(1, self.config.max_page_size.max(1));
                     loop {
                         let page = self
@@ -306,7 +309,10 @@ impl<S: ChangeSource> SyncSession<S> {
                             page.changes.len()
                         )));
                     }
-                    if page.next < asked || (page.more && page.next == asked) {
+                    // A page must move the cursor unless it is the empty final page.
+                    if page.next < asked
+                        || (page.next == asked && (page.more || !page.changes.is_empty()))
+                    {
                         return Err(SessionError::Violation(
                             "page does not advance the cursor".into(),
                         ));

@@ -24,6 +24,10 @@ use crate::error::Error;
 /// The vendored cr-sqlite release, matching `CRSQLITE_VERSION` in lib.rs.
 const CRSQLITE_VERSION: &str = "0.16.3";
 
+/// Disambiguates concurrent [`bundled_extension_path`] calls in the same
+/// process (same pid) from racing on one temp file name.
+static TMP_FILE_COUNTER: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
 macro_rules! configure_crsqlite_target {
     ($target:literal, $file_name:literal, $path:literal) => {
         const CRSQLITE_TARGET: &str = $target;
@@ -64,11 +68,22 @@ configure_crsqlite_target!(
 /// to the cache dir and return its absolute path.
 ///
 /// The extraction is idempotent and race-safe: the bytes are written to a
-/// per-process temp file and renamed into place, so a concurrently running
-/// second process either sees the old intact file or the new intact file,
-/// never a torn one. An existing file is reused only if it is byte-identical
-/// to the embedded binary — a same-length replacement in the user-writable
-/// cache dir must not be loaded in place of the checksummed vendor file.
+/// per-call unique temp file (pid + a process-local counter + a
+/// nanosecond timestamp — two concurrent callers in the same process, e.g.
+/// two `Db::open_crsqlite` calls racing, never share a temp path) and
+/// renamed into place, so a concurrently running process or task either
+/// sees the old intact file or the new intact file, never a torn one. An
+/// existing file is reused only if it is byte-identical to the embedded
+/// binary — a same-length replacement in the user-writable cache dir must
+/// not be loaded in place of the checksummed vendor file. The written file
+/// is read+execute only (no write bit) so nothing in this process writes
+/// it again after verification; this does not close the TOCTOU window
+/// against another process running as the *same* OS user between this
+/// verify and the later `dlopen` in [`crate::apply`] — that attacker
+/// already has this user's code-execution privilege by assumption (shared
+/// cache dir, shared trust domain; see the module doc comment), so closing
+/// it fully would need an fd-based load this crate's sqlx/SQLite version
+/// does not expose.
 // Each cfg arm returns explicitly; only one arm exists per target.
 #[allow(clippy::needless_return)]
 pub fn bundled_extension_path() -> Result<PathBuf, Error> {
@@ -105,15 +120,27 @@ pub fn bundled_extension_path() -> Result<PathBuf, Error> {
         };
 
         if needs_write {
-            let tmp_path =
-                base_dir.join(format!("{CRSQLITE_FILE_NAME}.{}.tmp", std::process::id()));
+            let unique = TMP_FILE_COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            let nanos = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_nanos())
+                .unwrap_or_default();
+            let tmp_path = base_dir.join(format!(
+                "{CRSQLITE_FILE_NAME}.{}.{unique}.{nanos}.tmp",
+                std::process::id(),
+            ));
             fs::write(&tmp_path, BUNDLED_CRSQLITE_BYTES)?;
 
             #[cfg(unix)]
             {
                 use std::os::unix::fs::PermissionsExt;
 
-                fs::set_permissions(&tmp_path, fs::Permissions::from_mode(0o755))?;
+                // Read + execute only: this process never writes the file
+                // again once it is verified, so the write bit buys nothing
+                // and dropping it makes accidental same-user corruption
+                // (not just a hostile replacement) require an explicit
+                // chmod first.
+                fs::set_permissions(&tmp_path, fs::Permissions::from_mode(0o555))?;
             }
 
             match fs::rename(&tmp_path, &extension_path) {

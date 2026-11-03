@@ -402,7 +402,12 @@ function ThisDeviceSection({
       await writeText(fingerprint);
     } catch {
       // Fall back to the browser clipboard when the plugin is unavailable.
-      await navigator.clipboard.writeText(fingerprint);
+      try {
+        await navigator.clipboard.writeText(fingerprint);
+      } catch {
+        sonnerToast.error(t`Couldn't copy to clipboard`);
+        return;
+      }
     }
     setCopied(true);
     sonnerToast.success(t`Copied to clipboard`);
@@ -657,6 +662,13 @@ function PairDeviceSection({
   const [offer, setOffer] = useState<PairingOfferResult | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [copied, setCopied] = useState(false);
+  const copyResetRef = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
+
+  useEffect(() => {
+    return () => clearTimeout(copyResetRef.current);
+  }, []);
 
   const createOffer = useMutation({
     mutationFn: pairingCreateOffer,
@@ -717,11 +729,17 @@ function PairDeviceSection({
     try {
       await writeText(offer.link);
     } catch {
-      await navigator.clipboard.writeText(offer.link);
+      try {
+        await navigator.clipboard.writeText(offer.link);
+      } catch {
+        sonnerToast.error(t`Couldn't copy to clipboard`);
+        return;
+      }
     }
     setCopied(true);
     sonnerToast.success(t`Link copied`);
-    setTimeout(() => setCopied(false), 1500);
+    clearTimeout(copyResetRef.current);
+    copyResetRef.current = setTimeout(() => setCopied(false), 1500);
   };
 
   return (
@@ -775,14 +793,23 @@ function PairDeviceSection({
               })
             }
           />
+        ) : createOffer.isError ? (
+          <div className="flex flex-col items-center gap-3 py-4">
+            <p className="text-xs text-red-500">
+              {errorMessage(createOffer.error)}
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => createOffer.mutate()}
+            >
+              <Trans>Try again</Trans>
+            </Button>
+          </div>
         ) : createOffer.isPending || !offer ? (
           <div className="flex min-h-48 items-center justify-center">
             <Loader2Icon className="text-muted-foreground size-5 animate-spin" />
           </div>
-        ) : createOffer.isError ? (
-          <p className="text-xs text-red-500">
-            {errorMessage(createOffer.error)}
-          </p>
         ) : expired ? (
           <div className="flex flex-col items-center gap-3 py-4">
             <p className="text-muted-foreground text-xs">
@@ -798,11 +825,14 @@ function PairDeviceSection({
           </div>
         ) : (
           <div className="flex flex-col items-center gap-3">
-            <div
-              className="[&_svg]:size-40"
+            <img
               // Generated server-side by the `qrcode` crate from the offer
-              // link we also render as text below — not user input.
-              dangerouslySetInnerHTML={{ __html: offer.qrSvg }}
+              // link we also render as text below. Rendered as an <img> data
+              // URI (never dangerouslySetInnerHTML) so a malicious SVG can't
+              // reach the DOM or execute script.
+              src={`data:image/svg+xml;utf8,${encodeURIComponent(offer.qrSvg)}`}
+              alt={t`Pairing QR code`}
+              className="size-40"
             />
             <div className="flex w-full items-center gap-2">
               <code className="border-border bg-muted min-w-0 flex-1 truncate rounded-lg border px-3 py-2 font-mono text-xs">

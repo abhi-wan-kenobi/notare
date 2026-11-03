@@ -12,13 +12,14 @@
 //! 2. **Device B** (joiner) scans the QR / pastes the link, calls
 //!    [`PairingOffer::decode`], then dials device A on ALPN
 //!    [`PAIRING_ALPN`] and sends a [`JoinMsg`] carrying its own device id +
-//!    name + an HMAC-SHA256 proof (`HMAC(secret, joiner_id || offerer_id)`).
+//!    name + an HMAC-SHA256 proof over the length-prefixed joiner and offerer ids.
 //!
 //! 3. **Device A** receives the join, verifies the HMAC in constant time,
 //!    and — if valid — burns the offer (single use), replies with
 //!    [`AcceptMsg`], and moves the new peer into a "pending confirmation"
 //!    state. Both devices derive a 6-digit Short Authentication String
-//!    (SAS) from `SHA-256(sorted(device_ids) || secret)` and display it.
+//!    (SAS) from `SHA-256(len-prefixed sorted(device_ids) || secret)` and
+//!    display it.
 //!
 //! 4. Both users confirm the 6-digit code matches on their screen. The
 //!    peer enters the [`PeerStore`] only after the user taps "Confirm" (a
@@ -61,6 +62,9 @@ const OFFER_TTL_SECS: u64 = 600; // 10 minutes
 /// Maximum failed proof attempts before the offer is burned.
 const MAX_FAILED_PROOFS: u32 = 5;
 
+/// Length of the offer secret, enforced on decode.
+const SECRET_LEN: usize = 32;
+
 /// How long a pending confirmation is valid (seconds).
 const CONFIRM_TIMEOUT_SECS: u64 = 120; // 2 minutes
 
@@ -85,6 +89,8 @@ pub enum PairingError {
     DeviceRevoked,
     #[error("cannot pair with self")]
     SelfPair,
+    #[error("invalid device id: {0}")]
+    InvalidDeviceId(String),
     #[error("peer operation failed: {0}")]
     PeerStore(String),
 }
@@ -111,7 +117,7 @@ pub struct PairingOffer {
 impl PairingOffer {
     /// Create a new offer for the given device identity.
     pub fn new(device_id: &PublicKey, name: impl Into<String>) -> Self {
-        let mut secret = [0u8; 32];
+        let mut secret = [0u8; SECRET_LEN];
         rand::fill(&mut secret);
         let now = now_secs();
         Self {
@@ -132,6 +138,10 @@ impl PairingOffer {
     }
 
     /// Decode a `notare://pair#<base64url(json)>` link back into an offer.
+    ///
+    /// Rejects a secret that is not [`SECRET_LEN`] bytes and a device id that
+    /// is not a public key, and normalizes the device id to the compact z32
+    /// form the proof and SAS are computed over.
     pub fn decode(link: &str) -> Result<Self, PairingError> {
         let fragment = link
             .strip_prefix("notare://pair#")
@@ -139,7 +149,7 @@ impl PairingOffer {
         let json = base64::engine::general_purpose::URL_SAFE_NO_PAD
             .decode(fragment)
             .map_err(|e| PairingError::InvalidLink(format!("base64 decode failed: {e}")))?;
-        let offer: PairingOffer = serde_json::from_slice(&json)
+        let mut offer: PairingOffer = serde_json::from_slice(&json)
             .map_err(|e| PairingError::InvalidLink(format!("json decode failed: {e}")))?;
         if offer.v != 1 {
             return Err(PairingError::InvalidLink(format!(
@@ -147,6 +157,13 @@ impl PairingOffer {
                 offer.v
             )));
         }
+        if offer.secret.len() != SECRET_LEN {
+            return Err(PairingError::InvalidLink(format!(
+                "secret is {} bytes, expected {SECRET_LEN}",
+                offer.secret.len()
+            )));
+        }
+        offer.device_id = offer.offerer_id()?.to_z32();
         Ok(offer)
     }
 
@@ -174,7 +191,7 @@ pub struct JoinMsg {
     pub device_id: String,
     /// Joiner's device name.
     pub name: String,
-    /// HMAC-SHA256(secret, joiner_device_id || offerer_device_id).
+    /// HMAC-SHA256 over the length-prefixed joiner and offerer device ids.
     #[serde(with = "base64url_bytes")]
     pub proof: Vec<u8>,
 }
@@ -194,14 +211,18 @@ pub struct RejectMsg {
     pub reason: String,
 }
 
-/// Compute the HMAC-SHA256 proof: `HMAC(secret, joiner_id || offerer_id)`.
+/// Compute the HMAC-SHA256 proof over `len(joiner_id) || joiner_id ||
+/// len(offerer_id) || offerer_id` (lengths as u64 BE), so no two id pairs
+/// share an input.
 ///
 /// Both ids are the raw z-base-32 bytes (compact form, no dashes).
 pub fn compute_proof(secret: &[u8], joiner_id: &str, offerer_id: &str) -> Vec<u8> {
     let mut mac =
         Hmac::<Sha256>::new_from_slice(secret).expect("HMAC-SHA256 accepts any key length");
-    mac.update(joiner_id.as_bytes());
-    mac.update(offerer_id.as_bytes());
+    for id in [joiner_id, offerer_id] {
+        mac.update(&(id.len() as u64).to_be_bytes());
+        mac.update(id.as_bytes());
+    }
     mac.finalize().into_bytes().to_vec()
 }
 
@@ -212,10 +233,10 @@ pub fn verify_proof(secret: &[u8], joiner_id: &str, offerer_id: &str, proof: &[u
 }
 
 /// Derive the 6-digit Short Authentication String (SAS) that both devices
-/// display for the user to compare.
+/// display for the user to compare. Argument order does not matter.
 ///
-/// `SAS = SHA-256(sorted(device_id_a, device_id_b) || secret)` → first 3
-/// bytes → decimal mod 1_000_000, zero-padded to 6 digits.
+/// `SAS = SHA-256(len-prefixed sorted(device_id_a, device_id_b) || secret)` →
+/// first 4 bytes as a big-endian u32 → mod 1_000_000, zero-padded to 6 digits.
 pub fn compute_sas(id_a: &str, id_b: &str, secret: &[u8]) -> String {
     let (first, second) = if id_a <= id_b {
         (id_a, id_b)
@@ -223,8 +244,10 @@ pub fn compute_sas(id_a: &str, id_b: &str, secret: &[u8]) -> String {
         (id_b, id_a)
     };
     let mut hasher = Sha256::new();
-    hasher.update(first.as_bytes());
-    hasher.update(second.as_bytes());
+    for id in [first, second] {
+        hasher.update((id.len() as u64).to_be_bytes());
+        hasher.update(id.as_bytes());
+    }
     hasher.update(secret);
     let hash = hasher.finalize();
     // Take first 4 bytes as a big-endian u32, mod 1_000_000.
@@ -276,6 +299,8 @@ struct ActiveOffer {
     secret: Vec<u8>,
     /// The offerer's own device id (z32 compact).
     offerer_id: String,
+    /// The offerer's display name, returned to the joiner in [`AcceptMsg`].
+    name: String,
     /// Expiry timestamp.
     expires_at: u64,
     /// Count of failed proof attempts.
@@ -302,6 +327,7 @@ impl PairingService {
         g.active_offer = Some(ActiveOffer {
             secret: offer.secret.clone(),
             offerer_id: offer.device_id.clone(),
+            name: offer.name.clone(),
             expires_at: offer.expires_at,
             failed_attempts: 0,
         });
@@ -331,13 +357,22 @@ impl PairingService {
     /// the `AcceptMsg` + SAS code are returned. On failure, a `RejectMsg`
     /// reason is returned.
     ///
-    /// `revoked_set` is checked before accepting — a revoked peer cannot
-    /// re-pair even with a valid proof.
+    /// `revoked` is checked after the proof — a revoked peer cannot re-pair
+    /// even with a valid proof, and one without the secret is just another
+    /// failed attempt (it cannot burn the offer without knowing the secret).
     pub fn handle_join(
         &self,
         join: &JoinMsg,
-        revoked: &dyn Fn(&str) -> bool,
+        revoked: &dyn Fn(&PublicKey) -> bool,
     ) -> Result<(AcceptMsg, String), PairingError> {
+        let joiner = crate::identity::Fingerprint::parse(&join.device_id)
+            .map_err(|e| PairingError::InvalidDeviceId(e.to_string()))?;
+        if joiner.to_z32() != join.device_id {
+            return Err(PairingError::InvalidDeviceId(
+                "expected the compact z-base-32 form".into(),
+            ));
+        }
+
         let mut g = self.inner.write().expect("pairing lock poisoned");
 
         let offer = g.active_offer.as_mut().ok_or(PairingError::NoActiveOffer)?;
@@ -349,13 +384,6 @@ impl PairingService {
 
         if join.device_id == offer.offerer_id {
             return Err(PairingError::SelfPair);
-        }
-
-        if revoked(&join.device_id) {
-            // Burn the offer when a revoked device tries — don't leak
-            // information about why via retry count.
-            g.active_offer = None;
-            return Err(PairingError::DeviceRevoked);
         }
 
         if !verify_proof(
@@ -372,10 +400,17 @@ impl PairingService {
             return Err(PairingError::InvalidProof);
         }
 
-        // Valid proof — burn the offer (single use).
-        let secret = offer.secret.clone();
-        let offerer_id = offer.offerer_id.clone();
-        g.active_offer = None;
+        // Valid proof — burn the offer (single use), whatever happens next.
+        let ActiveOffer {
+            secret,
+            offerer_id,
+            name,
+            ..
+        } = g.active_offer.take().expect("checked above");
+
+        if revoked(&joiner) {
+            return Err(PairingError::DeviceRevoked);
+        }
 
         let sas = compute_sas(&join.device_id, &offerer_id, &secret);
 
@@ -390,7 +425,7 @@ impl PairingService {
         Ok((
             AcceptMsg {
                 device_id: offerer_id,
-                name: String::new(), // filled in by the caller with the real device name
+                name,
             },
             sas,
         ))
@@ -642,11 +677,12 @@ mod tests {
             proof,
         };
 
-        let no_revoke = |_: &str| false;
+        let no_revoke = |_: &PublicKey| false;
 
         // First join succeeds.
         let (accept, sas) = service.handle_join(&join, &no_revoke).unwrap();
         assert_eq!(accept.device_id, offerer_id.to_z32());
+        assert_eq!(accept.name, "Offerer", "accept carries the offerer's name");
         assert_eq!(sas.len(), 6);
 
         // Second join fails — offer burned (single use).
@@ -670,7 +706,7 @@ mod tests {
             proof: vec![0u8; 32], // wrong proof
         };
 
-        let no_revoke = |_: &str| false;
+        let no_revoke = |_: &PublicKey| false;
         let result = service.handle_join(&join, &no_revoke);
         assert!(matches!(result, Err(PairingError::InvalidProof)));
     }
@@ -691,7 +727,7 @@ mod tests {
             proof: vec![0u8; 32],
         };
 
-        let no_revoke = |_: &str| false;
+        let no_revoke = |_: &PublicKey| false;
 
         // 4 failed attempts — still active.
         for _ in 0..4 {
@@ -723,10 +759,148 @@ mod tests {
             proof,
         };
 
-        let joiner_z32 = joiner_id.to_z32();
-        let is_revoked = |id: &str| id == joiner_z32;
+        let is_revoked = |id: &PublicKey| *id == joiner_id;
         let result = service.handle_join(&join, &is_revoked);
         assert!(matches!(result, Err(PairingError::DeviceRevoked)));
+        assert!(
+            service.status().pending_confirmations.is_empty(),
+            "a revoked device never becomes pending"
+        );
+    }
+
+    #[test]
+    fn revoked_device_without_the_secret_cannot_burn_the_offer() {
+        let offerer_id = test_device_id();
+        let joiner_id = test_device_id();
+        let service = PairingService::new();
+        let _offer = service.create_offer(&offerer_id, "Offerer");
+        let join = JoinMsg {
+            device_id: joiner_id.to_z32(),
+            name: "Revoked".into(),
+            proof: vec![0u8; 32],
+        };
+        let is_revoked = |id: &PublicKey| *id == joiner_id;
+        let result = service.handle_join(&join, &is_revoked);
+        assert!(matches!(result, Err(PairingError::InvalidProof)));
+        assert!(service.has_active_offer());
+    }
+
+    #[test]
+    fn join_device_id_that_is_not_a_public_key_is_rejected() {
+        let offerer_id = test_device_id();
+        let service = PairingService::new();
+        let offer = service.create_offer(&offerer_id, "Offerer");
+        let bogus = "not-a-key!!";
+        let join = JoinMsg {
+            device_id: bogus.into(),
+            name: "Attacker".into(),
+            proof: compute_proof(&offer.secret, bogus, &offerer_id.to_z32()),
+        };
+        let result = service.handle_join(&join, &|_: &PublicKey| false);
+        assert!(matches!(result, Err(PairingError::InvalidDeviceId(_))));
+        assert!(service.status().pending_confirmations.is_empty());
+        assert!(service.has_active_offer(), "a malformed join burns nothing");
+
+        // A real key in the dashed display form is not the canonical id the
+        // proof binds, so it is refused too.
+        let joiner_id = test_device_id();
+        let dashed = crate::identity::Fingerprint::from_pubkey(&joiner_id)
+            .as_str()
+            .to_string();
+        let join = JoinMsg {
+            proof: compute_proof(&offer.secret, &dashed, &offerer_id.to_z32()),
+            device_id: dashed,
+            name: "Joiner".into(),
+        };
+        let result = service.handle_join(&join, &|_: &PublicKey| false);
+        assert!(matches!(result, Err(PairingError::InvalidDeviceId(_))));
+    }
+
+    /// Runs one handshake the way the agent does on each side and returns
+    /// (offerer's SAS, joiner's SAS).
+    fn both_sides_sas(offerer_id: &PublicKey, joiner_id: &PublicKey) -> (String, String) {
+        let service = PairingService::new();
+        let link = service.create_offer(offerer_id, "Offerer").encode_link();
+        // Joiner side: decode the scanned link, prove, derive the SAS.
+        let offer = PairingOffer::decode(&link).unwrap();
+        let own = joiner_id.to_z32();
+        let join = JoinMsg {
+            device_id: own.clone(),
+            name: "Joiner".into(),
+            proof: compute_proof(&offer.secret, &own, &offer.device_id),
+        };
+        let joiner_sas = compute_sas(&own, &offer.device_id, &offer.secret);
+        // Offerer side.
+        let (_, offerer_sas) = service.handle_join(&join, &|_: &PublicKey| false).unwrap();
+        (offerer_sas, joiner_sas)
+    }
+
+    #[test]
+    fn sas_matches_on_offerer_and_joiner_with_ids_in_either_lexical_order() {
+        let mut seen_lower = false;
+        let mut seen_higher = false;
+        while !(seen_lower && seen_higher) {
+            let offerer_id = test_device_id();
+            let joiner_id = test_device_id();
+            if joiner_id.to_z32() < offerer_id.to_z32() {
+                seen_lower = true;
+            } else {
+                seen_higher = true;
+            }
+            let (offerer_sas, joiner_sas) = both_sides_sas(&offerer_id, &joiner_id);
+            assert_eq!(offerer_sas, joiner_sas);
+            assert_eq!(offerer_sas.len(), 6);
+        }
+    }
+
+    #[test]
+    fn proof_and_sas_inputs_are_length_prefixed() {
+        let secret = [7u8; SECRET_LEN];
+        assert_ne!(
+            compute_proof(&secret, "ab", "cde"),
+            compute_proof(&secret, "abc", "de")
+        );
+        assert_ne!(
+            compute_sas("ab", "cde", &secret),
+            compute_sas("abc", "de", &secret)
+        );
+    }
+
+    fn link_with(mutate: impl FnOnce(&mut serde_json::Value)) -> String {
+        let offer = PairingOffer::new(&test_device_id(), "Test");
+        let mut json = serde_json::to_value(&offer).unwrap();
+        mutate(&mut json);
+        let encoded =
+            base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(json.to_string().as_bytes());
+        format!("notare://pair#{encoded}")
+    }
+
+    #[test]
+    fn offer_decode_rejects_a_secret_that_is_not_32_bytes() {
+        let link = link_with(|j| j["secret"] = "AA".into());
+        assert!(matches!(
+            PairingOffer::decode(&link),
+            Err(PairingError::InvalidLink(_))
+        ));
+    }
+
+    #[test]
+    fn offer_decode_rejects_a_device_id_that_is_not_a_public_key() {
+        let link = link_with(|j| j["device_id"] = "not-a-key".into());
+        assert!(matches!(
+            PairingOffer::decode(&link),
+            Err(PairingError::InvalidLink(_))
+        ));
+    }
+
+    #[test]
+    fn offer_decode_normalizes_a_dashed_device_id_to_compact() {
+        let id = test_device_id();
+        let dashed = crate::identity::Fingerprint::from_pubkey(&id)
+            .as_str()
+            .to_string();
+        let link = link_with(|j| j["device_id"] = dashed.into());
+        assert_eq!(PairingOffer::decode(&link).unwrap().device_id, id.to_z32());
     }
 
     #[test]
@@ -744,7 +918,7 @@ mod tests {
             proof,
         };
 
-        let no_revoke = |_: &str| false;
+        let no_revoke = |_: &PublicKey| false;
         let result = service.handle_join(&join, &no_revoke);
         assert!(matches!(result, Err(PairingError::SelfPair)));
     }
@@ -766,7 +940,7 @@ mod tests {
             proof,
         };
 
-        let no_revoke = |_: &str| false;
+        let no_revoke = |_: &PublicKey| false;
         service.handle_join(&join, &no_revoke).unwrap();
 
         // Confirm acceptance.

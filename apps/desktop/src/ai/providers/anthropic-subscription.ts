@@ -117,8 +117,8 @@ export function createAnthropicSubscriptionModel(
         providerOptions: {
           ...params.providerOptions,
           anthropic: {
-            structuredOutputMode: "outputFormat",
             ...params.providerOptions?.anthropic,
+            structuredOutputMode: "outputFormat",
           },
         },
       }),

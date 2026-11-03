@@ -851,6 +851,10 @@ msgstr ""
 msgid "Could not start trial"
 msgstr ""
 
+#: src/settings/sync/index.tsx
+msgid "Couldn't copy to clipboard"
+msgstr ""
+
 #: src/snippets/index.tsx
 msgid "Couldn't delete snippet"
 msgstr ""
@@ -2504,6 +2508,10 @@ msgstr ""
 msgid "Pairing link"
 msgstr ""
 
+#: src/settings/sync/index.tsx
+msgid "Pairing QR code"
+msgstr ""
+
 #: src/session/components/note-input/transcript/renderer/speaker-assign.tsx
 #: src/session/components/outer-header/overflow/export-modal.tsx
 msgid "Participants"
@@ -3697,6 +3705,10 @@ msgstr ""
 
 #: src/onboarding/account/after-login.tsx
 msgid "Trial activated - 14 days of Pro"
+msgstr ""
+
+#: src/settings/sync/index.tsx
+msgid "Try again"
 msgstr ""
 
 #: src/dictation/orb.tsx
