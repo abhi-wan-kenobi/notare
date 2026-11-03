@@ -1192,6 +1192,17 @@ pub async fn create_event<R: tauri::Runtime>(
     let start = parse_event_datetime(is_all_day, &input.started_at)?;
     let end = parse_event_datetime(is_all_day, &input.ended_at)?;
 
+    let attendees = input.attendees.map(|attendees| {
+        attendees
+            .into_iter()
+            .map(|attendee| hypr_google_calendar::Attendee {
+                email: Some(attendee.email),
+                display_name: attendee.name,
+                ..Default::default()
+            })
+            .collect::<Vec<_>>()
+    });
+
     let req = hypr_google_calendar::CreateEventRequest {
         calendar_id: input.calendar_tracking_id,
         event: hypr_google_calendar::CreateEventBody {
@@ -1200,6 +1211,7 @@ pub async fn create_event<R: tauri::Runtime>(
             location: input.location,
             start,
             end,
+            attendees,
             ..Default::default()
         },
     };

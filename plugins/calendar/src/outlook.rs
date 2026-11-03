@@ -725,6 +725,18 @@ pub async fn create_event<R: tauri::Runtime>(
     let token = access_token_for_account(app, Some(&target_email)).await?;
 
     let is_all_day = input.is_all_day.unwrap_or(false);
+    let attendees = input.attendees.map(|attendees| {
+        attendees
+            .into_iter()
+            .map(|attendee| hypr_outlook_calendar::Attendee {
+                email_address: Some(hypr_outlook_calendar::EmailAddress {
+                    address: Some(attendee.email),
+                    name: attendee.name,
+                }),
+                ..Default::default()
+            })
+            .collect::<Vec<_>>()
+    });
     let body = hypr_outlook_calendar::CreateEventBody {
         subject: input.title,
         body: input.notes.map(|notes| hypr_outlook_calendar::ItemBody {
@@ -735,6 +747,7 @@ pub async fn create_event<R: tauri::Runtime>(
             display_name: Some(loc),
             ..Default::default()
         }),
+        attendees,
         start: hypr_outlook_calendar::DateTimeTimeZone {
             date_time: input.started_at,
             time_zone: Some("UTC".to_string()),
