@@ -563,4 +563,85 @@ mod tests {
         assert!(filtered_json.contains("\"meeting_id\":\"m-1\""));
         assert!(!filtered_json.contains("\"meeting_id\":\"m-2\""));
     }
+
+    #[test]
+    fn test_like_pattern_escapes_sql_wildcards() {
+        assert_eq!(server::like_pattern("100%"), "%100\\%%");
+        assert_eq!(server::like_pattern("foo_bar"), "%foo\\_bar%");
+        assert_eq!(server::like_pattern(r"back\slash"), "%back\\\\slash%");
+        assert_eq!(server::like_pattern("plain"), "%plain%");
+    }
+
+    #[tokio::test]
+    async fn test_search_meeting_content_empty_query_short_circuits_before_any_db_call() {
+        let (_dir, db) = setup_test_db().await;
+        let pool = db.pool().clone();
+        pool.close().await; // any SQL against this pool would error
+
+        let server = NotareMcpServer::new(pool, None);
+        let res = server
+            .search_meeting_content(Parameters(SearchMeetingContentParams {
+                query: "   ".to_string(),
+                meeting_ids: None,
+                limit: Some(10),
+            }))
+            .await
+            .unwrap();
+        let json = serde_json::to_string(&res).unwrap();
+        assert!(json.contains("\"mode\":\"none (empty query)\""));
+        assert!(json.contains("\"results\":[]"));
+    }
+
+    #[tokio::test]
+    async fn test_search_meeting_content_percent_in_query_is_literal_not_wildcard() {
+        let (_dir, db) = setup_test_db().await;
+        let pool = db.pool().clone();
+
+        sqlx::query(
+            "INSERT INTO sessions (id, title, created_at, updated_at) VALUES ('m-1', 'Progress', '2026-11-03T10:00:00Z', '2026-11-03T11:00:00Z')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+        sqlx::query(
+            "INSERT INTO session_documents (id, session_id, kind, title, body) VALUES ('doc-1', 'm-1', 'note', 'Status', 'Rollout is at 100% complete today.')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+        // Shares the "100" prefix but has no literal "100%" substring; before
+        // ESCAPE'ing the pattern, querying "100%" would wildcard-match this
+        // too via the unescaped trailing `%`.
+        sqlx::query(
+            "INSERT INTO sessions (id, title, created_at, updated_at) VALUES ('m-2', 'Backlog', '2026-11-03T10:00:00Z', '2026-11-03T11:00:00Z')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+        sqlx::query(
+            "INSERT INTO session_documents (id, session_id, kind, title, body) VALUES ('doc-2', 'm-2', 'note', 'Status', '100 items remain in the backlog queue.')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        let server = NotareMcpServer::new(pool, None);
+        let res = server
+            .search_meeting_content(Parameters(SearchMeetingContentParams {
+                query: "100%".to_string(),
+                meeting_ids: None,
+                limit: Some(10),
+            }))
+            .await
+            .unwrap();
+        let json = serde_json::to_string(&res).unwrap();
+        assert!(
+            json.contains("\"meeting_id\":\"m-1\""),
+            "literal match must be found: {json}"
+        );
+        assert!(
+            !json.contains("\"meeting_id\":\"m-2\""),
+            "unescaped % must not wildcard-match unrelated rows: {json}"
+        );
+    }
 }

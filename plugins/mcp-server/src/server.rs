@@ -15,6 +15,11 @@ use crate::types::*;
 /// (`apps/desktop/src/chat/transport/pre-retrieval.ts`).
 const SEMANTIC_KNN_K: u32 = 60;
 
+/// Above this many ids, `meeting_ids` falls back to one global semantic
+/// query plus a post-hoc filter instead of one query per id, bounding the
+/// number of embed calls a single request can trigger.
+const MAX_MEETING_ID_FANOUT: usize = 20;
+
 #[derive(Clone)]
 pub struct NotareMcpServer {
     pool: sqlx::SqlitePool,
@@ -90,6 +95,18 @@ pub fn extract_snippet(text: &str, query: &str) -> String {
     }
 }
 
+/// Build a `LIKE` pattern that treats `query` as a literal substring: escapes
+/// `\`, `%`, and `_` so a query containing SQL wildcards (e.g. `"100%"` or
+/// `"foo_bar"`) cannot silently widen the match set. Pair with `ESCAPE '\'`
+/// in the SQL.
+pub fn like_pattern(query: &str) -> String {
+    let escaped = query
+        .replace('\\', "\\\\")
+        .replace('%', "\\%")
+        .replace('_', "\\_");
+    format!("%{escaped}%")
+}
+
 /// Resolve the semantic (embedding KNN) arm: ranked session ids for RRF,
 /// their chunk hits grouped by session (closest-first, as `knn_join`
 /// already returns them), and — when the arm could not run — a reason
@@ -140,42 +157,67 @@ pub(crate) async fn semantic_arm(
         Ok(_) => {}
     }
 
-    match runtime
-        .semantic_search(query.to_string(), SEMANTIC_KNN_K, None)
-        .await
-    {
-        Err(e) => {
-            tracing::warn!("semantic search failed: {e}");
-            (
-                ranked,
-                by_session,
-                Some(format!("semantic search failed: {e}")),
-            )
-        }
-        Ok(hits) => {
-            for hit in hits {
-                if let Some(filter_ids) = meeting_ids
-                    && !filter_ids.contains(&hit.session_id)
+    // A small `meeting_ids` filter is queried per-id so a chunk ranked
+    // beyond the global top-K still surfaces for the meetings the caller
+    // actually asked about (`semantic_search` only takes one `session_id`,
+    // not a list). A large filter falls back to one global query plus a
+    // post-hoc filter below, bounding the number of embed calls per request.
+    let hits: Vec<tauri_plugin_embedding_search::SearchHit> = match meeting_ids {
+        Some(ids) if !ids.is_empty() && ids.len() <= MAX_MEETING_ID_FANOUT => {
+            let mut merged = Vec::new();
+            for id in ids {
+                match runtime
+                    .semantic_search(query.to_string(), SEMANTIC_KNN_K, Some(id.clone()))
+                    .await
                 {
-                    continue;
+                    Ok(hits) => merged.extend(hits),
+                    Err(e) => tracing::warn!("semantic search failed for meeting {id}: {e}"),
                 }
-                let start_ms = hit.start_ms.unwrap_or(0);
-                let citation = format!("[[src:{}@{start_ms}]]", hit.session_id);
-                ranked.push(RankedItem::new(hit.session_id.clone()));
-                by_session
-                    .entry(hit.session_id)
-                    .or_default()
-                    .push(SemanticContentMatch {
-                        chunk_id: hit.chunk_id,
-                        source_type: hit.source_type,
-                        text: hit.text,
-                        distance: hit.distance,
-                        citation,
-                    });
             }
-            (ranked, by_session, None)
+            merged.sort_by(|a, b| {
+                a.distance
+                    .partial_cmp(&b.distance)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            });
+            merged
         }
+        _ => match runtime
+            .semantic_search(query.to_string(), SEMANTIC_KNN_K, None)
+            .await
+        {
+            Ok(hits) => hits,
+            Err(e) => {
+                tracing::warn!("semantic search failed: {e}");
+                return (
+                    ranked,
+                    by_session,
+                    Some(format!("semantic search failed: {e}")),
+                );
+            }
+        },
+    };
+
+    for hit in hits {
+        if let Some(filter_ids) = meeting_ids
+            && !filter_ids.contains(&hit.session_id)
+        {
+            continue;
+        }
+        let start_ms = hit.start_ms.unwrap_or(0);
+        let citation = format!("[[src:{}@{start_ms}]]", hit.session_id);
+        ranked.push(RankedItem::new(hit.session_id.clone()));
+        by_session
+            .entry(hit.session_id)
+            .or_default()
+            .push(SemanticContentMatch {
+                chunk_id: hit.chunk_id,
+                source_type: hit.source_type,
+                text: hit.text,
+                distance: hit.distance,
+                citation,
+            });
     }
+    (ranked, by_session, None)
 }
 
 #[tool_router]
@@ -330,12 +372,20 @@ impl NotareMcpServer {
         &self,
         Parameters(params): Parameters<SearchMeetingContentParams>,
     ) -> Result<CallToolResult, McpError> {
-        let pattern = format!("%{}%", params.query);
         let limit = params.limit.unwrap_or(20).max(1);
+
+        if params.query.trim().is_empty() {
+            return structured(&SearchMeetingContentResult {
+                query: params.query,
+                mode: "none (empty query)".to_string(),
+                results: Vec::new(),
+            });
+        }
+        let pattern = like_pattern(&params.query);
 
         // ---- Lexical arm: documents then transcripts, SQL LIKE. ----
         let doc_rows: Vec<(String, String, String, String)> = sqlx::query_as(
-            "SELECT session_id, kind, title, body FROM session_documents WHERE deleted_at IS NULL AND (title LIKE ?1 OR body LIKE ?1) LIMIT 100",
+            "SELECT session_id, kind, title, body FROM session_documents WHERE deleted_at IS NULL AND (title LIKE ?1 ESCAPE '\\' OR body LIKE ?1 ESCAPE '\\') LIMIT 100",
         )
         .bind(&pattern)
         .fetch_all(&self.pool)
@@ -343,7 +393,7 @@ impl NotareMcpServer {
         .map_err(internal_err)?;
 
         let transcript_rows: Vec<(String, String, String)> = sqlx::query_as(
-            "SELECT session_id, memo, words_json FROM transcripts WHERE deleted_at IS NULL AND (memo LIKE ?1 OR words_json LIKE ?1) LIMIT 100",
+            "SELECT session_id, memo, words_json FROM transcripts WHERE deleted_at IS NULL AND (memo LIKE ?1 ESCAPE '\\' OR words_json LIKE ?1 ESCAPE '\\') LIMIT 100",
         )
         .bind(&pattern)
         .fetch_all(&self.pool)
