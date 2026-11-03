@@ -172,7 +172,6 @@ pub async fn main() {
         .plugin(tauri_plugin_export::init(db.clone()))
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_mcp::init())
-        .plugin(tauri_plugin_mcp_server::init())
         .plugin(tauri_plugin_messenger::init())
         .plugin(tauri_plugin_misc::init())
         .plugin(tauri_plugin_template::init())
@@ -185,6 +184,8 @@ pub async fn main() {
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(tauri_plugin_store2::init())
+        // Reads its settings from store2 during setup, so it must come after it.
+        .plugin(tauri_plugin_mcp_server::init())
         .plugin(tauri_plugin_updater2::init())
         .plugin(tauri_plugin_tray::init())
         .plugin(tauri_plugin_settings::init())
