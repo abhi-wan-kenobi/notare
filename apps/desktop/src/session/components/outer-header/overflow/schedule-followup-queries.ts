@@ -23,7 +23,10 @@ export const WRITABLE_CALENDARS_QUERY_KEY = [
 /** `google:<email>` / `outlook:<email>` -> `<email>` (falls back to the raw id). */
 export function accountEmailFromConnectionId(connectionId: string): string {
   const idx = connectionId.indexOf(":");
-  return idx === -1 ? connectionId : connectionId.slice(idx + 1);
+  const raw = idx === -1 ? connectionId : connectionId.slice(idx + 1);
+  // Lowercase for consistency with `defaultFollowupAttendees`'s dedupe key,
+  // even though providers already canonicalize account email casing.
+  return raw.toLowerCase();
 }
 
 /**

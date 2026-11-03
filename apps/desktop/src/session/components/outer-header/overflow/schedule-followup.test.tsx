@@ -192,6 +192,60 @@ describe("ScheduleFollowupDialog", () => {
     expect(screen.queryByText("Alice")).toBeNull();
   });
 
+  it("picks up attendees once still-loading participant data arrives, but stops once the user edits", async () => {
+    mockOneWritableCalendar();
+    // Simulate participants still loading when the dialog opens.
+    mocks.useSessionParticipants.mockReturnValue([]);
+
+    const { rerender } = renderWithClient(
+      <ScheduleFollowupDialog
+        sessionId={SESSION_ID}
+        open={true}
+        onOpenChange={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue("Weekly sync — follow-up")).toBeDefined();
+    });
+    expect(screen.queryByText("Alice")).toBeNull();
+
+    // Participant data resolves after the dialog was already open.
+    mocks.useSessionParticipants.mockReturnValue([
+      { humanId: "h1", name: "Alice", email: "alice@example.com" },
+    ]);
+    rerender(
+      <QueryClientProvider client={new QueryClient()}>
+        <ScheduleFollowupDialog
+          sessionId={SESSION_ID}
+          open={true}
+          onOpenChange={vi.fn()}
+        />
+      </QueryClientProvider>,
+    );
+    await screen.findByText("Alice");
+
+    // Once the user edits the title, further data changes must not clobber it.
+    fireEvent.change(screen.getByDisplayValue("Weekly sync — follow-up"), {
+      target: { value: "Custom title" },
+    });
+    mocks.useSessionParticipants.mockReturnValue([
+      { humanId: "h2", name: "Bob", email: "bob@example.com" },
+    ]);
+    rerender(
+      <QueryClientProvider client={new QueryClient()}>
+        <ScheduleFollowupDialog
+          sessionId={SESSION_ID}
+          open={true}
+          onOpenChange={vi.fn()}
+        />
+      </QueryClientProvider>,
+    );
+    expect(screen.getByDisplayValue("Custom title")).toBeDefined();
+    expect(screen.getByText("Alice")).toBeDefined();
+    expect(screen.queryByText("Bob")).toBeNull();
+  });
+
   it("submits createEvent with the selected calendar, computed times, and attendees", async () => {
     mockOneWritableCalendar();
     calendarCommands.createEvent.mockResolvedValue({

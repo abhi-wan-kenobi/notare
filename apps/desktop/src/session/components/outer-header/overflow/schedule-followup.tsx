@@ -1,7 +1,7 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useMutation } from "@tanstack/react-query";
 import { CalendarPlusIcon, XIcon } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Badge } from "@hypr/ui/components/ui/badge";
 import { Button } from "@hypr/ui/components/ui/button";
@@ -91,20 +91,31 @@ export function ScheduleFollowupDialog({
   const [calendarKey, setCalendarKey] = useState("");
   const [attendees, setAttendees] = useState<FollowupAttendee[]>([]);
   const [description, setDescription] = useState("");
+  // Tracks whether the user has touched title/attendees/description for the
+  // current open cycle, so late-arriving session/participant/action-item
+  // data (still loading when the dialog opened) can keep syncing in without
+  // clobbering edits once the user starts typing.
+  const userEditedRef = useRef(false);
 
-  // Reset the form to its defaults every time the dialog transitions open,
-  // instead of tracking live session changes while the user is editing.
+  // Date/time and duration don't depend on session data, so they're set
+  // once per dialog-open transition.
   useEffect(() => {
     if (!open) return;
-
-    const meetingTitle = event?.title || session?.title || "";
-    setTitle(defaultFollowupTitle(meetingTitle));
     setStartLocal(toDatetimeLocalValue(defaultFollowupStart()));
     setDurationMinutes(DEFAULT_DURATION_MINUTES);
+    userEditedRef.current = false;
+  }, [open, sessionId]);
+
+  // Title/attendees/description depend on session/participants/action-item
+  // queries, which may still be loading when the dialog opens. Keep syncing
+  // defaults from them until the user edits a field.
+  useEffect(() => {
+    if (!open || userEditedRef.current) return;
+    const meetingTitle = event?.title || session?.title || "";
+    setTitle(defaultFollowupTitle(meetingTitle));
     setAttendees(defaultFollowupAttendees(participants));
     setDescription(defaultFollowupDescription(actionItems));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, sessionId]);
+  }, [open, session, event, participants, actionItems]);
 
   useEffect(() => {
     if (!open) return;
@@ -151,11 +162,14 @@ export function ScheduleFollowupDialog({
   });
 
   const removeAttendee = (id: string) => {
+    userEditedRef.current = true;
     setAttendees((current) => current.filter((a) => a.id !== id));
   };
 
   const canSubmit =
-    Boolean(selectedTarget) && Boolean(title.trim()) && Boolean(startLocal);
+    Boolean(selectedTarget) &&
+    Boolean(title.trim()) &&
+    Boolean(datetimeLocalToIso(startLocal));
 
   const waitingLabel = selectedTarget
     ? t`Waiting for ${selectedTarget.provider === "google" ? "Google" : "Outlook"}… finish sign-in in your browser if prompted`
@@ -187,7 +201,10 @@ export function ScheduleFollowupDialog({
               </label>
               <Input
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                onChange={(e) => {
+                  userEditedRef.current = true;
+                  setTitle(e.target.value);
+                }}
                 className="text-xs"
                 autoFocus
               />
@@ -279,7 +296,10 @@ export function ScheduleFollowupDialog({
               </label>
               <textarea
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                onChange={(e) => {
+                  userEditedRef.current = true;
+                  setDescription(e.target.value);
+                }}
                 rows={4}
                 className="border-input placeholder:text-muted-foreground focus-visible:ring-ring flex w-full rounded-md border bg-transparent px-3 py-2 text-xs shadow-xs focus-visible:ring-1 focus-visible:outline-hidden"
               />
