@@ -11,12 +11,12 @@
   "types": "./src/index.ts",
   "dependencies": {
     "@hypr/db-runtime": "workspace:*",
-    "drizzle-orm": "^0.45.2"
+    "drizzle-orm": "^0.45.4"
   },
   "devDependencies": {
-    "drizzle-kit": "^0.31.3",
-    "typescript": "~5.8.3",
-    "vitest": "^4.1.11"
+    "drizzle-kit": "^0.31.11",
+    "typescript": "~5.9.3",
+    "vitest": "^4.1.12"
   },
   "scripts": {
     "introspect": "drizzle-kit introspect",
