@@ -13,6 +13,7 @@ import { useSearchEngine } from "~/search/contexts/engine";
 import { useBriefsScheduler } from "~/services/briefs";
 import { initEnhancerService } from "~/services/enhancer";
 import { useTaskModel } from "~/services/llm-router";
+import { usePairLinkHandler } from "~/settings/sync/pair-link";
 import { useConfigValue } from "~/shared/config";
 import { useDesktopTabLifecycle } from "~/shared/desktop-tab-lifecycle";
 import { useTabs } from "~/store/zustand/tabs";
@@ -46,6 +47,7 @@ export function ClassicMainServices() {
       <ToolRegistration />
       <EnhancerInit />
       <BriefsScheduler />
+      <PairLinkService />
     </>
   );
 }
@@ -55,6 +57,13 @@ export function ClassicMainServices() {
 // providers (0.6.2/0.6.3 crashed the main window on this).
 function BriefsScheduler() {
   useBriefsScheduler();
+  return null;
+}
+
+// notare://pair#… links: queue the link and open Settings → Devices. Main
+// window only, hence here and not in the all-windows useDeeplinkHandler.
+function PairLinkService() {
+  usePairLinkHandler();
   return null;
 }
 

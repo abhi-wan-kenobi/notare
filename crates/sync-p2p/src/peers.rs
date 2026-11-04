@@ -1,20 +1,19 @@
 //! Peer allowlist — the set of devices this device will sync with.
 //!
 //! This is the security boundary that closes the SSRF finding from the S1
-//! audit (§12 of `docs/internal/sync-p2p.md`): because the CloudSync endpoint
-//! URL derives from a SQL-supplied `address`, the extension's network layer
-//! will otherwise dial **any** host:port (or, over iroh, any node id) it is
-//! handed. The allowlist is enforced at **both** connect (outbound dial) and
-//! accept (inbound connection) time — a node id not on the list is refused in
+//! audit (§12 of `docs/internal/sync-p2p.md`): without it the agent would
+//! dial **any** node id it is handed and accept any that connects. The
+//! allowlist is enforced at **both** connect (outbound dial) and accept
+//! (inbound connection) time — a node id not on the list is refused in
 //! either direction. See [`crate::agent`] for the enforcement call sites.
 //!
 //! ## Storage: a local JSON file, deliberately outside SQLite
 //!
 //! The allowlist is persisted as `<data_dir>/notare/sync/peers.json` — a plain
-//! local file, **not** a SQLite table and **never** registered with
-//! `cloudsync_init`. This is load-bearing:
+//! local file, **not** a SQLite table and **never** a cr-sqlite CRR. This is
+//! load-bearing:
 //!
-//! CRDT sync replicates every table registered with `cloudsync_init` to every
+//! CRDT sync replicates every CRR to every
 //! peer. If the allowlist were a synced table, a device that has been revoked
 //! (removed from the list) could simply re-add itself by replicating its own
 //! still-present local row to the peer that revoked it — revocation would be
@@ -24,7 +23,7 @@
 //! `peers.json`, and no sync round can touch it.
 //!
 //! (A SQLite table would also be viable *if* it were a LOCAL-only table never
-//! passed to `cloudsync_init`; we use a JSON file instead because the list is
+//! made a CRR; we use a JSON file instead because the list is
 //! tiny, read on every dial/accept, and needs no schema/migration machinery —
 //! and because a separate file makes the "not synced" invariant visually
 //! obvious to anyone auditing the sync setup.)

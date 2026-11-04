@@ -144,8 +144,8 @@ impl<S: QueryEventSink> LiveQueryRuntime<S> {
     /// The [`Drop`] impl does the same two steps, but a `PluginDbRuntime` is
     /// shared behind an `Arc` — its state-map clones outlive any one caller —
     /// so `Drop` only fires when the *last* holder goes away. The #101
-    /// teardown needs the dispatcher stopped **between** `cloudsync_stop` and
-    /// `pool().close()`, which `&self` (not `self`) makes possible.
+    /// teardown needs the dispatcher stopped **between** stopping the sync
+    /// lifecycle and `Db::close`, which `&self` (not `self`) makes possible.
     pub fn shutdown(&self) {
         let _ = self.shutdown_tx.send(true);
         if let Some(dispatcher) = self.dispatcher.lock().unwrap().take() {
@@ -535,7 +535,7 @@ mod tests {
     fn live_query_test_schema() -> hypr_db_migrate::DbSchema {
         hypr_db_migrate::DbSchema {
             steps: LIVE_QUERY_TEST_MIGRATION_STEPS,
-            validate_cloudsync_table: |_| false,
+            validate_crr_table: |_| false,
         }
     }
 
@@ -548,7 +548,6 @@ mod tests {
         let db_path = dir.path().join("app.db");
         let db = hypr_db_core::Db::open(DbOpenOptions {
             storage: DbStorage::Local(&db_path),
-            cloudsync_enabled: false,
             journal_mode_wal: true,
             foreign_keys: true,
             max_connections: Some(4),

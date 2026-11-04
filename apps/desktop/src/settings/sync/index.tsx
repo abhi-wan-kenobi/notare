@@ -54,6 +54,8 @@ import { Switch } from "@hypr/ui/components/ui/switch";
 import { sonnerToast } from "@hypr/ui/components/ui/toast";
 import { cn, formatDistanceToNow } from "@hypr/utils";
 
+import { usePendingPairLink } from "./pending-pair-link";
+
 import { SettingsPageTitle } from "~/settings/page-title";
 import { useSetSettingValue, useStoredSettingValue } from "~/settings/queries";
 
@@ -131,9 +133,32 @@ export function SettingsSync() {
 }
 
 function SyncUnavailable() {
+  const incoming = usePendingPairLink((state) => state.link);
+  const clearInbox = usePendingPairLink((state) => state.clear);
+  const [droppedLink, setDroppedLink] = useState(false);
+
+  // Nothing here can join; drop the link so it can't linger in memory.
+  useEffect(() => {
+    if (incoming) {
+      setDroppedLink(true);
+      clearInbox();
+    }
+  }, [incoming, clearInbox]);
+
   return (
     <div className="flex flex-col gap-6">
       <SettingsPageTitle title={<Trans>Devices</Trans>} />
+      {droppedLink && (
+        <p
+          role="alert"
+          className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300"
+        >
+          <Trans>
+            A pairing link was opened, but device sync isn't available in this
+            build, so it can't be used here.
+          </Trans>
+        </p>
+      )}
       <div className="border-border text-muted-foreground flex flex-col items-center gap-2 rounded-lg border border-dashed p-8 text-center">
         <MonitorSmartphoneIcon className="text-muted-foreground/70 size-6" />
         <p className="text-foreground text-sm font-medium">
@@ -164,8 +189,8 @@ function SyncSettingsContent({
     mutationFn: (next: boolean) => (next ? syncStart() : syncStop()),
     // Refetch the status on both outcomes — a failed start/stop can still
     // change what the agent is doing (e.g. a stop that partially tore down
-    // cloudsync before failing), so the status line must never keep showing
-    // a stale pre-attempt read.
+    // the sync session before failing), so the status line must never keep
+    // showing a stale pre-attempt read.
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: STATUS_QUERY_KEY });
     },
@@ -197,6 +222,8 @@ function SyncSettingsContent({
     void queryClient.invalidateQueries({ queryKey: PEERS_QUERY_KEY });
   };
 
+  const incomingLink = usePendingPairLink((state) => state.link);
+
   return (
     <div className="flex flex-col gap-6">
       <SettingsPageTitle title={<Trans>Devices</Trans>} />
@@ -218,6 +245,18 @@ function SyncSettingsContent({
       </p>
 
       <SyncStatusLine status={status} />
+
+      {incomingLink && !syncEnabled && (
+        <p
+          role="alert"
+          className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300"
+        >
+          <Trans>
+            A pairing link was opened, but sync is off. Turn it on above to join
+            with it.
+          </Trans>
+        </p>
+      )}
 
       <motion.div
         animate={{ opacity: syncEnabled ? 1 : 0.5 }}
@@ -244,6 +283,7 @@ function SyncSettingsContent({
           />
           <JoinWithLinkSection
             disabled={!syncEnabled}
+            acceptIncoming={syncEnabled && !toggleSync.isPending}
             onJoined={invalidatePeers}
           />
         </div>
@@ -864,9 +904,11 @@ function PairDeviceSection({
 
 function JoinWithLinkSection({
   disabled,
+  acceptIncoming,
   onJoined,
 }: {
   disabled: boolean;
+  acceptIncoming: boolean;
   onJoined: () => void;
 }) {
   const { t } = useLingui();
@@ -877,6 +919,21 @@ function JoinWithLinkSection({
     mutationFn: pairingJoin,
     onSuccess: (result) => setOutcome(result),
   });
+
+  // A notare://pair# link opened from the OS: fill the field and start the
+  // join, which ends in the same 6-digit confirmation as a pasted link.
+  const incoming = usePendingPairLink((state) => state.link);
+  const clearInbox = usePendingPairLink((state) => state.clear);
+  const startJoin = joinMutation.mutate;
+  useEffect(() => {
+    if (!incoming || !acceptIncoming) {
+      return;
+    }
+    clearInbox();
+    setOutcome(null);
+    setLink(incoming);
+    startJoin(incoming);
+  }, [incoming, acceptIncoming, clearInbox, startJoin]);
 
   const addPeer = useMutation({
     mutationFn: ({

@@ -300,7 +300,11 @@ export type CalendarProviderType = "apple" | "google" | "outlook" |
  * Imported `.ics` calendar files (local, available on all platforms).
  */
 "ics"
-export type CreateEventInput = { calendar_tracking_id: string; title: string; started_at: string; ended_at: string; is_all_day: boolean | null; location: string | null; notes: string | null; url: string | null }
+export type CreateEventInput = { calendar_tracking_id: string; title: string; started_at: string; ended_at: string; is_all_day: boolean | null; location: string | null; notes: string | null; url: string | null; 
+/**
+ * Invited attendees. Apple/ics calendars ignore this (no write API for guests).
+ */
+attendees: EventAttendeeInput[] | null }
 export type EventAttendee = { name: string | null; 
 /**
  * Apple calendar events only provide a contact entry, which can possibly not have an email.
@@ -323,6 +327,7 @@ status: AttendeeStatus;
  * For Google: organizer -> Chair, !organizer & !optional -> Required, !organizer & optional -> Optional.
  */
 role: AttendeeRole }
+export type EventAttendeeInput = { email: string; name: string | null }
 export type EventFilter = { from: string; to: string; calendar_tracking_id: string }
 /**
  * Apple: {name, email, isCurrentUser, ...}, Google: {id, email, displayName, self}.

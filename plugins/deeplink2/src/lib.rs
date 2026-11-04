@@ -1,5 +1,6 @@
 mod commands;
 mod error;
+mod pending;
 pub mod server;
 mod types;
 
@@ -9,6 +10,7 @@ mod docs;
 pub use error::{Error, Result};
 pub use types::{
     AuthCallbackSearch, BillingRefreshSearch, DeepLink, DeepLinkEvent, IntegrationCallbackSearch,
+    PairSearch,
 };
 
 use std::str::FromStr;
@@ -37,10 +39,31 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
         .commands(tauri_specta::collect_commands![
             commands::start_callback_server::<tauri::Wry>,
             commands::stop_callback_server::<tauri::Wry>,
+            commands::take_pending_pair::<tauri::Wry>,
         ])
         .events(tauri_specta::collect_events![types::DeepLinkEvent])
         .typ::<types::DeepLink>()
         .error_handling(tauri_specta::ErrorHandlingMode::Result)
+}
+
+fn handle_url<R: tauri::Runtime>(app: &tauri::AppHandle<R>, url_str: &str) {
+    let redacted = redact_url(url_str);
+    tracing::info!(url = %redacted, "deeplink_received");
+
+    match DeepLink::from_str(url_str) {
+        Ok(deep_link) => {
+            tracing::info!(path = deep_link.path(), "deeplink_parsed");
+            if let DeepLink::Pair(search) = &deep_link {
+                app.state::<pending::PendingPair>().set(search.clone());
+            }
+            if let Err(e) = DeepLinkEvent(deep_link).emit(app) {
+                tracing::error!(error = ?e, "deeplink_event_emit_failed");
+            }
+        }
+        Err(e) => {
+            tracing::debug!(error = ?e, url = %redacted, "deeplink_parse_failed");
+        }
+    }
 }
 
 pub fn init<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
@@ -52,27 +75,22 @@ pub fn init<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
             specta_builder.mount_events(app);
             app.manage(server::CallbackServerState::new());
 
-            let app_handle = app.clone();
+            app.manage(pending::PendingPair::default());
 
+            let app_handle = app.clone();
             app.deep_link().on_open_url(move |event| {
                 for url in event.urls() {
-                    let url_str = url.as_str();
-                    let redacted = redact_url(url_str);
-                    tracing::info!(url = %redacted, "deeplink_received");
-
-                    match DeepLink::from_str(url_str) {
-                        Ok(deep_link) => {
-                            tracing::info!(path = deep_link.path(), "deeplink_parsed");
-                            if let Err(e) = DeepLinkEvent(deep_link).emit(&app_handle) {
-                                tracing::error!(error = ?e, "deeplink_event_emit_failed");
-                            }
-                        }
-                        Err(e) => {
-                            tracing::debug!(error = ?e, url = %redacted, "deeplink_parse_failed");
-                        }
-                    }
+                    handle_url(&app_handle, url.as_str());
                 }
             });
+
+            // Windows/Linux cold start: the deep-link plugin emitted the launch
+            // URL during its own init, before the listener above existed.
+            if let Ok(Some(urls)) = app.deep_link().get_current() {
+                for url in urls {
+                    handle_url(app, url.as_str());
+                }
+            }
 
             Ok(())
         })
@@ -82,6 +100,39 @@ pub fn init<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
 #[cfg(test)]
 mod test {
     use super::*;
+
+    #[test]
+    fn pair_link_is_parked_until_taken_once() {
+        let app = tauri::test::mock_app();
+        make_specta_builder::<tauri::test::MockRuntime>().mount_events(app.handle());
+        app.manage(pending::PendingPair::default());
+
+        handle_url(app.handle(), "notare://pair#first");
+        handle_url(app.handle(), "notare://pair#second");
+
+        let pending = app.state::<pending::PendingPair>();
+        assert_eq!(pending.take().unwrap().link, "notare://pair#second");
+        assert!(pending.take().is_none());
+    }
+
+    #[test]
+    fn non_pair_urls_never_park_a_link() {
+        let app = tauri::test::mock_app();
+        make_specta_builder::<tauri::test::MockRuntime>().mount_events(app.handle());
+        app.manage(pending::PendingPair::default());
+
+        for url in [
+            "notare://billing/refresh",
+            "notare://auth/callback?access_token=a&refresh_token=b",
+            "notare://pair",
+            "https://pair#abc",
+            "not a url",
+        ] {
+            handle_url(app.handle(), url);
+        }
+
+        assert!(app.state::<pending::PendingPair>().take().is_none());
+    }
 
     #[test]
     fn export() {

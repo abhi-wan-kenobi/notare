@@ -21,6 +21,9 @@ async stopCallbackServer() : Promise<Result<null, string>> {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
+},
+async takePendingPair() : Promise<PairSearch | null> {
+    return await TAURI_INVOKE("plugin:deeplink2|take_pending_pair");
 }
 }
 
@@ -41,9 +44,18 @@ deepLinkEvent: "plugin:deeplink2:deep-link-event"
 
 export type AuthCallbackSearch = { access_token: string; refresh_token: string }
 export type BillingRefreshSearch = Record<string, never>
-export type DeepLink = { to: "/auth/callback"; search: AuthCallbackSearch } | { to: "/billing/refresh"; search: BillingRefreshSearch } | { to: "/integration/callback"; search: IntegrationCallbackSearch }
+export type DeepLink = { to: "/auth/callback"; search: AuthCallbackSearch } | { to: "/billing/refresh"; search: BillingRefreshSearch } | { to: "/integration/callback"; search: IntegrationCallbackSearch } | { to: "/pair"; search: PairSearch }
 export type DeepLinkEvent = DeepLink
 export type IntegrationCallbackSearch = { integration_id: string; status: string; return_to: string | null }
+/**
+ * A device-pairing offer opened as `notare://pair#<offer>`.
+ */
+export type PairSearch = { 
+/**
+ * The complete `notare://pair#<offer>` link. The offer carries the pairing
+ * secret, so it is never logged.
+ */
+link: string }
 
 /** tauri-specta globals **/
 

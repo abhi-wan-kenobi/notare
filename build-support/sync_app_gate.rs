@@ -1,18 +1,16 @@
 // Single source of truth for which (target_os, target_arch) pairs the
-// desktop app's P2P sync stack (`sync-p2p` + `hypr-cloudsync`, gated behind
-// `tauri-plugin-db`'s `sync` feature) is wired into.
+// desktop app's P2P sync stack (`sync-p2p` + the cr-sqlite engine, gated
+// behind `tauri-plugin-db`'s `sync` feature) is wired into.
 //
-// This is DELIBERATELY narrower than `crates/cloudsync/build.rs`'s
-// `supported()`: that function says the vendored C `from-source` transport
-// compiles and links; this file says CI has actually observed the *app*
-// crate (`cargo check -p desktop --features sync`) compile on that target.
-// See docs/internal/sync-p2p.md §21.8 and §22.
+// These are exactly the four targets `crates/crsqlite/vendor/` carries a
+// prebuilt engine for, and the targets on which CI has observed the *app*
+// crate (`cargo check -p desktop --features sync`) compile. See
+// docs/internal/sync-p2p.md §8.2.
 //
-// linux/aarch64 is admitted by `supported()` but excluded here: as of this
-// writing no CI job and no local toolchain have ever compiled anything
-// against it (§21.7). Widen this file (and the two Cargo.toml `cfg(...)`
-// tables that mirror it — `plugins/db/Cargo.toml` and
-// `apps/desktop/src-tauri/Cargo.toml`) only once that changes.
+// linux/aarch64 is excluded: it has neither a vendored engine nor CI proof.
+// Widen this file (and the two Cargo.toml `cfg(...)` tables that mirror it —
+// `plugins/db/Cargo.toml` and `apps/desktop/src-tauri/Cargo.toml`) only once
+// that changes.
 //
 // Included verbatim (via `include!`) by the `build.rs` of both
 // `plugins/db` and `apps/desktop/src-tauri`, so there is exactly ONE copy of

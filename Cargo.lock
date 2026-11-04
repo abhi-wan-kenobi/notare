@@ -3494,20 +3494,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cloudsync"
-version = "0.1.0"
-dependencies = [
- "cc",
- "dirs 6.0.0",
- "libsqlite3-sys",
- "serde_json",
- "sqlx",
- "tempfile",
- "thiserror 2.0.18",
- "tokio",
-]
-
-[[package]]
 name = "clru"
 version = "0.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4670,19 +4656,15 @@ dependencies = [
 name = "db-core"
 version = "0.1.0"
 dependencies = [
- "backon",
- "cloudsync",
  "crsqlite",
  "db-change",
  "libsqlite3-sys",
- "serde",
  "sqlite-vec",
  "sqlx",
  "tempfile",
  "thiserror 2.0.18",
  "tokio",
  "tracing",
- "uuid",
 ]
 
 [[package]]
@@ -4701,8 +4683,10 @@ dependencies = [
 name = "db-migrate"
 version = "0.1.0"
 dependencies = [
+ "crsqlite",
  "db-core",
  "sqlx",
+ "tempfile",
  "thiserror 2.0.18",
  "tokio",
 ]
@@ -4729,7 +4713,6 @@ name = "db-reactive"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "cloudsync",
  "db-change",
  "db-core",
  "db-execute",

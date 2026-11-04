@@ -50,6 +50,10 @@ msgstr "{0} verified legacy files can be removed"
 msgid "{duplicateCandidateCount} already in your dictionary — skipped."
 msgstr "{duplicateCandidateCount} already in your dictionary — skipped."
 
+#: src/session/components/outer-header/overflow/schedule-followup.tsx
+msgid "{minutes} min"
+msgstr "{minutes} min"
+
 #: src/settings/general/account.tsx
 msgid "{trialDaysRemaining} day left"
 msgstr "{trialDaysRemaining} day left"
@@ -117,6 +121,14 @@ msgstr "A friendly blob that listens through its face."
 #: src/dictation/orb.tsx
 msgid "A neon rim ringed with voice-reactive beads."
 msgstr "A neon rim ringed with voice-reactive beads."
+
+#: src/settings/sync/index.tsx
+msgid "A pairing link was opened, but device sync isn't available in this build, so it can't be used here."
+msgstr "A pairing link was opened, but device sync isn't available in this build, so it can't be used here."
+
+#: src/settings/sync/index.tsx
+msgid "A pairing link was opened, but sync is off. Turn it on above to join with it."
+msgstr "A pairing link was opened, but sync is off. Turn it on above to join with it."
 
 #: src/dictation/orb.tsx
 msgid "A quiet graphite disc with a single state dot."
@@ -364,6 +376,10 @@ msgstr "Ask Notare anything"
 msgid "Assignees:"
 msgstr "Assignees:"
 
+#: src/session/components/outer-header/overflow/schedule-followup.tsx
+msgid "Attendees"
+msgstr "Attendees"
+
 #: src/settings/general/permissions.tsx
 msgid "Audio"
 msgstr "Audio"
@@ -459,6 +475,7 @@ msgid "Built-in"
 msgstr "Built-in"
 
 #: src/calendar/components/sidebar.tsx
+#: src/session/components/outer-header/overflow/schedule-followup.tsx
 #: src/settings/general/permissions.tsx
 #: src/sidebar/calendar.tsx
 #: src/sidebar/settings.tsx
@@ -475,6 +492,7 @@ msgid "Can transcribe while the meeting is happening."
 msgstr "Can transcribe while the meeting is happening."
 
 #: src/onboarding/transcription.tsx
+#: src/session/components/outer-header/overflow/schedule-followup.tsx
 #: src/settings/ai/llm/disclosure-modal.tsx
 #: src/settings/ai/llm/openrouter-sign-in.tsx
 #: src/settings/ai/llm/select.tsx
@@ -539,6 +557,10 @@ msgstr "Checking trial eligibility..."
 #: src/settings/general/app-settings.tsx
 msgid "Checking…"
 msgstr "Checking…"
+
+#: src/session/components/outer-header/overflow/schedule-followup.tsx
+msgid "Choose a calendar"
+msgstr "Choose a calendar"
 
 #: src/session/components/outer-header/overflow/export-modal.tsx
 msgid "Choose a file format and what to include."
@@ -901,6 +923,10 @@ msgstr "Couldn't update pin"
 msgid "Couldn't update the dictionary. Try again."
 msgstr "Couldn't update the dictionary. Try again."
 
+#: src/session/components/outer-header/overflow/schedule-followup.tsx
+msgid "Create a calendar event for the next meeting."
+msgstr "Create a calendar event for the next meeting."
+
 #: src/calendar/components/google/content.tsx
 msgid "Create a project in the Google Cloud console (any name, it's free)."
 msgstr "Create a project in the Google Cloud console (any name, it's free)."
@@ -912,6 +938,10 @@ msgstr "Create template"
 #: src/session/components/outer-header/overflow/export-modal.tsx
 msgid "Created"
 msgstr "Created"
+
+#: src/session/components/outer-header/overflow/schedule-followup.tsx
+msgid "Creating event…"
+msgstr "Creating event…"
 
 #: src/settings/general/app-settings.tsx
 msgid "Current version"
@@ -928,6 +958,10 @@ msgstr "Custom model identifier"
 #: src/settings/general/theme.tsx
 msgid "Dark"
 msgstr "Dark"
+
+#: src/session/components/outer-header/overflow/schedule-followup.tsx
+msgid "Date & time"
+msgstr "Date & time"
 
 #: src/session/components/outer-header/metadata/date.tsx
 msgid "Date and time are required"
@@ -999,6 +1033,10 @@ msgstr "Deleting..."
 #: src/templates/template-form.tsx
 msgid "Describe the template purpose..."
 msgstr "Describe the template purpose..."
+
+#: src/session/components/outer-header/overflow/schedule-followup.tsx
+msgid "Description"
+msgstr "Description"
 
 #: src/settings/ai/llm/configure.tsx
 msgid "Detect"
@@ -1151,6 +1189,7 @@ msgid "Duplicate recipe"
 msgstr "Duplicate recipe"
 
 #: src/session/components/outer-header/overflow/export-modal.tsx
+#: src/session/components/outer-header/overflow/schedule-followup.tsx
 msgid "Duration"
 msgstr "Duration"
 
@@ -1260,6 +1299,7 @@ msgid "Enter a valid 52-character fingerprint"
 msgstr "Enter a valid 52-character fingerprint"
 
 #: src/session/components/outer-header/metadata/date.tsx
+#: src/session/components/outer-header/overflow/schedule-followup.tsx
 msgid "Enter a valid date and time"
 msgstr "Enter a valid date and time"
 
@@ -1438,6 +1478,10 @@ msgstr "Floating bar look"
 #: src/session/components/outer-header/overflow/followup.tsx
 msgid "Follow-up email"
 msgstr "Follow-up email"
+
+#: src/session/components/outer-header/overflow/schedule-followup.tsx
+msgid "Follow-up scheduled"
+msgstr "Follow-up scheduled"
 
 #: src/templates/template-icon-picker.tsx
 msgid "Food & Drink"
@@ -2759,8 +2803,10 @@ msgstr "Reminders"
 msgid "Remove"
 msgstr "Remove"
 
+#. placeholder {0}: attendee.name
 #. placeholder {0}: file.title
 #: src/calendar/components/ics/content.tsx
+#: src/session/components/outer-header/overflow/schedule-followup.tsx
 msgid "Remove {0}"
 msgstr "Remove {0}"
 
@@ -2933,6 +2979,14 @@ msgstr "Save date"
 #: src/settings/sync/index.tsx
 msgid "Scan this on the other device, or copy the link."
 msgstr "Scan this on the other device, or copy the link."
+
+#: src/session/components/outer-header/overflow/schedule-followup.tsx
+msgid "Schedule"
+msgstr "Schedule"
+
+#: src/session/components/outer-header/overflow/schedule-followup.tsx
+msgid "Schedule follow-up"
+msgstr "Schedule follow-up"
 
 #: src/settings/recipes/index.tsx
 msgid "Scope"
@@ -3623,6 +3677,7 @@ msgstr "Timezone"
 msgid "Tip: The Notare team loves our users!"
 msgstr "Tip: The Notare team loves our users!"
 
+#: src/session/components/outer-header/overflow/schedule-followup.tsx
 #: src/settings/recipes/index.tsx
 msgid "Title"
 msgstr "Title"
@@ -3879,6 +3934,11 @@ msgstr "View all in Snippets"
 #: src/contacts/organization-details.tsx
 msgid "View LinkedIn profile"
 msgstr "View LinkedIn profile"
+
+#. placeholder {0}: selectedTarget.provider === "google" ? "Google" : "Outlook"
+#: src/session/components/outer-header/overflow/schedule-followup.tsx
+msgid "Waiting for {0}… finish sign-in in your browser if prompted"
+msgstr "Waiting for {0}… finish sign-in in your browser if prompted"
 
 #: src/settings/ai/llm/openrouter-sign-in.tsx
 msgid "Waiting for OpenRouter in your browser…"

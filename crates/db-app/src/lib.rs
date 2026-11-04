@@ -2,20 +2,19 @@
 
 mod calendar_ops;
 mod calendar_types;
-mod cloudsync;
 mod event_ops;
 mod event_types;
 mod id_backfill;
 mod legacy_import;
 mod session_ops;
 mod session_types;
+mod sync_tables;
 mod template_ops;
 mod template_types;
 mod voice_profile_ops;
 
 pub use calendar_ops::*;
 pub use calendar_types::*;
-pub use cloudsync::*;
 pub use event_ops::*;
 pub use event_types::*;
 pub use id_backfill::{
@@ -26,6 +25,7 @@ pub use id_backfill::{
 pub use legacy_import::*;
 pub use session_ops::*;
 pub use session_types::*;
+pub use sync_tables::*;
 pub use template_ops::*;
 pub use template_types::*;
 pub use voice_profile_ops::*;
@@ -121,7 +121,7 @@ pub const APP_MIGRATION_STEPS: &[hypr_db_migrate::MigrationStep] = &[
 pub fn schema() -> hypr_db_migrate::DbSchema {
     hypr_db_migrate::DbSchema {
         steps: APP_MIGRATION_STEPS,
-        validate_cloudsync_table: cloudsync_alter_guard_required,
+        validate_crr_table: crr_alter_guard_required,
     }
 }
 
@@ -217,7 +217,6 @@ mod tests {
     async fn test_db() -> Db {
         let db = Db::open(hypr_db_core::DbOpenOptions {
             storage: hypr_db_core::DbStorage::Memory,
-            cloudsync_enabled: false,
             journal_mode_wal: true,
             foreign_keys: true,
             max_connections: Some(1),
@@ -231,7 +230,6 @@ mod tests {
     async fn test_db_without_default_templates() -> Db {
         let db = Db::open(hypr_db_core::DbOpenOptions {
             storage: hypr_db_core::DbStorage::Memory,
-            cloudsync_enabled: false,
             journal_mode_wal: true,
             foreign_keys: true,
             max_connections: Some(1),
@@ -242,7 +240,7 @@ mod tests {
             &db,
             hypr_db_migrate::DbSchema {
                 steps: &APP_MIGRATION_STEPS[..2],
-                validate_cloudsync_table: cloudsync_alter_guard_required,
+                validate_crr_table: crr_alter_guard_required,
             },
         )
         .await
@@ -257,7 +255,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn schema_declares_legacy_migrations_and_cloudsync_registry() {
+    async fn schema_declares_legacy_migrations() {
         let db = test_db().await;
 
         let tables: Vec<String> = sqlx::query_scalar(
@@ -352,7 +350,7 @@ mod tests {
             &db,
             hypr_db_migrate::DbSchema {
                 steps: &APP_MIGRATION_STEPS[..snippets_index],
-                validate_cloudsync_table: cloudsync_alter_guard_required,
+                validate_crr_table: crr_alter_guard_required,
             },
         )
         .await
@@ -475,7 +473,7 @@ mod tests {
             &db,
             hypr_db_migrate::DbSchema {
                 steps: &APP_MIGRATION_STEPS[..repair_index],
-                validate_cloudsync_table: cloudsync_alter_guard_required,
+                validate_crr_table: crr_alter_guard_required,
             },
         )
         .await
@@ -526,7 +524,7 @@ mod tests {
             &db,
             hypr_db_migrate::DbSchema {
                 steps: &APP_MIGRATION_STEPS[..3],
-                validate_cloudsync_table: cloudsync_alter_guard_required,
+                validate_crr_table: crr_alter_guard_required,
             },
         )
         .await
@@ -581,7 +579,7 @@ mod tests {
             &db,
             hypr_db_migrate::DbSchema {
                 steps: &APP_MIGRATION_STEPS[..3],
-                validate_cloudsync_table: cloudsync_alter_guard_required,
+                validate_crr_table: crr_alter_guard_required,
             },
         )
         .await
@@ -602,16 +600,12 @@ mod tests {
     }
 
     #[test]
-    fn cloudsync_registry_enables_only_the_proven_tables() {
-        let registry = cloudsync_table_registry();
-
+    fn sync_table_registry_enables_only_the_proven_tables() {
+        let registry: std::collections::BTreeSet<&str> =
+            SYNC_TABLE_REGISTRY.iter().copied().collect();
         assert_eq!(registry.len(), 17);
 
-        let enabled: std::collections::BTreeSet<&str> = registry
-            .iter()
-            .filter(|table| table.enabled)
-            .map(|table| table.table_name.as_str())
-            .collect();
+        let enabled: std::collections::BTreeSet<&str> = SYNCED_TABLES.iter().copied().collect();
         assert_eq!(
             enabled,
             std::collections::BTreeSet::from([
@@ -624,17 +618,10 @@ mod tests {
             ])
         );
 
-        assert!(
-            !registry
-                .iter()
-                .any(|table| table.table_name == "migration_import_runs")
-        );
-        assert!(cloudsync_alter_guard_required("sessions"));
-        assert!(cloudsync_alter_guard_required("session_documents"));
-        assert!(cloudsync_alter_guard_required("transcripts"));
-        assert!(cloudsync_alter_guard_required("action_items"));
-        assert!(cloudsync_alter_guard_required("tags"));
-        assert!(cloudsync_alter_guard_required("session_tags"));
+        assert!(!registry.contains("migration_import_runs"));
+        for table in SYNCED_TABLES {
+            assert!(crr_alter_guard_required(table), "{table} is synced");
+        }
 
         // §25/§26: proven unsafe (concurrent creation duplicates the
         // entity), not merely unproven. Pinned so a later batch cannot
@@ -644,13 +631,11 @@ mod tests {
             ["humans", "session_participants", "calendars", "events"]
         );
         for table in NO_GO_TABLES {
-            assert!(!cloudsync_alter_guard_required(table), "{table} is NO-GO");
+            assert!(!crr_alter_guard_required(table), "{table} is NO-GO");
         }
 
         // Enabled, eligible-pending-proof and NO-GO are pairwise disjoint,
-        // and every eligible/NO-GO table is a registered table.
-        let synced: std::collections::BTreeSet<&str> = SYNCED_TABLES.iter().copied().collect();
-        assert_eq!(synced, enabled);
+        // and every one of them is a registered table.
         let eligible: std::collections::BTreeSet<&str> =
             ELIGIBLE_PENDING_PROOF.iter().copied().collect();
         let no_go: std::collections::BTreeSet<&str> = NO_GO_TABLES.iter().copied().collect();
@@ -660,30 +645,26 @@ mod tests {
             eligible.is_disjoint(&no_go),
             "a NO-GO table was marked eligible"
         );
-        for table in eligible.union(&no_go) {
+        for table in enabled.iter().chain(&eligible).chain(&no_go) {
             assert!(
-                registry.iter().any(|spec| spec.table_name == *table),
+                registry.contains(table),
                 "{table} is not a registered table"
             );
         }
-        assert!(
-            !registry
-                .iter()
-                .any(|spec| spec.table_name == "sync_peer_cursors")
-        );
+        assert!(!registry.contains("sync_peer_cursors"));
     }
 
     #[tokio::test]
-    async fn registered_tables_match_cloudsync_schema_requirements() {
+    async fn registered_tables_match_crr_schema_requirements() {
         let db = test_db().await;
 
-        for table in cloudsync_table_registry() {
+        for table in SYNC_TABLE_REGISTRY {
             let rows = sqlx::query(
                 "SELECT name, type, \"notnull\", dflt_value, pk
                  FROM pragma_table_info(?)
                  ORDER BY cid",
             )
-            .bind(&table.table_name)
+            .bind(table)
             .fetch_all(db.pool())
             .await
             .unwrap();
@@ -692,22 +673,16 @@ mod tests {
                 .iter()
                 .filter(|row| row.get::<i64, _>("pk") > 0)
                 .collect();
-            assert_eq!(
-                pk_columns.len(),
-                1,
-                "{} must have one primary key",
-                table.table_name
-            );
+            assert_eq!(pk_columns.len(), 1, "{table} must have one primary key");
 
             let pk = pk_columns[0];
-            assert_eq!(pk.get::<String, _>("name"), "id", "{}", table.table_name);
+            assert_eq!(pk.get::<String, _>("name"), "id", "{table}");
             assert_eq!(
                 pk.get::<String, _>("type").to_uppercase(),
                 "TEXT",
-                "{}",
-                table.table_name
+                "{table}"
             );
-            assert_eq!(pk.get::<i64, _>("notnull"), 1, "{}", table.table_name);
+            assert_eq!(pk.get::<i64, _>("notnull"), 1, "{table}");
 
             for row in rows
                 .iter()
@@ -715,8 +690,7 @@ mod tests {
             {
                 assert!(
                     row.get::<Option<String>, _>("dflt_value").is_some(),
-                    "{}.{} must define a DEFAULT value for SQLite Sync compatibility",
-                    table.table_name,
+                    "{table}.{} must define a DEFAULT value: crsql_as_crr rejects NOT NULL columns without one",
                     row.get::<String, _>("name")
                 );
             }
@@ -827,7 +801,7 @@ mod tests {
             &db,
             hypr_db_migrate::DbSchema {
                 steps: &APP_MIGRATION_STEPS[..1],
-                validate_cloudsync_table: cloudsync_alter_guard_required,
+                validate_crr_table: crr_alter_guard_required,
             },
         )
         .await

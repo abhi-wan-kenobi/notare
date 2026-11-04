@@ -5,6 +5,7 @@ export {
   useLLMConnection,
   useLLMConnectionStatus,
   useScopedLanguageModel,
+  wrapWithThinkingMiddleware,
 } from "./useLLMConnection";
 export { useModelMetadata } from "./useModelMetadata";
 export { useTitleGenerating } from "./useTitleGenerating";

@@ -1,18 +1,14 @@
-mod cloudsync;
+mod crr;
 
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
-use std::sync::{Arc, Mutex, Once};
+use std::sync::Once;
 use std::time::Duration;
 
 use sqlx::SqlitePool;
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
 
-use crate::cloudsync::CloudsyncRuntimeState;
-pub use crate::cloudsync::{
-    CloudsyncAuth, CloudsyncRuntimeConfig, CloudsyncRuntimeError, CloudsyncStatus,
-    CloudsyncTableSpec, cloudsync_begin_alter_on, cloudsync_commit_alter_on,
-};
+pub use crate::crr::CrrAlter;
 
 #[derive(Clone, Copy, Debug)]
 pub enum DbStorage<'a> {
@@ -23,7 +19,6 @@ pub enum DbStorage<'a> {
 #[derive(Clone, Copy, Debug)]
 pub struct DbOpenOptions<'a> {
     pub storage: DbStorage<'a>,
-    pub cloudsync_enabled: bool,
     pub journal_mode_wal: bool,
     pub foreign_keys: bool,
     pub max_connections: Option<u32>,
@@ -35,14 +30,9 @@ pub enum DbOpenError {
     Io(#[from] std::io::Error),
     #[error(transparent)]
     Sqlx(#[from] sqlx::Error),
-    #[error(transparent)]
-    Cloudsync(#[from] hypr_cloudsync::Error),
     #[cfg(feature = "crsqlite")]
     #[error(transparent)]
     Crsqlite(#[from] hypr_crsqlite::Error),
-    #[cfg(feature = "crsqlite")]
-    #[error("cloudsync and cr-sqlite cannot both be loaded on one database")]
-    EngineConflict,
 }
 
 pub type ManagedDb = std::sync::Arc<Db>;
@@ -50,9 +40,6 @@ pub type ManagedDb = std::sync::Arc<Db>;
 const SQLITE_BUSY_TIMEOUT: Duration = Duration::from_secs(5);
 
 pub struct Db {
-    pub(crate) cloudsync_enabled: bool,
-    pub(crate) cloudsync_path: Option<PathBuf>,
-    pub(crate) cloudsync_runtime: Arc<Mutex<CloudsyncRuntimeState>>,
     pub(crate) crsqlite_path: Option<PathBuf>,
     pub(crate) pool: SqlitePool,
     change_notifier: hypr_db_change::ChangeNotifier,
@@ -60,11 +47,7 @@ pub struct Db {
 
 impl std::fmt::Debug for Db {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let runtime = self.cloudsync_runtime.lock().unwrap();
         f.debug_struct("Db")
-            .field("cloudsync_enabled", &self.cloudsync_enabled)
-            .field("cloudsync_path", &self.cloudsync_path)
-            .field("cloudsync_runtime", &*runtime)
             .field("crsqlite_path", &self.crsqlite_path)
             .field("change_notifier", &true)
             .finish_non_exhaustive()
@@ -73,8 +56,6 @@ impl std::fmt::Debug for Db {
 
 impl Drop for Db {
     fn drop(&mut self) {
-        self.stop_cloudsync_task();
-
         // cr-sqlite caches prepared statements per connection; an
         // unfinalized `sqlite3_close` panics sqlx's worker thread
         // (sqlx-sqlite's `ConnectionHandle::drop`). `Db::close` finalizes
@@ -141,9 +122,6 @@ impl Db {
     /// close through [`Db::close`].
     #[cfg(feature = "crsqlite")]
     pub async fn open_crsqlite(options: DbOpenOptions<'_>) -> Result<Self, DbOpenError> {
-        if options.cloudsync_enabled {
-            return Err(DbOpenError::EngineConflict);
-        }
         let (change_notifier, pool_options) = hypr_db_change::ChangeNotifier::new();
         connect_with_options(&options, pool_options, change_notifier, true).await
     }
@@ -159,7 +137,6 @@ impl Db {
     /// threads ("unable to close due to unfinalized statements"). Stop every
     /// user of the pool (live queries, sync sessions) before calling.
     pub async fn close(&self) {
-        self.stop_cloudsync_task();
         #[cfg(feature = "crsqlite")]
         if self.crsqlite_path.is_some() {
             hypr_crsqlite::close_pool(&self.pool).await;
@@ -168,72 +145,8 @@ impl Db {
         self.pool.close().await;
     }
 
-    /// Stop the cloudsync background sync loop, if one is running. Shared
-    /// by [`Db::close`] and `Drop` so both tear it down the same way —
-    /// `close` on a cloudsync-enabled `Db` used to leave this task running
-    /// against a pool it had just closed.
-    fn stop_cloudsync_task(&self) {
-        let task = {
-            let mut runtime = self.cloudsync_runtime.lock().unwrap();
-            runtime.running = false;
-            runtime.task.take()
-        };
-
-        if let Some(mut task) = task {
-            if let Some(shutdown_tx) = task.shutdown_tx.take() {
-                let _ = shutdown_tx.send(());
-            }
-            task.join_handle.abort();
-        }
-    }
-
     pub fn change_notifier(&self) -> &hypr_db_change::ChangeNotifier {
         &self.change_notifier
-    }
-
-    pub async fn connect_local(path: impl AsRef<Path>) -> Result<Self, hypr_cloudsync::Error> {
-        if let Some(parent) = path.as_ref().parent() {
-            std::fs::create_dir_all(parent)?;
-        }
-        let options = apply_internal_connect_policy(SqliteConnectOptions::new())
-            .filename(path)
-            .create_if_missing(true);
-        let (options, cloudsync_path) = hypr_cloudsync::apply(options)?;
-        let (change_notifier, pool_options) = hypr_db_change::ChangeNotifier::new();
-        let pool = pool_options
-            .connect_with(options)
-            .await
-            .map_err(hypr_cloudsync::Error::from)?;
-
-        Ok(Self {
-            cloudsync_enabled: true,
-            cloudsync_path: Some(cloudsync_path),
-            cloudsync_runtime: Arc::new(Mutex::new(CloudsyncRuntimeState::default())),
-            crsqlite_path: None,
-            pool,
-            change_notifier,
-        })
-    }
-
-    pub async fn connect_memory() -> Result<Self, hypr_cloudsync::Error> {
-        let options =
-            apply_internal_connect_policy(SqliteConnectOptions::from_str("sqlite::memory:")?);
-        let (options, cloudsync_path) = hypr_cloudsync::apply(options)?;
-        let (change_notifier, pool_options) = hypr_db_change::ChangeNotifier::new();
-        let pool = pool_options
-            .max_connections(1)
-            .connect_with(options)
-            .await
-            .map_err(hypr_cloudsync::Error::from)?;
-
-        Ok(Self {
-            cloudsync_enabled: true,
-            cloudsync_path: Some(cloudsync_path),
-            cloudsync_runtime: Arc::new(Mutex::new(CloudsyncRuntimeState::default())),
-            crsqlite_path: None,
-            pool,
-            change_notifier,
-        })
     }
 
     pub async fn connect_local_plain(path: impl AsRef<Path>) -> Result<Self, sqlx::Error> {
@@ -248,9 +161,6 @@ impl Db {
         let pool = pool_options.connect_with(options).await?;
 
         Ok(Self {
-            cloudsync_enabled: false,
-            cloudsync_path: None,
-            cloudsync_runtime: Arc::new(Mutex::new(CloudsyncRuntimeState::default())),
             crsqlite_path: None,
             pool,
             change_notifier,
@@ -267,9 +177,6 @@ impl Db {
         let pool = pool_options.connect_with(options).await?;
 
         Ok(Self {
-            cloudsync_enabled: false,
-            cloudsync_path: None,
-            cloudsync_runtime: Arc::new(Mutex::new(CloudsyncRuntimeState::default())),
             crsqlite_path: None,
             pool,
             change_notifier,
@@ -287,9 +194,6 @@ impl Db {
             .await?;
 
         Ok(Self {
-            cloudsync_enabled: false,
-            cloudsync_path: None,
-            cloudsync_runtime: Arc::new(Mutex::new(CloudsyncRuntimeState::default())),
             crsqlite_path: None,
             pool,
             change_notifier,
@@ -307,18 +211,6 @@ async fn connect_with_options(
     change_notifier: hypr_db_change::ChangeNotifier,
     crsqlite: bool,
 ) -> Result<Db, DbOpenError> {
-    // `open_crsqlite` already checks this before calling in, but the guard
-    // belongs here too: cloudsync and cr-sqlite keep incompatible
-    // per-connection state (network auxdata vs. cached prepared
-    // statements), and this is the one function every open path funnels
-    // through, so any future call site that passes both flags true must
-    // fail the same way rather than silently loading both extensions onto
-    // one connection.
-    #[cfg(feature = "crsqlite")]
-    if crsqlite && options.cloudsync_enabled {
-        return Err(DbOpenError::EngineConflict);
-    }
-
     let mut connect_options = match options.storage {
         DbStorage::Local(path) => {
             if let Some(parent) = path.parent() {
@@ -339,13 +231,6 @@ async fn connect_with_options(
     if options.foreign_keys {
         connect_options = connect_options.pragma("foreign_keys", "ON");
     }
-
-    let (connect_options, cloudsync_path) = if options.cloudsync_enabled {
-        let (connect_options, cloudsync_path) = hypr_cloudsync::apply(connect_options)?;
-        (connect_options, Some(cloudsync_path))
-    } else {
-        (connect_options, None)
-    };
 
     #[cfg(feature = "crsqlite")]
     let (connect_options, crsqlite_path) = if crsqlite {
@@ -369,25 +254,12 @@ async fn connect_with_options(
         }
     };
 
-    // SYNC-5: the cloudsync extension keeps its network context (and its
-    // commit hooks) in per-connection auxdata — `network_init` on one pooled
-    // connection does not reach any other, so a multi-connection pool breaks
-    // every later network call with "Unable to retrieve CloudSync network
-    // context". Every SYNC-4 proof opened with a single connection for
-    // exactly this reason. Any cloudsync-enabled open is therefore clamped
-    // to one connection, regardless of what the caller asked for.
-    if options.cloudsync_enabled {
-        pool_options = pool_options.max_connections(1);
-    }
     if crsqlite {
         pool_options = pool_options.idle_timeout(None).max_lifetime(None);
     }
     let pool = pool_options.connect_with(connect_options).await?;
 
     Ok(Db {
-        cloudsync_enabled: options.cloudsync_enabled,
-        cloudsync_path,
-        cloudsync_runtime: Arc::new(Mutex::new(CloudsyncRuntimeState::default())),
         crsqlite_path,
         pool,
         change_notifier,
@@ -438,26 +310,6 @@ fn register_sqlite_vec() {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
-    use std::sync::atomic::{AtomicBool, Ordering};
-
-    use tokio::sync::oneshot;
-
-    fn test_cloudsync_config() -> CloudsyncRuntimeConfig {
-        CloudsyncRuntimeConfig {
-            connection_string: "sqlitecloud://demo.invalid/app.db?apikey=demo".to_string(),
-            auth: CloudsyncAuth::None,
-            tables: vec![CloudsyncTableSpec {
-                table_name: "test_sync".to_string(),
-                crdt_algo: None,
-                force_init: None,
-                enabled: true,
-            }],
-            sync_interval_ms: 30_000,
-            wait_ms: Some(500),
-            max_retries: Some(1),
-        }
-    }
 
     #[tokio::test]
     async fn connect_local_plain_creates_parent_dirs() {
@@ -567,7 +419,6 @@ mod tests {
 
         let db = Db::open(DbOpenOptions {
             storage: DbStorage::Local(&db_path),
-            cloudsync_enabled: false,
             journal_mode_wal: true,
             foreign_keys: true,
             max_connections: Some(1),
@@ -591,139 +442,6 @@ mod tests {
         assert_eq!(foreign_keys, 1);
         assert_eq!(journal_mode.to_lowercase(), "wal");
         assert_eq!(busy_timeout, SQLITE_BUSY_TIMEOUT.as_millis() as i64);
-    }
-
-    #[tokio::test]
-    async fn disabled_open_mode_keeps_cloudsync_inert() {
-        let db = Db::open(DbOpenOptions {
-            storage: DbStorage::Memory,
-            cloudsync_enabled: false,
-            journal_mode_wal: false,
-            foreign_keys: true,
-            max_connections: Some(1),
-        })
-        .await
-        .unwrap();
-
-        assert!(!db.cloudsync_enabled());
-        assert!(!db.has_cloudsync());
-
-        db.cloudsync_configure(test_cloudsync_config()).unwrap();
-        db.cloudsync_start().await.unwrap();
-
-        let status = db.cloudsync_status().await.unwrap();
-        assert!(status.configured);
-        assert!(!status.extension_loaded);
-        assert!(!status.running);
-        assert!(!status.network_initialized);
-        assert!(!status.cloudsync_enabled);
-
-        db.cloudsync_stop().await.unwrap();
-    }
-
-    #[tokio::test]
-    async fn enabled_open_mode_requires_runtime_config_before_start() {
-        let db = Db::connect_memory().await.unwrap();
-
-        let error = db.cloudsync_start().await.unwrap_err();
-        assert!(matches!(error, CloudsyncRuntimeError::NotConfigured));
-    }
-
-    #[tokio::test]
-    async fn configure_rejects_live_runtime_changes() {
-        let db = Db::connect_memory_plain().await.unwrap();
-        db.cloudsync_configure(test_cloudsync_config()).unwrap();
-        db.cloudsync_runtime.lock().unwrap().running = true;
-
-        let error = db
-            .cloudsync_configure(CloudsyncRuntimeConfig {
-                connection_string: "sqlitecloud://demo.invalid/other.db?apikey=demo".to_string(),
-                ..test_cloudsync_config()
-            })
-            .unwrap_err();
-
-        assert!(matches!(error, CloudsyncRuntimeError::RestartRequired));
-        assert_eq!(
-            db.cloudsync_runtime
-                .lock()
-                .unwrap()
-                .config
-                .as_ref()
-                .unwrap()
-                .connection_string,
-            "sqlitecloud://demo.invalid/app.db?apikey=demo"
-        );
-    }
-
-    #[tokio::test]
-    async fn reconfigure_preserves_stopped_state_when_runtime_is_inert() {
-        let db = Db::open(DbOpenOptions {
-            storage: DbStorage::Memory,
-            cloudsync_enabled: false,
-            journal_mode_wal: false,
-            foreign_keys: true,
-            max_connections: Some(1),
-        })
-        .await
-        .unwrap();
-        db.cloudsync_configure(test_cloudsync_config()).unwrap();
-        {
-            let mut runtime = db.cloudsync_runtime.lock().unwrap();
-            runtime.running = true;
-            runtime.network_initialized = true;
-        }
-
-        let next_config = CloudsyncRuntimeConfig {
-            connection_string: "sqlitecloud://demo.invalid/reconfigured.db?apikey=demo".to_string(),
-            sync_interval_ms: 2_000,
-            ..test_cloudsync_config()
-        };
-
-        db.cloudsync_reconfigure(next_config.clone()).await.unwrap();
-
-        let runtime = db.cloudsync_runtime.lock().unwrap();
-        assert_eq!(runtime.config, Some(next_config));
-        assert!(!runtime.running);
-        assert!(!runtime.network_initialized);
-    }
-
-    #[tokio::test]
-    async fn dropping_db_stops_background_task_best_effort() {
-        struct DropFlag(Arc<AtomicBool>);
-
-        impl Drop for DropFlag {
-            fn drop(&mut self) {
-                self.0.store(true, Ordering::SeqCst);
-            }
-        }
-
-        let db = Db::connect_memory_plain().await.unwrap();
-        let dropped = Arc::new(AtomicBool::new(false));
-        let (shutdown_tx, shutdown_rx) = oneshot::channel();
-        let guard = DropFlag(Arc::clone(&dropped));
-        let join_handle = tokio::spawn(async move {
-            let _guard = guard;
-            let _ = shutdown_rx.await;
-        });
-
-        {
-            let mut runtime = db.cloudsync_runtime.lock().unwrap();
-            runtime.running = true;
-            runtime.task = Some(crate::cloudsync::CloudsyncBackgroundTask {
-                shutdown_tx: Some(shutdown_tx),
-                join_handle,
-            });
-        }
-
-        drop(db);
-
-        tokio::time::timeout(std::time::Duration::from_secs(1), async {
-            while !dropped.load(Ordering::SeqCst) {
-                tokio::task::yield_now().await;
-            }
-        })
-        .await
-        .unwrap();
     }
 
     #[tokio::test]
@@ -900,7 +618,6 @@ mod tests {
 
         let db = Db::open(DbOpenOptions {
             storage: DbStorage::Local(&db_path),
-            cloudsync_enabled: false,
             journal_mode_wal: true,
             foreign_keys: true,
             max_connections: Some(4),
@@ -1027,7 +744,6 @@ mod tests {
     async fn open_memory_clamps_max_connections_to_one() {
         let db = Db::open(DbOpenOptions {
             storage: DbStorage::Memory,
-            cloudsync_enabled: false,
             journal_mode_wal: false,
             foreign_keys: true,
             max_connections: Some(4),

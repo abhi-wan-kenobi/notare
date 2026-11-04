@@ -387,7 +387,13 @@ const resolveLLMConnection = (params: {
   };
 };
 
-const wrapWithThinkingMiddleware = (
+/**
+ * Moves `<think>…</think>` / `<thinking>…</thinking>` blocks out of the text
+ * stream into reasoning parts, so summaries, titles and chat never show a
+ * reasoning model's scratchpad. Every model the app builds must go through
+ * this — including the embedded local server (`services/llm-router`).
+ */
+export const wrapWithThinkingMiddleware = (
   model: LanguageModelV3,
 ): LanguageModelV3 => {
   return wrapLanguageModel({

@@ -75,6 +75,10 @@ vi.mock("./misc", () => ({
 vi.mock("./followup", () => ({
   FollowupEmail: () => <button type="button">Follow-up email</button>,
 }));
+vi.mock("./schedule-followup", () => ({
+  ScheduleFollowupMenuItem: () => null,
+  ScheduleFollowupDialog: () => null,
+}));
 
 vi.mock("~/meeting-float/host", () => ({
   openFloatingMeetingPanel: vi.fn(),

@@ -1,0 +1,51 @@
+---
+title: "Devices and Sync"
+description: "Direct peer-to-peer device sync with QR code pairing and cryptographic revocation."
+---
+
+<Warning>
+  **Preview feature — not in release builds yet.**
+  
+  Direct device sync is an experimental preview feature currently available in development and source builds. It is not included in standard release builds yet.
+</Warning>
+
+Notare's device sync connects your computers directly using local peer-to-peer networking. Your notes and meeting data sync directly from machine to machine without passing through a cloud server or central database.
+
+---
+
+## How pairing works
+
+Device pairing uses mutual cryptographic authentication with Short Authentication String (SAS) confirmation to protect against network eavesdropping and tampering.
+
+### Pairing two devices
+
+1. **On your first device (Offerer):**
+   - Open **Settings → Devices**.
+   - Click **Pair a device**.
+   - A dialog opens displaying a **QR code**, a countdown timer (5-minute expiration), and a **Copy pairing link** button.
+
+2. **On your second device (Joiner):**
+   - Open **Settings → Devices**.
+   - Click **Join with a link**.
+   - Paste the pairing link copied from the first device and click **Join**.
+
+3. **Verify the 6-digit code (SAS):**
+   - Both devices immediately display a prominent **6-digit confirmation code** (for example, `482 195`).
+   - Visually compare the code on both screens to confirm they match.
+   - Click **Confirm** on both devices to establish the cryptographic trust relationship.
+
+Once confirmed, the devices begin syncing your notes and meeting data automatically whenever they are online on the same local network.
+
+---
+
+## Device management and revocation
+
+Under **Settings → Devices → Paired devices**, you can view all connected machines with their device labels, z-base-32 cryptographic fingerprints, and last-seen timestamps.
+
+### Remove = Cryptographic revoke
+
+When you click **Remove** next to a paired device:
+
+- Notare performs a **cryptographic revocation** (`syncRevokePeer`), not merely a cosmetic removal.
+- The device's public key is removed from your authorized peer store, and its pairing token is permanently invalidated.
+- Even if the removed device retains a stale link or cached network offer, it cannot re-authenticate or reconnect to your machine.

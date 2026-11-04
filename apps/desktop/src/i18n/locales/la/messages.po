@@ -50,6 +50,10 @@ msgstr ""
 msgid "{duplicateCandidateCount} already in your dictionary — skipped."
 msgstr ""
 
+#: src/session/components/outer-header/overflow/schedule-followup.tsx
+msgid "{minutes} min"
+msgstr ""
+
 #: src/settings/general/account.tsx
 msgid "{trialDaysRemaining} day left"
 msgstr ""
@@ -116,6 +120,14 @@ msgstr ""
 
 #: src/dictation/orb.tsx
 msgid "A neon rim ringed with voice-reactive beads."
+msgstr ""
+
+#: src/settings/sync/index.tsx
+msgid "A pairing link was opened, but device sync isn't available in this build, so it can't be used here."
+msgstr ""
+
+#: src/settings/sync/index.tsx
+msgid "A pairing link was opened, but sync is off. Turn it on above to join with it."
 msgstr ""
 
 #: src/dictation/orb.tsx
@@ -364,6 +376,10 @@ msgstr ""
 msgid "Assignees:"
 msgstr ""
 
+#: src/session/components/outer-header/overflow/schedule-followup.tsx
+msgid "Attendees"
+msgstr ""
+
 #: src/settings/general/permissions.tsx
 msgid "Audio"
 msgstr ""
@@ -459,6 +475,7 @@ msgid "Built-in"
 msgstr ""
 
 #: src/calendar/components/sidebar.tsx
+#: src/session/components/outer-header/overflow/schedule-followup.tsx
 #: src/settings/general/permissions.tsx
 #: src/sidebar/calendar.tsx
 #: src/sidebar/settings.tsx
@@ -475,6 +492,7 @@ msgid "Can transcribe while the meeting is happening."
 msgstr ""
 
 #: src/onboarding/transcription.tsx
+#: src/session/components/outer-header/overflow/schedule-followup.tsx
 #: src/settings/ai/llm/disclosure-modal.tsx
 #: src/settings/ai/llm/openrouter-sign-in.tsx
 #: src/settings/ai/llm/select.tsx
@@ -538,6 +556,10 @@ msgstr ""
 
 #: src/settings/general/app-settings.tsx
 msgid "Checking…"
+msgstr ""
+
+#: src/session/components/outer-header/overflow/schedule-followup.tsx
+msgid "Choose a calendar"
 msgstr ""
 
 #: src/session/components/outer-header/overflow/export-modal.tsx
@@ -901,6 +923,10 @@ msgstr ""
 msgid "Couldn't update the dictionary. Try again."
 msgstr ""
 
+#: src/session/components/outer-header/overflow/schedule-followup.tsx
+msgid "Create a calendar event for the next meeting."
+msgstr ""
+
 #: src/calendar/components/google/content.tsx
 msgid "Create a project in the Google Cloud console (any name, it's free)."
 msgstr ""
@@ -911,6 +937,10 @@ msgstr ""
 
 #: src/session/components/outer-header/overflow/export-modal.tsx
 msgid "Created"
+msgstr ""
+
+#: src/session/components/outer-header/overflow/schedule-followup.tsx
+msgid "Creating event…"
 msgstr ""
 
 #: src/settings/general/app-settings.tsx
@@ -927,6 +957,10 @@ msgstr ""
 
 #: src/settings/general/theme.tsx
 msgid "Dark"
+msgstr ""
+
+#: src/session/components/outer-header/overflow/schedule-followup.tsx
+msgid "Date & time"
 msgstr ""
 
 #: src/session/components/outer-header/metadata/date.tsx
@@ -998,6 +1032,10 @@ msgstr ""
 
 #: src/templates/template-form.tsx
 msgid "Describe the template purpose..."
+msgstr ""
+
+#: src/session/components/outer-header/overflow/schedule-followup.tsx
+msgid "Description"
 msgstr ""
 
 #: src/settings/ai/llm/configure.tsx
@@ -1151,6 +1189,7 @@ msgid "Duplicate recipe"
 msgstr ""
 
 #: src/session/components/outer-header/overflow/export-modal.tsx
+#: src/session/components/outer-header/overflow/schedule-followup.tsx
 msgid "Duration"
 msgstr ""
 
@@ -1260,6 +1299,7 @@ msgid "Enter a valid 52-character fingerprint"
 msgstr ""
 
 #: src/session/components/outer-header/metadata/date.tsx
+#: src/session/components/outer-header/overflow/schedule-followup.tsx
 msgid "Enter a valid date and time"
 msgstr ""
 
@@ -1437,6 +1477,10 @@ msgstr ""
 
 #: src/session/components/outer-header/overflow/followup.tsx
 msgid "Follow-up email"
+msgstr ""
+
+#: src/session/components/outer-header/overflow/schedule-followup.tsx
+msgid "Follow-up scheduled"
 msgstr ""
 
 #: src/templates/template-icon-picker.tsx
@@ -2759,8 +2803,10 @@ msgstr ""
 msgid "Remove"
 msgstr ""
 
+#. placeholder {0}: attendee.name
 #. placeholder {0}: file.title
 #: src/calendar/components/ics/content.tsx
+#: src/session/components/outer-header/overflow/schedule-followup.tsx
 msgid "Remove {0}"
 msgstr ""
 
@@ -2932,6 +2978,14 @@ msgstr ""
 
 #: src/settings/sync/index.tsx
 msgid "Scan this on the other device, or copy the link."
+msgstr ""
+
+#: src/session/components/outer-header/overflow/schedule-followup.tsx
+msgid "Schedule"
+msgstr ""
+
+#: src/session/components/outer-header/overflow/schedule-followup.tsx
+msgid "Schedule follow-up"
 msgstr ""
 
 #: src/settings/recipes/index.tsx
@@ -3623,6 +3677,7 @@ msgstr ""
 msgid "Tip: The Notare team loves our users!"
 msgstr ""
 
+#: src/session/components/outer-header/overflow/schedule-followup.tsx
 #: src/settings/recipes/index.tsx
 msgid "Title"
 msgstr ""
@@ -3878,6 +3933,11 @@ msgstr ""
 
 #: src/contacts/organization-details.tsx
 msgid "View LinkedIn profile"
+msgstr ""
+
+#. placeholder {0}: selectedTarget.provider === "google" ? "Google" : "Outlook"
+#: src/session/components/outer-header/overflow/schedule-followup.tsx
+msgid "Waiting for {0}… finish sign-in in your browser if prompted"
 msgstr ""
 
 #: src/settings/ai/llm/openrouter-sign-in.tsx

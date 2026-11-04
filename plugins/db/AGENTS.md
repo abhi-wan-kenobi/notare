@@ -7,7 +7,7 @@
 ## Put Changes Elsewhere When
 
 - Schema, migration contents, and table helpers belong in `db-app`.
-- Open policy, hooks, or CloudSync internals belong in `db-core` / `db-change`.
+- Open policy, hooks, or cr-sqlite engine loading belong in `db-core` / `db-change`.
 - Live-query semantics belong in `db-reactive`.
 - App-facing hooks, caches, and domain query helpers belong in `apps/desktop`.
 

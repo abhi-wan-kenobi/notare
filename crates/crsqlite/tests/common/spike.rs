@@ -11,7 +11,7 @@
 //!   `hypr_db_migrate::migrate` runner on a `Db::open` connection (WAL,
 //!   `foreign_keys=ON`, sqlite-vec auto-registered — the embedding_chunks
 //!   step creates a `vec0` virtual table). That yields the full app schema:
-//!   21 STRICT tables, of which the 17 in the cloudsync table registry
+//!   21 STRICT tables, of which the 17 in db-app's `SYNC_TABLE_REGISTRY`
 //!   (18 counting `app_settings`, which the registry does not list) plus
 //!   `embedding_vector_map` and the local-ledger tables.
 //!
@@ -78,12 +78,11 @@ pub async fn apply_changes(pool: &SqlitePool, changes: &[Change]) -> Result<()> 
 /// The six tables enabled for sync — db-app's own list.
 pub use hypr_db_app::SYNCED_TABLES;
 
-/// The 17 tables the cloudsync table registry lists
-/// (`cloudsync_table_registry()` in `crates/db-app/src/cloudsync.rs`). The
-/// spike converts exactly these to CRRs — this is the "all 18 STRICT tables"
-/// obligation from the plan, phrased against the registry that actually
-/// gates sync enablement (plus the probe table for BLOB/ANY coverage the app
-/// schema cannot provide).
+/// The 17 tables db-app's `SYNC_TABLE_REGISTRY` lists
+/// (`crates/db-app/src/sync_tables.rs`). The spike converts exactly these to
+/// CRRs — this is the "all 18 STRICT tables" obligation from the plan,
+/// phrased against the registry that actually gates sync enablement (plus
+/// the probe table for BLOB/ANY coverage the app schema cannot provide).
 pub const REGISTRY_TABLES: &[&str] = &[
     "action_items",
     "calendars",
@@ -112,7 +111,7 @@ pub const EXPECTED_STRICT_TABLE_COUNT: usize = 24;
 
 /// Absolute path to the prebuilt cr-sqlite loadable extension, from
 /// `CRSQLITE_SPIKE_EXTENSION`. `None` → tests print "skipped" and return
-/// (the gating pattern of `SQLITECLOUD_URL` in `crates/db-core/tests/e2e.rs`).
+/// (the CI gate for this engine is `crsqlite_gate_*`, which needs no env).
 ///
 /// The variable must hold an **absolute** path: SQLite resolves relative
 /// extension paths against the process CWD, which is not stable under
@@ -159,10 +158,8 @@ impl From<std::io::Error> for SpikeError {
 pub type Result<T, E = SpikeError> = std::result::Result<T, E>;
 
 /// Connect options for a node: tempdir file, WAL, `foreign_keys=ON`, the
-/// cr-sqlite extension loaded dynamically — the same style (and the same
-/// `SqliteConnectOptions::extension()` API) as `hypr_cloudsync::apply`
-/// (`crates/cloudsync/src/lib.rs`), which already proved this load path on
-/// this exact sqlx stack.
+/// cr-sqlite extension loaded dynamically through
+/// `SqliteConnectOptions::extension()`, as `crsqlite::apply` does.
 pub fn connect_options(db_path: &Path, extension: &Path) -> SqliteConnectOptions {
     let options = SqliteConnectOptions::new()
         .filename(db_path)
@@ -171,11 +168,9 @@ pub fn connect_options(db_path: &Path, extension: &Path) -> SqliteConnectOptions
         .foreign_keys(true);
     // SAFETY: the extension is the pinned vlcn-io v0.16.3 prebuilt release
     // binary pointed at by CRSQLITE_SPIKE_EXTENSION — a first-party file the
-    // runner controls, the same trust domain as the vendored cloudsync
-    // prebuilt this loading style was proven with. The crate-level
-    // `#![forbid(unsafe_code)]` cannot be violated from this module without
-    // the allow below being deleted in review, which is the point of keeping
-    // it explicit.
+    // runner controls. The crate-level `#![forbid(unsafe_code)]` cannot be
+    // violated from this module without the allow below being deleted in
+    // review, which is the point of keeping it explicit.
     #[allow(unsafe_code)]
     unsafe {
         options.extension(extension.to_string_lossy().into_owned())
@@ -187,8 +182,8 @@ pub fn connect_options(db_path: &Path, extension: &Path) -> SqliteConnectOptions
 /// through `after_connect` exactly as `Db::open` wires it (needed by the
 /// update-hook probe).
 ///
-/// The pool is raw sqlx, not `hypr_db_core::Db`: db-core's cloudsync path is
-/// the *old* engine, and its `Db` type has no public constructor over an
+/// The pool is raw sqlx, not `hypr_db_core::Db`: the spike predates
+/// `Db::open_crsqlite`, and `Db` has no public constructor over an
 /// externally-built pool. Everything the plan requires the spike to exercise
 /// (real migrations, notifier hooks, pooled close) is reachable this way.
 pub struct Node {
@@ -213,7 +208,6 @@ impl Node {
 
         let migrate_db = hypr_db_core::Db::open(hypr_db_core::DbOpenOptions {
             storage: hypr_db_core::DbStorage::Local(&db_path),
-            cloudsync_enabled: false,
             journal_mode_wal: true,
             foreign_keys: true,
             max_connections: Some(1),

@@ -7,6 +7,7 @@ Default permissions for the plugin
 - `allow-get-available-deep-links`
 - `allow-start-callback-server`
 - `allow-stop-callback-server`
+- `allow-take-pending-pair`
 
 ## Permission Table
 
@@ -91,6 +92,32 @@ Enables the stop_callback_server command without any pre-configured scope.
 <td>
 
 Denies the stop_callback_server command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`deeplink2:allow-take-pending-pair`
+
+</td>
+<td>
+
+Enables the take_pending_pair command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`deeplink2:deny-take-pending-pair`
+
+</td>
+<td>
+
+Denies the take_pending_pair command without any pre-configured scope.
 
 </td>
 </tr>

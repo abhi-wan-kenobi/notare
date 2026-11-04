@@ -115,6 +115,68 @@ describe("calendar SQLite storage", () => {
     expect(statement.params).toContain("Work restored");
   });
 
+  const listItem = (id: string, isPrimary: boolean) => ({
+    provider: "google" as const,
+    id,
+    title: id,
+    source: "me@example.com",
+    color: null,
+    is_primary: isPrimary,
+    can_edit: true,
+    raw: "{}",
+  });
+
+  // Column order in the INSERT: id, tracking_id_calendar, name, enabled, ...
+  const insertedEnabled = () =>
+    (
+      mocks.executeTransaction.mock.calls[0][0] as Array<{ params: unknown[] }>
+    ).map((statement) => [statement.params[1], statement.params[3]]);
+
+  test("a brand-new connection starts with only its primary calendar enabled", async () => {
+    mocks.execute.mockResolvedValue([]);
+
+    await applyCalendarInventory({
+      provider: "google",
+      requestedConnectionIds: ["google:me@example.com"],
+      successfulConnections: [
+        {
+          connectionId: "google:me@example.com",
+          calendars: [
+            listItem("me@example.com", true),
+            listItem("holidays", false),
+          ],
+        },
+      ],
+    });
+
+    expect(insertedEnabled()).toEqual([
+      ["me@example.com", 1],
+      ["holidays", 0],
+    ]);
+  });
+
+  test("a connection seen before never gets new calendars auto-enabled", async () => {
+    // The user already chose which calendars to sync for this account; a
+    // calendar that appears later (even a primary one) must stay off.
+    mocks.execute.mockResolvedValue([
+      { ...calendar, connection_id: "google:me@example.com", enabled: 0 },
+    ]);
+
+    await applyCalendarInventory({
+      provider: "google",
+      requestedConnectionIds: ["google:me@example.com"],
+      successfulConnections: [
+        {
+          connectionId: "google:me@example.com",
+          calendars: [listItem("primary", true), listItem("new-shared", true)],
+        },
+      ],
+    });
+
+    const enabledByTrackingId = Object.fromEntries(insertedEnabled());
+    expect(enabledByTrackingId["new-shared"]).toBe(0);
+  });
+
   test("loads tombstoned matching events for durable-id resurrection", async () => {
     mocks.execute.mockResolvedValue([
       {

@@ -26,7 +26,9 @@ repointed from fastrepl's repo to ours. Remaining outbound surface: GitHub
 unauthenticated; mirroring is planned with the companion server phase).
 Full deletion of `plugins/auth`, `crates/api-client`, sign-in/Pro UI is
 deferred to the meeting-mode UX phase — `crates/cloudsync` must stay (the
-local DB loads it even with network sync off).
+local DB loads it even with network sync off). *(Superseded 2026-11-04:
+`crates/cloudsync` was removed in 0.6.7 following SQLite Cloud's 2026-09-02
+licence refusal; the local DB migrated to cr-sqlite via `Db::open_crsqlite`.)*
 
 ## 3. Model integrity: never trust a flag over the filesystem
 

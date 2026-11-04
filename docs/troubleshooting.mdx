@@ -1,41 +1,85 @@
 ---
 title: "Troubleshooting"
-description: "Fix the most common recording, transcription, summary, and calendar problems."
+description: "Resolve startup crashes, AI subscription errors, audio capture problems, and calendar issues."
 ---
 
-## Audio is missing
+## App startup and crashing
 
-Open **Settings → Permissions** and confirm:
+### Notare doesn't start or crashes immediately (0.6.2 and 0.6.3)
 
-- **Microphone** is allowed so Anarlog can hear you.
-- **System Audio** is allowed so Anarlog can hear the other people on the call.
+If the app fails to start or shows a blank window on launch:
 
-If a permission is denied, use **Open** to change it in macOS Settings, then restart Anarlog.
+- **Version 0.6.2:** A plugin registration ordering issue caused an application panic at startup (`state() called before manage()`).
+- **Version 0.6.3:** A background scheduler hook mounted outside the main application provider tree caused an unrecoverable render crash on launch.
 
-## The transcript is not live
+**Resolution:** Update to the latest release (version 0.6.4 or later). Download the newest build from [GitHub Releases](https://github.com/abhi-wan-kenobi/notare/releases/latest) or let the in-app updater apply the update.
 
-Open **Settings → Transcription** and check the selected model. **Live** models transcribe during the meeting. **After recording** models wait until you stop.
+---
 
-If transcription fails, confirm the provider is configured, the model supports your spoken languages, and a local provider is running.
+## AI and subscription errors
 
-## No summary appears
+### "CORS requests are not allowed for this Organization" (Claude subscription)
 
-A summary needs an Intelligence model. Open **Settings → Intelligence**, then select Anarlog Cloud or configure another provider.
+When using **Anthropic (Subscription)**, calls were rejected with HTTP 401 `CORS requests are not allowed for this Organization`:
 
-For LM Studio and Ollama, confirm the local server is running. See [Transcription and AI](/ai-setup).
+- **Cause:** Versions prior to 0.6.5 sent webview origin headers (`Origin: tauri://localhost`) and browser flags that Anthropic's OAuth endpoints reject.
+- **Resolution:** Fixed in **version 0.6.5**. Update to 0.6.5 or later. Notare now automatically strips origin and browser headers from subscription requests.
 
-## Calendar events are missing
+### ChatGPT "model not supported"
 
-Open **Calendar** and confirm the account is connected and the calendar is enabled. Refresh the calendar list. Reconnect any account marked **Reconnect required**.
+When using **OpenAI Codex (Subscription)**, requests returned a "model not supported" error:
 
-For Apple Calendar, also check **Settings → Permissions → Calendar**.
+- **Cause:** The ChatGPT Codex subscription backend requires specific model identifiers (`gpt-6.1-sol`, `gpt-6.1-terra`, `gpt-5.6-luna`) and forced SSE streaming with the Responses API. Requesting generic or standard OpenAI API model names (such as `gpt-5` or `gpt-4o`) fails.
+- **Resolution:** Fixed in **version 0.6.6**. Update to 0.6.6 or later. Notare syncs supported subscription models dynamically from the catalog and manages the required Responses API streaming headers.
 
-## A recording disappeared
+---
 
-Open **Settings → Storage** and check **Audio file retention**. Anarlog can delete audio immediately or after a selected period while keeping the note and transcript.
+## Calendar and email integration
 
-## Get more help
+### "Google hasn't verified this app" notice
 
-Email [hello@anarlog.so](mailto:hello@anarlog.so), [join Discord](https://anarlog.so/discord), or [open a GitHub issue](https://github.com/fastrepl/anarlog/issues).
+When connecting Google Calendar or Gmail in official builds:
 
-For CLI and MCP errors, use the [error reference](/reference/errors).
+- **Cause:** The first-party OAuth client is operating in testing mode pending Google's verification process.
+- **Resolution:** Click **Advanced** at the bottom-left of the consent screen, then click **Go to Notare (unsafe)** to grant calendar permissions safely.
+
+### Google Calendar stops refreshing after 7 days
+
+- **Cause:** While in Google testing mode, refresh tokens expire automatically after **7 days**.
+- **Resolution:** Open **Settings → Calendar** and click **Sign in with Google** to refresh your authorization. Once Google verification is finalized, refresh tokens will remain active indefinitely.
+
+### Calendar events are missing
+
+1. Open **Calendar** in the sidebar.
+2. Confirm the account is connected and your desired calendars are checked.
+3. Click the refresh icon at the top of the calendar sidebar.
+4. If an account shows **Reconnect required**, disconnect and re-authenticate that account.
+
+---
+
+## Audio and transcription
+
+### Audio is missing or flatlined
+
+Open **Settings → Permissions** and verify:
+
+- **Microphone:** Allowed so Notare can record your voice.
+- **System Audio:** Allowed so Notare can capture other call participants.
+
+On macOS, verify permissions in **System Settings → Privacy & Security → Screen & System Audio Recording** and **Microphone**. Restart Notare after granting permissions.
+
+### Transcript is not updating live
+
+Open **Settings → Transcription** and check your active model:
+
+- Models labeled **Live** transcribe speech in real time during the call.
+- Models labeled **After recording** process the captured audio after you click **Stop listening**.
+
+If local transcription fails, check that your graphics drivers are up to date (for GPU Vulkan transcription) or switch to a CPU-compatible Whisper model in **Settings → Transcription**.
+
+---
+
+## Further help
+
+- Browse the [MCP Server Guide](MCP.md) for agent integration troubleshooting.
+- Report issues and ask questions on the [Notare GitHub Issue Tracker](https://github.com/abhi-wan-kenobi/notare/issues).

@@ -44,7 +44,6 @@ fn install_worker_panic_counter() -> Arc<AtomicUsize> {
 async fn open(path: &std::path::Path) -> Db {
     Db::open_crsqlite(DbOpenOptions {
         storage: DbStorage::Local(path),
-        cloudsync_enabled: false,
         journal_mode_wal: true,
         foreign_keys: true,
         max_connections: Some(4),
