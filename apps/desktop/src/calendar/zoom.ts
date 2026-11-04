@@ -70,7 +70,12 @@ export const PINCH_STEP_THRESHOLD = 40;
 export function createPinchAccumulator(onStep: (direction: 1 | -1) => void) {
   let accumulated = 0;
   return (event: Pick<WheelEvent, "ctrlKey" | "metaKey" | "deltaY">) => {
-    if (!event.ctrlKey && !event.metaKey) return false;
+    if (!event.ctrlKey && !event.metaKey) {
+      // A plain scroll ends any gesture in progress; a leftover partial sum
+      // would make the next pinch step early.
+      accumulated = 0;
+      return false;
+    }
     accumulated += event.deltaY;
     if (Math.abs(accumulated) >= PINCH_STEP_THRESHOLD) {
       // Pinch-out / wheel-up has negative deltaY → zoom in.

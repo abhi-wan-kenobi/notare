@@ -69,6 +69,16 @@ describe("createPinchAccumulator", () => {
     handle({ ctrlKey: false, metaKey: true, deltaY: 100 });
     expect(onStep).toHaveBeenCalledWith(-1);
   });
+
+  it("a plain scroll discards a half-finished pinch", () => {
+    const onStep = vi.fn();
+    const handle = createPinchAccumulator(onStep);
+    handle({ ctrlKey: true, metaKey: false, deltaY: PINCH_STEP_THRESHOLD - 5 });
+    handle({ ctrlKey: false, metaKey: false, deltaY: 300 });
+    // Without the reset, this small pinch would cross the threshold.
+    handle({ ctrlKey: true, metaKey: false, deltaY: 10 });
+    expect(onStep).not.toHaveBeenCalled();
+  });
 });
 
 describe("useCalendarZoom", () => {
