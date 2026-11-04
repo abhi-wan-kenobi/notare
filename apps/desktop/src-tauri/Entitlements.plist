@@ -12,5 +12,12 @@
     <true/>
     <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
     <true/>
+    <!-- The device-sync engine (crates/crsqlite/vendor/darwin-*/crsqlite.dylib)
+         is ad-hoc signed and extracted to the cache dir at first use. With the
+         Hardened Runtime's library validation on, a notarized build refuses to
+         dlopen it, the db opens without the engine and sync reports "the
+         database was opened without the cr-sqlite engine" (0.6.8). -->
+    <key>com.apple.security.cs.disable-library-validation</key>
+    <true/>
 </dict>
 </plist>

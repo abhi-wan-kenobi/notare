@@ -2,12 +2,14 @@ use tauri::ipc::Channel;
 
 use crate::{ExecuteProxyResult, ManagedState, QueryEvent, TransactionStatement};
 
-/// Live sync status: whether this database has the cr-sqlite engine loaded
-/// and whether the P2P agent is running.
+/// Live sync status: whether this database has the cr-sqlite engine loaded,
+/// why not when a build that has it could not load it, and whether the P2P
+/// agent is running.
 #[derive(Debug, Clone, serde::Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct SyncStatusPayload {
     pub engine_loaded: bool,
+    pub engine_error: Option<String>,
     pub running: bool,
 }
 
@@ -258,6 +260,7 @@ pub(crate) async fn sync_status(
         let status = state.sync_status().await;
         Ok(SyncStatusResult::Live(SyncStatusPayload {
             engine_loaded: status.engine_loaded,
+            engine_error: status.engine_error,
             running: status.running,
         }))
     }

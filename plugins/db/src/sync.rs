@@ -33,10 +33,12 @@ use crate::change_source::{CrsqliteChangeSource, enable_crr_tables};
 pub type SyncAgent = P2pAgent<CrsqliteChangeSource>;
 
 /// What `sync_status` reports: whether this database has the engine loaded,
+/// why not if it isn't (a build that has the engine but failed to load it),
 /// and whether the agent is running.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SyncStatus {
     pub engine_loaded: bool,
+    pub engine_error: Option<String>,
     pub running: bool,
 }
 

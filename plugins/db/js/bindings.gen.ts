@@ -332,10 +332,11 @@ export type SubscriptionRegistration = { id: string; analysis: DependencyAnalysi
  */
 export type SyncPeer = { nodeId: string; fingerprint: string; label: string; addedAt: number; lastSeen: number }
 /**
- * Live sync status: whether this database has the cr-sqlite engine loaded
- * and whether the P2P agent is running.
+ * Live sync status: whether this database has the cr-sqlite engine loaded,
+ * why not when a build that has it could not load it, and whether the P2P
+ * agent is running.
  */
-export type SyncStatusPayload = { engineLoaded: boolean; running: boolean }
+export type SyncStatusPayload = { engineLoaded: boolean; engineError: string | null; running: boolean }
 /**
  * The command result for `sync_status`: the live status when sync is built
  * in, or `Unavailable` otherwise, so the frontend can render one shape in

@@ -1,18 +1,8 @@
-use std::sync::{Arc, OnceLock};
+use std::sync::Arc;
 
 use hypr_db_core::Db;
 
 const DB_FILENAME: &str = "app.db";
-
-/// Set when the database had to be opened WITHOUT the cr-sqlite sync engine
-/// because loading the extension failed.
-///
-/// The db is opened before the tracing plugin is registered, so an error there
-/// has nowhere to go — a `tracing::error!` at that point is discarded, and on
-/// Windows `windows_subsystem = "windows"` means stderr is not visible either.
-/// Stashing the reason here lets `setup()` log it once tracing exists, so the
-/// degrade is diagnosable instead of silent.
-pub static SYNC_ENGINE_DEGRADED: OnceLock<String> = OnceLock::new();
 
 pub async fn open_desktop_db(identifier: &str) -> Arc<Db> {
     let db_path = desktop_db_dir(identifier).map(|dir| {
@@ -28,7 +18,12 @@ pub async fn open_desktop_db(identifier: &str) -> Arc<Db> {
     let db = match tauri_plugin_db::open_app_db(db_path.as_deref()).await {
         Ok(db) => db,
         Err(error) if tauri_plugin_db::crsqlite_available() => {
-            let _ = SYNC_ENGINE_DEGRADED.set(error.to_string());
+            // The db is opened before the tracing plugin is registered, so
+            // an error here has nowhere to go — on Windows
+            // `windows_subsystem = "windows"` hides stderr too. The plugin
+            // keeps the reason: `setup()` logs it once tracing exists and
+            // `sync_status` shows it on the Devices page.
+            tauri_plugin_db::set_sync_engine_load_error(error.to_string());
             eprintln!("failed to open app database with cr-sqlite; retrying without it: {error}");
 
             tauri_plugin_db::open_app_db_with_crsqlite(db_path.as_deref(), false)

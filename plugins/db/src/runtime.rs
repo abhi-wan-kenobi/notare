@@ -193,6 +193,7 @@ impl PluginDbRuntime {
     pub async fn sync_status(&self) -> crate::sync::SyncStatus {
         crate::sync::SyncStatus {
             engine_loaded: self.db.crsqlite_path().is_some(),
+            engine_error: sync_engine_load_error().map(str::to_owned),
             running: self.sync.lock().await.is_some(),
         }
     }
@@ -378,6 +379,21 @@ fn bind_params<'q>(
 /// configuration opens exactly as before — no extension.
 pub const fn crsqlite_available() -> bool {
     cfg!(all(feature = "sync", sync_platform))
+}
+
+/// Why the app db was opened WITHOUT the cr-sqlite engine in a build that has
+/// it. Set once by the app's open path when the engine load failed and the
+/// no-engine retry succeeded; `sync_status` reports it so the Devices page
+/// can show the user the actual cause instead of "engine not loaded".
+static SYNC_ENGINE_LOAD_ERROR: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+
+/// Record the engine load failure. Only the first call sticks.
+pub fn set_sync_engine_load_error(reason: String) {
+    let _ = SYNC_ENGINE_LOAD_ERROR.set(reason);
+}
+
+pub fn sync_engine_load_error() -> Option<&'static str> {
+    SYNC_ENGINE_LOAD_ERROR.get().map(String::as_str)
 }
 
 pub async fn open_app_db(db_path: Option<&Path>) -> Result<Db> {

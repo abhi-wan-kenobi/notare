@@ -299,7 +299,7 @@ pub async fn main() {
             // time. Surface it now that the tracing plugin is registered —
             // otherwise the app silently runs as a plain local notes app with
             // no indication of why sync never works.
-            if let Some(reason) = db::SYNC_ENGINE_DEGRADED.get() {
+            if let Some(reason) = tauri_plugin_db::sync_engine_load_error() {
                 tracing::error!(
                     "cr-sqlite sync engine failed to load; opened the database without it and sync is unavailable: {reason}"
                 );

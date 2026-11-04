@@ -11,7 +11,10 @@ pub mod sync;
 
 pub use commands::{Recipe, UpsertRecipeInput, list_recipes_db};
 pub use error::{Error, Result};
-pub use runtime::{PluginDbRuntime, crsqlite_available, open_app_db, open_app_db_with_crsqlite};
+pub use runtime::{
+    PluginDbRuntime, crsqlite_available, open_app_db, open_app_db_with_crsqlite,
+    set_sync_engine_load_error, sync_engine_load_error,
+};
 use tauri::Manager;
 
 const PLUGIN_NAME: &str = "db";
