@@ -12,7 +12,13 @@ import {
   startOfWeek,
   subMonths,
 } from "date-fns";
-import { ChevronLeftIcon, ChevronRightIcon, RefreshCwIcon } from "lucide-react";
+import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  MinusIcon,
+  PlusIcon,
+  RefreshCwIcon,
+} from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@hypr/ui/components/ui/button";
@@ -37,8 +43,22 @@ import {
   useNow,
   useWeekStartsOn,
 } from "~/calendar/hooks";
+import {
+  createPinchAccumulator,
+  resolveCalendarLayout,
+  useCalendarZoom,
+  ZOOM_LEVELS,
+  type ZoomLevel,
+} from "~/calendar/zoom";
 import type { CalendarSyncRange } from "~/services/calendar";
 import { useMountEffect } from "~/shared/hooks/useMountEffect";
+
+const ZOOM_LABELS: Record<ZoomLevel, string> = {
+  month: "Month",
+  week: "Week",
+  "3day": "3 days",
+  day: "Day",
+};
 
 const WEEKDAY_HEADERS_SUN = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const WEEKDAY_HEADERS_MON = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -89,7 +109,9 @@ export function CalendarView() {
   const containerRef = useRef<HTMLDivElement>(null);
   const compactScrollRef = useRef<HTMLDivElement>(null);
   const compactBaseRef = useRef(startOfDay(now));
-  const cols = useVisibleCols(containerRef);
+  const widthCols = useVisibleCols(containerRef);
+  const { zoom, zoomBy } = useCalendarZoom();
+  const { isMonthView, cols } = resolveCalendarLayout(zoom, widthCols);
   const calendarData = useCalendarData();
   const enabledCalendars = useEnabledCalendars();
 
@@ -97,7 +119,18 @@ export function CalendarView() {
     scheduleSync();
   });
 
-  const isMonthView = cols === 7;
+  // Pinch / Ctrl+wheel zoom. Needs a non-passive native listener: React's
+  // onWheel is passive, so it can't stop the webview's own page zoom.
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const accumulate = createPinchAccumulator(zoomBy);
+    const onWheel = (event: WheelEvent) => {
+      if (accumulate(event)) event.preventDefault();
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, [zoomBy]);
 
   const advanceCompact = useCallback(
     (direction: -1 | 1) => {
@@ -232,43 +265,80 @@ export function CalendarView() {
           </h2>
           <CalendarSyncHeaderControls />
         </div>
-        <ButtonGroup
-          data-tauri-drag-region="false"
-          className={cn([
-            "border-border h-8 overflow-hidden rounded-full border",
-            "bg-card",
-          ])}
-        >
-          <Button
-            variant="ghost"
-            size="icon"
-            className="hover:bg-accent h-full w-10 rounded-none border-0 bg-transparent shadow-none"
-            onClick={goToPrev}
-          >
-            <ChevronLeftIcon className="h-4 w-4" />
-          </Button>
-          <ButtonGroupSeparator className="bg-accent" />
-          <Button
-            variant="ghost"
-            size="sm"
+        <div className="flex items-center gap-2" data-tauri-drag-region="false">
+          <ButtonGroup
             className={cn([
-              "h-full rounded-none border-0",
-              "hover:bg-accent bg-transparent px-3 text-sm shadow-none",
+              "border-border h-8 overflow-hidden rounded-full border",
+              "bg-card",
             ])}
-            onClick={goToToday}
           >
-            Today
-          </Button>
-          <ButtonGroupSeparator className="bg-accent" />
-          <Button
-            variant="ghost"
-            size="icon"
-            className="hover:bg-accent h-full w-10 rounded-none border-0 bg-transparent shadow-none"
-            onClick={goToNext}
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Zoom out"
+              className="hover:bg-accent h-full w-9 rounded-none border-0 bg-transparent shadow-none"
+              disabled={zoom === ZOOM_LEVELS[0]}
+              onClick={() => zoomBy(-1)}
+            >
+              <MinusIcon className="h-4 w-4" />
+            </Button>
+            <ButtonGroupSeparator className="bg-accent" />
+            <span
+              data-testid="calendar-zoom-level"
+              className="flex min-w-16 items-center justify-center px-2 text-xs"
+            >
+              {ZOOM_LABELS[zoom]}
+            </span>
+            <ButtonGroupSeparator className="bg-accent" />
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Zoom in"
+              className="hover:bg-accent h-full w-9 rounded-none border-0 bg-transparent shadow-none"
+              disabled={zoom === ZOOM_LEVELS[ZOOM_LEVELS.length - 1]}
+              onClick={() => zoomBy(1)}
+            >
+              <PlusIcon className="h-4 w-4" />
+            </Button>
+          </ButtonGroup>
+          <ButtonGroup
+            data-tauri-drag-region="false"
+            className={cn([
+              "border-border h-8 overflow-hidden rounded-full border",
+              "bg-card",
+            ])}
           >
-            <ChevronRightIcon className="h-4 w-4" />
-          </Button>
-        </ButtonGroup>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="hover:bg-accent h-full w-10 rounded-none border-0 bg-transparent shadow-none"
+              onClick={goToPrev}
+            >
+              <ChevronLeftIcon className="h-4 w-4" />
+            </Button>
+            <ButtonGroupSeparator className="bg-accent" />
+            <Button
+              variant="ghost"
+              size="sm"
+              className={cn([
+                "h-full rounded-none border-0",
+                "hover:bg-accent bg-transparent px-3 text-sm shadow-none",
+              ])}
+              onClick={goToToday}
+            >
+              Today
+            </Button>
+            <ButtonGroupSeparator className="bg-accent" />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="hover:bg-accent h-full w-10 rounded-none border-0 bg-transparent shadow-none"
+              onClick={goToNext}
+            >
+              <ChevronRightIcon className="h-4 w-4" />
+            </Button>
+          </ButtonGroup>
+        </div>
       </div>
 
       {isMonthView ? (

@@ -208,6 +208,14 @@ export async function applyCalendarInventory({
     });
   }
 
+  // Connections we have stored calendars for (including soft-deleted ones).
+  // On a connection's very first inventory, its primary calendar starts
+  // enabled so a fresh sign-in shows events without a trip to the toggles;
+  // everything else (and every later refresh) keeps the user's choice.
+  const knownConnectionIds = new Set(
+    existing.map((calendar) => calendar.connection_id),
+  );
+
   const seenIncomingKeys = new Set<string>();
   for (const { connectionId, calendars } of successfulConnections) {
     for (const calendar of calendars) {
@@ -236,7 +244,7 @@ export async function applyCalendarInventory({
             updated_at,
             deleted_at
           )
-          VALUES (?, ?, ?, 0, ?, ?, ?, ?, ?, ?, NULL)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
           ON CONFLICT(id) DO UPDATE SET
             tracking_id_calendar = excluded.tracking_id_calendar,
             name = excluded.name,
@@ -255,6 +263,11 @@ export async function applyCalendarInventory({
           calendarId,
           calendar.id,
           calendar.title,
+          !stored &&
+          !knownConnectionIds.has(connectionId) &&
+          calendar.is_primary === true
+            ? 1
+            : 0,
           provider,
           calendar.source ?? "",
           calendar.color ?? "#888",

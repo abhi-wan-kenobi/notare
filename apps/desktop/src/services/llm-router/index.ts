@@ -31,7 +31,11 @@ import type { CharTask } from "@hypr/api-client";
 import { type CapsCheck, checkCaps, type LlmTask } from "./capabilities";
 import { discoverEmbeddedModel, EMBEDDED_PROVIDER_ID } from "./local-discovery";
 
-import { useLanguageModel, useLLMConnection } from "~/ai/hooks";
+import {
+  useLanguageModel,
+  useLLMConnection,
+  wrapWithThinkingMiddleware,
+} from "~/ai/hooks";
 import { type ProviderId, PROVIDERS } from "~/settings/ai/llm/shared";
 import { useConfigValues } from "~/shared/config";
 
@@ -256,14 +260,21 @@ export type TaskModel = {
 /**
  * Builds the AI-SDK model for the embedded server. Its loopback URL and loaded
  * model identity come from the plugin at runtime, not persisted provider
- * configuration.
+ * configuration. Local reasoning models (Qwen3, Gemma) emit `<think>` blocks,
+ * so this needs the same extraction as every other provider.
  */
-function embeddedLanguageModel(modelId: string, baseUrl: string) {
-  return createOpenAICompatible({
-    fetch: tauriFetch,
-    name: EMBEDDED_PROVIDER_ID,
-    baseURL: baseUrl,
-  }).chatModel(modelId);
+export function embeddedLanguageModel(
+  modelId: string,
+  baseUrl: string,
+  fetchImpl: typeof fetch = tauriFetch,
+) {
+  return wrapWithThinkingMiddleware(
+    createOpenAICompatible({
+      fetch: fetchImpl,
+      name: EMBEDDED_PROVIDER_ID,
+      baseURL: baseUrl,
+    }).chatModel(modelId),
+  );
 }
 
 /**
