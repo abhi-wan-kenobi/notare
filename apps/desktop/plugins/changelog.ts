@@ -1,39 +1,41 @@
-import { readdirSync, readFileSync, watch } from "node:fs";
+import { readFileSync, watch } from "node:fs";
 import { resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 import type { Plugin, ViteDevServer } from "vite";
 
-const __dirname = fileURLToPath(new URL(".", import.meta.url));
+const __dirname = import.meta.dirname;
 const changelogDir = resolve(__dirname, "../../../packages/changelog/content");
+
+const packageJsonPath = resolve(__dirname, "../package.json");
 
 const VIRTUAL_ID = "virtual:changelog";
 const RESOLVED_ID = "\0" + VIRTUAL_ID;
 
-function getLatestVersion(): string | null {
+function readAppVersion(): string | null {
   try {
-    const files = readdirSync(changelogDir).filter(
-      (f) => f.endsWith(".md") && /^\d/.test(f),
-    );
-    const versions = files.map((f) => f.replace(".md", ""));
-    versions.sort((a, b) => b.localeCompare(a, undefined, { numeric: true }));
-    return versions[0] || null;
+    const pkg = JSON.parse(readFileSync(packageJsonPath, "utf-8"));
+    return typeof pkg.version === "string" ? pkg.version : null;
   } catch {
     return null;
   }
 }
 
-function buildModule(): string {
-  const latest = getLatestVersion();
+// The bundled notes are for the version the app is built as, not the highest
+// file in the directory: the content dir also holds notes for versions that
+// are newer in number than this app (e.g. inherited fork history).
+export function buildChangelogModule(
+  dir: string,
+  version: string | null,
+): string {
   let content: string | null = null;
 
-  if (latest) {
+  if (version) {
     try {
-      content = readFileSync(resolve(changelogDir, `${latest}.md`), "utf-8");
+      content = readFileSync(resolve(dir, `${version}.md`), "utf-8");
     } catch {}
   }
 
   return [
-    `export const latestVersion = ${JSON.stringify(latest)};`,
+    `export const latestVersion = ${JSON.stringify(version)};`,
     `export const latestContent = ${JSON.stringify(content)};`,
   ].join("\n");
 }
@@ -45,7 +47,9 @@ export function changelog(): Plugin {
       if (id === VIRTUAL_ID) return RESOLVED_ID;
     },
     load(id) {
-      if (id === RESOLVED_ID) return buildModule();
+      if (id === RESOLVED_ID) {
+        return buildChangelogModule(changelogDir, readAppVersion());
+      }
     },
     configureServer(server: ViteDevServer) {
       if (process.env.NODE_ENV === "test" || process.env.VITEST) {

@@ -254,6 +254,14 @@ export const SETTING_DEFINITIONS = {
     path: ["personalization", "custom_summary_instructions"],
     default: "" as string,
   },
+  // JSON array of calendar provider ids ("apple" | "google" | "outlook" |
+  // "ics") hidden from the calendar sidebar, calendar view, timeline and
+  // reminders. Hiding never disconnects a provider or changes `enabled`.
+  calendar_hidden_providers: {
+    type: "string",
+    path: ["calendar", "hidden_providers"],
+    default: "[]" as string,
+  },
   ignored_platforms: {
     type: "string",
     path: ["notification", "ignored_platforms"],

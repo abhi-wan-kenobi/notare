@@ -1,15 +1,32 @@
 ---
 title: "Devices and Sync"
-description: "Direct peer-to-peer device sync with QR code pairing and cryptographic revocation."
+description: "Direct peer-to-peer device sync with QR code pairing and cryptographic revocation. Preview in 0.6.8+."
 ---
 
 <Warning>
-  **Preview feature — not in release builds yet.**
-  
-  Direct device sync is an experimental preview feature currently available in development and source builds. It is not included in standard release builds yet.
+  **Preview in Notare 0.6.8 and later — off by default.**
+
+  Device sync is included in release builds from 0.6.8 on Linux (x86_64), macOS (Apple Silicon) and Windows (x86_64), but it stays off until you turn it on. Every device you pair must run Notare 0.6.8 or later.
+
+  Loading the packaged sync engine has only been verified on Linux so far. On macOS (Gatekeeper) and Windows it is unverified until someone runs 0.6.8 there — if sync won't turn on, **Settings → Devices** says "Sync engine not loaded on this build".
 </Warning>
 
-Notare's device sync connects your computers directly using local peer-to-peer networking. Your notes and meeting data sync directly from machine to machine without passing through a cloud server or central database.
+Notare's device sync connects your computers directly using peer-to-peer networking. Your notes and meeting data go from machine to machine without being stored on a cloud server or central database. To find each other, devices use the public discovery and relay service run by Number 0 (n0.computer), the maintainers of the iroh networking library. That service only learns where a device can be reached. The data passing through it is end-to-end encrypted.
+
+Synced data: sessions, notes, transcripts, action items, tags, and the tags on each session.
+
+---
+
+## Turning sync on
+
+1. Open **Settings → Devices (preview)**.
+2. Switch on **Enable device sync**.
+3. The first time, Notare asks **"This changes how Notare stores notes so they can sync. Back up first?"**
+   - **Open data folder** shows the folder that holds your database (`app.db`). To make a backup, quit Notare, copy the folder somewhere safe, then reopen Notare and turn sync on again.
+   - **Continue** converts the synced tables to a sync-ready format and starts sync. Turning sync off later stops sync, but the tables keep that format.
+4. Do the same on every device you want to pair.
+
+Turning sync off stops the background sync agent immediately, and this device is no longer advertised.
 
 ---
 
@@ -20,12 +37,12 @@ Device pairing uses mutual cryptographic authentication with Short Authenticatio
 ### Pairing two devices
 
 1. **On your first device (Offerer):**
-   - Open **Settings → Devices**.
+   - Open **Settings → Devices (preview)**.
    - Click **Pair a device**.
    - A dialog opens displaying a **QR code**, a countdown timer (5-minute expiration), and a **Copy pairing link** button.
 
 2. **On your second device (Joiner):**
-   - Open **Settings → Devices**.
+   - Open **Settings → Devices (preview)**.
    - Click **Join with a link**.
    - Paste the pairing link copied from the first device and click **Join**.
 
@@ -34,18 +51,18 @@ Device pairing uses mutual cryptographic authentication with Short Authenticatio
    - Visually compare the code on both screens to confirm they match.
    - Click **Confirm** on both devices to establish the cryptographic trust relationship.
 
-Once confirmed, the devices begin syncing your notes and meeting data automatically whenever they are online on the same local network.
+Once confirmed, the devices sync your notes and meeting data automatically whenever both are online with sync turned on.
 
 ---
 
 ## Device management and revocation
 
-Under **Settings → Devices → Paired devices**, you can view all connected machines with their device labels, z-base-32 cryptographic fingerprints, and last-seen timestamps.
+Under **Settings → Devices (preview) → Paired devices**, you can view all connected machines with their device labels, z-base-32 cryptographic fingerprints, and last-seen timestamps.
 
 ### Remove = Cryptographic revoke
 
-When you click **Remove** next to a paired device:
+Removing a device is permanent. When you click **Remove** next to a paired device:
 
 - Notare performs a **cryptographic revocation** (`syncRevokePeer`), not merely a cosmetic removal.
 - The device's public key is removed from your authorized peer store, and its pairing token is permanently invalidated.
-- Even if the removed device retains a stale link or cached network offer, it cannot re-authenticate or reconnect to your machine.
+- Even if the removed device retains a stale link or cached network offer, it cannot re-authenticate or reconnect to your machine. To sync with it again, pair it from scratch.

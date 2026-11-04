@@ -426,6 +426,10 @@ msgstr ""
 msgid "Back"
 msgstr ""
 
+#: src/settings/sync/index.tsx
+msgid "Back up before turning on sync?"
+msgstr ""
+
 #: src/settings/ai/stt/shared.tsx
 msgid "Balanced"
 msgstr ""
@@ -809,6 +813,7 @@ msgstr ""
 
 #: src/onboarding/calendar.tsx
 #: src/onboarding/transcription.tsx
+#: src/settings/sync/index.tsx
 msgid "Continue"
 msgstr ""
 
@@ -1059,12 +1064,19 @@ msgid "Device paired"
 msgstr ""
 
 #: src/settings/sync/index.tsx
+msgid "Device sync is a preview. It keeps your notes in sync between your own devices directly, without going through a server. Every device you pair must run Notare 0.6.8 or later."
+msgstr ""
+
+#: src/settings/sync/index.tsx
 msgid "Device sync isn't available in this build"
 msgstr ""
 
 #: src/settings/sync/index.tsx
-#: src/sidebar/settings.tsx
 msgid "Devices"
+msgstr ""
+
+#: src/sidebar/settings.tsx
+msgid "Devices (preview)"
 msgstr ""
 
 #: src/settings/dictation/translation.tsx
@@ -1259,7 +1271,7 @@ msgid "Enable a local or cloud model"
 msgstr ""
 
 #: src/settings/sync/index.tsx
-msgid "Enable device sync (experimental)"
+msgid "Enable device sync"
 msgstr ""
 
 #: src/settings/mcp/index.tsx
@@ -1610,6 +1622,15 @@ msgstr ""
 msgid "Help Notare listen to you"
 msgstr ""
 
+#: src/calendar/components/sidebar.tsx
+msgid "Hidden providers: {names}"
+msgstr ""
+
+#. placeholder {0}: provider.displayName
+#: src/calendar/components/sidebar.tsx
+msgid "Hide {0}"
+msgstr ""
+
 #: src/meeting-float/window.tsx
 msgid "Hide captions"
 msgstr ""
@@ -1742,6 +1763,10 @@ msgstr ""
 #: src/settings/ai/llm/index.tsx
 #: src/sidebar/settings.tsx
 msgid "Intelligence"
+msgstr ""
+
+#: src/settings/sync/index.tsx
+msgid "It stays off until you turn it on below. Removing a paired device is permanent: it can't reconnect with an old link and has to be paired again from scratch."
 msgstr ""
 
 #: src/contacts/details.tsx
@@ -2160,10 +2185,6 @@ msgstr ""
 msgid "No calendars found"
 msgstr ""
 
-#: src/changelog/index.tsx
-msgid "No changelog available for this version."
-msgstr ""
-
 #: src/templates/details.tsx
 msgid "No community templates available"
 msgstr ""
@@ -2235,6 +2256,10 @@ msgstr ""
 
 #: src/settings/ai/shared/model-combobox.tsx
 msgid "No models ready to use."
+msgstr ""
+
+#: src/changelog/index.tsx
+msgid "No notes for this version yet."
 msgstr ""
 
 #: src/shared/open-note-dialog.tsx
@@ -2453,6 +2478,10 @@ msgstr ""
 msgid "Open calendar account actions"
 msgstr ""
 
+#: src/settings/sync/index.tsx
+msgid "Open data folder"
+msgstr ""
+
 #: src/calendar/components/outlook/content.tsx
 msgid "Open Entra admin center"
 msgstr ""
@@ -2538,10 +2567,6 @@ msgstr ""
 
 #: src/settings/sync/index.tsx
 msgid "Pair a device"
-msgstr ""
-
-#: src/settings/sync/index.tsx
-msgid "Pair another one of your devices to sync sessions between them directly, without going through a server."
 msgstr ""
 
 #: src/settings/sync/index.tsx
@@ -2686,6 +2711,10 @@ msgstr ""
 
 #: src/settings/dictation/shortcut-recorder.tsx
 msgid "Press the shortcut, Esc cancels"
+msgstr ""
+
+#: src/settings/sync/index.tsx
+msgid "Preview"
 msgstr ""
 
 #: src/session/components/note-input/search/bar.tsx
@@ -3082,6 +3111,10 @@ msgstr ""
 msgid "Section actions"
 msgstr ""
 
+#: src/changelog/index.tsx
+msgid "See all releases on GitHub"
+msgstr ""
+
 #: src/session/components/note-input/header.tsx
 msgid "See all templates"
 msgstr ""
@@ -3202,6 +3235,14 @@ msgstr ""
 #: src/settings/general/app-settings.tsx
 msgid "Share usage data"
 msgstr "Goverana data rekushandisa"
+
+#: src/calendar/components/sidebar.tsx
+msgid "Show"
+msgstr ""
+
+#: src/calendar/components/sidebar.tsx
+msgid "Show all"
+msgstr ""
 
 #: src/sidebar/timeline/item.tsx
 msgid "Show All Recurring Events"
@@ -3620,6 +3661,10 @@ msgid "Thinking..."
 msgstr ""
 
 #: src/settings/sync/index.tsx
+msgid "This changes how Notare stores notes so they can sync. Back up first?"
+msgstr ""
+
+#: src/settings/sync/index.tsx
 msgid "This code expired."
 msgstr ""
 
@@ -4035,6 +4080,10 @@ msgstr ""
 
 #: src/settings/general/storage/notes-location.tsx
 msgid "Your notes, transcripts, and recordings are saved here as plain files. Pick an Obsidian vault or any other folder."
+msgstr ""
+
+#: src/settings/sync/index.tsx
+msgid "Your sessions, notes, transcripts, action items and tags are converted to a sync-ready format the first time sync starts. Turning sync off later doesn't undo this. To back up, open the data folder, quit Notare, and copy the folder somewhere safe."
 msgstr ""
 
 #: src/templates/template-sidebar.tsx

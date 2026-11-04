@@ -113,7 +113,11 @@ export function SettingsNav() {
       label: t`Integrations`,
       items: [
         { id: "webhook", label: t`Webhooks`, icon: WebhookIcon },
-        { id: "sync", label: t`Devices`, icon: MonitorSmartphoneIcon },
+        {
+          id: "sync",
+          label: t`Devices (preview)`,
+          icon: MonitorSmartphoneIcon,
+        },
         { id: "mcp", label: t`MCP Server`, icon: ServerIcon },
         { id: "gmail" as const, label: t`Gmail (beta)`, icon: MailIcon },
       ],

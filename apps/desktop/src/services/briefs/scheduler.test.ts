@@ -4,6 +4,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { checkAndGenerateBriefs, selectCandidateEvents } from "./scheduler";
 import type { BriefCandidateEvent } from "./types";
 
+import type * as HiddenProviders from "~/calendar/hidden-providers";
+
 const mocks = vi.hoisted(() => ({
   briefedIds: new Set<string>(),
   calendarEvents: [] as BriefCandidateEvent[],
@@ -29,6 +31,11 @@ vi.mock("./generator", () => ({
       updated_at: new Date().toISOString(),
     };
   }),
+}));
+
+vi.mock("~/calendar/hidden-providers", async (importOriginal) => ({
+  ...(await importOriginal<typeof HiddenProviders>()),
+  getHiddenCalendarProviders: async () => [],
 }));
 
 vi.mock("~/db", () => ({

@@ -171,11 +171,38 @@ pub fn init<R: tauri::Runtime>(
         .invoke_handler(specta_builder.invoke_handler())
         .setup(move |app, _| {
             hypr_tauri_utils::block_on(hypr_db_app::prepare_schema(db.as_ref()))?;
+            #[cfg(all(feature = "sync", sync_platform))]
+            hypr_tauri_utils::block_on(log_sync_engine_load(db.as_ref()));
             hypr_tauri_utils::block_on(import::import_legacy_data(app.app_handle(), db.pool()))?;
             app.manage(std::sync::Arc::new(runtime::PluginDbRuntime::new(db)));
             Ok(())
         })
         .build()
+}
+
+/// The db is opened before the tracing plugin exists, so the engine load is
+/// reported here. The probe runs `crsql_site_id()` on a pooled connection —
+/// proof the extension is callable, not just that a path was extracted. It
+/// converts no table. Never fails setup: a broken engine is logged and sync
+/// start reports it later.
+#[cfg(all(feature = "sync", sync_platform))]
+async fn log_sync_engine_load(db: &hypr_db_core::Db) {
+    let Some(path) = db.crsqlite_path() else {
+        tracing::info!("cr-sqlite sync engine not loaded; device sync is unavailable");
+        return;
+    };
+    match hypr_crsqlite::load_probe(db.pool()).await {
+        Ok(true) => tracing::info!(
+            "cr-sqlite sync engine loaded (v{}): {}",
+            hypr_crsqlite::CRSQLITE_VERSION,
+            path.display()
+        ),
+        Ok(false) => tracing::error!(
+            "cr-sqlite sync engine extracted but not callable: {}",
+            path.display()
+        ),
+        Err(error) => tracing::error!("cr-sqlite sync engine load probe failed: {error}"),
+    }
 }
 
 #[cfg(test)]

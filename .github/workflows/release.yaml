@@ -20,7 +20,34 @@ permissions:
   contents: read
 
 jobs:
+  # Fails the release before any ~hour-long build starts if the changelog file
+  # for this version is missing (Settings -> What's New would be blank).
+  preflight:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Require changelog notes for this version
+        run: |
+          version=$(jq -r .version apps/desktop/src-tauri/tauri.conf.stable.json)
+          file="packages/changelog/content/${version}.md"
+          if [ ! -f "$file" ]; then
+            echo "::error file=apps/desktop/src-tauri/tauri.conf.stable.json::Missing $file. Write it before tagging (docs/release/RELEASING.md)."
+            exit 1
+          fi
+          # Only the front matter (between the first two --- lines) counts.
+          summary=$(awk 'NR==1 && $0!="---" {exit} NR>1 && $0=="---" {exit} NR>1' "$file" | sed -n 's/^summary:[[:space:]]*//p' | tr -d "\"' ")
+          if [ -z "$summary" ]; then
+            echo "::error file=$file::$file has no front-matter summary."
+            exit 1
+          fi
+          echo "OK: $file"
+
   build-windows:
+    needs: preflight
     runs-on: windows-latest
     timeout-minutes: 180
     steps:
@@ -82,7 +109,7 @@ jobs:
       # cmake configure time, and the LunarG SDK action does NOT include them
       # on Windows. Until that's resolved, Windows ships CPU-only local-llm
       # (the Vulkan offload is linux-only in release builds).
-      - run: pnpm -F desktop tauri build --config ./src-tauri/tauri.conf.stable.json --features gpu-vulkan,directml,local-llm
+      - run: pnpm -F desktop tauri build --config ./src-tauri/tauri.conf.stable.json --features gpu-vulkan,directml,local-llm,sync
         env:
           CI: false
           LIBCLANG_PATH: 'C:\Program Files\LLVM\bin'
@@ -110,6 +137,7 @@ jobs:
           if-no-files-found: error
 
   build-linux:
+    needs: preflight
     runs-on: ubuntu-24.04
     timeout-minutes: 180
     steps:
@@ -149,7 +177,7 @@ jobs:
       # offload, on the same SDK this job already installs for `gpu-vulkan`.
       # See the Windows job above for why the base `local-llm` is not listed
       # separately.
-      - run: pnpm -F desktop tauri build --config ./src-tauri/tauri.conf.stable.json --features gpu-vulkan,local-llm-vulkan
+      - run: pnpm -F desktop tauri build --config ./src-tauri/tauri.conf.stable.json --features gpu-vulkan,local-llm-vulkan,sync
         env:
           CI: false
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
@@ -187,6 +215,7 @@ jobs:
   # bundle/macos/, NOT the .dmg. binaries/check-permissions is compiled
   # automatically by build.rs (swiftc, preinstalled on macOS runners).
   build-macos:
+    needs: preflight
     runs-on: macos-latest
     timeout-minutes: 180
     steps:
@@ -241,7 +270,7 @@ jobs:
       # (crates/local-llm-llama/Cargo.toml:15) and nothing in this repo
       # asserts Metal either way. This is the first release to ship it, so
       # treat Apple-Silicon throughput as unmeasured until someone runs it.
-      - run: pnpm -F desktop tauri build --config ./src-tauri/tauri.conf.stable.json --config ./src-tauri/tauri.conf.stable-macos.json --features local-llm
+      - run: pnpm -F desktop tauri build --config ./src-tauri/tauri.conf.stable.json --config ./src-tauri/tauri.conf.stable-macos.json --features local-llm,sync
         env:
           CI: false
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}

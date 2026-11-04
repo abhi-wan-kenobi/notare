@@ -23,11 +23,15 @@ const mocks = vi.hoisted(() => ({
   pairingJoin: vi.fn(),
   pairingStatus: vi.fn(),
   pairingConfirm: vi.fn(),
+  execute: vi.fn(),
+  openPath: vi.fn(),
+  globalBase: vi.fn(),
   syncEnabled: undefined as boolean | undefined,
   setSyncEnabled: vi.fn(),
 }));
 
 vi.mock("@hypr/plugin-db", () => ({
+  execute: mocks.execute,
   syncStatus: mocks.syncStatus,
   syncThisDevice: mocks.syncThisDevice,
   syncListPeers: mocks.syncListPeers,
@@ -39,6 +43,14 @@ vi.mock("@hypr/plugin-db", () => ({
   pairingJoin: mocks.pairingJoin,
   pairingStatus: mocks.pairingStatus,
   pairingConfirm: mocks.pairingConfirm,
+}));
+
+vi.mock("@hypr/plugin-opener2", () => ({
+  commands: { openPath: mocks.openPath },
+}));
+
+vi.mock("@hypr/plugin-settings", () => ({
+  commands: { globalBase: mocks.globalBase },
 }));
 
 vi.mock("~/settings/queries", () => ({
@@ -105,6 +117,17 @@ async function openAdvanced() {
   await screen.findByLabelText("Peer fingerprint");
 }
 
+const ENABLE_SWITCH_NAME = "Enable device sync";
+const BACKUP_PROMPT =
+  "This changes how Notare stores notes so they can sync. Back up first?";
+
+// A fresh database has no CRR tables, so the first enable goes through the
+// backup prompt; confirm it.
+async function confirmFirstEnable() {
+  await screen.findByText(BACKUP_PROMPT);
+  fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+}
+
 describe("isValidFingerprint", () => {
   it("accepts a 52-char compact z-base-32 fingerprint", () => {
     expect(isValidFingerprint(VALID_FINGERPRINT)).toBe(true);
@@ -140,6 +163,8 @@ describe("SettingsSync", () => {
     mocks.syncEnabled = true;
     mocks.syncStart.mockResolvedValue(undefined);
     mocks.syncStop.mockResolvedValue(undefined);
+    // Fresh database: no synced table has been converted to a CRR yet.
+    mocks.execute.mockResolvedValue([{ n: 0 }]);
   });
 
   afterEach(() => {
@@ -556,7 +581,7 @@ describe("SettingsSync", () => {
       renderPage();
 
       const toggle = await screen.findByRole("switch", {
-        name: "Enable device sync (experimental)",
+        name: ENABLE_SWITCH_NAME,
       });
       expect(toggle.getAttribute("aria-checked")).toBe("false");
       expect(mocks.syncStart).not.toHaveBeenCalled();
@@ -603,9 +628,10 @@ describe("SettingsSync", () => {
       renderPage();
 
       const toggle = await screen.findByRole("switch", {
-        name: "Enable device sync (experimental)",
+        name: ENABLE_SWITCH_NAME,
       });
       fireEvent.click(toggle);
+      await confirmFirstEnable();
 
       expect(mocks.setSyncEnabled).toHaveBeenCalledWith("sync_enabled", true);
       await waitFor(() => expect(mocks.syncStart).toHaveBeenCalledTimes(1));
@@ -637,7 +663,7 @@ describe("SettingsSync", () => {
       renderPage();
 
       const toggle = await screen.findByRole("switch", {
-        name: "Enable device sync (experimental)",
+        name: ENABLE_SWITCH_NAME,
       });
       fireEvent.click(toggle);
 
@@ -670,9 +696,10 @@ describe("SettingsSync", () => {
       renderPage();
 
       const toggle = await screen.findByRole("switch", {
-        name: "Enable device sync (experimental)",
+        name: ENABLE_SWITCH_NAME,
       });
       fireEvent.click(toggle);
+      await confirmFirstEnable();
 
       // Optimistic: the setting flips on immediately...
       expect(mocks.setSyncEnabled).toHaveBeenNthCalledWith(
@@ -708,6 +735,139 @@ describe("SettingsSync", () => {
       // The status line must refetch on failure too, not just success —
       // otherwise it can keep showing a stale pre-attempt read.
       await waitFor(() => expect(mocks.syncStatus).toHaveBeenCalledTimes(2));
+    });
+  });
+
+  describe("first enable backup prompt", () => {
+    beforeEach(() => {
+      mocks.syncEnabled = false;
+      mocks.syncStatus.mockResolvedValue({
+        kind: "live",
+        engineLoaded: true,
+        running: false,
+      });
+      mocks.syncThisDevice.mockResolvedValue(VALID_FINGERPRINT_GROUPED);
+      mocks.syncListPeers.mockResolvedValue([]);
+    });
+
+    it("converts nothing and persists nothing until the user continues", async () => {
+      renderPage();
+
+      const toggle = await screen.findByRole("switch", {
+        name: ENABLE_SWITCH_NAME,
+      });
+      fireEvent.click(toggle);
+
+      await screen.findByText(BACKUP_PROMPT);
+      expect(mocks.syncStart).not.toHaveBeenCalled();
+      expect(mocks.setSyncEnabled).not.toHaveBeenCalled();
+      expect(toggle.getAttribute("aria-checked")).toBe("false");
+
+      fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+
+      expect(mocks.setSyncEnabled).toHaveBeenCalledWith("sync_enabled", true);
+      await waitFor(() => expect(mocks.syncStart).toHaveBeenCalledTimes(1));
+      await waitFor(() => expect(screen.queryByText(BACKUP_PROMPT)).toBeNull());
+    });
+
+    it("closing the prompt leaves sync off", async () => {
+      renderPage();
+
+      const toggle = await screen.findByRole("switch", {
+        name: ENABLE_SWITCH_NAME,
+      });
+      fireEvent.click(toggle);
+      await screen.findByText(BACKUP_PROMPT);
+
+      fireEvent.click(screen.getByRole("button", { name: "Close" }));
+
+      await waitFor(() => expect(screen.queryByText(BACKUP_PROMPT)).toBeNull());
+      expect(mocks.syncStart).not.toHaveBeenCalled();
+      expect(mocks.setSyncEnabled).not.toHaveBeenCalled();
+      expect(toggle.getAttribute("aria-checked")).toBe("false");
+    });
+
+    it("opens the app data folder without starting sync", async () => {
+      mocks.globalBase.mockResolvedValue({
+        status: "ok",
+        data: "/home/me/.local/share/notare",
+      });
+      mocks.openPath.mockResolvedValue({ status: "ok", data: null });
+
+      renderPage();
+
+      fireEvent.click(
+        await screen.findByRole("switch", { name: ENABLE_SWITCH_NAME }),
+      );
+      await screen.findByText(BACKUP_PROMPT);
+      fireEvent.click(screen.getByRole("button", { name: /Open data folder/ }));
+
+      await waitFor(() =>
+        expect(mocks.openPath).toHaveBeenCalledWith(
+          "/home/me/.local/share/notare",
+          null,
+        ),
+      );
+      expect(screen.getByText(BACKUP_PROMPT)).toBeTruthy();
+      expect(mocks.syncStart).not.toHaveBeenCalled();
+      expect(mocks.setSyncEnabled).not.toHaveBeenCalled();
+    });
+
+    it("shows why the data folder could not be opened, and forgets it once closed", async () => {
+      mocks.globalBase.mockResolvedValue({
+        status: "error",
+        error: "data dir unavailable",
+      });
+
+      renderPage();
+
+      fireEvent.click(
+        await screen.findByRole("switch", { name: ENABLE_SWITCH_NAME }),
+      );
+      await screen.findByText(BACKUP_PROMPT);
+      fireEvent.click(screen.getByRole("button", { name: /Open data folder/ }));
+
+      await screen.findByText("data dir unavailable");
+      expect(mocks.openPath).not.toHaveBeenCalled();
+      expect(mocks.syncStart).not.toHaveBeenCalled();
+
+      fireEvent.click(screen.getByRole("button", { name: "Close" }));
+      await waitFor(() => expect(screen.queryByText(BACKUP_PROMPT)).toBeNull());
+      fireEvent.click(screen.getByRole("switch", { name: ENABLE_SWITCH_NAME }));
+      await screen.findByText(BACKUP_PROMPT);
+      expect(screen.queryByText("data dir unavailable")).toBeNull();
+    });
+
+    it("asks again if the conversion check fails", async () => {
+      mocks.execute.mockRejectedValue(new Error("db busy"));
+
+      renderPage();
+      await waitFor(() => expect(mocks.execute).toHaveBeenCalled());
+
+      fireEvent.click(
+        await screen.findByRole("switch", { name: ENABLE_SWITCH_NAME }),
+      );
+
+      await screen.findByText(BACKUP_PROMPT);
+      expect(mocks.syncStart).not.toHaveBeenCalled();
+    });
+
+    it("skips the prompt once the synced tables are already converted", async () => {
+      mocks.execute.mockResolvedValue([{ n: 6 }]);
+
+      renderPage();
+      const toggle = await screen.findByRole("switch", {
+        name: ENABLE_SWITCH_NAME,
+      });
+      await waitFor(() => expect(mocks.execute).toHaveBeenCalled());
+      // Let the conversion query settle before toggling.
+      await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+
+      fireEvent.click(toggle);
+
+      await waitFor(() => expect(mocks.syncStart).toHaveBeenCalledTimes(1));
+      expect(mocks.setSyncEnabled).toHaveBeenCalledWith("sync_enabled", true);
+      expect(screen.queryByText(BACKUP_PROMPT)).toBeNull();
     });
   });
 
@@ -798,9 +958,10 @@ describe("SettingsSync", () => {
 
       fireEvent.click(
         await screen.findByRole("switch", {
-          name: "Enable device sync (experimental)",
+          name: ENABLE_SWITCH_NAME,
         }),
       );
+      await confirmFirstEnable();
 
       await waitFor(() =>
         expect(mocks.pairingJoin).toHaveBeenCalledWith(

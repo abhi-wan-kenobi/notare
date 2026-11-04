@@ -5,6 +5,7 @@ import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import {
   CheckIcon,
   CopyIcon,
+  FolderOpenIcon,
   Loader2Icon,
   Link2Icon,
   MonitorSmartphoneIcon,
@@ -18,6 +19,7 @@ import { motion } from "motion/react";
 import { useEffect, useId, useRef, useState } from "react";
 
 import {
+  execute,
   pairingConfirm,
   pairingCreateOffer,
   pairingJoin,
@@ -34,12 +36,15 @@ import {
   type SyncPeer,
   type SyncStatusResult,
 } from "@hypr/plugin-db";
+import { commands as openerCommands } from "@hypr/plugin-opener2";
+import { commands as settingsCommands } from "@hypr/plugin-settings";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from "@hypr/ui/components/ui/accordion";
+import { Badge } from "@hypr/ui/components/ui/badge";
 import { Button } from "@hypr/ui/components/ui/button";
 import {
   Dialog,
@@ -62,6 +67,7 @@ import { useSetSettingValue, useStoredSettingValue } from "~/settings/queries";
 const STATUS_QUERY_KEY = ["settings", "sync", "status"] as const;
 const THIS_DEVICE_QUERY_KEY = ["settings", "sync", "this-device"] as const;
 const PEERS_QUERY_KEY = ["settings", "sync", "peers"] as const;
+const CRR_CONVERTED_QUERY_KEY = ["settings", "sync", "crr-converted"] as const;
 const PAIRING_STATUS_QUERY_KEY = [
   "settings",
   "sync",
@@ -92,6 +98,16 @@ export function isValidFingerprint(raw: string): boolean {
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+// `start_sync` runs `crsql_as_crr` on every synced table in one go, and each
+// conversion adds a `<table>__crsql_clock` companion. Any such table means the
+// one-time storage change has already happened on this database.
+async function hasConvertedSyncTables(): Promise<boolean> {
+  const rows = await execute<{ n: number }>(
+    "SELECT COUNT(*) AS n FROM sqlite_master WHERE type = 'table' AND name LIKE '%\\_\\_crsql\\_clock' ESCAPE '\\'",
+  );
+  return (rows[0]?.n ?? 0) > 0;
 }
 
 function formatCountdown(secondsRemaining: number): string {
@@ -193,6 +209,9 @@ function SyncSettingsContent({
     // showing a stale pre-attempt read.
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: STATUS_QUERY_KEY });
+      void queryClient.invalidateQueries({
+        queryKey: CRR_CONVERTED_QUERY_KEY,
+      });
     },
     // The setting is set optimistically in handleToggle so the switch
     // responds immediately; if the agent fails to start/stop, revert it so
@@ -203,9 +222,25 @@ function SyncSettingsContent({
     },
   });
 
-  const handleToggle = (next: boolean) => {
+  // Unknown (loading or failed) counts as "not converted": the backup prompt
+  // is the safe default before anything rewrites the notes tables.
+  const crrConvertedQuery = useQuery({
+    queryKey: CRR_CONVERTED_QUERY_KEY,
+    queryFn: hasConvertedSyncTables,
+  });
+  const [confirmingFirstEnable, setConfirmingFirstEnable] = useState(false);
+
+  const applyToggle = (next: boolean) => {
     setSyncEnabled(next);
     toggleSync.mutate(next);
+  };
+
+  const handleToggle = (next: boolean) => {
+    if (next && crrConvertedQuery.data !== true) {
+      setConfirmingFirstEnable(true);
+      return;
+    }
+    applyToggle(next);
   };
 
   const thisDeviceQuery = useQuery({
@@ -226,7 +261,36 @@ function SyncSettingsContent({
 
   return (
     <div className="flex flex-col gap-6">
-      <SettingsPageTitle title={<Trans>Devices</Trans>} />
+      <SettingsPageTitle
+        title={
+          <span className="flex items-center gap-3">
+            <Trans>Devices</Trans>
+            <Badge
+              variant="outline"
+              className="border-amber-500/30 bg-amber-500/10 font-sans text-[10px] text-amber-600 dark:text-amber-400"
+            >
+              <Trans>Preview</Trans>
+            </Badge>
+          </span>
+        }
+      />
+
+      <div className="text-muted-foreground flex flex-col gap-2 text-xs">
+        <p>
+          <Trans>
+            Device sync is a preview. It keeps your notes in sync between your
+            own devices directly, without going through a server. Every device
+            you pair must run Notare 0.6.8 or later.
+          </Trans>
+        </p>
+        <p>
+          <Trans>
+            It stays off until you turn it on below. Removing a paired device is
+            permanent: it can't reconnect with an old link and has to be paired
+            again from scratch.
+          </Trans>
+        </p>
+      </div>
 
       <SyncEnableToggle
         enabled={syncEnabled}
@@ -237,12 +301,14 @@ function SyncSettingsContent({
         errorWasStarting={toggleSync.variables === true}
       />
 
-      <p className="text-muted-foreground text-xs">
-        <Trans>
-          Pair another one of your devices to sync sessions between them
-          directly, without going through a server.
-        </Trans>
-      </p>
+      <FirstEnableDialog
+        open={confirmingFirstEnable}
+        onOpenChange={setConfirmingFirstEnable}
+        onContinue={() => {
+          setConfirmingFirstEnable(false);
+          applyToggle(true);
+        }}
+      />
 
       <SyncStatusLine status={status} />
 
@@ -343,7 +409,7 @@ function SyncEnableToggle({
       <div className="flex items-center justify-between gap-4">
         <div className="flex-1">
           <h3 id={titleId} className="text-sm font-medium">
-            <Trans>Enable device sync (experimental)</Trans>
+            <Trans>Enable device sync</Trans>
           </h3>
           <p id={descriptionId} className="text-muted-foreground mt-1 text-xs">
             <Trans>
@@ -381,6 +447,86 @@ function SyncEnableToggle({
         </p>
       )}
     </div>
+  );
+}
+
+function FirstEnableDialog({
+  open,
+  onOpenChange,
+  onContinue,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onContinue: () => void;
+}) {
+  const openDataFolder = useMutation({
+    mutationFn: async () => {
+      const base = await settingsCommands.globalBase();
+      if (base.status === "error") {
+        throw new Error(base.error);
+      }
+      const opened = await openerCommands.openPath(base.data, null);
+      if (opened.status === "error") {
+        throw new Error(opened.error);
+      }
+    },
+  });
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) {
+          openDataFolder.reset();
+        }
+        onOpenChange(next);
+      }}
+    >
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>
+            <Trans>Back up before turning on sync?</Trans>
+          </DialogTitle>
+          <DialogDescription>
+            <Trans>
+              This changes how Notare stores notes so they can sync. Back up
+              first?
+            </Trans>
+          </DialogDescription>
+        </DialogHeader>
+        <p className="text-muted-foreground text-xs">
+          <Trans>
+            Your sessions, notes, transcripts, action items and tags are
+            converted to a sync-ready format the first time sync starts. Turning
+            sync off later doesn't undo this. To back up, open the data folder,
+            quit Notare, and copy the folder somewhere safe.
+          </Trans>
+        </p>
+        {openDataFolder.isError && (
+          <p className="text-xs text-red-500">
+            {errorMessage(openDataFolder.error)}
+          </p>
+        )}
+        <DialogFooter>
+          <Button
+            variant="outline"
+            onClick={() => openDataFolder.mutate()}
+            disabled={openDataFolder.isPending}
+          >
+            <FolderOpenIcon className="size-4" />
+            <Trans>Open data folder</Trans>
+          </Button>
+          <Button
+            onClick={() => {
+              openDataFolder.reset();
+              onContinue();
+            }}
+          >
+            <Trans>Continue</Trans>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

@@ -1,5 +1,11 @@
 import type { EventParticipant } from "@hypr/store";
 
+import {
+  EXCLUDE_HIDDEN_PROVIDER_JOINED_SQL,
+  hiddenProvidersParam,
+  useHiddenCalendarProviders,
+} from "./hidden-providers";
+
 import { executeTransaction, liveQueryClient, useLiveQuery } from "~/db";
 import { enqueueDatabaseWrite } from "~/db/write-queue";
 import type {
@@ -99,6 +105,7 @@ export function useTimelineTables(): {
 }
 
 export function useTimelineEventsTable(): TimelineEventsTable {
+  const hiddenProviders = useHiddenCalendarProviders();
   const { data: timelineEventsTable = EMPTY_EVENTS } = useLiveQuery<
     TimelineEventSqlRow,
     Record<string, TimelineEventRow>
@@ -122,8 +129,10 @@ export function useTimelineEventsTable(): TimelineEventsTable {
       LEFT JOIN calendars AS calendar
         ON calendar.id = event.calendar_id AND calendar.deleted_at IS NULL
       WHERE event.deleted_at IS NULL
+        AND ${EXCLUDE_HIDDEN_PROVIDER_JOINED_SQL}
       ORDER BY event.started_at, event.id
     `,
+    params: [hiddenProvidersParam(hiddenProviders)],
     mapRows: mapTimelineEventRows,
   });
 
