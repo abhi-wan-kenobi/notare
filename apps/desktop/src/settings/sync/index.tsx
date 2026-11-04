@@ -199,6 +199,10 @@ function SyncSettingsContent({
 
   const { value: syncEnabledValue } = useStoredSettingValue("sync_enabled");
   const syncEnabled = syncEnabledValue ?? false;
+  // Pairing only means something when the agent can actually run. A
+  // persisted `sync_enabled` with a failed engine still shows the switch on,
+  // and the user must be able to turn it off from there.
+  const canSync = syncEnabled && status.engineLoaded;
   const setSyncEnabled = useSetSettingValue("sync_enabled");
 
   const toggleSync = useMutation({
@@ -320,7 +324,7 @@ function SyncSettingsContent({
         enabled={syncEnabled}
         onChange={handleToggle}
         isPending={toggleSync.isPending}
-        disabled={!status.engineLoaded}
+        disabled={!status.engineLoaded && !syncEnabled}
         startingUp={toggleSync.isPending && toggleSync.variables === true}
         error={toggleSync.isError ? toggleSync.error : null}
         errorWasStarting={toggleSync.variables === true}
@@ -350,12 +354,12 @@ function SyncSettingsContent({
       )}
 
       <motion.div
-        animate={{ opacity: syncEnabled ? 1 : 0.5 }}
+        animate={{ opacity: canSync ? 1 : 0.5 }}
         transition={{ duration: 0.2 }}
-        aria-disabled={!syncEnabled}
+        aria-disabled={!canSync}
         className={cn([
           "flex flex-col gap-6",
-          !syncEnabled && "pointer-events-none",
+          !canSync && "pointer-events-none",
         ])}
       >
         {!syncEnabled && (
@@ -368,13 +372,10 @@ function SyncSettingsContent({
         )}
 
         <div className="flex flex-col gap-3 sm:flex-row">
-          <PairDeviceSection
-            disabled={!syncEnabled}
-            onPaired={invalidatePeers}
-          />
+          <PairDeviceSection disabled={!canSync} onPaired={invalidatePeers} />
           <JoinWithLinkSection
-            disabled={!syncEnabled}
-            acceptIncoming={syncEnabled && !toggleSync.isPending}
+            disabled={!canSync}
+            acceptIncoming={canSync && !toggleSync.isPending}
             onJoined={invalidatePeers}
           />
         </div>
@@ -382,7 +383,7 @@ function SyncSettingsContent({
         <PairedDevicesList
           peers={peersQuery.data ?? []}
           isLoading={peersQuery.isLoading}
-          disabled={!syncEnabled}
+          disabled={!canSync}
         />
 
         <Accordion type="single" collapsible className="flex flex-col">
@@ -395,13 +396,10 @@ function SyncSettingsContent({
                 fingerprint={thisDeviceQuery.data}
                 isLoading={thisDeviceQuery.isLoading}
                 error={thisDeviceQuery.error}
-                disabled={!syncEnabled}
+                disabled={!canSync}
               />
 
-              <AddDeviceForm
-                disabled={!syncEnabled}
-                onAdded={invalidatePeers}
-              />
+              <AddDeviceForm disabled={!canSync} onAdded={invalidatePeers} />
             </AccordionContent>
           </AccordionItem>
         </Accordion>

@@ -211,6 +211,33 @@ describe("SettingsSync", () => {
     expect(mocks.syncStart).not.toHaveBeenCalled();
   });
 
+  it("lets the user turn sync off when it was on and the engine then failed to load", async () => {
+    mocks.syncEnabled = true;
+    mocks.syncStatus.mockResolvedValue({
+      kind: "live",
+      engineLoaded: false,
+      engineError: "failed to load extension",
+      running: false,
+    });
+    mocks.syncThisDevice.mockResolvedValue(VALID_FINGERPRINT_GROUPED);
+    mocks.syncListPeers.mockResolvedValue([]);
+
+    renderPage();
+
+    const toggle = await screen.findByRole("switch", {
+      name: /Enable device sync/,
+    });
+    expect(toggle.hasAttribute("disabled")).toBe(false);
+    expect(toggle.getAttribute("aria-checked")).toBe("true");
+    expect(
+      screen
+        .getByRole("button", { name: /Pair a device/i })
+        .hasAttribute("disabled"),
+    ).toBe(true);
+    fireEvent.click(toggle);
+    await waitFor(() => expect(mocks.syncStop).toHaveBeenCalled());
+  });
+
   describe("manual fingerprint pairing (Advanced)", () => {
     it("does not call sync_add_peer for an invalid fingerprint", async () => {
       mocks.syncStatus.mockResolvedValue({
