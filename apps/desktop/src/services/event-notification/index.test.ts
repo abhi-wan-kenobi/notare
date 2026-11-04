@@ -1,7 +1,10 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
+import type * as HiddenProviders from "~/calendar/hidden-providers";
+
 const mocks = vi.hoisted(() => ({
   execute: vi.fn(),
+  getHiddenCalendarProviders: vi.fn(() => Promise.resolve([] as string[])),
   getIgnoredEventSets: vi.fn(() =>
     Promise.resolve({ ignoredIds: new Set(), ignoredSeriesIds: new Set() }),
   ),
@@ -10,6 +13,11 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@hypr/plugin-notification", () => ({
   commands: { showNotification: mocks.showNotification },
+}));
+
+vi.mock("~/calendar/hidden-providers", async (importOriginal) => ({
+  ...(await importOriginal<typeof HiddenProviders>()),
+  getHiddenCalendarProviders: mocks.getHiddenCalendarProviders,
 }));
 
 vi.mock("~/calendar/ignored-events", () => ({

@@ -6,6 +6,11 @@ import { generateBriefForEvent } from "./generator";
 import { loadBriefedEventIds } from "./storage";
 import type { BriefCandidateEvent } from "./types";
 
+import {
+  excludeHiddenProviderEventsSql,
+  getHiddenCalendarProviders,
+  hiddenProvidersParam,
+} from "~/calendar/hidden-providers";
 import { parseEventParticipants } from "~/calendar/queries";
 import { liveQueryClient } from "~/db";
 import { useTaskModel } from "~/services/llm-router";
@@ -88,7 +93,9 @@ export function selectCandidateEvents(
 }
 
 export async function fetchCalendarEvents(): Promise<BriefCandidateEvent[]> {
-  return liveQueryClient.execute<BriefCandidateEvent>(`
+  const hiddenProviders = await getHiddenCalendarProviders();
+  return liveQueryClient.execute<BriefCandidateEvent>(
+    `
     SELECT
       id,
       title,
@@ -105,8 +112,11 @@ export async function fetchCalendarEvents(): Promise<BriefCandidateEvent[]> {
     WHERE deleted_at IS NULL
       AND is_all_day = 0
       AND started_at <> ''
+      AND ${excludeHiddenProviderEventsSql("events")}
     ORDER BY started_at, id
-  `);
+  `,
+    [hiddenProvidersParam(hiddenProviders)],
+  );
 }
 
 export async function checkAndGenerateBriefs(params: {

@@ -1,13 +1,21 @@
 use std::future::Future;
 
-/// Run an async block synchronously by spawning a dedicated thread with its own
-/// single-threaded Tokio runtime.
+/// Run an async block synchronously from Tauri's synchronous plugin
+/// `.setup()` closure.
 ///
-/// Tauri's plugin `.setup()` closure is synchronous, but it runs on a thread
-/// that is already inside a Tokio runtime. Calling `block_on` directly (or via
-/// `tauri::async_runtime::block_on`) panics with *"Cannot start a runtime from
-/// within a runtime"*. Spawning a new OS thread sidesteps this because the new
-/// thread is not part of any runtime.
+/// Setup runs on a thread that is already inside a Tokio runtime, so calling
+/// `block_on` directly (or via `tauri::async_runtime::block_on`) panics with
+/// *"Cannot start a runtime from within a runtime"*.
+///
+/// Inside a multi-thread runtime (the app's), the future runs on that runtime
+/// via `block_in_place`. It must not run on a throwaway runtime there: sqlx
+/// returns a released pooled connection to its pool on a task it spawns onto
+/// the current runtime, and dropping that runtime right after the future
+/// returns cancels the task. The connection then closes raw, and with the
+/// cr-sqlite engine loaded that `sqlite3_close` panics the sqlx worker
+/// ("unable to close due to unfinalized statements"). Anywhere else (no
+/// runtime, or a current-thread one, where `block_in_place` panics) a
+/// dedicated thread with its own current-thread runtime runs it.
 ///
 /// Two patterns are common:
 ///
@@ -20,6 +28,12 @@ where
     F: Future<Output = T> + Send,
     T: Send,
 {
+    if let Ok(handle) = tokio::runtime::Handle::try_current()
+        && handle.runtime_flavor() == tokio::runtime::RuntimeFlavor::MultiThread
+    {
+        return tokio::task::block_in_place(|| handle.block_on(future));
+    }
+
     std::thread::scope(|s| {
         s.spawn(|| {
             let runtime = tokio::runtime::Builder::new_current_thread()
@@ -51,4 +65,34 @@ where
             tracing::error!("{label}: {error}");
         }
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    // sqlx hands a released pooled connection back on a task it spawns while
+    // the future runs; if that task is cancelled the connection closes raw.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
+    async fn tasks_spawned_inside_outlive_the_call() {
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        let gate = Arc::new(tokio::sync::Notify::new());
+        let task_gate = Arc::clone(&gate);
+
+        super::block_on(async move {
+            tokio::spawn(async move {
+                task_gate.notified().await;
+                let _ = tx.send(());
+            });
+        });
+
+        gate.notify_one();
+        rx.await
+            .expect("a task spawned inside block_on was cancelled when it returned");
+    }
+
+    #[test]
+    fn runs_outside_any_runtime() {
+        assert_eq!(super::block_on(async { 7 }), 7);
+    }
 }

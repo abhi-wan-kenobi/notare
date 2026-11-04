@@ -1,6 +1,6 @@
 import { useLingui } from "@lingui/react/macro";
 import { platform } from "@tauri-apps/plugin-os";
-import { ChevronRight, PlusIcon } from "lucide-react";
+import { ChevronRight, EyeOffIcon, PlusIcon } from "lucide-react";
 import { useCallback, useMemo, type MouseEvent } from "react";
 
 import type { ConnectionItem } from "@hypr/api-client";
@@ -24,6 +24,10 @@ import { type CalendarProvider, PROVIDERS } from "./shared";
 import { useAuth } from "~/auth";
 import { useBillingAccess } from "~/auth/billing";
 import { useConnections } from "~/auth/useConnections";
+import {
+  setCalendarProviderHidden,
+  useHiddenCalendarProviders,
+} from "~/calendar/hidden-providers";
 import { useNativeContextMenu } from "~/shared/hooks/useNativeContextMenu";
 import { usePermission } from "~/shared/hooks/usePermissions";
 import { openIntegrationUrl } from "~/shared/integration";
@@ -88,6 +92,38 @@ function ProviderIcon({ provider }: { provider: CalendarProvider }) {
   );
 }
 
+function setProviderHidden(providerId: string, hidden: boolean) {
+  void setCalendarProviderHidden(providerId, hidden).catch((error) => {
+    console.error(`[calendar] failed to update hidden providers`, error);
+  });
+}
+
+function HiddenProvidersRow({ providers }: { providers: CalendarProvider[] }) {
+  const { t } = useLingui();
+  const names = providers.map((provider) => provider.displayName).join(", ");
+
+  return (
+    <div
+      data-testid="hidden-calendar-providers"
+      className="text-muted-foreground -mx-2 flex items-center gap-2 px-2 py-3 text-xs"
+    >
+      <EyeOffIcon className="size-4 shrink-0" />
+      <span className="min-w-0 flex-1 truncate" title={names}>
+        {t`Hidden providers: ${names}`}
+      </span>
+      <button
+        type="button"
+        onClick={() =>
+          providers.forEach((provider) => setProviderHidden(provider.id, false))
+        }
+        className="text-foreground hover:bg-accent shrink-0 rounded-full px-2 py-1 font-medium transition-colors"
+      >
+        {providers.length > 1 ? t`Show all` : t`Show`}
+      </button>
+    </div>
+  );
+}
+
 export function CalendarSidebarContent({
   returnTo = "calendar",
 }: {
@@ -98,12 +134,21 @@ export function CalendarSidebarContent({
   const { isPaid } = useBillingAccess();
   const { data: connections } = useConnections(isPaid);
 
-  const visibleProviders = useMemo(
+  const hiddenProviderIds = useHiddenCalendarProviders();
+  const platformProviders = useMemo(
     () =>
       PROVIDERS.filter(
         (p) => p.platform === "all" || (p.platform === "macos" && isMacos),
       ),
     [isMacos],
+  );
+  const visibleProviders = useMemo(
+    () => platformProviders.filter((p) => !hiddenProviderIds.includes(p.id)),
+    [hiddenProviderIds, platformProviders],
+  );
+  const hiddenProviders = useMemo(
+    () => platformProviders.filter((p) => hiddenProviderIds.includes(p.id)),
+    [hiddenProviderIds, platformProviders],
   );
   const defaultOpenProviders = useMemo(
     () => getDefaultOpenProviderIds(visibleProviders, connections),
@@ -119,35 +164,42 @@ export function CalendarSidebarContent({
   );
 
   return (
-    <Accordion
-      key={accordionKey}
-      type="multiple"
-      defaultValue={defaultOpenProviders}
-    >
-      {visibleProviders.map((provider) =>
-        provider.disabled ? (
-          <div
-            key={provider.id}
-            className="-mx-2 flex items-center gap-2 px-2 py-3 opacity-50"
-          >
-            <ProviderIcon provider={provider} />
-            <span className="text-sm font-medium">{provider.displayName}</span>
-            {provider.badge && (
-              <span className={getProviderBadgeClassName(provider.badge)}>
-                {provider.badge}
+    <>
+      <Accordion
+        key={accordionKey}
+        type="multiple"
+        defaultValue={defaultOpenProviders}
+      >
+        {visibleProviders.map((provider) =>
+          provider.disabled ? (
+            <div
+              key={provider.id}
+              className="-mx-2 flex items-center gap-2 px-2 py-3 opacity-50"
+            >
+              <ProviderIcon provider={provider} />
+              <span className="text-sm font-medium">
+                {provider.displayName}
               </span>
-            )}
-          </div>
-        ) : (
-          <ProviderAccordionItem
-            key={provider.id}
-            provider={provider}
-            calendar={calendar}
-            returnTo={returnTo}
-          />
-        ),
+              {provider.badge && (
+                <span className={getProviderBadgeClassName(provider.badge)}>
+                  {provider.badge}
+                </span>
+              )}
+            </div>
+          ) : (
+            <ProviderAccordionItem
+              key={provider.id}
+              provider={provider}
+              calendar={calendar}
+              returnTo={returnTo}
+            />
+          ),
+        )}
+      </Accordion>
+      {hiddenProviders.length > 0 && (
+        <HiddenProvidersRow providers={hiddenProviders} />
       )}
-    </Accordion>
+    </>
   );
 }
 
@@ -220,8 +272,8 @@ function ProviderAccordionItem({
     [upgradeToPro],
   );
   const providerMenuItems = useMemo(
-    () =>
-      canAddAccount
+    () => [
+      ...(canAddAccount
         ? [
             {
               id: `add-${provider.id}-account`,
@@ -235,7 +287,13 @@ function ProviderAccordionItem({
                 ),
             },
           ]
-        : [],
+        : []),
+      {
+        id: `hide-${provider.id}`,
+        text: t`Hide ${provider.displayName}`,
+        action: () => setProviderHidden(provider.id, true),
+      },
+    ],
     [
       canAddAccount,
       provider.displayName,
@@ -251,14 +309,14 @@ function ProviderAccordionItem({
   return (
     <AccordionItem value={provider.id} className="group/provider border-none">
       <div
-        onContextMenu={
-          providerMenuItems.length > 0 ? showProviderMenu : undefined
-        }
+        onContextMenu={showProviderMenu}
         className={cn([
           "group/row hover:bg-accent relative -mx-2 grid items-center gap-1 rounded-full px-2",
-          hasAddAccountButton
-            ? "grid-cols-[minmax(0,1fr)_auto_auto]"
-            : "grid-cols-[minmax(0,1fr)_auto]",
+          requiresPro
+            ? "grid-cols-[minmax(0,1fr)_auto]"
+            : hasAddAccountButton
+              ? "grid-cols-[minmax(0,1fr)_auto_auto_auto]"
+              : "grid-cols-[minmax(0,1fr)_auto_auto]",
         ])}
       >
         <AccordionHeader
@@ -309,6 +367,22 @@ function ProviderAccordionItem({
             <PlusIcon className="size-4" />
           </button>
         ) : null}
+
+        {!requiresPro && (
+          <button
+            type="button"
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              setProviderHidden(provider.id, true);
+            }}
+            className="text-muted-foreground hover:bg-accent hover:text-foreground shrink-0 rounded-full p-1 opacity-0 transition-all group-focus-within/row:opacity-100 group-hover/row:opacity-100"
+            aria-label={t`Hide ${provider.displayName}`}
+            title={t`Hide ${provider.displayName}`}
+          >
+            <EyeOffIcon className="size-4" />
+          </button>
+        )}
 
         {!requiresPro && (
           <ChevronRight

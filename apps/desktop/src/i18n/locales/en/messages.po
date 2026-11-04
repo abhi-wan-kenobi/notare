@@ -426,6 +426,10 @@ msgstr "Automatically synthesize attendee background, previous meeting outcomes,
 msgid "Back"
 msgstr "Back"
 
+#: src/settings/sync/index.tsx
+msgid "Back up before turning on sync?"
+msgstr "Back up before turning on sync?"
+
 #: src/settings/ai/stt/shared.tsx
 msgid "Balanced"
 msgstr "Balanced"
@@ -809,6 +813,7 @@ msgstr "Context"
 
 #: src/onboarding/calendar.tsx
 #: src/onboarding/transcription.tsx
+#: src/settings/sync/index.tsx
 msgid "Continue"
 msgstr "Continue"
 
@@ -1059,13 +1064,20 @@ msgid "Device paired"
 msgstr "Device paired"
 
 #: src/settings/sync/index.tsx
+msgid "Device sync is a preview. It keeps your notes in sync between your own devices directly, without going through a server. Every device you pair must run Notare 0.6.8 or later."
+msgstr "Device sync is a preview. It keeps your notes in sync between your own devices directly, without going through a server. Every device you pair must run Notare 0.6.8 or later."
+
+#: src/settings/sync/index.tsx
 msgid "Device sync isn't available in this build"
 msgstr "Device sync isn't available in this build"
 
 #: src/settings/sync/index.tsx
-#: src/sidebar/settings.tsx
 msgid "Devices"
 msgstr "Devices"
+
+#: src/sidebar/settings.tsx
+msgid "Devices (preview)"
+msgstr "Devices (preview)"
 
 #: src/settings/dictation/translation.tsx
 msgid "Dictate in any language, insert the text in {targetLabel}. Requires AI cleanup's language model; falls back to normal cleanup when no model is available."
@@ -1259,8 +1271,8 @@ msgid "Enable a local or cloud model"
 msgstr "Enable a local or cloud model"
 
 #: src/settings/sync/index.tsx
-msgid "Enable device sync (experimental)"
-msgstr "Enable device sync (experimental)"
+msgid "Enable device sync"
+msgstr "Enable device sync"
 
 #: src/settings/mcp/index.tsx
 msgid "Enable MCP Server"
@@ -1610,6 +1622,15 @@ msgstr "Help Notare listen to others"
 msgid "Help Notare listen to you"
 msgstr "Help Notare listen to you"
 
+#: src/calendar/components/sidebar.tsx
+msgid "Hidden providers: {names}"
+msgstr "Hidden providers: {names}"
+
+#. placeholder {0}: provider.displayName
+#: src/calendar/components/sidebar.tsx
+msgid "Hide {0}"
+msgstr "Hide {0}"
+
 #: src/meeting-float/window.tsx
 msgid "Hide captions"
 msgstr "Hide captions"
@@ -1743,6 +1764,10 @@ msgstr "Integrations"
 #: src/sidebar/settings.tsx
 msgid "Intelligence"
 msgstr "Intelligence"
+
+#: src/settings/sync/index.tsx
+msgid "It stays off until you turn it on below. Removing a paired device is permanent: it can't reconnect with an old link and has to be paired again from scratch."
+msgstr "It stays off until you turn it on below. Removing a paired device is permanent: it can't reconnect with an old link and has to be paired again from scratch."
 
 #: src/contacts/details.tsx
 msgid "Job Title"
@@ -2160,10 +2185,6 @@ msgstr "No apps found."
 msgid "No calendars found"
 msgstr "No calendars found"
 
-#: src/changelog/index.tsx
-msgid "No changelog available for this version."
-msgstr "No changelog available for this version."
-
 #: src/templates/details.tsx
 msgid "No community templates available"
 msgstr "No community templates available"
@@ -2236,6 +2257,10 @@ msgstr "No models available."
 #: src/settings/ai/shared/model-combobox.tsx
 msgid "No models ready to use."
 msgstr "No models ready to use."
+
+#: src/changelog/index.tsx
+msgid "No notes for this version yet."
+msgstr "No notes for this version yet."
 
 #: src/shared/open-note-dialog.tsx
 msgid "No notes found."
@@ -2453,6 +2478,10 @@ msgstr "Open calendar"
 msgid "Open calendar account actions"
 msgstr "Open calendar account actions"
 
+#: src/settings/sync/index.tsx
+msgid "Open data folder"
+msgstr "Open data folder"
+
 #: src/calendar/components/outlook/content.tsx
 msgid "Open Entra admin center"
 msgstr "Open Entra admin center"
@@ -2539,10 +2568,6 @@ msgstr "Override the timezone used for the sidebar timeline"
 #: src/settings/sync/index.tsx
 msgid "Pair a device"
 msgstr "Pair a device"
-
-#: src/settings/sync/index.tsx
-msgid "Pair another one of your devices to sync sessions between them directly, without going through a server."
-msgstr "Pair another one of your devices to sync sessions between them directly, without going through a server."
 
 #: src/settings/sync/index.tsx
 msgid "Paired devices"
@@ -2687,6 +2712,10 @@ msgstr "Press the shortcut once to start dictating, press it again to stop and d
 #: src/settings/dictation/shortcut-recorder.tsx
 msgid "Press the shortcut, Esc cancels"
 msgstr "Press the shortcut, Esc cancels"
+
+#: src/settings/sync/index.tsx
+msgid "Preview"
+msgstr "Preview"
 
 #: src/session/components/note-input/search/bar.tsx
 msgid "Previous match"
@@ -3082,6 +3111,10 @@ msgstr "Search..."
 msgid "Section actions"
 msgstr "Section actions"
 
+#: src/changelog/index.tsx
+msgid "See all releases on GitHub"
+msgstr "See all releases on GitHub"
+
 #: src/session/components/note-input/header.tsx
 msgid "See all templates"
 msgstr "See all templates"
@@ -3202,6 +3235,14 @@ msgstr "Share this fingerprint with another device to pair it."
 #: src/settings/general/app-settings.tsx
 msgid "Share usage data"
 msgstr "Share usage data"
+
+#: src/calendar/components/sidebar.tsx
+msgid "Show"
+msgstr "Show"
+
+#: src/calendar/components/sidebar.tsx
+msgid "Show all"
+msgstr "Show all"
 
 #: src/sidebar/timeline/item.tsx
 msgid "Show All Recurring Events"
@@ -3620,6 +3661,10 @@ msgid "Thinking..."
 msgstr "Thinking..."
 
 #: src/settings/sync/index.tsx
+msgid "This changes how Notare stores notes so they can sync. Back up first?"
+msgstr "This changes how Notare stores notes so they can sync. Back up first?"
+
+#: src/settings/sync/index.tsx
 msgid "This code expired."
 msgstr "This code expired."
 
@@ -4036,6 +4081,10 @@ msgstr "Your Notare plan has expired. Configure another language model or renew 
 #: src/settings/general/storage/notes-location.tsx
 msgid "Your notes, transcripts, and recordings are saved here as plain files. Pick an Obsidian vault or any other folder."
 msgstr "Your notes, transcripts, and recordings are saved here as plain files. Pick an Obsidian vault or any other folder."
+
+#: src/settings/sync/index.tsx
+msgid "Your sessions, notes, transcripts, action items and tags are converted to a sync-ready format the first time sync starts. Turning sync off later doesn't undo this. To back up, open the data folder, quit Notare, and copy the folder somewhere safe."
+msgstr "Your sessions, notes, transcripts, action items and tags are converted to a sync-ready format the first time sync starts. Turning sync off later doesn't undo this. To back up, open the data folder, quit Notare, and copy the folder somewhere safe."
 
 #: src/templates/template-sidebar.tsx
 msgid "Z to A"

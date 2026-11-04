@@ -1,5 +1,10 @@
 import { commands as notificationCommands } from "@hypr/plugin-notification";
 
+import {
+  excludeHiddenProviderEventsSql,
+  getHiddenCalendarProviders,
+  hiddenProvidersParam,
+} from "~/calendar/hidden-providers";
 import { getIgnoredEventSets } from "~/calendar/ignored-events";
 import { liveQueryClient } from "~/db";
 
@@ -30,9 +35,11 @@ export async function checkEventNotifications(
     if (now - timestamp > NOTIFIED_EVENTS_TTL_MS) notifiedEvents.delete(key);
   }
 
+  const hiddenProviders = await getHiddenCalendarProviders();
   const [{ ignoredIds, ignoredSeriesIds }, events] = await Promise.all([
     getIgnoredEventSets(),
-    liveQueryClient.execute<NotificationEventRow>(`
+    liveQueryClient.execute<NotificationEventRow>(
+      `
       SELECT
         id,
         title,
@@ -41,8 +48,11 @@ export async function checkEventNotifications(
         recurrence_series_id
       FROM events
       WHERE deleted_at IS NULL AND started_at <> ''
+        AND ${excludeHiddenProviderEventsSql("events")}
       ORDER BY started_at, id
-    `),
+    `,
+      [hiddenProvidersParam(hiddenProviders)],
+    ),
   ]);
 
   for (const event of events) {

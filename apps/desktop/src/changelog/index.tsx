@@ -15,6 +15,8 @@ import { type Tab, useTabs } from "~/store/zustand/tabs";
 
 export { getLatestVersion } from "./data";
 
+const RELEASES_URL = "https://github.com/abhi-wan-kenobi/notare/releases";
+
 export function TabContentChangelog({
   tab,
 }: {
@@ -117,9 +119,16 @@ function ChangelogBody({
   }
 
   return (
-    <p className="text-muted-foreground">
-      <Trans>No changelog available for this version.</Trans>
-    </p>
+    <div className="text-muted-foreground flex flex-col gap-2">
+      <p>
+        <Trans>No notes for this version yet.</Trans>
+      </p>
+      <p>
+        <ExternalLink href={RELEASES_URL}>
+          <Trans>See all releases on GitHub</Trans>
+        </ExternalLink>
+      </p>
+    </div>
   );
 }
 

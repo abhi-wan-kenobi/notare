@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -6,7 +6,9 @@ const mocks = vi.hoisted(() => ({
     mode: "FloatingClosed",
     sendEvent: vi.fn(),
   },
+  changelog: { content: "Release notes" as string | null, loading: false },
   close: vi.fn(),
+  openUrl: vi.fn(),
   leftsidebar: {
     expanded: true,
   },
@@ -18,15 +20,12 @@ vi.mock("@hypr/changelog", () => ({
 
 vi.mock("@hypr/plugin-opener2", () => ({
   commands: {
-    openUrl: vi.fn(),
+    openUrl: mocks.openUrl,
   },
 }));
 
 vi.mock("./data", () => ({
-  useChangelogContent: () => ({
-    content: "Release notes",
-    loading: false,
-  }),
+  useChangelogContent: () => mocks.changelog,
 }));
 
 vi.mock("~/contexts/shell", () => ({
@@ -57,10 +56,41 @@ describe("TabContentChangelog", () => {
     mocks.chat.sendEvent.mockClear();
     mocks.close.mockClear();
     mocks.leftsidebar.expanded = true;
+    mocks.changelog = { content: "Release notes", loading: false };
+    mocks.openUrl.mockClear();
   });
 
   afterEach(() => {
     cleanup();
+  });
+
+  it("renders the release notes when they exist", () => {
+    render(<TabContentChangelog tab={buildChangelogTab()} />);
+
+    expect(screen.getByText("Release notes")).toBeTruthy();
+    expect(screen.queryByText("No notes for this version yet.")).toBeNull();
+  });
+
+  it("explains the missing notes and links to the releases page instead of a blank panel", () => {
+    mocks.changelog = { content: null, loading: false };
+
+    render(<TabContentChangelog tab={buildChangelogTab()} />);
+
+    expect(screen.getByText("No notes for this version yet.")).toBeTruthy();
+    fireEvent.click(screen.getByText("See all releases on GitHub"));
+    expect(mocks.openUrl).toHaveBeenCalledWith(
+      "https://github.com/abhi-wan-kenobi/notare/releases",
+      null,
+    );
+  });
+
+  it("shows a loading state, not the missing-notes message, while fetching", () => {
+    mocks.changelog = { content: null, loading: true };
+
+    render(<TabContentChangelog tab={buildChangelogTab()} />);
+
+    expect(screen.getByText("Loading...")).toBeTruthy();
+    expect(screen.queryByText("No notes for this version yet.")).toBeNull();
   });
 
   it("adds the note header gutter when the sidebar is collapsed", () => {
