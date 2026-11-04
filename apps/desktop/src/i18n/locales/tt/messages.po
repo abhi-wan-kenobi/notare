@@ -2933,6 +2933,10 @@ msgstr ""
 msgid "Respect Do-Not-Disturb mode"
 msgstr ""
 
+#: src/settings/sync/index.tsx
+msgid "Restart Notare to try again. If it keeps happening, report it with the line above."
+msgstr ""
+
 #: src/main/update-banner.tsx
 #: src/settings/general/app-settings.tsx
 msgid "Restart to update"
@@ -3646,6 +3650,10 @@ msgstr ""
 
 #: src/settings/general/storage/notes-location.tsx
 msgid "The new folder already contained files, so your notes were copied there. The originals were left at the old location."
+msgstr ""
+
+#: src/settings/sync/index.tsx
+msgid "The sync engine couldn't load, so sync can't be turned on."
 msgstr ""
 
 #: src/settings/general/app-settings.tsx

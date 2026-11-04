@@ -3,7 +3,7 @@
   "productName": "Notare",
   "mainBinaryName": "notare",
   "identifier": "be.abhishek.notare",
-  "version": "0.6.8",
+  "version": "0.6.9",
   "bundle": {
     "publisher": "Abhishek Gupta",
     "createUpdaterArtifacts": true,

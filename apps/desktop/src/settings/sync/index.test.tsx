@@ -185,6 +185,32 @@ describe("SettingsSync", () => {
     expect(mocks.syncListPeers).not.toHaveBeenCalled();
   });
 
+  it("shows the engine load error and keeps the switch disabled when the engine is not loaded", async () => {
+    mocks.syncEnabled = false;
+    mocks.syncStatus.mockResolvedValue({
+      kind: "live",
+      engineLoaded: false,
+      engineError:
+        "failed to load extension: library load disallowed by system policy",
+      running: false,
+    });
+    mocks.syncThisDevice.mockResolvedValue(VALID_FINGERPRINT_GROUPED);
+    mocks.syncListPeers.mockResolvedValue([]);
+
+    renderPage();
+
+    await waitFor(() =>
+      expect(screen.getByText(/The sync engine couldn't load/)).toBeTruthy(),
+    );
+    expect(
+      screen.getByText(/library load disallowed by system policy/),
+    ).toBeTruthy();
+    const toggle = screen.getByRole("switch", { name: /Enable device sync/ });
+    expect(toggle.hasAttribute("disabled")).toBe(true);
+    fireEvent.click(toggle);
+    expect(mocks.syncStart).not.toHaveBeenCalled();
+  });
+
   describe("manual fingerprint pairing (Advanced)", () => {
     it("does not call sync_add_peer for an invalid fingerprint", async () => {
       mocks.syncStatus.mockResolvedValue({

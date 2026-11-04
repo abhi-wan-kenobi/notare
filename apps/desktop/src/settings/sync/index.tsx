@@ -292,10 +292,35 @@ function SyncSettingsContent({
         </p>
       </div>
 
+      {!status.engineLoaded && (
+        <div
+          role="alert"
+          className="flex flex-col gap-1 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-300"
+        >
+          <p className="font-medium">
+            <Trans>
+              The sync engine couldn't load, so sync can't be turned on.
+            </Trans>
+          </p>
+          {status.engineError && (
+            <p className="font-mono break-all opacity-80">
+              {status.engineError}
+            </p>
+          )}
+          <p>
+            <Trans>
+              Restart Notare to try again. If it keeps happening, report it with
+              the line above.
+            </Trans>
+          </p>
+        </div>
+      )}
+
       <SyncEnableToggle
         enabled={syncEnabled}
         onChange={handleToggle}
         isPending={toggleSync.isPending}
+        disabled={!status.engineLoaded}
         startingUp={toggleSync.isPending && toggleSync.variables === true}
         error={toggleSync.isError ? toggleSync.error : null}
         errorWasStarting={toggleSync.variables === true}
@@ -389,6 +414,7 @@ function SyncEnableToggle({
   enabled,
   onChange,
   isPending,
+  disabled = false,
   startingUp,
   error,
   errorWasStarting,
@@ -396,6 +422,7 @@ function SyncEnableToggle({
   enabled: boolean;
   onChange: (next: boolean) => void;
   isPending: boolean;
+  disabled?: boolean;
   startingUp: boolean;
   error: unknown;
   errorWasStarting: boolean;
@@ -426,7 +453,7 @@ function SyncEnableToggle({
         <Switch
           checked={enabled}
           onCheckedChange={onChange}
-          disabled={isPending}
+          disabled={isPending || disabled}
           aria-labelledby={titleId}
           aria-describedby={descriptionId}
         />
