@@ -30,6 +30,7 @@
           "agents/overview",
           "agents/cli",
           "agents/mcp",
+          "agents/mcp-desktop",
           "agents/skills"
         ]
       },
