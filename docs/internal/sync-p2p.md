@@ -7,7 +7,7 @@ The sync subsystem replicates SQLite data directly between user devices over enc
 > **Licensing & Migration Notice (2026-09-02 / 2026-11-04)**:
 > In earlier development cycles (v0.6 S0b through SYNC-9), Notare prototyped P2P sync using SQLite Cloud's CloudSync / sqlite-sync extension (Elastic License 2.0) with a custom C network broker (`network_p2p.c`). On 2026-09-02, SQLite Cloud refused a licence for our custom network layer (`docs/LICENSE-NOTE.md`).
 > In release 0.6.6 / 0.6.7, the entire CloudSync stack (`crates/cloudsync`, `network_p2p.c`, `from-source` build features, and `cloudsync_from_source_*` CI jobs) was completely removed. Sync migrated to cr-sqlite and protocol v2.
-> The historical records of §1–§23 have been moved to [`docs/internal/archive/sync-p2p-cloudsync-era.md`](archive/sync-p2p-cloudsync-era.md) and are summarized at the end of this document.
+> The historical records of §1–§23 have been moved to `docs/internal/archive/sync-p2p-cloudsync-era.md` and are summarized at the end of this document.
 
 ---
 
@@ -341,7 +341,7 @@ This section records empirical findings and measurements obtained from testing a
 
 > **HISTORICAL NOTICE**: Sections 1 through 23 of the original sync specification detailed the CloudSync / sqlite-sync (Elastic License 2.0) C network-layer contract, the S1 transport spike, and development increments SYNC-3 through SYNC-9. Following SQLite Cloud's written denial of our custom network layer licence on 2026-09-02, the entire CloudSync C architecture was superseded and completely excised in release 0.6.7.
 >
-> The complete historical record has been preserved in [`docs/internal/archive/sync-p2p-cloudsync-era.md`](archive/sync-p2p-cloudsync-era.md).
+> The complete historical record has been preserved in `docs/internal/archive/sync-p2p-cloudsync-era.md`.
 >
 > **Do not attempt to execute or implement the build recipes, verification commands, or contracts from the archived sections.**
 
