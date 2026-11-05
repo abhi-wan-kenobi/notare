@@ -1,3 +1,4 @@
+import { Trans } from "@lingui/react/macro";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   addDays,
@@ -54,7 +55,9 @@ import {
   type ZoomLevel,
 } from "~/calendar/zoom";
 import type { CalendarSyncRange } from "~/services/calendar";
+import { createSession } from "~/session/queries";
 import { useMountEffect } from "~/shared/hooks/useMountEffect";
+import { useTabs } from "~/store/zustand/tabs";
 
 const ZOOM_LABELS: Record<ZoomLevel, string> = {
   month: "Month",
@@ -62,6 +65,19 @@ const ZOOM_LABELS: Record<ZoomLevel, string> = {
   "3day": "3 days",
   day: "Day",
 };
+
+function formatWeekTitle(days: Date[]): string {
+  if (days.length === 0) return "";
+  const first = days[0];
+  const last = days[days.length - 1];
+  if (isSameMonth(first, last)) {
+    return `${format(first, "MMM d")}–${format(last, "d, yyyy")}`;
+  }
+  if (first.getFullYear() === last.getFullYear()) {
+    return `${format(first, "MMM d")} – ${format(last, "MMM d, yyyy")}`;
+  }
+  return `${format(first, "MMM d, yyyy")} – ${format(last, "MMM d, yyyy")}`;
+}
 
 const WEEKDAY_HEADERS_SUN = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const WEEKDAY_HEADERS_MON = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -100,6 +116,16 @@ function useVisibleCols(ref: React.RefObject<HTMLDivElement | null>) {
 }
 
 export function CalendarView() {
+  const openNew = useTabs((state) => state.openNew);
+  const handleNewMeeting = useCallback(() => {
+    void createSession()
+      .then((sessionId) => {
+        openNew({ type: "sessions", id: sessionId });
+      })
+      .catch((error) => {
+        console.error("[calendar] failed to create new meeting", error);
+      });
+  }, [openNew]);
   const { scheduleSync } = useSync();
   const now = useNow();
   const weekStartsOn = useWeekStartsOn();
@@ -289,12 +315,21 @@ export function CalendarView() {
             {isMonthView
               ? format(currentMonth, "MMMM yyyy")
               : isWeekView
-                ? `${format(days[0], "MMM d")}–${format(days[6], "d, yyyy")}`
+                ? formatWeekTitle(days)
                 : format(compactVisibleStart, "MMMM yyyy")}
           </h2>
           <CalendarSyncHeaderControls />
         </div>
         <div className="flex items-center gap-2" data-tauri-drag-region="false">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleNewMeeting}
+            className="border-border text-muted-foreground hover:bg-accent hover:text-foreground h-8 rounded-full border px-3 text-xs font-medium shadow-none"
+          >
+            <PlusIcon className="mr-1.5 size-3.5" />
+            <Trans>New meeting</Trans>
+          </Button>
           <ButtonGroup
             className={cn([
               "border-border h-8 overflow-hidden rounded-full border",
