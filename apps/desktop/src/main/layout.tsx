@@ -10,7 +10,7 @@ import { ShellProvider } from "~/contexts/shell";
 import { ToolRegistryProvider } from "~/contexts/tool";
 import { useStoreBackedTaskStorage } from "~/editor-bridge/task-storage";
 import { SearchEngineProvider } from "~/search/contexts/engine";
-import { OpenNoteDialogProvider } from "~/shared/open-note-dialog";
+import { OpenNoteDialogProvider } from "~/shared/command-palette";
 
 export function ClassicMainLayout({
   children,

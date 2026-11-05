@@ -1,3 +1,4 @@
+import { Trans } from "@lingui/react/macro";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   addDays,
@@ -6,6 +7,7 @@ import {
   endOfMonth,
   endOfWeek,
   format,
+  parseISO,
   isSameMonth,
   startOfMonth,
   startOfDay,
@@ -36,6 +38,7 @@ import { cn } from "@hypr/utils";
 
 import { useSync } from "./context";
 import { DayCell } from "./day-cell";
+import { WeekView } from "./week-view";
 
 import {
   useCalendarData,
@@ -43,6 +46,7 @@ import {
   useNow,
   useWeekStartsOn,
 } from "~/calendar/hooks";
+import { useCalendarSelection } from "~/calendar/selection";
 import {
   createPinchAccumulator,
   resolveCalendarLayout,
@@ -51,7 +55,9 @@ import {
   type ZoomLevel,
 } from "~/calendar/zoom";
 import type { CalendarSyncRange } from "~/services/calendar";
+import { createSession } from "~/session/queries";
 import { useMountEffect } from "~/shared/hooks/useMountEffect";
+import { useTabs } from "~/store/zustand/tabs";
 
 const ZOOM_LABELS: Record<ZoomLevel, string> = {
   month: "Month",
@@ -59,6 +65,19 @@ const ZOOM_LABELS: Record<ZoomLevel, string> = {
   "3day": "3 days",
   day: "Day",
 };
+
+function formatWeekTitle(days: Date[]): string {
+  if (days.length === 0) return "";
+  const first = days[0];
+  const last = days[days.length - 1];
+  if (isSameMonth(first, last)) {
+    return `${format(first, "MMM d")}–${format(last, "d, yyyy")}`;
+  }
+  if (first.getFullYear() === last.getFullYear()) {
+    return `${format(first, "MMM d")} – ${format(last, "MMM d, yyyy")}`;
+  }
+  return `${format(first, "MMM d, yyyy")} – ${format(last, "MMM d, yyyy")}`;
+}
 
 const WEEKDAY_HEADERS_SUN = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const WEEKDAY_HEADERS_MON = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -97,6 +116,16 @@ function useVisibleCols(ref: React.RefObject<HTMLDivElement | null>) {
 }
 
 export function CalendarView() {
+  const openNew = useTabs((state) => state.openNew);
+  const handleNewMeeting = useCallback(() => {
+    void createSession()
+      .then((sessionId) => {
+        openNew({ type: "sessions", id: sessionId });
+      })
+      .catch((error) => {
+        console.error("[calendar] failed to create new meeting", error);
+      });
+  }, [openNew]);
   const { scheduleSync } = useSync();
   const now = useNow();
   const weekStartsOn = useWeekStartsOn();
@@ -106,18 +135,30 @@ export function CalendarView() {
   const [compactVisibleStart, setCompactVisibleStart] = useState(() =>
     startOfDay(now),
   );
+  const selectedDate = useCalendarSelection((state) => state.selectedDate);
+  const selectDate = useCalendarSelection((state) => state.selectDate);
   const containerRef = useRef<HTMLDivElement>(null);
   const compactScrollRef = useRef<HTMLDivElement>(null);
   const compactBaseRef = useRef(startOfDay(now));
   const widthCols = useVisibleCols(containerRef);
   const { zoom, zoomBy } = useCalendarZoom();
   const { isMonthView, cols } = resolveCalendarLayout(zoom, widthCols);
+  const isWeekView = zoom === "week";
   const calendarData = useCalendarData();
   const enabledCalendars = useEnabledCalendars();
 
   useMountEffect(() => {
     scheduleSync();
   });
+
+  useEffect(() => {
+    if (!selectedDate) return;
+    const next = startOfDay(parseISO(selectedDate));
+    compactBaseRef.current = next;
+    setVisibleStart(next);
+    setCompactVisibleStart(next);
+    setCurrentMonth(next);
+  }, [selectedDate]);
 
   // Pinch / Ctrl+wheel zoom. Needs a non-passive native listener: React's
   // onWheel is passive, so it can't stop the webview's own page zoom.
@@ -134,13 +175,16 @@ export function CalendarView() {
 
   const advanceCompact = useCallback(
     (direction: -1 | 1) => {
-      const next = addDays(compactBaseRef.current, direction * cols);
+      const next = addDays(
+        compactBaseRef.current,
+        direction * (isWeekView ? 7 : cols),
+      );
       compactBaseRef.current = next;
       setVisibleStart(next);
+      selectDate(next);
     },
-    [cols],
+    [cols, isWeekView, selectDate],
   );
-
   const goToPrev = useCallback(() => {
     if (isMonthView) {
       setCurrentMonth((m) => subMonths(m, 1));
@@ -163,7 +207,8 @@ export function CalendarView() {
     setCurrentMonth(now);
     setVisibleStart(todayStart);
     setCompactVisibleStart(todayStart);
-  }, [now]);
+    selectDate(todayStart);
+  }, [now, selectDate]);
 
   const days = useMemo(() => {
     if (isMonthView) {
@@ -174,11 +219,19 @@ export function CalendarView() {
       return eachDayOfInterval({ start: calStart, end: calEnd });
     }
 
+    if (isWeekView) {
+      const weekStart = startOfWeek(visibleStart, weekOpts);
+      return eachDayOfInterval({
+        start: weekStart,
+        end: addDays(weekStart, 6),
+      });
+    }
+
     return eachDayOfInterval({
       start: addDays(visibleStart, -COMPACT_SCROLL_PAST_DAYS),
       end: addDays(visibleStart, COMPACT_SCROLL_FUTURE_DAYS - 1),
     });
-  }, [currentMonth, isMonthView, visibleStart, weekOpts]);
+  }, [currentMonth, isMonthView, isWeekView, visibleStart, weekOpts]);
 
   const visibleRange = useMemo<CalendarSyncRange | null>(() => {
     const firstDay = days[0];
@@ -261,11 +314,22 @@ export function CalendarView() {
           <h2 className="text-foreground text-sm font-semibold">
             {isMonthView
               ? format(currentMonth, "MMMM yyyy")
-              : format(compactVisibleStart, "MMMM yyyy")}
+              : isWeekView
+                ? formatWeekTitle(days)
+                : format(compactVisibleStart, "MMMM yyyy")}
           </h2>
           <CalendarSyncHeaderControls />
         </div>
         <div className="flex items-center gap-2" data-tauri-drag-region="false">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleNewMeeting}
+            className="border-border text-muted-foreground hover:bg-accent hover:text-foreground h-8 rounded-full border px-3 text-xs font-medium shadow-none"
+          >
+            <PlusIcon className="mr-1.5 size-3.5" />
+            <Trans>New meeting</Trans>
+          </Button>
           <ButtonGroup
             className={cn([
               "border-border h-8 overflow-hidden rounded-full border",
@@ -378,6 +442,8 @@ export function CalendarView() {
             ))}
           </div>
         </>
+      ) : isWeekView ? (
+        <WeekView days={days} calendarData={calendarData} />
       ) : (
         <div
           ref={compactScrollRef}

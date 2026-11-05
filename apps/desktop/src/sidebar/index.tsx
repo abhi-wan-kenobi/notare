@@ -26,7 +26,7 @@ import { TemplatesNav } from "./templates";
 
 import { useLiveQuery } from "~/db";
 import { useSessionSummaries } from "~/session/queries";
-import { useOpenNoteDialog } from "~/shared/open-note-dialog";
+import { useOpenNoteDialog } from "~/shared/command-palette";
 import { useTabs } from "~/store/zustand/tabs";
 
 const MAX_RECENT_DISPLAY = 5;

@@ -1,10 +1,12 @@
 import { Trans } from "@lingui/react/macro";
 import {
   AudioLinesIcon,
+  CalendarPlusIcon,
   FileDownIcon,
   FileTextIcon,
   MoreHorizontalIcon,
   PictureInPicture2Icon,
+  ShareIcon,
   SquareArrowOutUpRightIcon,
 } from "lucide-react";
 import { useState } from "react";
@@ -43,11 +45,13 @@ import { useUploadFile } from "~/stt/useUploadFile";
 export function OverflowButton({
   allowListening = true,
   standaloneWindow = false,
+  showMeetingActions = false,
   sessionId,
   currentView,
 }: {
   allowListening?: boolean;
   standaloneWindow?: boolean;
+  showMeetingActions?: boolean;
   sessionId: string;
   currentView: EditorView;
 }) {
@@ -98,6 +102,30 @@ export function OverflowButton({
 
   return (
     <>
+      {showMeetingActions ? (
+        <>
+          <Button
+            size="sm"
+            variant="outline"
+            data-tauri-drag-region="false"
+            onClick={openExportModal}
+            className="text-foreground bg-card hover:bg-accent border-border/80 h-7 gap-1.5 rounded-md px-2.5 text-xs"
+          >
+            <ShareIcon size={13} />
+            <Trans>Share</Trans>
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            data-tauri-drag-region="false"
+            onClick={() => setIsScheduleFollowupOpen(true)}
+            className="text-muted-foreground hover:text-foreground hover:bg-accent h-7 gap-1.5 rounded-md px-2.5 text-xs"
+          >
+            <CalendarPlusIcon size={13} />
+            <Trans>Schedule follow-up</Trans>
+          </Button>
+        </>
+      ) : null}
       <DropdownMenu open={open} onOpenChange={setOpen}>
         <DropdownMenuTrigger asChild>
           <Button
