@@ -1,7 +1,10 @@
 import { WrenchIcon } from "lucide-react";
+import { useMemo } from "react";
 
 import { useToolState } from "./shared";
 
+import { CitationChip } from "~/chat/citations/chip";
+import { parseTimestampToMs } from "~/chat/citations/parser";
 import { Disclosure } from "~/chat/components/message/shared";
 import { extractMcpOutputText } from "~/chat/mcp/mcp-output-parser";
 import { CONTEXT_TEXT_FIELD } from "~/chat/tools/context-text";
@@ -70,11 +73,7 @@ export function ToolGeneric({ part }: { part: Record<string, unknown> }) {
               {String(part.errorText ?? "Unknown error")}
             </p>
           ) : null}
-          {outputText ? (
-            <p className="text-muted-foreground text-xs whitespace-pre-wrap">
-              {outputText}
-            </p>
-          ) : null}
+          {outputText ? <ToolOutputText text={outputText} /> : null}
         </div>
       </Disclosure>
     );
@@ -107,5 +106,85 @@ function InputDisplay({ input }: { input: unknown }) {
         </div>
       ))}
     </dl>
+  );
+}
+type ToolOutputSegment =
+  | { type: "text"; text: string }
+  | { type: "citation"; ms: number; sessionId?: string };
+
+const TOOL_TIMESTAMP_REGEX =
+  /(?:\[\[src:([a-zA-Z0-9_\-.:]+)@(\d+)\]\]|\[(\d{1,2}:\d{2}(?::\d{2})?)\]|(?:"at_ms"|at_ms)\s*[:=]\s*(\d+))/g;
+
+function parseToolOutputSegments(text: string): ToolOutputSegment[] {
+  const segments: ToolOutputSegment[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = TOOL_TIMESTAMP_REGEX.exec(text)) !== null) {
+    const [raw, srcSessionId, srcMs, bracketTime, atMs] = match;
+    const matchIndex = match.index;
+
+    if (matchIndex > lastIndex) {
+      segments.push({
+        type: "text",
+        text: text.slice(lastIndex, matchIndex),
+      });
+    }
+
+    if (srcSessionId && srcMs) {
+      const ms = Number.parseInt(srcMs, 10);
+      if (!Number.isNaN(ms)) {
+        segments.push({ type: "citation", ms, sessionId: srcSessionId });
+      } else {
+        segments.push({ type: "text", text: raw });
+      }
+    } else if (bracketTime) {
+      const ms = parseTimestampToMs(bracketTime);
+      if (ms !== null) {
+        segments.push({ type: "citation", ms });
+      } else {
+        segments.push({ type: "text", text: raw });
+      }
+    } else if (atMs) {
+      const ms = Number.parseInt(atMs, 10);
+      if (!Number.isNaN(ms)) {
+        segments.push({ type: "text", text: "at_ms: " });
+        segments.push({ type: "citation", ms });
+      } else {
+        segments.push({ type: "text", text: raw });
+      }
+    }
+
+    lastIndex = matchIndex + raw.length;
+  }
+
+  if (lastIndex < text.length) {
+    segments.push({
+      type: "text",
+      text: text.slice(lastIndex),
+    });
+  }
+
+  return segments;
+}
+
+export function ToolOutputText({ text }: { text: string }) {
+  const segments = useMemo(() => parseToolOutputSegments(text), [text]);
+
+  return (
+    <div className="text-muted-foreground text-xs whitespace-pre-wrap">
+      {segments.map((segment, i) =>
+        segment.type === "text" ? (
+          <span key={i}>{segment.text}</span>
+        ) : (
+          <CitationChip
+            key={i}
+            ms={segment.ms}
+            sessionId={segment.sessionId}
+            variant="timestamp"
+          />
+        ),
+      )}
+    </div>
   );
 }

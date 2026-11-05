@@ -40,7 +40,7 @@ vi.mock("~/session/queries", () => ({
   ],
 }));
 
-vi.mock("~/shared/open-note-dialog", () => ({
+vi.mock("~/shared/command-palette", () => ({
   useOpenNoteDialog: () => ({ open: mocks.openDialog }),
 }));
 

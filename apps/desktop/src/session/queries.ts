@@ -150,9 +150,24 @@ export type SessionParticipantRecord = {
 };
 
 const EMPTY_ENHANCED_NOTES: EnhancedNoteRecord[] = [];
+const EMPTY_SESSION_DECISIONS: SessionDecisionRecord[] = [];
 const EMPTY_SESSION_PARTICIPANTS: SessionParticipantRecord[] = [];
 const EMPTY_SESSION_SUMMARIES: SessionSummaryRecord[] = [];
 const EMPTY_TRASHED_SESSIONS: TrashedSessionRecord[] = [];
+
+export type SessionDecisionRecord = {
+  id: string;
+  text: string;
+  owner: string | null;
+  atMs: number | null;
+};
+
+type SessionDecisionSqlRow = {
+  id: string;
+  text: string;
+  owner: string | null;
+  at_ms: number | null;
+};
 
 /**
  * Every table that carries session-owned rows and gets a `deleted_at`
@@ -166,6 +181,7 @@ const SESSION_OWNED_TABLES = [
   "session_tags",
   "action_items",
   "session_attachments",
+  "session_decisions",
 ] as const;
 
 /**
@@ -330,6 +346,71 @@ export function useSessionHasTranscript(sessionId: string): boolean {
     mapRows: (rows) => Boolean(rows[0]?.has_transcript),
   });
   return sessionId ? data : false;
+}
+
+export function useSessionDecisions(
+  sessionId: string,
+): SessionDecisionRecord[] {
+  const { data = EMPTY_SESSION_DECISIONS } = useLiveQuery<
+    SessionDecisionSqlRow,
+    SessionDecisionRecord[]
+  >({
+    sql: `
+      SELECT id, text, owner, at_ms
+      FROM session_decisions
+      WHERE session_id = ? AND deleted_at IS NULL
+      ORDER BY created_at, id
+    `,
+    params: [sessionId],
+    enabled: Boolean(sessionId),
+    mapRows: (rows) =>
+      rows.map((row) => ({
+        id: row.id,
+        text: row.text,
+        owner: row.owner,
+        atMs: row.at_ms,
+      })),
+  });
+  return sessionId ? data : EMPTY_SESSION_DECISIONS;
+}
+
+export function replaceSessionDecisions(
+  sessionId: string,
+  decisions: Array<{ text: string; owner: string | null; atMs: number | null }>,
+): Promise<void> {
+  return enqueueDatabaseWrite(`session:${sessionId}`, async () => {
+    const now = new Date().toISOString();
+    const statements: Array<{ sql: string; params: unknown[] }> = [
+      {
+        sql: `
+          UPDATE session_decisions
+          SET deleted_at = ?, updated_at = ?
+          WHERE session_id = ? AND deleted_at IS NULL
+        `,
+        params: [now, now, sessionId],
+      },
+    ];
+    for (const decision of decisions) {
+      statements.push({
+        sql: `
+          INSERT INTO session_decisions (
+            id, workspace_id, session_id, text, owner, at_ms,
+            created_at, updated_at, deleted_at
+          ) VALUES (?, '', ?, ?, ?, ?, ?, ?, NULL)
+        `,
+        params: [
+          id(),
+          sessionId,
+          decision.text,
+          decision.owner,
+          decision.atMs,
+          now,
+          now,
+        ],
+      });
+    }
+    await executeTransaction(statements);
+  });
 }
 
 export function useSessionParticipants(
