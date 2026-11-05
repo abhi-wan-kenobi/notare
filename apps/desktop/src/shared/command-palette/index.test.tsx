@@ -184,19 +184,19 @@ describe("command palette", () => {
     fireEvent.click(screen.getByText("Open settings · General & System"));
     expect(mocks.openNew).toHaveBeenCalledWith({
       type: "settings",
-      state: { tab: "app" },
+      state: { tab: "general" },
     });
 
     fireEvent.click(screen.getByText("Open settings · AI & Speech"));
     expect(mocks.openNew).toHaveBeenCalledWith({
       type: "settings",
-      state: { tab: "intelligence" },
+      state: { tab: "ai" },
     });
 
     fireEvent.click(screen.getByText("Open settings · Integrations & Sync"));
     expect(mocks.openNew).toHaveBeenCalledWith({
       type: "settings",
-      state: { tab: "sync" },
+      state: { tab: "integrations" },
     });
 
     fireEvent.click(screen.getByText("Open settings · Account & Storage"));
