@@ -64,10 +64,6 @@ msgstr "{duplicateCandidateCount} already in your dictionary — skipped."
 msgid "{minutes} min"
 msgstr "{minutes} min"
 
-#: src/main/home/index.tsx
-msgid "{scheduledTodayCount} scheduled today · {recordedThisWeekCount} recorded this week · {openActionItemsCount} open actions"
-msgstr "{scheduledTodayCount} scheduled today · {recordedThisWeekCount} recorded this week · {openActionItemsCount} open actions"
-
 #: src/settings/general/account.tsx
 msgid "{trialDaysRemaining} day left"
 msgstr "{trialDaysRemaining} day left"
@@ -1370,6 +1366,10 @@ msgstr "events"
 msgid "Events to send"
 msgstr "Events to send"
 
+#: src/main/home/index.tsx
+msgid "Every two weeks"
+msgstr "Every two weeks"
+
 #: src/chat/components/scope-selector.tsx
 msgid "Everything"
 msgstr "Everything"
@@ -1861,6 +1861,10 @@ msgstr "Language for summaries, chats, and AI-generated responses"
 msgid "Last seen {0}"
 msgstr "Last seen {0}"
 
+#: src/main/home/index.tsx
+msgid "Later this week"
+msgstr "Later this week"
+
 #: src/session/components/note-input/header.tsx
 #: src/stt/useLiveTranscriptCopyShortcuts.ts
 msgid "Latest transcript chunk copied"
@@ -2120,6 +2124,10 @@ msgstr "Monday"
 msgid "Mono"
 msgstr "Mono"
 
+#: src/main/home/index.tsx
+msgid "Monthly"
+msgstr "Monthly"
+
 #: src/session/components/floating/options-menu.tsx
 msgid "More options"
 msgstr "More options"
@@ -2164,6 +2172,10 @@ msgstr "Name"
 #: src/calendar/components/outlook/content.tsx
 msgid "Name: <0>Notare</0> (or any name)."
 msgstr "Name: <0>Notare</0> (or any name)."
+
+#: src/main/home/index.tsx
+msgid "Need a summary"
+msgstr "Need a summary"
 
 #: src/settings/sync/index.tsx
 msgid "Never connected"
@@ -2511,6 +2523,10 @@ msgid "Open {0} settings"
 msgstr "Open {0} settings"
 
 #: src/main/home/index.tsx
+msgid "Open actions"
+msgstr "Open actions"
+
+#: src/main/home/index.tsx
 #: src/sidebar/timeline/index.tsx
 msgid "Open calendar"
 msgstr "Open calendar"
@@ -2845,9 +2861,17 @@ msgstr "Reconnect required"
 msgid "Record"
 msgstr "Record"
 
+#: src/main/home/index.tsx
+msgid "Recorded this week"
+msgstr "Recorded this week"
+
 #: src/meeting-float/window.tsx
 msgid "Recording time"
 msgstr "Recording time"
+
+#: src/main/home/index.tsx
+msgid "Recurring event"
+msgstr "Recurring event"
 
 #: src/calendar/components/outlook/content.tsx
 msgid "Redirect URI: select platform <0>Mobile and desktop applications</0> and enter <1>http://localhost</1>."
@@ -3078,6 +3102,10 @@ msgstr "Schedule"
 #: src/session/components/outer-header/overflow/schedule-followup.tsx
 msgid "Schedule follow-up"
 msgstr "Schedule follow-up"
+
+#: src/main/home/index.tsx
+msgid "Scheduled today"
+msgstr "Scheduled today"
 
 #: src/settings/recipes/index.tsx
 msgid "Scope"
@@ -3793,6 +3821,7 @@ msgstr "Tip: The Notare team loves our users!"
 msgid "Title"
 msgstr "Title"
 
+#: src/main/home/index.tsx
 #: src/snippets/index.tsx
 msgid "Today"
 msgstr "Today"
@@ -3808,6 +3837,10 @@ msgstr "Toggle press"
 #: src/settings/dictation/shortcut-recorder.tsx
 msgid "Toggle shortcut"
 msgstr "Toggle shortcut"
+
+#: src/main/home/index.tsx
+msgid "Tomorrow"
+msgstr "Tomorrow"
 
 #: src/settings/general/app-settings.tsx
 msgid "Transcribe in real time during a meeting. Turn this off to transcribe only after you stop — lighter for long meetings, and audio is always recorded either way. Applies to new sessions only."
@@ -4072,6 +4105,10 @@ msgstr "Webhooks"
 #: src/settings/general/week-start.tsx
 msgid "Week starts on"
 msgstr "Week starts on"
+
+#: src/main/home/index.tsx
+msgid "Weekly"
+msgstr "Weekly"
 
 #: src/onboarding/index.tsx
 msgid "Welcome to Notare"

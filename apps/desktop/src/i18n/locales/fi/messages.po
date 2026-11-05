@@ -64,10 +64,6 @@ msgstr ""
 msgid "{minutes} min"
 msgstr ""
 
-#: src/main/home/index.tsx
-msgid "{scheduledTodayCount} scheduled today · {recordedThisWeekCount} recorded this week · {openActionItemsCount} open actions"
-msgstr ""
-
 #: src/settings/general/account.tsx
 msgid "{trialDaysRemaining} day left"
 msgstr ""
@@ -1370,6 +1366,10 @@ msgstr ""
 msgid "Events to send"
 msgstr ""
 
+#: src/main/home/index.tsx
+msgid "Every two weeks"
+msgstr ""
+
 #: src/chat/components/scope-selector.tsx
 msgid "Everything"
 msgstr ""
@@ -1861,6 +1861,10 @@ msgstr "Kieli yhteenvetoja, keskusteluja ja tekoälyn luomia vastauksia varten"
 msgid "Last seen {0}"
 msgstr ""
 
+#: src/main/home/index.tsx
+msgid "Later this week"
+msgstr ""
+
 #: src/session/components/note-input/header.tsx
 #: src/stt/useLiveTranscriptCopyShortcuts.ts
 msgid "Latest transcript chunk copied"
@@ -2120,6 +2124,10 @@ msgstr ""
 msgid "Mono"
 msgstr ""
 
+#: src/main/home/index.tsx
+msgid "Monthly"
+msgstr ""
+
 #: src/session/components/floating/options-menu.tsx
 msgid "More options"
 msgstr ""
@@ -2163,6 +2171,10 @@ msgstr ""
 
 #: src/calendar/components/outlook/content.tsx
 msgid "Name: <0>Notare</0> (or any name)."
+msgstr ""
+
+#: src/main/home/index.tsx
+msgid "Need a summary"
 msgstr ""
 
 #: src/settings/sync/index.tsx
@@ -2511,6 +2523,10 @@ msgid "Open {0} settings"
 msgstr ""
 
 #: src/main/home/index.tsx
+msgid "Open actions"
+msgstr ""
+
+#: src/main/home/index.tsx
 #: src/sidebar/timeline/index.tsx
 msgid "Open calendar"
 msgstr ""
@@ -2845,8 +2861,16 @@ msgstr ""
 msgid "Record"
 msgstr ""
 
+#: src/main/home/index.tsx
+msgid "Recorded this week"
+msgstr ""
+
 #: src/meeting-float/window.tsx
 msgid "Recording time"
+msgstr ""
+
+#: src/main/home/index.tsx
+msgid "Recurring event"
 msgstr ""
 
 #: src/calendar/components/outlook/content.tsx
@@ -3077,6 +3101,10 @@ msgstr ""
 
 #: src/session/components/outer-header/overflow/schedule-followup.tsx
 msgid "Schedule follow-up"
+msgstr ""
+
+#: src/main/home/index.tsx
+msgid "Scheduled today"
 msgstr ""
 
 #: src/settings/recipes/index.tsx
@@ -3793,6 +3821,7 @@ msgstr ""
 msgid "Title"
 msgstr ""
 
+#: src/main/home/index.tsx
 #: src/snippets/index.tsx
 msgid "Today"
 msgstr ""
@@ -3807,6 +3836,10 @@ msgstr ""
 
 #: src/settings/dictation/shortcut-recorder.tsx
 msgid "Toggle shortcut"
+msgstr ""
+
+#: src/main/home/index.tsx
+msgid "Tomorrow"
 msgstr ""
 
 #: src/settings/general/app-settings.tsx
@@ -4071,6 +4104,10 @@ msgstr ""
 
 #: src/settings/general/week-start.tsx
 msgid "Week starts on"
+msgstr ""
+
+#: src/main/home/index.tsx
+msgid "Weekly"
 msgstr ""
 
 #: src/onboarding/index.tsx
