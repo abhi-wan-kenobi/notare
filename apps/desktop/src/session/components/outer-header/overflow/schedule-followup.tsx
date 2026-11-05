@@ -205,7 +205,7 @@ export function ScheduleFollowupDialog({
                   userEditedRef.current = true;
                   setTitle(e.target.value);
                 }}
-                className="text-xs"
+                className="bg-card h-8 text-[13px]"
                 autoFocus
               />
             </div>
@@ -219,7 +219,7 @@ export function ScheduleFollowupDialog({
                   type="datetime-local"
                   value={startLocal}
                   onChange={(e) => setStartLocal(e.target.value)}
-                  className="text-xs"
+                  className="bg-card h-8 text-[13px]"
                 />
               </div>
 
@@ -231,7 +231,7 @@ export function ScheduleFollowupDialog({
                   value={String(durationMinutes)}
                   onValueChange={(value) => setDurationMinutes(Number(value))}
                 >
-                  <SelectTrigger className="text-xs">
+                  <SelectTrigger className="bg-card h-8 text-[13px]">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -250,7 +250,7 @@ export function ScheduleFollowupDialog({
                 <Trans>Calendar</Trans>
               </label>
               <Select value={calendarKey} onValueChange={setCalendarKey}>
-                <SelectTrigger className="text-xs">
+                <SelectTrigger className="bg-card h-8 text-[13px]">
                   <SelectValue placeholder={t`Choose a calendar`} />
                 </SelectTrigger>
                 <SelectContent>

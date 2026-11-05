@@ -31,6 +31,11 @@ msgstr ""
 msgid "(default)"
 msgstr ""
 
+#. placeholder {0}: attendees.length === 1 ? "attendee" : "attendees"
+#: src/session/meeting-detail.tsx
+msgid "{0}"
+msgstr ""
+
 #. placeholder {0}: sessions.length
 #: src/trash/index.tsx
 msgid "{0} item(s)"
@@ -243,6 +248,7 @@ msgstr ""
 
 #: src/main/action-items/index.tsx
 #: src/session/components/action-items/index.tsx
+#: src/session/meeting-detail.tsx
 #: src/shared/command-palette/index.tsx
 #: src/sidebar/index.tsx
 msgid "Action items"
@@ -462,6 +468,10 @@ msgstr ""
 msgid "Assignees:"
 msgstr ""
 
+#: src/session/meeting-detail.tsx
+msgid "At a glance"
+msgstr ""
+
 #: src/main/series/index.tsx
 msgid "Attendee joined"
 msgstr ""
@@ -630,6 +640,10 @@ msgstr ""
 
 #: src/settings/dictation/shortcut-recorder.tsx
 msgid "Change shortcut"
+msgstr ""
+
+#: src/session/meeting-detail.tsx
+msgid "Chapters"
 msgstr ""
 
 #: src/settings/ai/llm/scoped-models.tsx
@@ -1086,8 +1100,16 @@ msgstr ""
 msgid "Date and time are required"
 msgstr ""
 
+#: src/session/meeting-detail.tsx
+msgid "Decision"
+msgstr ""
+
 #: src/main/series/index.tsx
 msgid "Decision made"
+msgstr ""
+
+#: src/session/meeting-detail.tsx
+msgid "Decisions"
 msgstr ""
 
 #: src/session/components/outer-header/overflow/delete.tsx
@@ -2178,7 +2200,12 @@ msgstr ""
 msgid "Meeting"
 msgstr ""
 
+#: src/session/meeting-detail.tsx
+msgid "meetings"
+msgstr ""
+
 #: src/main/meetings/index.tsx
+#: src/session/index.tsx
 #: src/settings/general/app-settings.tsx
 #: src/shared/command-palette/index.tsx
 #: src/sidebar/index.tsx
@@ -2496,6 +2523,10 @@ msgstr ""
 
 #: src/settings/recipes/index.tsx
 msgid "No recipes yet."
+msgstr ""
+
+#: src/session/index.tsx
+msgid "No recording audio available for this meeting."
 msgstr ""
 
 #: src/contacts/details.tsx
@@ -3059,6 +3090,10 @@ msgstr ""
 msgid "Recorded"
 msgstr ""
 
+#: src/session/meeting-detail.tsx
+msgid "Recording"
+msgstr ""
+
 #: src/meeting-float/window.tsx
 msgid "Recording time"
 msgstr ""
@@ -3306,6 +3341,7 @@ msgstr ""
 msgid "Schedule"
 msgstr ""
 
+#: src/session/components/outer-header/overflow/index.tsx
 #: src/session/components/outer-header/overflow/schedule-followup.tsx
 msgid "Schedule follow-up"
 msgstr ""
@@ -3528,6 +3564,10 @@ msgstr ""
 msgid "Settings"
 msgstr ""
 
+#: src/session/components/outer-header/overflow/index.tsx
+msgid "Share"
+msgstr ""
+
 #: src/settings/sync/index.tsx
 msgid "Share this fingerprint with another device to pair it."
 msgstr ""
@@ -3672,6 +3712,10 @@ msgstr ""
 
 #: src/dictation/orb.tsx
 msgid "Silk"
+msgstr ""
+
+#: src/session/meeting-detail.tsx
+msgid "since"
 msgstr ""
 
 #: src/settings/recipes/index.tsx
@@ -3834,6 +3878,7 @@ msgstr ""
 
 #: src/contacts/details.tsx
 #: src/session/components/outer-header/overflow/export-modal.tsx
+#: src/session/meeting-detail.tsx
 msgid "Summary"
 msgstr ""
 
@@ -4089,6 +4134,7 @@ msgstr ""
 
 #: src/session/components/note-input/header.tsx
 #: src/session/components/outer-header/overflow/export-modal.tsx
+#: src/session/meeting-detail.tsx
 msgid "Transcript"
 msgstr ""
 
@@ -4193,6 +4239,11 @@ msgstr ""
 #: src/templates/sections-editor.tsx
 #: src/trash/index.tsx
 msgid "Untitled"
+msgstr ""
+
+#: src/session/index.tsx
+#: src/session/meeting-detail.tsx
+msgid "Untitled meeting"
 msgstr ""
 
 #: src/contacts/details.tsx
