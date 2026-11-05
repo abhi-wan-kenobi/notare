@@ -94,16 +94,9 @@ describe("CitationChip", () => {
     expect(pendingSeek.requestSeek).not.toHaveBeenCalled();
   });
 
-  it("renders timestamp variant as ▸ mm:ss and dispatches notare:seek event", () => {
+  it("renders timestamp variant as ▸ mm:ss and seeks the active session", () => {
     const seekListener = vi.fn();
     window.addEventListener("notare:seek", seekListener);
-
-    const mockSeekTo = vi.fn();
-    (
-      window as unknown as { __sessionStore: { seekTo: typeof mockSeekTo } }
-    ).__sessionStore = {
-      seekTo: mockSeekTo,
-    };
 
     useTabs.setState({
       currentTab: {
@@ -124,16 +117,14 @@ describe("CitationChip", () => {
 
     fireEvent.click(button);
 
-    expect(mockSeekTo).toHaveBeenCalledWith(75000);
-    expect(seekListener).toHaveBeenCalled();
-    const event = seekListener.mock.calls[0][0] as CustomEvent;
-    expect(event.detail).toEqual({ ms: 75000, sessionId: "active-session" });
     expect(pendingSeek.requestSeek).toHaveBeenCalledWith(
       "active-session",
       75000,
     );
+    expect(seekListener).toHaveBeenCalledTimes(1);
+    const event = seekListener.mock.calls[0][0] as CustomEvent;
+    expect(event.detail).toEqual({ ms: 75000, sessionId: "active-session" });
 
     window.removeEventListener("notare:seek", seekListener);
-    delete (window as unknown as { __sessionStore?: unknown }).__sessionStore;
   });
 });

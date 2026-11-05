@@ -3,9 +3,9 @@ import type React from "react";
 
 import { cn } from "@hypr/utils";
 
-import { requestSeek } from "~/audio-player/pending-seek";
 import { formatTimestamp } from "~/chat/citations/parser";
 import { useSessionSummaries } from "~/session/queries";
+import { seekTo } from "~/session/seek";
 import { useTabs } from "~/store/zustand/tabs";
 
 export interface CitationChipProps {
@@ -55,30 +55,11 @@ export function CitationChip({
       return;
     }
 
-    try {
-      const win = window as unknown as {
-        __sessionStore?: { seekTo?: (ms: number) => void };
-        sessionStore?: { seekTo?: (ms: number) => void };
-      };
-      if (typeof win.__sessionStore?.seekTo === "function") {
-        win.__sessionStore.seekTo(ms);
-      } else if (typeof win.sessionStore?.seekTo === "function") {
-        win.sessionStore.seekTo(ms);
-      }
-    } catch {
-      // ignore
-    }
-
-    if (typeof window !== "undefined") {
-      window.dispatchEvent(
-        new CustomEvent("notare:seek", {
-          detail: { ms, sessionId: effectiveSessionId },
-        }),
-      );
-    }
+    // The session store records the pending seek and dispatches `notare:seek`
+    // for the open note; opening the tab (below) covers a note that isn't open.
+    seekTo(ms, effectiveSessionId ?? undefined);
 
     if (effectiveSessionId) {
-      requestSeek(effectiveSessionId, ms);
       const tab = useTabs.getState().currentTab;
       if (tab?.type !== "sessions" || tab.id !== effectiveSessionId) {
         useTabs
