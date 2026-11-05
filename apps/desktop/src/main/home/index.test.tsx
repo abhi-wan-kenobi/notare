@@ -29,6 +29,7 @@ vi.mock("~/shared/dock", () => ({
 }));
 
 vi.mock("~/calendar/hooks", () => ({
+  useNow: () => new TZDate(new Date(), mocks.timezone),
   useTimezone: () => mocks.timezone,
   useWeekStartsOn: () => 0,
   toTz: (date: string | Date, tz?: string) => {
@@ -135,6 +136,21 @@ describe("TabContentHome", () => {
     expect(screen.getByText(/1 scheduled today/)).toBeTruthy();
     expect(screen.getByText("Evening meeting")).toBeTruthy();
   });
+  it("keeps future events visible when the selected timezone is ahead of UTC", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-11-08T08:30:00.000Z"));
+    mocks.timezone = "Asia/Kolkata";
+    mocks.eventsTable = {
+      "evt-1": {
+        title: "Soon in Kolkata",
+        started_at: "2026-11-08T08:45:00.000Z",
+      },
+    };
+
+    renderHome();
+
+    expect(screen.getByText("Soon in Kolkata")).toBeTruthy();
+  });
   it("uses the selected timezone for the recorded-this-week boundary", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-11-08T08:30:00.000Z"));
@@ -149,6 +165,56 @@ describe("TabContentHome", () => {
     renderHome();
 
     expect(screen.getByText(/0 recorded this week/)).toBeTruthy();
+  });
+  it("includes a session created at the selected timezone's week start", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-11-08T08:30:00.000Z"));
+    mocks.sessions = [
+      {
+        id: "s-at-week-start",
+        title: "Sunday note",
+        created_at: "2026-11-08T08:00:00.000Z",
+      },
+    ];
+
+    renderHome();
+
+    expect(screen.getByText(/1 recorded this week/)).toBeTruthy();
+  });
+
+  it("shows recent note dates in the selected timezone", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-11-08T08:30:00.000Z"));
+    mocks.sessions = [
+      {
+        id: "s-local-date",
+        title: "Saturday note",
+        created_at: "2026-11-08T07:30:00.000Z",
+      },
+    ];
+
+    renderHome();
+
+    expect(screen.getByText("Nov 7")).toBeTruthy();
+  });
+
+  it("refreshes today's summary when Home rerenders after midnight", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-11-08T08:30:00.000Z"));
+    mocks.eventsTable = {
+      "evt-1": {
+        title: "Today event",
+        started_at: "2026-11-08T09:00:00.000Z",
+      },
+    };
+
+    const { rerender } = renderHome();
+    expect(screen.getByText(/1 scheduled today/)).toBeTruthy();
+
+    vi.setSystemTime(new Date("2026-11-09T08:30:00.000Z"));
+    rerender(<TabContentHome tab={{ type: "empty" } as never} />);
+
+    expect(screen.getByText(/0 scheduled today/)).toBeTruthy();
   });
 
   it("only lists future events in Coming up, sorted by start time", () => {

@@ -3,7 +3,7 @@ import { format, startOfWeek } from "date-fns";
 import { RepeatIcon } from "lucide-react";
 import { useMemo } from "react";
 
-import { toTz, useTimezone, useWeekStartsOn } from "~/calendar/hooks";
+import { toTz, useNow, useTimezone, useWeekStartsOn } from "~/calendar/hooks";
 import { useTimelineEventsTable } from "~/calendar/queries";
 import { useLiveQuery } from "~/db";
 import { useSessionSummaries } from "~/session/queries";
@@ -38,9 +38,9 @@ export function TabContentHome({
 function HomeView() {
   const { t } = useLingui();
   const tz = useTimezone();
-  const now = useMemo(() => new Date(), []);
-  const nowIso = useMemo(() => now.toISOString(), [now]);
-  const todayKey = format(toTz(now, tz), "yyyy-MM-dd");
+  const now = useNow();
+  const nowIso = useMemo(() => new Date(now).toISOString(), [now]);
+  const todayKey = format(now, "yyyy-MM-dd");
 
   const eventsTable = useTimelineEventsTable();
   const sessions = useSessionSummaries();
@@ -120,12 +120,12 @@ function HomeView() {
 
   const weekStartsOn = useWeekStartsOn();
   const recordedThisWeekCount = useMemo(() => {
-    const weekStartMs = startOfWeek(toTz(now, tz), { weekStartsOn }).getTime();
+    const weekStartMs = startOfWeek(now, { weekStartsOn }).getTime();
     return sessions.filter((session) => {
       const created = new Date(session.created_at).getTime();
       return !Number.isNaN(created) && created >= weekStartMs;
     }).length;
-  }, [sessions, weekStartsOn, now, tz]);
+  }, [sessions, weekStartsOn, now]);
 
   const recentNotes = sessions.slice(0, RECENT_NOTES_LIMIT);
 
@@ -237,7 +237,7 @@ function HomeView() {
                     {session.title || t`Untitled`}
                   </span>
                   <span className="text-muted-foreground shrink-0 text-xs">
-                    {format(new Date(session.created_at), "MMM d")}
+                    {format(toTz(session.created_at, tz), "MMM d")}
                   </span>
                 </button>
               ))}
