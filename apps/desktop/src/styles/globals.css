@@ -15,6 +15,7 @@
   --font-sans:
     system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-hand: "Bradley Hand", "Segoe Print", "Comic Sans MS", cursive;
+  --font-serif: "Iowan Old Style", Charter, Georgia, serif;
 
   --color-border: hsl(var(--border));
   --color-input: hsl(var(--input));
@@ -38,6 +39,7 @@
 
   /* State-channel tokens — docs/DESIGN-DIRECTION.md §2 (mirrors packages/ui) */
   --color-rec: hsl(var(--rec));
+  --color-lime: hsl(var(--lime));
   --color-ok: hsl(var(--ok));
   --color-accent-glow: hsl(var(--accent-glow));
   --color-accent-glow-end: hsl(var(--accent-glow-end));
@@ -199,6 +201,14 @@
   & * {
     user-select: text !important;
   }
+}
+
+@utility page-title {
+  font-family: var(--font-serif);
+  font-size: 1.875rem;
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: -0.025em;
 }
 
 @layer utilities {
