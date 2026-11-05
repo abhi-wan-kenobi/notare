@@ -1,6 +1,8 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { TZDate } from "@hypr/utils";
+
 const mocks = vi.hoisted(() => ({
   eventsTable: {} as Record<string, Record<string, unknown>>,
   sessions: [] as { id: string; title: string; created_at: string }[],
@@ -29,10 +31,10 @@ vi.mock("~/shared/dock", () => ({
 vi.mock("~/calendar/hooks", () => ({
   useTimezone: () => mocks.timezone,
   useWeekStartsOn: () => 0,
-  toTz: (date: string | Date, tz?: string) =>
-    tz
-      ? new Date(new Date(date).toLocaleString("en-US", { timeZone: tz }))
-      : new Date(date),
+  toTz: (date: string | Date, tz?: string) => {
+    const parsedDate = typeof date === "string" ? new Date(date) : date;
+    return tz ? new TZDate(parsedDate, tz) : parsedDate;
+  },
 }));
 
 vi.mock("~/calendar/queries", () => ({
