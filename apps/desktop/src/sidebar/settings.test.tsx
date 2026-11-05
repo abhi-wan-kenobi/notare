@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  currentTab: { type: "settings", state: { tab: "app" } } as {
+  currentTab: { type: "settings", state: { tab: "general" } } as {
     type: "settings";
     state: { tab?: string };
   } | null,
@@ -75,33 +75,29 @@ import { SettingsNav } from "./settings";
 
 describe("SettingsNav", () => {
   beforeEach(() => {
-    mocks.currentTab = { type: "settings", state: { tab: "app" } };
+    mocks.currentTab = { type: "settings", state: { tab: "general" } };
     mocks.openNew.mockClear();
     mocks.updateSettingsTabState.mockClear();
   });
 
-  it("renders every settings menu label", () => {
+  it("shows four settings hubs and updates the active hub", () => {
     render(<SettingsNav />);
 
-    [
-      "General",
-      "App",
-      "Notifications",
-      "Permissions",
-      "Context",
-      "Calendar",
-      "Contacts",
-      "Templates",
-      "AI",
-      "Transcription",
-      "Intelligence",
-      "Personalization",
-      // #31: the dictation orb reaches parity through the webview orb path
-      // on macOS too, so the nav must not hide this tab there any more
-      // (this file is mocked to `platform() === "macos"` above).
-      "Dictation",
-    ].forEach((label) => {
-      expect(screen.getByText(label)).toBeTruthy();
-    });
+    const hubs = [
+      "General & System",
+      "AI & Speech",
+      "Integrations & Sync",
+      "Account & Storage",
+    ];
+    for (const label of hubs) {
+      expect(screen.getByRole("button", { name: label })).toBeTruthy();
+    }
+    expect(screen.getAllByRole("button")).toHaveLength(4);
+
+    screen.getByRole("button", { name: "Integrations & Sync" }).click();
+    expect(mocks.updateSettingsTabState).toHaveBeenCalledWith(
+      mocks.currentTab,
+      { tab: "integrations" },
+    );
   });
 });

@@ -32,6 +32,7 @@ import {
 } from "./eligibility";
 
 import { useBillingAccess } from "~/auth/billing";
+import { SettingsExpander } from "~/settings/components";
 import {
   useAiProvider,
   useAiProviders,
@@ -306,11 +307,8 @@ export function NonHyprProviderCard({
             </div>
           )}
           {((!showBaseUrl && config.baseUrl) || !showApiKey) && (
-            <details className="flex flex-col gap-4 pt-2">
-              <summary className="text-muted-foreground hover:text-foreground cursor-pointer text-xs hover:underline">
-                <Trans>Advanced</Trans>
-              </summary>
-              <div className="mt-4 flex flex-col gap-4">
+            <SettingsExpander title={<Trans>Advanced</Trans>}>
+              <div className="flex flex-col gap-4">
                 {!showBaseUrl && config.baseUrl && (
                   <form.Field name="base_url">
                     {(field) => <FormField field={field} label={t`Base URL`} />}
@@ -329,7 +327,7 @@ export function NonHyprProviderCard({
                   </form.Field>
                 )}
               </div>
-            </details>
+            </SettingsExpander>
           )}
         </form>
       </AccordionContent>

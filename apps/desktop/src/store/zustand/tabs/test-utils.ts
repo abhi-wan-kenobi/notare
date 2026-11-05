@@ -55,7 +55,8 @@ export const createSettingsTab = (
   pinned: overrides.pinned ?? false,
   slotId: overrides.slotId ?? id(),
   state: {
-    tab: "app",
+    tab: "general",
+    section: null,
     ...overrides.state,
   },
 });

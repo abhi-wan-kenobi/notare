@@ -10,7 +10,6 @@ vi.mock("~/settings/queries", () => ({
   useStoredSettingValuesQuery: mocks.useStoredSettingValuesQuery,
 }));
 
-vi.mock("./account", () => ({ SettingsAccount: () => null }));
 vi.mock("./app-settings", () => ({ AppSettingsView: () => null }));
 vi.mock("./main-language", () => ({
   MainLanguageView: ({ value }: { value: string }) => (

@@ -14,7 +14,11 @@ import { BillingProvider } from "~/auth/billing";
 import { DevtoolsFloatingPanelHost } from "~/devtools-panel/host";
 import { DictationOrbHost } from "~/dictation/host";
 import { UndoDeleteToast } from "~/sidebar/toast/undo-delete-toast";
-import { isTabInputSupported, useTabs } from "~/store/zustand/tabs";
+import {
+  isTabInputSupported,
+  normalizeSettingsState,
+  useTabs,
+} from "~/store/zustand/tabs";
 
 export default function MainAppLayout() {
   useNavigationEvents();
@@ -80,8 +84,12 @@ const useNavigationEvents = () => {
         if (payload.path === "/app/new") {
           openNewNote();
         } else if (payload.path === "/app/settings") {
-          const tab = (payload.search?.tab as string) ?? "app";
-          openNew({ type: "settings", state: { tab } });
+          const rawTab = (payload.search?.tab as string) ?? undefined;
+          const section = (payload.search?.section as string) ?? undefined;
+          openNew({
+            type: "settings",
+            state: normalizeSettingsState({ tab: rawTab, section }),
+          });
         } else {
           void navigate({
             to: payload.path,

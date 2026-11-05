@@ -63,7 +63,10 @@ function StartListeningButton({
 
   const handleConfigure = useCallback(() => {
     startListening();
-    openNew({ type: "settings", state: { tab: "transcription" } });
+    openNew({
+      type: "settings",
+      state: { tab: "ai", section: "transcription" },
+    });
   }, [startListening, openNew]);
 
   return (

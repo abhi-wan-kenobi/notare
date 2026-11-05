@@ -3,7 +3,13 @@ import type { StoreApi } from "zustand";
 import type { BasicState } from "./basic";
 import type { NavigationState } from "./navigation";
 import { updateHistoryCurrent } from "./navigation";
-import { isSameTab, type Tab } from "./schema";
+import {
+  isSameTab,
+  normalizeSettingsState,
+  type SettingsInputState,
+  type SettingsState,
+  type Tab,
+} from "./schema";
 
 export type StateBasicActions = {
   updateContactsTabState: (
@@ -20,7 +26,7 @@ export type StateBasicActions = {
   ) => void;
   updateSettingsTabState: (
     tab: Tab,
-    state: Extract<Tab, { type: "settings" }>["state"],
+    state: SettingsInputState | SettingsState,
   ) => void;
   updateDailySummaryTabState: (
     tab: Tab,
@@ -38,8 +44,19 @@ export const createStateUpdaterSlice = <T extends BasicState & NavigationState>(
     updateTabState(tab, "contacts", state, get, set),
   updateTemplatesTabState: (tab, state) =>
     updateTabState(tab, "templates", state, get, set),
-  updateSettingsTabState: (tab, state) =>
-    updateTabState(tab, "settings", state, get, set),
+  updateSettingsTabState: (tab, state) => {
+    const currentState = tab.type === "settings" ? tab.state : undefined;
+    updateTabState(
+      tab,
+      "settings",
+      normalizeSettingsState({
+        ...currentState,
+        ...state,
+      }),
+      get,
+      set,
+    );
+  },
   updateDailySummaryTabState: (tab, state) =>
     updateTabState(tab, "daily_summary", state, get, set),
 });

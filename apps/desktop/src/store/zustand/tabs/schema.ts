@@ -24,7 +24,8 @@ export type WindowsSupportedTabInput = Exclude<
 >;
 
 export type TabInput =
-  | WindowsSupportedTabInput
+  | Exclude<WindowsSupportedTabInput, { type: "settings" }>
+  | { type: "settings"; state?: SettingsInputState | null }
   // App-only tab input (no Rust/windows binding): the hybrid search surface.
   | { type: "search"; query?: string }
   // App-only tab input (no Rust/windows binding): the Snippets (dictation
@@ -52,38 +53,14 @@ export const isTabInputSupported = (
   );
 };
 
-export type SettingsTab =
-  | "account"
-  | "app"
-  | "notifications"
-  | "permissions"
-  | "personalization"
-  | "transcription"
-  | "intelligence"
-  | "dictation"
-  | "todo"
-  | "webhook"
-  | "sync"
-  | "recipes"
-  | "mcp"
-  | "gmail";
+export type SettingsTab = "general" | "ai" | "integrations" | "account";
 
-const isSettingsTab = (tab: string | null | undefined): tab is SettingsTab => {
+export const isSettingsTab = (tab: string | null | undefined): tab is SettingsTab => {
   switch (tab) {
+    case "general":
+    case "ai":
+    case "integrations":
     case "account":
-    case "app":
-    case "notifications":
-    case "permissions":
-    case "personalization":
-    case "transcription":
-    case "intelligence":
-    case "dictation":
-    case "todo":
-    case "webhook":
-    case "sync":
-    case "recipes":
-    case "mcp":
-    case "gmail":
       return true;
     default:
       return false;
@@ -92,30 +69,83 @@ const isSettingsTab = (tab: string | null | undefined): tab is SettingsTab => {
 
 export const normalizeSettingsTab = (
   tab: string | null | undefined,
-): Exclude<SettingsTab, "account"> => {
+): SettingsTab => {
   switch (tab) {
+    case "general":
+    case "ai":
+    case "integrations":
+    case "account":
+      return tab;
     case "app":
     case "notifications":
     case "permissions":
     case "personalization":
+    case "dictation":
+      return "general";
     case "transcription":
     case "intelligence":
-    case "dictation":
-    case "todo":
+    case "recipes":
+      return "ai";
     case "webhook":
     case "sync":
-    case "recipes":
     case "mcp":
     case "gmail":
-      return tab;
-    case "account":
+      return "integrations";
+    case "todo":
+    case "storage":
+    case "data":
+      return "account";
     default:
-      return "app";
+      return "general";
   }
 };
 
 export type SettingsState = {
   tab: SettingsTab | null;
+  section?: string | null;
+};
+
+export type SettingsInputState = {
+  tab?: string | null;
+  section?: string | null;
+};
+
+export const normalizeSettingsState = (
+  state?: { tab?: string | null; section?: string | null } | null,
+): SettingsState => {
+  const rawTab = state?.tab;
+  const section = state?.section ?? null;
+  if (!rawTab) {
+    return { tab: "general", section };
+  }
+  if (isSettingsTab(rawTab)) {
+    return { tab: rawTab, section };
+  }
+  switch (rawTab) {
+    case "notifications":
+    case "permissions":
+    case "personalization":
+    case "dictation":
+      return { tab: "general", section: section ?? rawTab };
+    case "app":
+      return { tab: "general", section };
+    case "transcription":
+    case "recipes":
+      return { tab: "ai", section: section ?? rawTab };
+    case "intelligence":
+      return { tab: "ai", section };
+    case "webhook":
+    case "sync":
+    case "mcp":
+    case "gmail":
+      return { tab: "integrations", section: section ?? rawTab };
+    case "todo":
+    case "storage":
+    case "data":
+      return { tab: "account", section: section ?? rawTab };
+    default:
+      return { tab: "general", section };
+  }
 };
 
 export type DailySummaryState = {
@@ -253,7 +283,9 @@ export const getDefaultState = (tab: TabInput): Tab => {
       return {
         ...base,
         type: "settings",
-        state: { tab: isSettingsTab(subtab) ? subtab : "app" },
+        state: normalizeSettingsState(
+          tab.state as { tab?: string | null; section?: string | null } | undefined,
+        ),
       };
     }
     case "onboarding":
