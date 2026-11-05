@@ -1,37 +1,51 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  currentTab: { type: "empty" } as { type: string } | null,
+  currentTab: { type: "empty" } as { type: string; id?: string } | null,
+  recentlyOpenedSessionIds: [] as string[],
+  openCurrent: vi.fn(),
+  openNew: vi.fn(),
+  select: vi.fn(),
+  openDialog: vi.fn(),
+  liveQueryCount: 0,
 }));
 
-vi.mock("~/store/zustand/tabs", () => ({
-  useTabs: (
-    selector: (state: { currentTab: typeof mocks.currentTab }) => unknown,
-  ) => selector({ currentTab: mocks.currentTab }),
+vi.mock("~/store/zustand/tabs", () => {
+  const state = {
+    get currentTab() {
+      return mocks.currentTab;
+    },
+    get recentlyOpenedSessionIds() {
+      return mocks.recentlyOpenedSessionIds;
+    },
+    openCurrent: mocks.openCurrent,
+    openNew: mocks.openNew,
+    select: mocks.select,
+    tabs: [] as unknown[],
+  };
+  const useTabs = (selector: (s: typeof state) => unknown) => selector(state);
+  useTabs.getState = () => state;
+  return { useTabs };
+});
+
+vi.mock("~/db", () => ({
+  useLiveQuery: () => ({ data: mocks.liveQueryCount }),
 }));
 
-vi.mock("~/sidebar/timeline", () => ({
-  TimelineView: ({
-    showOpenCalendarButton = true,
-    topChipsOverlapHeader = false,
-    topChromeInset = false,
-  }: {
-    showOpenCalendarButton?: boolean;
-    topChipsOverlapHeader?: boolean;
-    topChromeInset?: boolean;
-  }) => (
-    <div
-      data-testid="timeline-view"
-      data-show-open-calendar-button={String(showOpenCalendarButton)}
-      data-top-chips-overlap-header={String(topChipsOverlapHeader)}
-      data-top-chrome-inset={String(topChromeInset)}
-    />
-  ),
+vi.mock("~/session/queries", () => ({
+  useSessionSummaries: () => [
+    { id: "s1", title: "Q4 Launch Sync", created_at: "2026-11-04T10:00:00Z" },
+    { id: "s2", title: "Sprint Planning", created_at: "2026-11-03T09:00:00Z" },
+  ],
 }));
 
-vi.mock("~/sidebar/toast", () => ({
-  ToastArea: () => <div data-testid="toast-area" />,
+vi.mock("~/shared/open-note-dialog", () => ({
+  useOpenNoteDialog: () => ({ open: mocks.openDialog }),
+}));
+
+vi.mock("@tauri-apps/plugin-os", () => ({
+  platform: () => "macos",
 }));
 
 vi.mock("~/sidebar/calendar", () => ({
@@ -50,43 +64,33 @@ vi.mock("~/sidebar/templates", () => ({
   TemplatesNav: () => <div data-testid="templates-nav" />,
 }));
 
-vi.mock("~/sidebar/surface-nav", () => ({
-  SidebarSurfaceNav: () => <nav data-testid="sidebar-surface-nav" />,
-}));
-
 import { LeftSidebar } from "./index";
 
 describe("LeftSidebar", () => {
   beforeEach(() => {
     mocks.currentTab = { type: "empty" };
+    mocks.recentlyOpenedSessionIds = [];
+    mocks.openCurrent.mockClear();
+    mocks.openNew.mockClear();
+    mocks.select.mockClear();
+    mocks.openDialog.mockClear();
+    mocks.liveQueryCount = 0;
+    localStorage.clear();
   });
 
   afterEach(() => {
     cleanup();
   });
 
-  it("uses the timeline layout without a duplicate sidebar top offset", () => {
+  it("renders the default sidebar content without a duplicate top offset", () => {
     const { container } = render(<LeftSidebar />);
 
-    expect(screen.getByTestId("timeline-view")).toBeTruthy();
-    expect(
-      screen
-        .getByTestId("timeline-view")
-        .getAttribute("data-show-open-calendar-button"),
-    ).toBe("true");
-    expect(
-      screen.getByTestId("timeline-view").getAttribute("data-top-chrome-inset"),
-    ).toBe("true");
-    expect(
-      screen
-        .getByTestId("timeline-view")
-        .getAttribute("data-top-chips-overlap-header"),
-    ).toBe("false");
+    expect(screen.getByTestId("sidebar-default-content")).toBeTruthy();
     expect(container.firstElementChild?.className).toContain("pt-0");
     expect(container.firstElementChild?.className).not.toContain("pr-1");
   });
 
-  it("renders timeline header as normal sidebar content", () => {
+  it("renders timelineHeader above the default content in the timeline layout", () => {
     render(
       <LeftSidebar timelineHeader={<div data-testid="timeline-header" />} />,
     );
@@ -94,16 +98,10 @@ describe("LeftSidebar", () => {
     expect(
       screen
         .getByTestId("timeline-header")
-        .parentElement?.contains(screen.getByTestId("timeline-view")),
+        .parentElement?.contains(
+          screen.getByTestId("sidebar-default-content"),
+        ),
     ).toBe(true);
-    expect(
-      screen.getByTestId("timeline-view").getAttribute("data-top-chrome-inset"),
-    ).toBe("false");
-    expect(
-      screen
-        .getByTestId("timeline-view")
-        .getAttribute("data-top-chips-overlap-header"),
-    ).toBe("true");
   });
 
   it.each([
@@ -123,20 +121,106 @@ describe("LeftSidebar", () => {
     expect(classList).not.toContain("pt-0");
   });
 
-  it("shows the surface nav in the timeline layout", () => {
+  it("shows the wordmark, search field, and primary nav rows", () => {
     render(<LeftSidebar />);
 
-    expect(screen.getByTestId("sidebar-surface-nav")).toBeTruthy();
+    expect(screen.getByText("Notare")).toBeTruthy();
+    expect(
+      screen.getByText("Search notes and actions"),
+    ).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Home/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Meetings/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Calendar/ })).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: /Action items/ }),
+    ).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Settings/ })).toBeTruthy();
   });
 
-  it.each([["settings"], ["calendar"], ["contacts"], ["templates"]])(
-    "shows the surface nav in the %s layout",
-    (type) => {
-      mocks.currentTab = { type };
+  it("opens the command palette from the search field", () => {
+    render(<LeftSidebar />);
 
-      render(<LeftSidebar />);
+    fireEvent.click(screen.getByText("Search notes and actions"));
 
-      expect(screen.getByTestId("sidebar-surface-nav")).toBeTruthy();
-    },
-  );
+    expect(mocks.openDialog).toHaveBeenCalled();
+  });
+
+  it("marks home active on the empty tab and meetings active on a session", () => {
+    mocks.currentTab = { type: "empty" };
+    const { rerender } = render(<LeftSidebar />);
+    expect(
+      screen.getByRole("button", { name: /Home/ }).getAttribute("aria-current"),
+    ).toBe("page");
+
+    mocks.currentTab = { type: "sessions", id: "s1" };
+    rerender(<LeftSidebar />);
+    expect(
+      screen
+        .getByRole("button", { name: /Meetings/ })
+        .getAttribute("aria-current"),
+    ).toBe("page");
+  });
+
+  it("shows the open action items count as a badge", () => {
+    mocks.liveQueryCount = 3;
+    render(<LeftSidebar />);
+
+    expect(screen.getByRole("button", { name: /Action items/ }).textContent).toContain(
+      "3",
+    );
+  });
+
+  it("opens each primary and library surface", () => {
+    render(<LeftSidebar />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Meetings/ }));
+    expect(mocks.openNew).toHaveBeenCalledWith({ type: "meetings" });
+
+    fireEvent.click(screen.getByRole("button", { name: /Calendar/ }));
+    expect(mocks.openNew).toHaveBeenCalledWith({ type: "calendar" });
+
+    fireEvent.click(screen.getByRole("button", { name: /Action items/ }));
+    expect(mocks.openNew).toHaveBeenCalledWith({ type: "action-items" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Library" }));
+    fireEvent.click(screen.getByRole("button", { name: /Templates/ }));
+    expect(mocks.openNew).toHaveBeenCalledWith({ type: "templates" });
+
+    fireEvent.click(screen.getByRole("button", { name: /Settings/ }));
+    expect(mocks.openNew).toHaveBeenCalledWith({ type: "settings" });
+  });
+
+  it("shows the platform settings shortcut hint", () => {
+    render(<LeftSidebar />);
+
+    expect(
+      screen.getByRole("button", { name: /Settings/ }).textContent,
+    ).toContain("⌘ ,");
+  });
+
+  it("collapses the library by default and expands it on click", () => {
+    render(<LeftSidebar />);
+
+    expect(screen.queryByRole("button", { name: /Templates/ })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Library" }));
+
+    expect(screen.getByRole("button", { name: /Templates/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Snippets/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Contacts/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Trash/ })).toBeTruthy();
+  });
+
+  it("lists up to 5 recently-opened sessions and opens one on click", () => {
+    mocks.recentlyOpenedSessionIds = ["s1", "s2"];
+    render(<LeftSidebar />);
+
+    expect(screen.getByText("Q4 Launch Sync")).toBeTruthy();
+    fireEvent.click(screen.getByText("Q4 Launch Sync"));
+
+    expect(mocks.openCurrent).toHaveBeenCalledWith({
+      type: "sessions",
+      id: "s1",
+    });
+  });
 });

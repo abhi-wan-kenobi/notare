@@ -96,8 +96,10 @@ export function ClassicMainBody() {
   const leftSidebarDefaultSizeTrackingRef = useRef(true);
   const pendingLeftSidebarDefaultSizeRef = useRef<number | null>(null);
   const syncDefaultLeftSidebarPanelSizeRef = useRef<() => void>(() => {});
-  const [showIgnoredTimelineEvents, setShowIgnoredTimelineEvents] =
-    useState(false);
+  // The sidebar no longer exposes a toggle for ignored calendar events
+  // (that lived in the retired TimelineView); upcoming-meeting status
+  // always excludes them until a future surface reintroduces the control.
+  const showIgnoredTimelineEvents = false;
   const [showDevtoolsPanelButton, setShowDevtoolsPanelButton] = useState(false);
   const [devtoolsPanelOpen, setDevtoolsPanelOpen] = useState(false);
   leftSidebarPanelConstraintsRef.current = leftSidebarPanelConstraints;
@@ -629,13 +631,7 @@ export function ClassicMainBody() {
                     : "-translate-x-3 opacity-0",
                 ])}
               >
-                <ClassicMainSidebar
-                  timelineHeader={timelineHeader}
-                  showIgnoredTimelineEvents={showIgnoredTimelineEvents}
-                  onShowIgnoredTimelineEventsChange={
-                    setShowIgnoredTimelineEvents
-                  }
-                />
+                <ClassicMainSidebar timelineHeader={timelineHeader} />
               </div>
             </ResizablePanel>
             <ResizableHandle
