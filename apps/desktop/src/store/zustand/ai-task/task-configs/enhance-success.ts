@@ -12,6 +12,8 @@ import {
 
 import { persistGeneratedEnhancedNote } from "~/session/content-mutations";
 import { loadSessionContentSnapshot } from "~/session/content-queries";
+import { extractDecisions } from "~/session/decisions";
+import { replaceSessionDecisions } from "~/session/queries";
 import { ensureMarkdownFirstLineTitle } from "~/session/title-content";
 import { hasLiveSessionTitleDraft } from "~/store/zustand/live-title";
 
@@ -28,8 +30,9 @@ const onSuccess: NonNullable<TaskConfig<"enhance">["onSuccess"]> = async ({
     return;
   }
 
-  const tagNames = extractEnhanceTagNames(text, transformedArgs);
-  const textWithTags = appendTagLineToMarkdown(text, tagNames);
+  const { markdown, decisions } = extractDecisions(text);
+  const tagNames = extractEnhanceTagNames(markdown, transformedArgs);
+  const textWithTags = appendTagLineToMarkdown(markdown, tagNames);
   const initialSnapshot = await loadSessionContentSnapshot(args.sessionId);
   if (!initialSnapshot) {
     throw new Error(`Session ${args.sessionId} no longer exists`);
@@ -98,6 +101,7 @@ const onSuccess: NonNullable<TaskConfig<"enhance">["onSuccess"]> = async ({
     },
     tagNames,
   });
+  await replaceSessionDecisions(args.sessionId, decisions);
 
   if (shouldPersistGeneratedTitle) {
     await persistGeneratedTitle({

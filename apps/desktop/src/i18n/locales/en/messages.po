@@ -31,6 +31,11 @@ msgstr "(default: 8787)"
 msgid "(default)"
 msgstr "(default)"
 
+#. placeholder {0}: attendees.length === 1 ? "attendee" : "attendees"
+#: src/session/meeting-detail.tsx
+msgid "{0}"
+msgstr "{0}"
+
 #. placeholder {0}: sessions.length
 #: src/trash/index.tsx
 msgid "{0} item(s)"
@@ -186,6 +191,7 @@ msgstr "Account"
 
 #: src/main/action-items/index.tsx
 #: src/session/components/action-items/index.tsx
+#: src/session/meeting-detail.tsx
 #: src/sidebar/index.tsx
 msgid "Action items"
 msgstr "Action items"
@@ -395,6 +401,10 @@ msgstr "Ask anything across your meetings…"
 msgid "Assignees:"
 msgstr "Assignees:"
 
+#: src/session/meeting-detail.tsx
+msgid "At a glance"
+msgstr "At a glance"
+
 #: src/session/components/outer-header/overflow/schedule-followup.tsx
 msgid "Attendees"
 msgstr "Attendees"
@@ -548,6 +558,10 @@ msgstr "Change"
 #: src/settings/dictation/shortcut-recorder.tsx
 msgid "Change shortcut"
 msgstr "Change shortcut"
+
+#: src/session/meeting-detail.tsx
+msgid "Chapters"
+msgstr "Chapters"
 
 #: src/settings/ai/llm/scoped-models.tsx
 msgid "Chat"
@@ -994,6 +1008,14 @@ msgstr "Date & time"
 #: src/session/components/outer-header/metadata/date.tsx
 msgid "Date and time are required"
 msgstr "Date and time are required"
+
+#: src/session/meeting-detail.tsx
+msgid "Decision"
+msgstr "Decision"
+
+#: src/session/meeting-detail.tsx
+msgid "Decisions"
+msgstr "Decisions"
 
 #: src/session/components/outer-header/overflow/delete.tsx
 #: src/settings/ai/llm/select.tsx
@@ -2036,7 +2058,12 @@ msgstr "Medium confidence"
 msgid "Meeting"
 msgstr "Meeting"
 
+#: src/session/meeting-detail.tsx
+msgid "meetings"
+msgstr "meetings"
+
 #: src/main/meetings/index.tsx
+#: src/session/index.tsx
 #: src/settings/general/app-settings.tsx
 #: src/sidebar/index.tsx
 msgid "Meetings"
@@ -2322,6 +2349,10 @@ msgstr "No recipes match your search."
 #: src/settings/recipes/index.tsx
 msgid "No recipes yet."
 msgstr "No recipes yet."
+
+#: src/session/index.tsx
+msgid "No recording audio available for this meeting."
+msgstr "No recording audio available for this meeting."
 
 #: src/contacts/details.tsx
 msgid "No related notes found"
@@ -2845,6 +2876,10 @@ msgstr "Reconnect required"
 msgid "Record"
 msgstr "Record"
 
+#: src/session/meeting-detail.tsx
+msgid "Recording"
+msgstr "Recording"
+
 #: src/meeting-float/window.tsx
 msgid "Recording time"
 msgstr "Recording time"
@@ -3075,6 +3110,7 @@ msgstr "Scan this on the other device, or copy the link."
 msgid "Schedule"
 msgstr "Schedule"
 
+#: src/session/components/outer-header/overflow/index.tsx
 #: src/session/components/outer-header/overflow/schedule-followup.tsx
 msgid "Schedule follow-up"
 msgstr "Schedule follow-up"
@@ -3293,6 +3329,10 @@ msgstr "Set up the OAuth consent screen: audience <0>External</0>, then add your
 msgid "Settings"
 msgstr "Settings"
 
+#: src/session/components/outer-header/overflow/index.tsx
+msgid "Share"
+msgstr "Share"
+
 #: src/settings/sync/index.tsx
 msgid "Share this fingerprint with another device to pair it."
 msgstr "Share this fingerprint with another device to pair it."
@@ -3438,6 +3478,10 @@ msgstr "Signing secret"
 #: src/dictation/orb.tsx
 msgid "Silk"
 msgstr "Silk"
+
+#: src/session/meeting-detail.tsx
+msgid "since"
+msgstr "since"
 
 #: src/settings/recipes/index.tsx
 msgid "Single meeting"
@@ -3598,6 +3642,7 @@ msgstr "Submit callback URL"
 
 #: src/contacts/details.tsx
 #: src/session/components/outer-header/overflow/export-modal.tsx
+#: src/session/meeting-detail.tsx
 msgid "Summary"
 msgstr "Summary"
 
@@ -3823,6 +3868,7 @@ msgstr "Transcribes while the meeting is happening and powers the dictation orb.
 
 #: src/session/components/note-input/header.tsx
 #: src/session/components/outer-header/overflow/export-modal.tsx
+#: src/session/meeting-detail.tsx
 msgid "Transcript"
 msgstr "Transcript"
 
@@ -3928,6 +3974,11 @@ msgstr "Unpin"
 #: src/trash/index.tsx
 msgid "Untitled"
 msgstr "Untitled"
+
+#: src/session/index.tsx
+#: src/session/meeting-detail.tsx
+msgid "Untitled meeting"
+msgstr "Untitled meeting"
 
 #: src/contacts/details.tsx
 msgid "Untitled Note"

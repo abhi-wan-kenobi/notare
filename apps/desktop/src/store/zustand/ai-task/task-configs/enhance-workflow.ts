@@ -30,6 +30,15 @@ const SUMMARY_MAX_OUTPUT_TOKENS = 8192;
 const IMAGE_CONTEXT_NOTE =
   "Attached note images are included as visual context. Use visible text, diagrams, screenshots, and other image content when it materially improves the summary.";
 
+const DECISIONS_OUTPUT_INSTRUCTION = `
+
+After the meeting note, append one fenced \`decisions\` block containing a JSON array. Each entry must have a concise \`text\`; include \`owner\` only when a person is explicitly identified, and \`at_ms\` only when the transcript provides a reliable timestamp in milliseconds. Use [] when no decisions were made. Do not include the block inside the note's prose or invent owners or timestamps.
+
+\`\`\`decisions
+[{\"text\":\"Decision text\",\"owner\":\"Person\",\"at_ms\":42000}]
+\`\`\`
+`;
+
 export const enhanceWorkflow: Pick<
   TaskConfig<"enhance">,
   "executeWorkflow" | "transforms"
@@ -62,7 +71,7 @@ async function* executeWorkflow(params: {
 
   const system = await getSystemPrompt(argsWithTemplate);
   const prompt = withImageContextNote(
-    await getUserPrompt(argsWithTemplate),
+    `${await getUserPrompt(argsWithTemplate)}${DECISIONS_OUTPUT_INSTRUCTION}`,
     argsWithTemplate.imageContext.length,
   );
 
