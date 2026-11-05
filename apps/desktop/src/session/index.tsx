@@ -33,6 +33,7 @@ import { useInvalidateAudioOnRecordingFinish } from "./use-invalidate-audio-on-f
 import * as AudioPlayer from "~/audio-player";
 import { BriefCard } from "~/services/briefs";
 import { useSession } from "~/session/queries";
+import { Dock } from "~/shared/dock";
 import { type Tab, useTabs } from "~/store/zustand/tabs";
 import { useListener } from "~/stt/contexts";
 import { consumePendingUpload } from "~/stt/pending-upload";
@@ -221,6 +222,7 @@ function TabContentNoteInner({
             }
           />
         }
+        floatingButton={<Dock sessionId={tab.id} />}
       >
         <div className="flex h-full min-h-0 flex-col">
           {showTopAudioPlayer ? (

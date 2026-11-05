@@ -73,6 +73,7 @@
   --animate-kbd-press: kbd-press 0.4s ease-out forwards;
 
   --animate-wiggle: wiggle 1s ease-in-out infinite;
+  --animate-dock-bar: dock-bar 0.7s ease-in-out infinite alternate;
 
   /* The orb (docs/DESIGN-DIRECTION.md §3b) — the one element allowed
      continuous animation: slow idle hue drift + soft live pulse. */
@@ -84,6 +85,12 @@
   @keyframes orb-spin {
     to {
       transform: rotate(1turn);
+    }
+  }
+
+  @keyframes dock-bar {
+    to {
+      height: 15px;
     }
   }
 
