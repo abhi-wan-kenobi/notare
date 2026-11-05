@@ -36,9 +36,24 @@ msgstr ""
 msgid "{0} item(s)"
 msgstr ""
 
+#. placeholder {0}: attendee.name
+#: src/main/series/index.tsx
+msgid "{0} joined this series."
+msgstr ""
+
+#. placeholder {0}: attendee.name
+#: src/main/series/index.tsx
+msgid "{0} left this series."
+msgstr ""
+
 #. placeholder {0}: occurrences.length
 #: src/main/series/index.tsx
-msgid "{0} occurrences"
+msgid "{0} meetings"
+msgstr ""
+
+#. placeholder {0}: occurrences.length
+#: src/main/series/index.tsx
+msgid "{0} meetings · newest first"
 msgstr ""
 
 #. placeholder {0}: meeting.action_count
@@ -46,9 +61,19 @@ msgstr ""
 msgid "{0} open"
 msgstr ""
 
+#. placeholder {0}: occurrence.open_item_count
+#: src/main/series/index.tsx
+msgid "{0} open actions"
+msgstr ""
+
 #. placeholder {0}: issue.user?.login
 #: src/task/resource-view.tsx
 msgid "{0} opened on"
+msgstr ""
+
+#. placeholder {0}: carryOver.length
+#: src/main/series/index.tsx
+msgid "{0} still open"
 msgstr ""
 
 #. placeholder {0}: status.fileCount
@@ -198,6 +223,10 @@ msgstr ""
 
 #: src/shared/command-palette/index.tsx
 msgid "Account & Storage"
+msgstr ""
+
+#: src/main/series/index.tsx
+msgid "Action closed"
 msgstr ""
 
 #: src/main/action-items/index.tsx
@@ -421,6 +450,14 @@ msgstr ""
 msgid "Assignees:"
 msgstr ""
 
+#: src/main/series/index.tsx
+msgid "Attendee joined"
+msgstr ""
+
+#: src/main/series/index.tsx
+msgid "Attendee left"
+msgstr ""
+
 #: src/session/components/outer-header/overflow/schedule-followup.tsx
 msgid "Attendees"
 msgstr ""
@@ -564,6 +601,10 @@ msgstr ""
 
 #: src/main/action-items/index.tsx
 msgid "Carried over"
+msgstr ""
+
+#: src/main/series/index.tsx
+msgid "Carried-over actions"
 msgstr ""
 
 #: src/settings/personalization/dictionary-settings.tsx
@@ -1001,6 +1042,14 @@ msgstr ""
 msgid "Creating event…"
 msgstr ""
 
+#: src/main/series/index.tsx
+msgid "Current"
+msgstr ""
+
+#: src/main/series/index.tsx
+msgid "Current meeting"
+msgstr ""
+
 #: src/settings/general/app-settings.tsx
 msgid "Current version"
 msgstr ""
@@ -1023,6 +1072,10 @@ msgstr ""
 
 #: src/session/components/outer-header/metadata/date.tsx
 msgid "Date and time are required"
+msgstr ""
+
+#: src/main/series/index.tsx
+msgid "Decision made"
 msgstr ""
 
 #: src/session/components/outer-header/overflow/delete.tsx
@@ -1580,6 +1633,11 @@ msgstr ""
 
 #: src/templates/template-icon-picker.tsx
 msgid "Frequently used"
+msgstr ""
+
+#. placeholder {0}: formatDateShort(item.source_started_at)
+#: src/main/series/index.tsx
+msgid "from {0}"
 msgstr ""
 
 #: src/main/action-items/index.tsx
@@ -2255,6 +2313,10 @@ msgstr ""
 msgid "New recipe"
 msgstr ""
 
+#: src/main/series/index.tsx
+msgid "New topic"
+msgstr ""
+
 #: src/contacts/shared.tsx
 msgid "Newest"
 msgstr ""
@@ -2285,6 +2347,10 @@ msgstr ""
 
 #: src/calendar/components/calendar-selection.tsx
 msgid "No calendars found"
+msgstr ""
+
+#: src/main/series/index.tsx
+msgid "No changes to show."
 msgstr ""
 
 #: src/templates/details.tsx
@@ -2378,6 +2444,14 @@ msgstr ""
 
 #: src/main/home/index.tsx
 msgid "No notes yet."
+msgstr ""
+
+#: src/main/series/index.tsx
+msgid "No open actions"
+msgstr ""
+
+#: src/main/series/index.tsx
+msgid "No open items carried over."
 msgstr ""
 
 #: src/session/components/note-input/transcript/renderer/speaker-assign.tsx
@@ -2850,6 +2924,10 @@ msgstr ""
 msgid "Prepare"
 msgstr ""
 
+#: src/main/series/index.tsx
+msgid "Prepare next"
+msgstr ""
+
 #: src/session/components/outer-header/overflow/export-modal.tsx
 msgid "Preparing transcript..."
 msgstr ""
@@ -2964,6 +3042,14 @@ msgstr ""
 #: src/main/action-items/index.tsx
 #: src/main/meetings/index.tsx
 msgid "Recurring"
+msgstr ""
+
+#: src/main/series/index.tsx
+msgid "Recurring meeting series"
+msgstr ""
+
+#: src/main/series/index.tsx
+msgid "Recurring series"
 msgstr ""
 
 #: src/calendar/components/outlook/content.tsx
@@ -3374,7 +3460,6 @@ msgid "Send test event"
 msgstr ""
 
 #: src/main/meetings/index.tsx
-#: src/main/series/index.tsx
 msgid "Series"
 msgstr ""
 
@@ -3911,6 +3996,10 @@ msgstr ""
 msgid "Tidy whitespace, capitalize sentences and drop trailing fragments. Instant and fully offline."
 msgstr ""
 
+#: src/main/series/index.tsx
+msgid "Timeline"
+msgstr ""
+
 #: src/settings/general/timezone.tsx
 msgid "Timezone"
 msgstr ""
@@ -3947,6 +4036,10 @@ msgstr ""
 
 #: src/shared/command-palette/index.tsx
 msgid "Toggle theme"
+msgstr ""
+
+#: src/main/series/index.tsx
+msgid "Topic no longer active"
 msgstr ""
 
 #: src/settings/general/app-settings.tsx
@@ -4219,6 +4312,10 @@ msgstr ""
 
 #: src/onboarding/index.tsx
 msgid "Welcome to Notare"
+msgstr ""
+
+#: src/main/series/index.tsx
+msgid "What changed since last time"
 msgstr ""
 
 #: src/changelog/index.tsx
