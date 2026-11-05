@@ -38,7 +38,7 @@ type ElementRect = {
 };
 
 const DEFAULT_TOP_OFFSET_PX = 56;
-const LEFT_SIDEBAR_TOP_OFFSET_PX = 36;
+const CANVAS_TOP_MARGIN_PX = 16;
 const MAIN_SURFACE_SELECTOR = "[data-chat-floating-anchor]";
 const MAIN_CONTENT_PANEL_SELECTOR = "[data-main-content-panel]";
 
@@ -417,8 +417,10 @@ function getMainSurfacePosition({
     left:
       anchor === "main-content-panel" || placement === "left-sidebar"
         ? horizontalAnchorRect.left + horizontalAnchorRect.width / 2
-        : `calc(50% + ${contentOffset}px)`,
-    top: verticalAnchorRect.top + LEFT_SIDEBAR_TOP_OFFSET_PX,
+        : mainSurfaceRect
+          ? mainSurfaceRect.left + mainSurfaceRect.width / 2
+          : `calc(50% + ${contentOffset}px)`,
+    top: verticalAnchorRect.top + CANVAS_TOP_MARGIN_PX,
   };
 }
 
@@ -433,7 +435,7 @@ function getFallbackPosition({
     left: `calc(50% + ${contentOffset}px)`,
     top:
       placement === "left-sidebar"
-        ? LEFT_SIDEBAR_TOP_OFFSET_PX
+        ? CANVAS_TOP_MARGIN_PX
         : DEFAULT_TOP_OFFSET_PX,
   };
 }
