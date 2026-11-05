@@ -279,56 +279,39 @@ function HomeView() {
         <h1 className="page-title mt-2">
           <Trans>A clear view of the day.</Trans>
         </h1>
-        <div className="text-muted-foreground border-border mt-4 grid grid-cols-4 border-y py-3 text-xs">
+        <p className="text-muted-foreground mt-1 text-[13.5px]">
           <button
             type="button"
             onClick={() => openSurfaceTab("calendar")}
             className="hover:text-foreground text-left"
           >
-            <span className="block">
-              <Trans>Scheduled today</Trans>
-            </span>
-            <span className="text-foreground mt-1 block font-serif text-xl tabular-nums">
-              {scheduledTodayCount}
-            </span>
+            <Trans>{scheduledTodayCount} scheduled today</Trans>
           </button>
+          {" · "}
           <button
             type="button"
             onClick={() => openSurfaceTab("meetings")}
             className="hover:text-foreground text-left"
           >
-            <span className="block">
-              <Trans>Recorded this week</Trans>
-            </span>
-            <span className="text-foreground mt-1 block font-serif text-xl tabular-nums">
-              {recordedThisWeekCount}
-            </span>
+            <Trans>{recordedThisWeekCount} recorded this week</Trans>
           </button>
+          {" · "}
           <button
             type="button"
             onClick={() => openSurfaceTab("action-items")}
             className="hover:text-foreground text-left"
           >
-            <span className="block">
-              <Trans>Open actions</Trans>
-            </span>
-            <span className="text-foreground mt-1 block font-serif text-xl tabular-nums">
-              {openActionItemsCount}
-            </span>
+            <Trans>{openActionItemsCount} open action items</Trans>
           </button>
+          {" · "}
           <button
             type="button"
             onClick={() => openSurfaceTab("meetings")}
             className="hover:text-foreground text-left"
           >
-            <span className="block">
-              <Trans>Need a summary</Trans>
-            </span>
-            <span className="text-foreground mt-1 block font-serif text-xl tabular-nums">
-              {sessionsNeedingSummaryCount}
-            </span>
+            <Trans>{sessionsNeedingSummaryCount} need a summary</Trans>
           </button>
-        </div>
+        </p>
 
         <section className="mt-7">
           <div className="mb-2.5 flex items-center justify-between">

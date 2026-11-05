@@ -120,7 +120,7 @@ describe("TabContentHome", () => {
     renderHome();
 
     const needsSummary = screen.getByRole("button", {
-      name: /Need a summary\s+2/,
+      name: "2 need a summary",
     });
     fireEvent.click(needsSummary);
 
@@ -137,11 +137,29 @@ describe("TabContentHome", () => {
     };
 
     renderHome();
-    fireEvent.click(
-      screen.getByRole("button", { name: /Scheduled today\s+1/ }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "1 scheduled today" }));
 
     expect(openSurfaceTab).toHaveBeenCalledWith("calendar");
+  });
+
+  it("opens Meetings from the recorded-this-week count", () => {
+    mocks.sessions = [
+      { id: "s1", title: "Note 1", created_at: new Date().toISOString() },
+    ];
+    renderHome();
+    fireEvent.click(
+      screen.getByRole("button", { name: "1 recorded this week" }),
+    );
+    expect(openSurfaceTab).toHaveBeenCalledWith("meetings");
+  });
+
+  it("opens Action items from the open-actions count", () => {
+    mocks.openActionItemsCount = 3;
+    renderHome();
+    fireEvent.click(
+      screen.getByRole("button", { name: "3 open action items" }),
+    );
+    expect(openSurfaceTab).toHaveBeenCalledWith("action-items");
   });
   it("counts today's events in the selected timezone", () => {
     vi.useFakeTimers();
@@ -156,7 +174,7 @@ describe("TabContentHome", () => {
     renderHome();
 
     expect(
-      screen.getByRole("button", { name: /Scheduled today\s+1/ }),
+      screen.getByRole("button", { name: "1 scheduled today" }),
     ).toBeTruthy();
     expect(screen.getByText("Evening meeting")).toBeTruthy();
   });
@@ -189,7 +207,7 @@ describe("TabContentHome", () => {
     renderHome();
 
     expect(
-      screen.getByRole("button", { name: /Recorded this week\s+0/ }),
+      screen.getByRole("button", { name: "0 recorded this week" }),
     ).toBeTruthy();
   });
   it("includes a session created at the selected timezone's week start", () => {
@@ -206,7 +224,7 @@ describe("TabContentHome", () => {
     renderHome();
 
     expect(
-      screen.getByRole("button", { name: /Recorded this week\s+1/ }),
+      screen.getByRole("button", { name: "1 recorded this week" }),
     ).toBeTruthy();
   });
 
@@ -238,14 +256,14 @@ describe("TabContentHome", () => {
 
     const { rerender } = renderHome();
     expect(
-      screen.getByRole("button", { name: /Scheduled today\s+1/ }),
+      screen.getByRole("button", { name: "1 scheduled today" }),
     ).toBeTruthy();
 
     vi.setSystemTime(new Date("2026-11-09T08:30:00.000Z"));
     rerender(<TabContentHome tab={{ type: "empty" } as never} />);
 
     expect(
-      screen.getByRole("button", { name: /Scheduled today\s+0/ }),
+      screen.getByRole("button", { name: "0 scheduled today" }),
     ).toBeTruthy();
   });
 

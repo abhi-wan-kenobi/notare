@@ -64,6 +64,22 @@ msgstr ""
 msgid "{minutes} min"
 msgstr ""
 
+#: src/main/home/index.tsx
+msgid "{openActionItemsCount} open action items"
+msgstr ""
+
+#: src/main/home/index.tsx
+msgid "{recordedThisWeekCount} recorded this week"
+msgstr ""
+
+#: src/main/home/index.tsx
+msgid "{scheduledTodayCount} scheduled today"
+msgstr ""
+
+#: src/main/home/index.tsx
+msgid "{sessionsNeedingSummaryCount} need a summary"
+msgstr ""
+
 #: src/settings/general/account.tsx
 msgid "{trialDaysRemaining} day left"
 msgstr ""
@@ -2173,10 +2189,6 @@ msgstr ""
 msgid "Name: <0>Notare</0> (or any name)."
 msgstr ""
 
-#: src/main/home/index.tsx
-msgid "Need a summary"
-msgstr ""
-
 #: src/settings/sync/index.tsx
 msgid "Never connected"
 msgstr ""
@@ -2523,10 +2535,6 @@ msgid "Open {0} settings"
 msgstr ""
 
 #: src/main/home/index.tsx
-msgid "Open actions"
-msgstr ""
-
-#: src/main/home/index.tsx
 #: src/sidebar/timeline/index.tsx
 msgid "Open calendar"
 msgstr ""
@@ -2861,10 +2869,6 @@ msgstr ""
 msgid "Record"
 msgstr ""
 
-#: src/main/home/index.tsx
-msgid "Recorded this week"
-msgstr ""
-
 #: src/meeting-float/window.tsx
 msgid "Recording time"
 msgstr ""
@@ -3101,10 +3105,6 @@ msgstr ""
 
 #: src/session/components/outer-header/overflow/schedule-followup.tsx
 msgid "Schedule follow-up"
-msgstr ""
-
-#: src/main/home/index.tsx
-msgid "Scheduled today"
 msgstr ""
 
 #: src/settings/recipes/index.tsx

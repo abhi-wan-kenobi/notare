@@ -64,6 +64,22 @@ msgstr "{duplicateCandidateCount} already in your dictionary — skipped."
 msgid "{minutes} min"
 msgstr "{minutes} min"
 
+#: src/main/home/index.tsx
+msgid "{openActionItemsCount} open action items"
+msgstr "{openActionItemsCount} open action items"
+
+#: src/main/home/index.tsx
+msgid "{recordedThisWeekCount} recorded this week"
+msgstr "{recordedThisWeekCount} recorded this week"
+
+#: src/main/home/index.tsx
+msgid "{scheduledTodayCount} scheduled today"
+msgstr "{scheduledTodayCount} scheduled today"
+
+#: src/main/home/index.tsx
+msgid "{sessionsNeedingSummaryCount} need a summary"
+msgstr "{sessionsNeedingSummaryCount} need a summary"
+
 #: src/settings/general/account.tsx
 msgid "{trialDaysRemaining} day left"
 msgstr "{trialDaysRemaining} day left"
@@ -2173,10 +2189,6 @@ msgstr "Name"
 msgid "Name: <0>Notare</0> (or any name)."
 msgstr "Name: <0>Notare</0> (or any name)."
 
-#: src/main/home/index.tsx
-msgid "Need a summary"
-msgstr "Need a summary"
-
 #: src/settings/sync/index.tsx
 msgid "Never connected"
 msgstr "Never connected"
@@ -2523,10 +2535,6 @@ msgid "Open {0} settings"
 msgstr "Open {0} settings"
 
 #: src/main/home/index.tsx
-msgid "Open actions"
-msgstr "Open actions"
-
-#: src/main/home/index.tsx
 #: src/sidebar/timeline/index.tsx
 msgid "Open calendar"
 msgstr "Open calendar"
@@ -2861,10 +2869,6 @@ msgstr "Reconnect required"
 msgid "Record"
 msgstr "Record"
 
-#: src/main/home/index.tsx
-msgid "Recorded this week"
-msgstr "Recorded this week"
-
 #: src/meeting-float/window.tsx
 msgid "Recording time"
 msgstr "Recording time"
@@ -3102,10 +3106,6 @@ msgstr "Schedule"
 #: src/session/components/outer-header/overflow/schedule-followup.tsx
 msgid "Schedule follow-up"
 msgstr "Schedule follow-up"
-
-#: src/main/home/index.tsx
-msgid "Scheduled today"
-msgstr "Scheduled today"
 
 #: src/settings/recipes/index.tsx
 msgid "Scope"
