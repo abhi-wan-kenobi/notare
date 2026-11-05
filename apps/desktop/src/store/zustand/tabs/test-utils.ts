@@ -83,7 +83,7 @@ const createDefaultTabsState = (): TabsStateSlice => ({
   onClose: null,
   onEmpty: null,
   closedTabs: [],
-  chatMode: "FloatingClosed",
+  chatMode: "Closed",
 });
 
 export const seedTabsStore = (

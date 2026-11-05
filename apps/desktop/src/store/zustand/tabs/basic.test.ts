@@ -149,11 +149,11 @@ describe("Basic Tab Actions", () => {
     const session = createSessionTab({ id: "tab1", active: false });
 
     useTabs.getState().openNew(session);
-    useTabs.getState().transitionChatMode({ type: "OPEN_RIGHT_PANEL" });
+    useTabs.getState().transitionChatMode({ type: "OPEN" });
     useTabs.getState().openNew({ type: "settings" });
 
     expect(useTabs.getState()).toHaveCurrentTab({ type: "settings" });
-    expect(useTabs.getState().chatMode).toBe("FloatingClosed");
+    expect(useTabs.getState().chatMode).toBe("Closed");
   });
 
   test("openNew refreshes settings return target when reusing its tab", () => {

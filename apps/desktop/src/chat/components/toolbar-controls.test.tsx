@@ -73,7 +73,6 @@ describe("ChatToolbarControls", () => {
       <ChatToolbarControls
         currentChatGroupId={undefined}
         onNewChat={vi.fn()}
-        onOpenRightPanel={vi.fn()}
         onSelectChat={vi.fn()}
         surface="dark"
       />,
@@ -93,7 +92,6 @@ describe("ChatToolbarControls", () => {
       <ChatToolbarControls
         currentChatGroupId={undefined}
         onNewChat={vi.fn()}
-        onOpenRightPanel={vi.fn()}
         onSelectChat={vi.fn()}
         surface="light"
       />,
@@ -118,7 +116,6 @@ describe("ChatToolbarControls", () => {
       <ChatToolbarControls
         currentChatGroupId={undefined}
         onNewChat={vi.fn()}
-        onOpenRightPanel={vi.fn()}
         onSelectChat={vi.fn()}
         surface="light"
       />,
@@ -142,71 +139,33 @@ describe("ChatToolbarControls", () => {
         currentChatGroupId={undefined}
         onClose={vi.fn()}
         onNewChat={vi.fn()}
-        onOpenRightPanel={vi.fn()}
         onSelectChat={vi.fn()}
         surface="dark"
       />,
     );
 
     const newChatButton = screen.getByRole("button", { name: "New chat" });
-    const rightPanelButton = screen.getByRole("button", {
-      name: "Open in right panel",
-    });
+    const closeButton = screen.getByRole("button", { name: "Close chat" });
 
     expect(newChatButton.className).toContain("rounded-full");
     expect(newChatButton.className).toContain(
       "hover:!bg-primary-foreground/14",
     );
     expect(newChatButton.getAttribute("title")).toBeNull();
-    expect(rightPanelButton.className).toContain("rounded-full");
-    expect(rightPanelButton.className).toContain(
+    expect(closeButton.className).toContain("rounded-full");
+    expect(closeButton.className).toContain(
       "hover:!bg-primary-foreground/14",
     );
-    expect(rightPanelButton.getAttribute("title")).toBeNull();
-    expect(screen.queryByRole("button", { name: "Close chat" })).toBeNull();
+    expect(closeButton.getAttribute("title")).toBeNull();
   });
 
-  it("renders floating toolbar actions without a close button", () => {
+  it("uses the shared toolbar padding and closes the inspector", () => {
     const onClose = vi.fn();
-    const onOpenRightPanel = vi.fn();
-
     const { container } = render(
       <ChatToolbarControls
         currentChatGroupId={undefined}
-        layout="floating"
         onClose={onClose}
         onNewChat={vi.fn()}
-        onOpenRightPanel={onOpenRightPanel}
-        onSelectChat={vi.fn()}
-        surface="light"
-      />,
-    );
-
-    const rightPanelButton = screen.getByRole("button", {
-      name: "Open in right panel",
-    });
-    const actions = container.querySelector("[data-chat-toolbar-actions]");
-
-    fireEvent.click(rightPanelButton);
-
-    expect(actions?.className).toContain("gap-0");
-    expect(actions?.className).not.toContain("gap-1");
-    expect(rightPanelButton.className).toContain("hover:!bg-muted/80");
-    expect(onOpenRightPanel).toHaveBeenCalled();
-    expect(onClose).not.toHaveBeenCalled();
-    expect(screen.queryByRole("button", { name: "Close chat" })).toBeNull();
-  });
-
-  it("uses the shared toolbar padding in the right panel", () => {
-    const onClose = vi.fn();
-    const onOpenFloating = vi.fn();
-    const { container } = render(
-      <ChatToolbarControls
-        currentChatGroupId={undefined}
-        layout="right-panel"
-        onClose={onClose}
-        onNewChat={vi.fn()}
-        onOpenFloating={onOpenFloating}
         onSelectChat={vi.fn()}
         surface="light"
       />,
@@ -226,20 +185,11 @@ describe("ChatToolbarControls", () => {
     expect(historyButton.className).toContain("h-8");
     expect(historyButton.className).toContain("w-auto");
     expect(screen.queryByText("Ask Notare AI anything")).toBeNull();
-    const floatButton = screen.getByRole("button", { name: "Float chat" });
     const closeButton = screen.getByRole("button", { name: "Close chat" });
-    expect(floatButton.className).toContain("hover:!bg-muted/80");
-    expect(floatButton.className).toContain("hover:!text-foreground");
-    expect(floatButton.className).not.toContain("mr-1");
     expect(closeButton.className).toContain("hover:!bg-muted/80");
-    expect(
-      screen.queryByRole("button", { name: "Open in right panel" }),
-    ).toBeNull();
 
-    fireEvent.click(floatButton);
     fireEvent.click(closeButton);
 
-    expect(onOpenFloating).toHaveBeenCalled();
     expect(onClose).toHaveBeenCalled();
   });
 });

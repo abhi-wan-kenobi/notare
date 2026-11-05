@@ -35,7 +35,7 @@ export function useMainShortcuts() {
         fromProseMirrorEditor &&
         document.querySelector("[data-editor-escape-consumer]") !== null;
       const hadMeaningfulFocus = hasMeaningfulFocus(event.target);
-      const hadOpenChat = chatRef.current.mode !== "FloatingClosed";
+      const hadOpenChat = chatRef.current.mode === "Open";
 
       window.setTimeout(() => {
         if (
@@ -68,7 +68,7 @@ export function useMainShortcuts() {
   useHotkeys(
     "mod+n",
     () => {
-      if (isPersistentChatInputFocused(chat.mode)) {
+      if (isChatInputFocused(chat.mode)) {
         chat.startNewChat();
         return;
       }
@@ -107,7 +107,7 @@ export function useMainEscapeShortcutAction() {
   const { chat } = useShell();
 
   return useCallback(() => {
-    if (chat.mode !== "FloatingClosed") {
+    if (chat.mode === "Open") {
       chat.sendEvent({ type: "CLOSE" });
       return;
     }
@@ -238,10 +238,10 @@ function isFromSessionSurface(target: EventTarget | null) {
   );
 }
 
-function isPersistentChatInputFocused(
+function isChatInputFocused(
   mode: ReturnType<typeof useShell>["chat"]["mode"],
 ) {
-  if (mode === "FloatingClosed") {
+  if (mode === "Closed") {
     return false;
   }
 

@@ -5,7 +5,6 @@ import React, { useEffect, useRef } from "react";
 import { commands as fsSyncCommands } from "@hypr/plugin-fs-sync";
 
 import { ActionItemsPanel } from "./components/action-items";
-import { FloatingActionButton } from "./components/floating";
 import {
   NoteInput,
   shouldShowTranscriptTabSpinner,
@@ -168,7 +167,7 @@ function TabContentNoteInner({
   });
   const updateSessionTabState = useTabs((state) => state.updateSessionTabState);
 
-  const { skipReason } = useAutoEnhance(tab);
+  useAutoEnhance(tab);
   const isTranscribing = shouldShowTranscriptTabSpinner(sessionMode);
   const isLiveSessionActive = sessionMode === "active";
   const editorTabs = React.useMemo(
@@ -220,15 +219,6 @@ function TabContentNoteInner({
                 isTranscribing={isTranscribing}
               />
             }
-          />
-        }
-        floatingButton={
-          <FloatingActionButton
-            allowListening={!standaloneWindow}
-            audioExists={audioExists}
-            currentView={currentView}
-            skipReason={skipReason}
-            tab={tab}
           />
         }
       >

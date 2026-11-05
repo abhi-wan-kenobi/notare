@@ -1,10 +1,14 @@
 import type { StoreApi } from "zustand";
 
-export type ChatMode = "FloatingOpen" | "FloatingClosed" | "RightPanelOpen";
+/**
+ * The inspector (`contexts/shell/inspector.ts`) is a single docked drawer —
+ * there is no more floating-vs-right-panel distinction. This slice only
+ * tracks whether it is open.
+ */
+export type ChatMode = "Open" | "Closed";
 
 export type ChatEvent =
   | { type: "OPEN" }
-  | { type: "OPEN_RIGHT_PANEL" }
   | { type: "CLOSE" }
   | { type: "TOGGLE" };
 
@@ -17,31 +21,13 @@ export type ChatModeActions = {
 };
 
 const computeNextChatMode = (state: ChatMode, event: ChatEvent): ChatMode => {
-  switch (state) {
-    case "FloatingOpen":
-      if (event.type === "CLOSE" || event.type === "TOGGLE") {
-        return "FloatingClosed";
-      }
-      if (event.type === "OPEN_RIGHT_PANEL") {
-        return "RightPanelOpen";
-      }
-      return state;
-    case "RightPanelOpen":
-      if (event.type === "CLOSE" || event.type === "TOGGLE") {
-        return "FloatingClosed";
-      }
-      if (event.type === "OPEN") {
-        return "FloatingOpen";
-      }
-      return state;
-    case "FloatingClosed":
-      if (event.type === "OPEN" || event.type === "TOGGLE") {
-        return "FloatingOpen";
-      }
-      if (event.type === "OPEN_RIGHT_PANEL") {
-        return "RightPanelOpen";
-      }
-      return state;
+  switch (event.type) {
+    case "OPEN":
+      return "Open";
+    case "CLOSE":
+      return "Closed";
+    case "TOGGLE":
+      return state === "Open" ? "Closed" : "Open";
     default:
       return state;
   }
@@ -51,7 +37,7 @@ export const createChatModeSlice = <T extends ChatModeState>(
   set: StoreApi<T>["setState"],
   get: StoreApi<T>["getState"],
 ): ChatModeState & ChatModeActions => ({
-  chatMode: "FloatingClosed",
+  chatMode: "Closed",
   transitionChatMode: (event) => {
     const currentMode = get().chatMode;
     const nextMode = computeNextChatMode(currentMode, event);

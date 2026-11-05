@@ -161,6 +161,7 @@ vi.mock("@hypr/ui/components/ui/resizable", () => ({
 
 vi.mock("~/contexts/shell", () => ({
   useShell: () => ({
+    inspector: { open: false, toggle: vi.fn() },
     leftsidebar: mocks.leftsidebar,
   }),
 }));

@@ -2,10 +2,7 @@ import { cleanup, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const hoisted = vi.hoisted(() => ({
-  chatMode: "FloatingClosed" as
-    | "FloatingClosed"
-    | "FloatingOpen"
-    | "RightPanelOpen",
+  chatMode: "Closed" as "Closed" | "Open",
   currentTab: null as null | {
     active: boolean;
     id?: string;
@@ -131,7 +128,7 @@ import { useClassicMainShortcuts } from "~/main/useShortcuts";
 describe("useClassicMainShortcuts", () => {
   beforeEach(() => {
     vi.useFakeTimers();
-    hoisted.chatMode = "FloatingClosed";
+    hoisted.chatMode = "Closed";
     hoisted.close.mockClear();
     hoisted.currentTab = null;
     hoisted.canGoBack = false;
@@ -380,7 +377,7 @@ describe("useClassicMainShortcuts", () => {
   });
 
   it("does not duplicate chat close when a focused target handles escape directly", () => {
-    hoisted.chatMode = "FloatingOpen";
+    hoisted.chatMode = "Open";
     hoisted.currentTab = {
       active: true,
       slotId: "slot-session",
@@ -581,7 +578,7 @@ describe("useClassicMainShortcuts", () => {
   });
 
   it("closes the floating chat before going home on escape", () => {
-    hoisted.chatMode = "FloatingOpen";
+    hoisted.chatMode = "Open";
     hoisted.currentTab = {
       active: true,
       slotId: "slot-session",
@@ -598,7 +595,7 @@ describe("useClassicMainShortcuts", () => {
   });
 
   it("does not go home when chat closes before deferred escape handling runs", () => {
-    hoisted.chatMode = "FloatingOpen";
+    hoisted.chatMode = "Open";
     hoisted.currentTab = {
       active: true,
       slotId: "slot-session",
@@ -608,7 +605,7 @@ describe("useClassicMainShortcuts", () => {
     const { rerender } = renderHook(() => useClassicMainShortcuts());
 
     dispatchEscape();
-    hoisted.chatMode = "FloatingClosed";
+    hoisted.chatMode = "Closed";
     rerender();
     vi.runOnlyPendingTimers();
 
@@ -616,22 +613,6 @@ describe("useClassicMainShortcuts", () => {
     expect(hoisted.openCurrent).not.toHaveBeenCalled();
   });
 
-  it("closes the right panel chat before going home on escape", () => {
-    hoisted.chatMode = "RightPanelOpen";
-    hoisted.currentTab = {
-      active: true,
-      slotId: "slot-session",
-      type: "sessions",
-    };
-
-    renderHook(() => useClassicMainShortcuts());
-
-    dispatchEscape();
-    vi.runOnlyPendingTimers();
-
-    expect(hoisted.sendEvent).toHaveBeenCalledWith({ type: "CLOSE" });
-    expect(hoisted.openCurrent).not.toHaveBeenCalled();
-  });
 
   it("opens home from a note when escape is prevented without a focused target", () => {
     hoisted.currentTab = {

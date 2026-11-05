@@ -13,10 +13,6 @@ const mocks = vi.hoisted(() => ({
     autoScrollEnabled: true,
     scrollTarget: null as "top" | "bottom" | null,
   },
-  chatMode: "FloatingClosed" as
-    | "FloatingClosed"
-    | "FloatingOpen"
-    | "RightPanelOpen",
 }));
 
 vi.mock("react-hotkeys-hook", () => ({
@@ -38,13 +34,6 @@ vi.mock("~/audio-player/provider", () => ({
   useAudioTime: () => ({ current: 0 }),
 }));
 
-vi.mock("~/contexts/shell", () => ({
-  useShell: () => ({
-    chat: {
-      mode: mocks.chatMode,
-    },
-  }),
-}));
 
 vi.mock("./selection-menu", () => ({
   SelectionMenu: () => null,
@@ -88,7 +77,6 @@ describe("TranscriptViewer", () => {
     mocks.scrollDetection.isAtBottom = true;
     mocks.scrollDetection.autoScrollEnabled = true;
     mocks.scrollDetection.scrollTarget = null;
-    mocks.chatMode = "FloatingClosed";
   });
 
   it("does not pin inactive transcript sessions to the bottom on open", () => {
@@ -275,22 +263,5 @@ describe("TranscriptViewer", () => {
     expect(button.className).not.toContain("/85");
     expect(button.className).not.toContain("/90");
     expect(button.className).not.toContain("opacity");
-  });
-
-  it("hides the scroll chip while floating chat is expanded", () => {
-    mocks.scrollDetection.isAtTop = false;
-    mocks.scrollDetection.scrollTarget = "top";
-    mocks.chatMode = "FloatingOpen";
-
-    render(
-      <TranscriptViewer
-        transcriptIds={["transcript-1"]}
-        liveSegments={[]}
-        currentActive={false}
-        scrollRef={createRef()}
-      />,
-    );
-
-    expect(screen.queryByRole("button", { name: "Go to top" })).toBeNull();
   });
 });

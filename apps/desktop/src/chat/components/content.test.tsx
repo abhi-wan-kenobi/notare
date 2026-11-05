@@ -83,35 +83,11 @@ describe("ChatContent", () => {
     cleanup();
   });
 
-  it("lets floating chat body shrink before the composer is clipped", () => {
-    const container = renderContent();
-
-    expect(container?.className).toContain("max-h-full");
-    expect(container?.className).not.toContain("flex-1");
-    expect(container?.className).not.toContain("shrink-0");
-  });
-
-  it("fills available height in the right panel layout", () => {
-    const { container } = render(
-      <ChatContent
-        sessionId="active-session"
-        layout="right-panel"
-        messages={[]}
-        sendMessage={vi.fn()}
-        regenerate={vi.fn()}
-        stop={vi.fn()}
-        status="ready"
-        model={{} as never}
-        handleSendMessage={vi.fn()}
-        contextEntities={[]}
-        pendingRefs={[]}
-        isSystemPromptReady
-      />,
-    );
-
-    const content = container.querySelector("[data-chat-content]");
+  it("fills available height in the docked layout", () => {
+    const content = renderContent();
 
     expect(content?.className).toContain("flex-1");
+    expect(content?.className).not.toContain("max-h-full");
     expect(content?.className).not.toContain("shrink-0");
   });
 

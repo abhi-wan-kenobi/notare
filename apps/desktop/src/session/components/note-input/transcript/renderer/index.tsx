@@ -21,7 +21,6 @@ import {
 
 import { useAudioPlayer } from "~/audio-player";
 import { useAudioTime } from "~/audio-player/provider";
-import { useShell } from "~/contexts/shell";
 import type { Segment } from "~/stt/live-segment";
 
 const LIVE_TRANSCRIPT_PLACEHOLDER_ID = "__live-transcript__";
@@ -37,7 +36,6 @@ export function TranscriptViewer({
   currentActive: boolean;
   scrollRef: RefObject<HTMLDivElement | null>;
 }) {
-  const { chat } = useShell();
   const containerRef = useRef<HTMLDivElement>(null);
   const [scrollElement, setScrollElement] = useState<HTMLDivElement | null>(
     null,
@@ -104,7 +102,7 @@ export function TranscriptViewer({
 
   const canShowScrollChip = !currentActive && (!isAtTop || !isAtBottom);
   const scrollChip =
-    chat.mode === "FloatingOpen" || !canShowScrollChip
+    !canShowScrollChip
       ? null
       : scrollTarget === "bottom" && !isAtBottom
         ? {

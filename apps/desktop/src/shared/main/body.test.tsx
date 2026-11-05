@@ -133,6 +133,7 @@ vi.mock("~/main/shell-sidebar", () => ({
 
 vi.mock("~/contexts/shell", () => ({
   useShell: () => ({
+    inspector: { open: false, toggle: vi.fn() },
     leftsidebar: {
       expanded: mocks.leftSidebarExpanded,
       toggleExpanded: mocks.toggleLeftSidebar,

@@ -532,7 +532,7 @@ const shouldCloseChatForNavigation = (
   targetTab: Tab | TabInput,
   chatMode: ChatModeState["chatMode"],
 ): boolean => {
-  if (chatMode === "FloatingClosed") {
+  if (chatMode === "Closed") {
     return false;
   }
 
@@ -557,6 +557,6 @@ const withChatCollapsedForNavigation = <T extends ChatModeState>(
 
   return {
     ...state,
-    chatMode: "FloatingClosed",
+    chatMode: "Closed",
   } as Partial<T>;
 };

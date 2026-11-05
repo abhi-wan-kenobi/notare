@@ -22,14 +22,6 @@ vi.mock("~/shared/useNewNote", () => ({
   useNewNoteAndListen: () => vi.fn(),
 }));
 
-vi.mock("~/contexts/shell", () => ({
-  useShell: () => ({
-    chat: {
-      mode: "FloatingClosed",
-      sendEvent: vi.fn(),
-    },
-  }),
-}));
 
 vi.mock("~/store/zustand/tabs", () => ({
   useTabs: (selector: (state: { openCurrent: () => void }) => unknown) =>
@@ -58,9 +50,6 @@ describe("TabContentEmpty", () => {
     );
 
     expect(screen.getByRole("button", { name: /New Note/ })).toBeTruthy();
-    expect(
-      screen.getByRole("button", { name: "Ask Notare anything" }),
-    ).toBeTruthy();
   });
 
   it("centers actions in a draggable empty surface while keeping actions clickable", () => {

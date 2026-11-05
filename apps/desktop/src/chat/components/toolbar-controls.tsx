@@ -3,8 +3,6 @@ import {
   ChevronDown,
   History,
   MessageCircle,
-  PanelRight,
-  PictureInPicture2,
   Plus,
   X,
 } from "lucide-react";
@@ -29,27 +27,20 @@ import {
 
 export function ChatToolbarControls({
   currentChatGroupId,
-  layout = "floating",
   onClose,
   onNewChat,
-  onOpenFloating,
-  onOpenRightPanel,
   onSelectChat,
   surface = "light",
 }: {
   currentChatGroupId: string | undefined;
-  layout?: "floating" | "right-panel";
   onClose?: () => void;
   onNewChat: () => void;
-  onOpenFloating?: () => void;
-  onOpenRightPanel?: () => void;
   onSelectChat: (chatGroupId: string) => void;
   surface?: "light" | "dark";
 }) {
   const { t } = useLingui();
   const { currentSessionId } = useSessionTab();
   const isDark = surface === "dark";
-  const isRightPanel = layout === "right-panel";
 
   return (
     <div
@@ -79,43 +70,14 @@ export function ChatToolbarControls({
             isDark ? darkToolbarButtonClassName : lightToolbarButtonClassName
           }
         />
-        {isRightPanel ? (
-          <>
-            <ChatActionButton
-              icon={<PictureInPicture2 size={16} />}
-              label={t`Float chat`}
-              onClick={onOpenFloating ?? (() => {})}
-              className={
-                isDark
-                  ? darkToolbarButtonClassName
-                  : lightToolbarButtonClassName
-              }
-            />
-            <ChatActionButton
-              icon={<X size={16} />}
-              label={t`Close chat`}
-              onClick={onClose ?? (() => {})}
-              className={
-                isDark
-                  ? darkToolbarButtonClassName
-                  : lightToolbarButtonClassName
-              }
-            />
-          </>
-        ) : (
-          <>
-            <ChatActionButton
-              icon={<PanelRight size={16} />}
-              label={t`Open in right panel`}
-              onClick={onOpenRightPanel ?? (() => {})}
-              className={
-                isDark
-                  ? darkToolbarButtonClassName
-                  : lightToolbarButtonClassName
-              }
-            />
-          </>
-        )}
+        <ChatActionButton
+          icon={<X size={16} />}
+          label={t`Close chat`}
+          onClick={onClose ?? (() => {})}
+          className={
+            isDark ? darkToolbarButtonClassName : lightToolbarButtonClassName
+          }
+        />
       </div>
     </div>
   );
