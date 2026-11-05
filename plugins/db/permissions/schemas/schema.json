@@ -439,6 +439,54 @@
           "markdownDescription": "Denies the list_recipes command without any pre-configured scope."
         },
         {
+          "description": "Enables the pairing_confirm command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-pairing-confirm",
+          "markdownDescription": "Enables the pairing_confirm command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the pairing_confirm command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-pairing-confirm",
+          "markdownDescription": "Denies the pairing_confirm command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the pairing_create_offer command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-pairing-create-offer",
+          "markdownDescription": "Enables the pairing_create_offer command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the pairing_create_offer command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-pairing-create-offer",
+          "markdownDescription": "Denies the pairing_create_offer command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the pairing_join command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-pairing-join",
+          "markdownDescription": "Enables the pairing_join command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the pairing_join command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-pairing-join",
+          "markdownDescription": "Denies the pairing_join command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the pairing_status command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-pairing-status",
+          "markdownDescription": "Enables the pairing_status command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the pairing_status command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-pairing-status",
+          "markdownDescription": "Denies the pairing_status command without any pre-configured scope."
+        },
+        {
           "description": "Enables the run_legacy_import command without any pre-configured scope.",
           "type": "string",
           "const": "allow-run-legacy-import",
@@ -497,6 +545,18 @@
           "type": "string",
           "const": "deny-sync-remove-peer",
           "markdownDescription": "Denies the sync_remove_peer command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the sync_revoke_peer command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-sync-revoke-peer",
+          "markdownDescription": "Enables the sync_revoke_peer command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the sync_revoke_peer command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-sync-revoke-peer",
+          "markdownDescription": "Denies the sync_revoke_peer command without any pre-configured scope."
         },
         {
           "description": "Enables the sync_start command without any pre-configured scope.",
@@ -583,10 +643,10 @@
           "markdownDescription": "Denies the upsert_recipe command without any pre-configured scope."
         },
         {
-          "description": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-execute`\n- `allow-execute-proxy`\n- `allow-execute-transaction`\n- `allow-list-meetings`\n- `allow-get-meeting`\n- `allow-get-meeting-transcript`\n- `allow-get-recurring-meeting-history`\n- `allow-get-legacy-cleanup-status`\n- `allow-cleanup-legacy-files`\n- `allow-subscribe`\n- `allow-unsubscribe`\n- `allow-sync-status`\n- `allow-sync-trigger`\n- `allow-sync-list-peers`\n- `allow-sync-this-device`\n- `allow-sync-add-peer`\n- `allow-sync-remove-peer`\n- `allow-sync-start`\n- `allow-sync-stop`\n- `allow-list-recipes`\n- `allow-upsert-recipe`\n- `allow-delete-recipe`",
+          "description": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-execute`\n- `allow-execute-proxy`\n- `allow-execute-transaction`\n- `allow-list-meetings`\n- `allow-get-meeting`\n- `allow-get-meeting-transcript`\n- `allow-get-recurring-meeting-history`\n- `allow-get-legacy-cleanup-status`\n- `allow-cleanup-legacy-files`\n- `allow-subscribe`\n- `allow-unsubscribe`\n- `allow-sync-status`\n- `allow-sync-trigger`\n- `allow-sync-list-peers`\n- `allow-sync-this-device`\n- `allow-sync-add-peer`\n- `allow-sync-remove-peer`\n- `allow-sync-start`\n- `allow-sync-stop`\n- `allow-pairing-create-offer`\n- `allow-pairing-join`\n- `allow-pairing-status`\n- `allow-pairing-confirm`\n- `allow-sync-revoke-peer`\n- `allow-get-legacy-import-report`\n- `allow-run-legacy-import`\n- `allow-list-recipes`\n- `allow-upsert-recipe`\n- `allow-delete-recipe`",
           "type": "string",
           "const": "default",
-          "markdownDescription": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-execute`\n- `allow-execute-proxy`\n- `allow-execute-transaction`\n- `allow-list-meetings`\n- `allow-get-meeting`\n- `allow-get-meeting-transcript`\n- `allow-get-recurring-meeting-history`\n- `allow-get-legacy-cleanup-status`\n- `allow-cleanup-legacy-files`\n- `allow-subscribe`\n- `allow-unsubscribe`\n- `allow-sync-status`\n- `allow-sync-trigger`\n- `allow-sync-list-peers`\n- `allow-sync-this-device`\n- `allow-sync-add-peer`\n- `allow-sync-remove-peer`\n- `allow-sync-start`\n- `allow-sync-stop`\n- `allow-list-recipes`\n- `allow-upsert-recipe`\n- `allow-delete-recipe`"
+          "markdownDescription": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-execute`\n- `allow-execute-proxy`\n- `allow-execute-transaction`\n- `allow-list-meetings`\n- `allow-get-meeting`\n- `allow-get-meeting-transcript`\n- `allow-get-recurring-meeting-history`\n- `allow-get-legacy-cleanup-status`\n- `allow-cleanup-legacy-files`\n- `allow-subscribe`\n- `allow-unsubscribe`\n- `allow-sync-status`\n- `allow-sync-trigger`\n- `allow-sync-list-peers`\n- `allow-sync-this-device`\n- `allow-sync-add-peer`\n- `allow-sync-remove-peer`\n- `allow-sync-start`\n- `allow-sync-stop`\n- `allow-pairing-create-offer`\n- `allow-pairing-join`\n- `allow-pairing-status`\n- `allow-pairing-confirm`\n- `allow-sync-revoke-peer`\n- `allow-get-legacy-import-report`\n- `allow-run-legacy-import`\n- `allow-list-recipes`\n- `allow-upsert-recipe`\n- `allow-delete-recipe`"
         }
       ]
     }
