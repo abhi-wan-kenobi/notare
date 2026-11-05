@@ -1,3 +1,6 @@
+import { TabContentActionItems } from "~/main/action-items";
+import { TabContentMeetings } from "~/main/meetings";
+import { TabContentSeries } from "~/main/series";
 import { TabContentCalendar } from "~/calendar";
 import { TabContentChangelog } from "~/changelog";
 import { TabContentContact } from "~/contacts";
@@ -34,6 +37,15 @@ export function MainTabContent({ tab }: { tab: Tab }) {
   }
   if (tab.type === "trash") {
     return <TabContentTrash />;
+  }
+  if (tab.type === "meetings") {
+    return <TabContentMeetings />;
+  }
+  if (tab.type === "action-items") {
+    return <TabContentActionItems />;
+  }
+  if (tab.type === "series") {
+    return <TabContentSeries tab={tab} />;
   }
   if (tab.type === "changelog") {
     return <TabContentChangelog tab={tab} />;

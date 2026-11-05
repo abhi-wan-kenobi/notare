@@ -32,7 +32,15 @@ export type TabInput =
   | { type: "snippets" }
   // App-only tab input (no Rust/windows binding): the Trash (trashed
   // sessions) surface.
-  | { type: "trash" };
+  | { type: "trash" }
+  // App-only tab input (no Rust/windows binding): the Meetings list surface.
+  | { type: "meetings" }
+  // App-only tab input (no Rust/windows binding): the Action items list
+  // surface, aggregating action items across sessions.
+  | { type: "action-items" }
+  // App-only tab input (no Rust/windows binding): a recurring-event series'
+  // occurrence timeline.
+  | { type: "series"; seriesId: string };
 
 export const isTabInputSupported = (
   tab: WindowsTabInput,
@@ -152,6 +160,9 @@ export type Tab =
   | (BaseTab & { type: "search"; query?: string })
   | (BaseTab & { type: "snippets" })
   | (BaseTab & { type: "trash" })
+  | (BaseTab & { type: "meetings" })
+  | (BaseTab & { type: "action-items" })
+  | (BaseTab & { type: "series"; state: { seriesId: string } })
   | (BaseTab & {
       type: "changelog";
       state: ChangelogState;
@@ -218,6 +229,16 @@ export const getDefaultState = (tab: TabInput): Tab => {
       return { ...base, type: "snippets" };
     case "trash":
       return { ...base, type: "trash" };
+    case "meetings":
+      return { ...base, type: "meetings" };
+    case "action-items":
+      return { ...base, type: "action-items" };
+    case "series":
+      return {
+        ...base,
+        type: "series",
+        state: { seriesId: tab.seriesId },
+      };
     case "changelog":
       return {
         ...base,
@@ -267,6 +288,12 @@ export const uniqueIdfromTab = (tab: Tab): string => {
       return `snippets`;
     case "trash":
       return `trash`;
+    case "meetings":
+      return `meetings`;
+    case "action-items":
+      return `action-items`;
+    case "series":
+      return `series-${tab.state.seriesId}`;
     case "changelog":
       return "changelog";
     case "settings":
