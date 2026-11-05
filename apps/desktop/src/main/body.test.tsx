@@ -305,7 +305,11 @@ describe("ClassicMainBody", () => {
     expect(screen.getByTestId("panel-group").dataset.autoSaveId).toBe(
       "classic-main-sidebar",
     );
-    expect(screen.getByTestId("panel-group").previousElementSibling).toBeNull();
+    expect(
+      screen
+        .getByTestId("panel-group")
+        .previousElementSibling?.getAttribute("aria-label"),
+    ).toBe("Ask");
     expect(screen.getByTestId("classic-main-sidebar")).toBeTruthy();
     expect(screen.getByTestId("resize-handle").dataset.className).toContain(
       "after:w-2",

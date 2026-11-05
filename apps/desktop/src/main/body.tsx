@@ -80,7 +80,7 @@ type LeftSidebarSizeStyle = CSSProperties & {
 };
 
 export function ClassicMainBody() {
-  const { leftsidebar } = useShell();
+  const { inspector, leftsidebar } = useShell();
   const currentTab = useTabs((state) => state.currentTab);
   const { runEscapeShortcut } = useClassicMainShortcuts();
   const [leftSidebarPanelConstraints, setLeftSidebarPanelConstraints] =
@@ -528,6 +528,25 @@ export function ClassicMainBody() {
       style={leftSidebarSizeStyle}
       className="relative flex h-full min-w-0 flex-1 flex-col"
     >
+      {isOnboarding ? null : (
+        <button
+          type="button"
+          data-tauri-drag-region="false"
+          aria-label={inspector.open ? "Close inspector" : "Ask"}
+          aria-pressed={inspector.open}
+          onClick={() => inspector.toggle()}
+          className={cn([
+            "absolute top-2 right-3 z-50 flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-xs",
+            "text-muted-foreground hover:text-foreground border-transparent transition-colors",
+            inspector.open
+              ? "bg-sidebar-accent text-foreground border-border"
+              : "hover:bg-accent",
+          ])}
+        >
+          <span>Ask</span>
+          <Kbd className="text-[10px]">⌘J</Kbd>
+        </button>
+      )}
       {isOnboarding ||
       showSidebarTimeline ? null : showCollapsedSidebarTimelineChrome ? (
         <div
@@ -970,8 +989,6 @@ function SidebarTimelineChrome({
         : null
     : null;
 
-  const { inspector } = useShell();
-
   return (
     <div data-tauri-drag-region className="flex w-full items-center">
       <div data-tauri-drag-region className="flex items-center gap-0">
@@ -1008,23 +1025,6 @@ function SidebarTimelineChrome({
           </>
         ) : null}
       </div>
-      <button
-        type="button"
-        data-tauri-drag-region="false"
-        aria-label={inspector.open ? "Close inspector" : "Ask"}
-        aria-pressed={inspector.open}
-        onClick={() => inspector.toggle()}
-        className={cn([
-          "mr-3 ml-auto flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-xs",
-          "text-muted-foreground hover:text-foreground border-transparent transition-colors",
-          inspector.open
-            ? "bg-sidebar-accent text-foreground border-border"
-            : "hover:bg-accent",
-        ])}
-      >
-        <span>Ask</span>
-        <Kbd className="text-[10px]">⌘J</Kbd>
-      </button>
     </div>
   );
 }
