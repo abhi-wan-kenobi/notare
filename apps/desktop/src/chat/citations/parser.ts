@@ -125,6 +125,39 @@ export function formatTimestamp(ms: number): string {
 }
 
 /**
+ * Parses timestamp string (mm:ss or hh:mm:ss) into milliseconds.
+ */
+export function parseTimestampToMs(timestamp: string): number | null {
+  const parts = timestamp
+    .trim()
+    .split(":")
+    .map((p) => Number.parseInt(p, 10));
+  if (parts.some((p) => Number.isNaN(p) || p < 0)) return null;
+
+  if (parts.length === 2) {
+    const [minutes, seconds] = parts;
+    if (seconds === undefined || minutes === undefined || seconds >= 60) {
+      return null;
+    }
+    return (minutes * 60 + seconds) * 1000;
+  }
+  if (parts.length === 3) {
+    const [hours, minutes, seconds] = parts;
+    if (
+      hours === undefined ||
+      minutes === undefined ||
+      seconds === undefined ||
+      minutes >= 60 ||
+      seconds >= 60
+    ) {
+      return null;
+    }
+    return (hours * 3600 + minutes * 60 + seconds) * 1000;
+  }
+  return null;
+}
+
+/**
  * Replaces citation tokens outside of code blocks with a markdown link that can be
  * intercepted and rendered by the chat message renderer as an interactive chip.
  */
@@ -139,12 +172,33 @@ export function replaceCitationsForRendering(text: string): string {
         return part;
       }
 
-      return part.replace(
+      let result = part.replace(
         /\[\[src:([a-zA-Z0-9_\-.:]+)@(\d+)\]\]/g,
         (_match, sessionId, msStr) => {
           return `[src:${sessionId}@${msStr}](citation:${sessionId}@${msStr})`;
         },
       );
+
+      result = result.replace(
+        /\[(\d{1,2}:\d{2}(?::\d{2})?)\](?!\()/g,
+        (match, timeStr) => {
+          const ms = parseTimestampToMs(timeStr);
+          if (ms === null) return match;
+          return `[▸ ${timeStr}](citation-timestamp:${ms})`;
+        },
+      );
+
+      result = result.replace(
+        /(?:"at_ms"|at_ms)\s*[:=]\s*(\d+)/g,
+        (match, msStr) => {
+          const ms = Number.parseInt(msStr, 10);
+          if (Number.isNaN(ms) || ms < 0) return match;
+          const formatted = formatTimestamp(ms);
+          return `at_ms: [▸ ${formatted}](citation-timestamp:${ms})`;
+        },
+      );
+
+      return result;
     })
     .join("");
 }

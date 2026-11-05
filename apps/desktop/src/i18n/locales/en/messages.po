@@ -196,8 +196,13 @@ msgstr "Accessibility"
 msgid "Account"
 msgstr "Account"
 
+#: src/shared/command-palette/index.tsx
+msgid "Account & Storage"
+msgstr "Account & Storage"
+
 #: src/main/action-items/index.tsx
 #: src/session/components/action-items/index.tsx
+#: src/shared/command-palette/index.tsx
 #: src/sidebar/index.tsx
 msgid "Action items"
 msgstr "Action items"
@@ -205,6 +210,10 @@ msgstr "Action items"
 #: src/settings/webhook/index.tsx
 msgid "Action items updated"
 msgstr "Action items updated"
+
+#: src/shared/command-palette/index.tsx
+msgid "Actions"
+msgstr "Actions"
 
 #: src/settings/ai/stt/select.tsx
 msgid "Activate"
@@ -304,6 +313,10 @@ msgstr "Advanced: per-task models"
 msgid "After recording"
 msgstr "After recording"
 
+#: src/shared/command-palette/index.tsx
+msgid "AI & Speech"
+msgstr "AI & Speech"
+
 #: src/settings/dictation/index.tsx
 msgid "AI cleanup"
 msgstr "AI cleanup"
@@ -330,12 +343,9 @@ msgid "All {0} trashed items will be permanently deleted. This cannot be undone.
 msgstr "All {0} trashed items will be permanently deleted. This cannot be undone."
 
 #: src/main/home/index.tsx
+#: src/shared/command-palette/index.tsx
 msgid "All meetings"
 msgstr "All meetings"
-
-#: src/shared/open-note-dialog.tsx
-msgid "All Notes"
-msgstr "All Notes"
 
 #: src/onboarding/permissions.tsx
 msgid "Allow access"
@@ -688,7 +698,7 @@ msgstr "Clone"
 
 #: src/changelog/index.tsx
 #: src/session/components/note-input/search/bar.tsx
-#: src/shared/open-note-dialog.tsx
+#: src/shared/command-palette/index.tsx
 msgid "Close"
 msgstr "Close"
 
@@ -1500,10 +1510,6 @@ msgstr "Filter meetings"
 msgid "Filter synced items by {0}."
 msgstr "Filter synced items by {0}."
 
-#: src/shared/open-note-dialog.tsx
-msgid "Find a note..."
-msgstr "Find a note..."
-
 #: src/search/page/index.tsx
 msgid "Find anything across your notes and transcripts — by keyword or by meaning."
 msgstr "Find anything across your notes and transcripts — by keyword or by meaning."
@@ -1592,6 +1598,10 @@ msgstr "Gateway found, but requires authentication. Run <0>omp auth-gateway toke
 #: src/sidebar/settings.tsx
 msgid "General"
 msgstr "General"
+
+#: src/shared/command-palette/index.tsx
+msgid "General & System"
+msgstr "General & System"
 
 #: src/settings/sync/index.tsx
 msgid "Generate a new code"
@@ -1828,6 +1838,10 @@ msgstr "Installed"
 #: src/sidebar/settings.tsx
 msgid "Integrations"
 msgstr "Integrations"
+
+#: src/shared/command-palette/index.tsx
+msgid "Integrations & Sync"
+msgstr "Integrations & Sync"
 
 #: src/settings/ai/llm/index.tsx
 #: src/sidebar/settings.tsx
@@ -2088,6 +2102,7 @@ msgstr "Meeting"
 
 #: src/main/meetings/index.tsx
 #: src/settings/general/app-settings.tsx
+#: src/shared/command-palette/index.tsx
 #: src/sidebar/index.tsx
 msgid "Meetings"
 msgstr "Meetings"
@@ -2227,6 +2242,10 @@ msgstr "Never connected"
 msgid "New chat"
 msgstr "New chat"
 
+#: src/shared/command-palette/index.tsx
+msgid "New note"
+msgstr "New note"
+
 #. placeholder {0}: displayPath(pendingPath ?? undefined, home)
 #: src/settings/general/storage/notes-location.tsx
 msgid "New notes will be saved to {0}. You can also move your existing notes there. If the folder already contains files, your notes are copied and the originals stay in place. The app will restart to apply the change."
@@ -2324,6 +2343,10 @@ msgstr "No legacy JSON or Markdown files remain"
 msgid "No local transcription models are available."
 msgstr "No local transcription models are available."
 
+#: src/shared/command-palette/index.tsx
+msgid "No matching commands or notes."
+msgstr "No matching commands or notes."
+
 #: src/settings/general/main-language.tsx
 #: src/settings/general/spoken-languages.tsx
 msgid "No matching languages found"
@@ -2352,10 +2375,6 @@ msgstr "No models ready to use."
 #: src/changelog/index.tsx
 msgid "No notes for this version yet."
 msgstr "No notes for this version yet."
-
-#: src/shared/open-note-dialog.tsx
-msgid "No notes found."
-msgstr "No notes found."
 
 #: src/main/home/index.tsx
 msgid "No notes yet."
@@ -2578,10 +2597,18 @@ msgstr "Open"
 msgid "Open {0} settings"
 msgstr "Open {0} settings"
 
+#: src/shared/command-palette/index.tsx
+msgid "Open Action items"
+msgstr "Open Action items"
+
 #: src/main/home/index.tsx
 #: src/sidebar/timeline/index.tsx
 msgid "Open calendar"
 msgstr "Open calendar"
+
+#: src/shared/command-palette/index.tsx
+msgid "Open Calendar"
+msgstr "Open Calendar"
 
 #: src/calendar/components/calendar-selection.tsx
 msgid "Open calendar account actions"
@@ -2603,6 +2630,10 @@ msgstr "Open floating panel"
 msgid "Open Google Cloud console"
 msgstr "Open Google Cloud console"
 
+#: src/shared/command-palette/index.tsx
+msgid "Open Home"
+msgstr "Open Home"
+
 #: src/session/components/outer-header/overflow/index.tsx
 #: src/sidebar/timeline/item.tsx
 msgid "Open in New Window"
@@ -2611,6 +2642,10 @@ msgstr "Open in New Window"
 #: src/meeting-float/window.tsx
 msgid "Open main window"
 msgstr "Open main window"
+
+#: src/shared/command-palette/index.tsx
+msgid "Open Meetings"
+msgstr "Open Meetings"
 
 #: src/onboarding/final.tsx
 msgid "Open Notare"
@@ -2629,6 +2664,7 @@ msgid "Open repository on GitHub"
 msgstr "Open repository on GitHub"
 
 #: src/onboarding/permissions.tsx
+#: src/shared/command-palette/index.tsx
 msgid "Open settings"
 msgstr "Open settings"
 
@@ -2886,7 +2922,6 @@ msgstr "Ready"
 msgid "Ready to go"
 msgstr "Ready to go"
 
-#: src/shared/open-note-dialog.tsx
 #: src/sidebar/index.tsx
 msgid "Recent"
 msgstr "Recent"
@@ -2900,6 +2935,7 @@ msgid "Recent notes"
 msgstr "Recent notes"
 
 #: src/settings/recipes/index.tsx
+#: src/shared/command-palette/index.tsx
 #: src/sidebar/settings.tsx
 msgid "Recipes"
 msgstr "Recipes"
@@ -3176,13 +3212,9 @@ msgstr "Search contacts..."
 msgid "Search emoji..."
 msgstr "Search emoji..."
 
-#: src/shared/open-note-dialog.tsx
+#: src/shared/command-palette/index.tsx
 msgid "Search everything"
 msgstr "Search everything"
-
-#: src/shared/open-note-dialog.tsx
-msgid "Search everything for \"{trimmedQuery}\""
-msgstr "Search everything for \"{trimmedQuery}\""
 
 #: src/templates/template-icon-picker.tsx
 msgid "Search icons..."
@@ -3207,6 +3239,10 @@ msgstr "Search meetings"
 #: src/sidebar/index.tsx
 msgid "Search notes and actions"
 msgstr "Search notes and actions"
+
+#: src/shared/command-palette/index.tsx
+msgid "Search notes, pages, and actions…"
+msgstr "Search notes, pages, and actions…"
 
 #: src/contacts/details.tsx
 msgid "Search or add company"
@@ -3593,6 +3629,7 @@ msgstr "Start dictation"
 msgid "Start Notare at login"
 msgstr "Start Notare at login"
 
+#: src/shared/command-palette/index.tsx
 #: src/shared/dock/index.tsx
 msgid "Start recording"
 msgstr "Start recording"
@@ -3710,6 +3747,14 @@ msgstr "Supports many languages."
 #: src/settings/recipes/index.tsx
 msgid "Supports Markdown and"
 msgstr "Supports Markdown and"
+
+#: src/shared/command-palette/index.tsx
+msgid "Switch to dark theme"
+msgstr "Switch to dark theme"
+
+#: src/shared/command-palette/index.tsx
+msgid "Switch to light theme"
+msgstr "Switch to light theme"
 
 #: src/templates/template-icon-picker.tsx
 msgid "Symbols"
@@ -3888,6 +3933,10 @@ msgstr "Today"
 msgid "Toggle action item"
 msgstr "Toggle action item"
 
+#: src/shared/command-palette/index.tsx
+msgid "Toggle inspector"
+msgstr "Toggle inspector"
+
 #: src/settings/dictation/index.tsx
 msgid "Toggle press"
 msgstr "Toggle press"
@@ -3895,6 +3944,10 @@ msgstr "Toggle press"
 #: src/settings/dictation/shortcut-recorder.tsx
 msgid "Toggle shortcut"
 msgstr "Toggle shortcut"
+
+#: src/shared/command-palette/index.tsx
+msgid "Toggle theme"
+msgstr "Toggle theme"
 
 #: src/settings/general/app-settings.tsx
 msgid "Transcribe in real time during a meeting. Turn this off to transcribe only after you stop — lighter for long meetings, and audio is always recorded either way. Applies to new sessions only."
@@ -4006,7 +4059,7 @@ msgstr "Unpin"
 #: src/search/page/index.tsx
 #: src/session/components/outer-header/overflow/export-modal.tsx
 #: src/session/components/title-input.tsx
-#: src/shared/open-note-dialog.tsx
+#: src/shared/command-palette/index.tsx
 #: src/shared/ui/resource-list/preview-header.tsx
 #: src/sidebar/index.tsx
 #: src/sidebar/timeline/item.tsx

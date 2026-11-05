@@ -196,14 +196,23 @@ msgstr ""
 msgid "Account"
 msgstr ""
 
+#: src/shared/command-palette/index.tsx
+msgid "Account & Storage"
+msgstr ""
+
 #: src/main/action-items/index.tsx
 #: src/session/components/action-items/index.tsx
+#: src/shared/command-palette/index.tsx
 #: src/sidebar/index.tsx
 msgid "Action items"
 msgstr ""
 
 #: src/settings/webhook/index.tsx
 msgid "Action items updated"
+msgstr ""
+
+#: src/shared/command-palette/index.tsx
+msgid "Actions"
 msgstr ""
 
 #: src/settings/ai/stt/select.tsx
@@ -304,6 +313,10 @@ msgstr ""
 msgid "After recording"
 msgstr ""
 
+#: src/shared/command-palette/index.tsx
+msgid "AI & Speech"
+msgstr ""
+
 #: src/settings/dictation/index.tsx
 msgid "AI cleanup"
 msgstr ""
@@ -330,11 +343,8 @@ msgid "All {0} trashed items will be permanently deleted. This cannot be undone.
 msgstr ""
 
 #: src/main/home/index.tsx
+#: src/shared/command-palette/index.tsx
 msgid "All meetings"
-msgstr ""
-
-#: src/shared/open-note-dialog.tsx
-msgid "All Notes"
 msgstr ""
 
 #: src/onboarding/permissions.tsx
@@ -688,7 +698,7 @@ msgstr ""
 
 #: src/changelog/index.tsx
 #: src/session/components/note-input/search/bar.tsx
-#: src/shared/open-note-dialog.tsx
+#: src/shared/command-palette/index.tsx
 msgid "Close"
 msgstr ""
 
@@ -1500,10 +1510,6 @@ msgstr ""
 msgid "Filter synced items by {0}."
 msgstr ""
 
-#: src/shared/open-note-dialog.tsx
-msgid "Find a note..."
-msgstr ""
-
 #: src/search/page/index.tsx
 msgid "Find anything across your notes and transcripts — by keyword or by meaning."
 msgstr ""
@@ -1591,6 +1597,10 @@ msgstr ""
 
 #: src/sidebar/settings.tsx
 msgid "General"
+msgstr ""
+
+#: src/shared/command-palette/index.tsx
+msgid "General & System"
 msgstr ""
 
 #: src/settings/sync/index.tsx
@@ -1827,6 +1837,10 @@ msgstr ""
 
 #: src/sidebar/settings.tsx
 msgid "Integrations"
+msgstr ""
+
+#: src/shared/command-palette/index.tsx
+msgid "Integrations & Sync"
 msgstr ""
 
 #: src/settings/ai/llm/index.tsx
@@ -2088,6 +2102,7 @@ msgstr ""
 
 #: src/main/meetings/index.tsx
 #: src/settings/general/app-settings.tsx
+#: src/shared/command-palette/index.tsx
 #: src/sidebar/index.tsx
 msgid "Meetings"
 msgstr "ስብሰባዎች"
@@ -2227,6 +2242,10 @@ msgstr ""
 msgid "New chat"
 msgstr ""
 
+#: src/shared/command-palette/index.tsx
+msgid "New note"
+msgstr ""
+
 #. placeholder {0}: displayPath(pendingPath ?? undefined, home)
 #: src/settings/general/storage/notes-location.tsx
 msgid "New notes will be saved to {0}. You can also move your existing notes there. If the folder already contains files, your notes are copied and the originals stay in place. The app will restart to apply the change."
@@ -2324,6 +2343,10 @@ msgstr ""
 msgid "No local transcription models are available."
 msgstr ""
 
+#: src/shared/command-palette/index.tsx
+msgid "No matching commands or notes."
+msgstr ""
+
 #: src/settings/general/main-language.tsx
 #: src/settings/general/spoken-languages.tsx
 msgid "No matching languages found"
@@ -2351,10 +2374,6 @@ msgstr ""
 
 #: src/changelog/index.tsx
 msgid "No notes for this version yet."
-msgstr ""
-
-#: src/shared/open-note-dialog.tsx
-msgid "No notes found."
 msgstr ""
 
 #: src/main/home/index.tsx
@@ -2578,9 +2597,17 @@ msgstr ""
 msgid "Open {0} settings"
 msgstr ""
 
+#: src/shared/command-palette/index.tsx
+msgid "Open Action items"
+msgstr ""
+
 #: src/main/home/index.tsx
 #: src/sidebar/timeline/index.tsx
 msgid "Open calendar"
+msgstr ""
+
+#: src/shared/command-palette/index.tsx
+msgid "Open Calendar"
 msgstr ""
 
 #: src/calendar/components/calendar-selection.tsx
@@ -2603,6 +2630,10 @@ msgstr ""
 msgid "Open Google Cloud console"
 msgstr ""
 
+#: src/shared/command-palette/index.tsx
+msgid "Open Home"
+msgstr ""
+
 #: src/session/components/outer-header/overflow/index.tsx
 #: src/sidebar/timeline/item.tsx
 msgid "Open in New Window"
@@ -2610,6 +2641,10 @@ msgstr ""
 
 #: src/meeting-float/window.tsx
 msgid "Open main window"
+msgstr ""
+
+#: src/shared/command-palette/index.tsx
+msgid "Open Meetings"
 msgstr ""
 
 #: src/onboarding/final.tsx
@@ -2629,6 +2664,7 @@ msgid "Open repository on GitHub"
 msgstr ""
 
 #: src/onboarding/permissions.tsx
+#: src/shared/command-palette/index.tsx
 msgid "Open settings"
 msgstr ""
 
@@ -2886,7 +2922,6 @@ msgstr ""
 msgid "Ready to go"
 msgstr ""
 
-#: src/shared/open-note-dialog.tsx
 #: src/sidebar/index.tsx
 msgid "Recent"
 msgstr ""
@@ -2900,6 +2935,7 @@ msgid "Recent notes"
 msgstr ""
 
 #: src/settings/recipes/index.tsx
+#: src/shared/command-palette/index.tsx
 #: src/sidebar/settings.tsx
 msgid "Recipes"
 msgstr ""
@@ -3176,12 +3212,8 @@ msgstr ""
 msgid "Search emoji..."
 msgstr ""
 
-#: src/shared/open-note-dialog.tsx
+#: src/shared/command-palette/index.tsx
 msgid "Search everything"
-msgstr ""
-
-#: src/shared/open-note-dialog.tsx
-msgid "Search everything for \"{trimmedQuery}\""
 msgstr ""
 
 #: src/templates/template-icon-picker.tsx
@@ -3206,6 +3238,10 @@ msgstr ""
 
 #: src/sidebar/index.tsx
 msgid "Search notes and actions"
+msgstr ""
+
+#: src/shared/command-palette/index.tsx
+msgid "Search notes, pages, and actions…"
 msgstr ""
 
 #: src/contacts/details.tsx
@@ -3593,6 +3629,7 @@ msgstr ""
 msgid "Start Notare at login"
 msgstr "በመግቢያው ላይ አናርሎግ ይጀምሩ"
 
+#: src/shared/command-palette/index.tsx
 #: src/shared/dock/index.tsx
 msgid "Start recording"
 msgstr ""
@@ -3709,6 +3746,14 @@ msgstr ""
 
 #: src/settings/recipes/index.tsx
 msgid "Supports Markdown and"
+msgstr ""
+
+#: src/shared/command-palette/index.tsx
+msgid "Switch to dark theme"
+msgstr ""
+
+#: src/shared/command-palette/index.tsx
+msgid "Switch to light theme"
 msgstr ""
 
 #: src/templates/template-icon-picker.tsx
@@ -3888,12 +3933,20 @@ msgstr ""
 msgid "Toggle action item"
 msgstr ""
 
+#: src/shared/command-palette/index.tsx
+msgid "Toggle inspector"
+msgstr ""
+
 #: src/settings/dictation/index.tsx
 msgid "Toggle press"
 msgstr ""
 
 #: src/settings/dictation/shortcut-recorder.tsx
 msgid "Toggle shortcut"
+msgstr ""
+
+#: src/shared/command-palette/index.tsx
+msgid "Toggle theme"
 msgstr ""
 
 #: src/settings/general/app-settings.tsx
@@ -4006,7 +4059,7 @@ msgstr ""
 #: src/search/page/index.tsx
 #: src/session/components/outer-header/overflow/export-modal.tsx
 #: src/session/components/title-input.tsx
-#: src/shared/open-note-dialog.tsx
+#: src/shared/command-palette/index.tsx
 #: src/shared/ui/resource-list/preview-header.tsx
 #: src/sidebar/index.tsx
 #: src/sidebar/timeline/item.tsx
