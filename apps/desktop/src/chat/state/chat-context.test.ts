@@ -30,4 +30,12 @@ describe("chat context", () => {
     expect(state.groupId).toBe("group-2");
     expect(state.sessionId).toBe("group-2");
   });
+
+  test("setPendingPrompt stores and clears the pending initial prompt", () => {
+    useChatContext.getState().setPendingPrompt("summarize this");
+    expect(useChatContext.getState().pendingPrompt).toBe("summarize this");
+
+    useChatContext.getState().setPendingPrompt(null);
+    expect(useChatContext.getState().pendingPrompt).toBeNull();
+  });
 });

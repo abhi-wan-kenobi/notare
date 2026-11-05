@@ -2,11 +2,7 @@ import { isTauri } from "@tauri-apps/api/core";
 import { useCallback, useLayoutEffect, useRef } from "react";
 
 import { commands as windowsCommands } from "@hypr/plugin-windows";
-import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from "@hypr/ui/components/ui/resizable";
+import { cn } from "@hypr/utils";
 
 import {
   NOTE_SURFACE_MIN_WIDTH_PX,
@@ -14,18 +10,16 @@ import {
 } from "./layout-widths";
 
 import { ChatPanelFrame, ChatSessionHost } from "~/chat/components/chat-panel";
-import { PersistentChatPanel } from "~/chat/components/persistent-chat";
 import { useShell } from "~/contexts/shell";
 import { type Tab, useTabs } from "~/store/zustand/tabs";
 
-const RIGHT_CHAT_PANEL_MIN_WIDTH_PX = 320;
+const INSPECTOR_WIDTH_PX = 360;
 const LEFT_SIDEBAR_MIN_WIDTH_PX = 200;
 
 export function MainChatPanels({ children }: { children: React.ReactNode }) {
-  const { chat, leftsidebar } = useShell();
+  const { inspector, leftsidebar } = useShell();
   const currentTab = useTabs((state) => state.currentTab);
   const bodyPanelContainerRef = useRef<HTMLDivElement>(null);
-  const isRightPanelOpen = chat.mode === "RightPanelOpen";
   const reserveNoteSurfaceMinWidth = usesNoteSurfaceMinWidth(currentTab);
   const collapseLeftSidebar = useCallback(() => {
     leftsidebar.setExpanded(false);
@@ -40,60 +34,39 @@ export function MainChatPanels({ children }: { children: React.ReactNode }) {
     enabled: reserveNoteSurfaceMinWidth,
     leftPanelOpen: leftsidebar.expanded,
     collapseLeftPanel: collapseLeftSidebar,
-    rightPanelOpen: isRightPanelOpen,
+    rightPanelOpen: inspector.open,
   });
 
   return (
     <ChatSessionHost>
       {(sessionProps) => (
-        <>
-          <ResizablePanelGroup
-            autoSaveId="main-chat"
-            direction="horizontal"
-            className="flex min-h-0 flex-1 overflow-hidden"
+        <div className="flex min-h-0 flex-1 overflow-hidden">
+          <div
+            ref={bodyPanelContainerRef}
+            data-main-body-panel-container
+            className="h-full min-h-0 min-w-0 flex-1 overflow-hidden"
+            style={{ minWidth: bodyMinWidth }}
           >
-            <ResizablePanel
-              className="min-h-0 flex-1 overflow-hidden"
-              style={{ minWidth: bodyMinWidth }}
+            {children}
+          </div>
+          <div
+            data-chat-right-panel
+            aria-hidden={!inspector.open}
+            className={cn([
+              "border-border bg-card min-h-0 shrink-0 overflow-hidden",
+              "transition-[width] duration-200 ease-out",
+              inspector.open ? "border-l" : "border-l-0",
+            ])}
+            style={{ width: inspector.open ? INSPECTOR_WIDTH_PX : 0 }}
+          >
+            <div
+              className="h-full min-h-0"
+              style={{ width: INSPECTOR_WIDTH_PX }}
             >
-              <div
-                ref={bodyPanelContainerRef}
-                data-main-body-panel-container
-                className="h-full min-h-0 min-w-0 flex-1 overflow-hidden"
-              >
-                {children}
-              </div>
-            </ResizablePanel>
-            {isRightPanelOpen ? (
-              <>
-                <ResizableHandle className="w-0" />
-                <ResizablePanel
-                  defaultSize={30}
-                  minSize={20}
-                  maxSize={50}
-                  className="min-h-0 overflow-hidden"
-                  style={{ minWidth: RIGHT_CHAT_PANEL_MIN_WIDTH_PX }}
-                >
-                  <div
-                    data-chat-right-panel
-                    className="border-border bg-card -mb-1 h-[calc(100%+0.25rem)] min-h-0 overflow-hidden rounded-tr-xl border-x"
-                  >
-                    <ChatPanelFrame
-                      layout="right-panel"
-                      onOpenFloating={() => chat.sendEvent({ type: "OPEN" })}
-                      sessionProps={sessionProps}
-                    />
-                  </div>
-                </ResizablePanel>
-              </>
-            ) : null}
-          </ResizablePanelGroup>
-
-          <PersistentChatPanel
-            floatingContainerRef={bodyPanelContainerRef}
-            sessionProps={sessionProps}
-          />
-        </>
+              <ChatPanelFrame sessionProps={sessionProps} />
+            </div>
+          </div>
+        </div>
       )}
     </ChatSessionHost>
   );
@@ -197,13 +170,13 @@ function useNoteSurfaceWindowWidthGuard({
 
     const requiredBodyWidth = NOTE_SURFACE_MIN_WIDTH_PX + leftSidebarWidth;
     const requiredTotalWidth =
-      requiredBodyWidth + (rightPanelOpen ? RIGHT_CHAT_PANEL_MIN_WIDTH_PX : 0);
+      requiredBodyWidth + (rightPanelOpen ? INSPECTOR_WIDTH_PX : 0);
     const visibleTotalWidth = bodyWidth + rightPanelWidth;
     const widthDeficit = Math.ceil(
       Math.max(
         requiredBodyWidth - bodyWidth,
         requiredTotalWidth - visibleTotalWidth,
-        rightPanelOpen ? RIGHT_CHAT_PANEL_MIN_WIDTH_PX - rightPanelWidth : 0,
+        rightPanelOpen ? INSPECTOR_WIDTH_PX - rightPanelWidth : 0,
       ),
     );
 

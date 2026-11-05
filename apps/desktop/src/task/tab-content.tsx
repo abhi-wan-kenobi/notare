@@ -5,7 +5,7 @@ import { cn } from "@hypr/utils";
 
 import { ResourceView } from "./resource-view";
 
-import { ChatCTA } from "~/shared/chat-cta";
+import { useShell } from "~/contexts/shell";
 import { StandardContentWrapper } from "~/shared/main";
 import { type Tab, type TaskResource } from "~/store/zustand/tabs";
 
@@ -54,9 +54,16 @@ export function TabContentTask({ tab }: { tab: TaskTab }) {
     [],
   );
 
-  const floatingButton = (
+  const { inspector } = useShell();
+  const floatingButton = inspector.open ? null : (
     <div className="absolute bottom-4 left-1/2 z-20 -translate-x-1/2">
-      <ChatCTA label={<Trans>Work on this task</Trans>} />
+      <button
+        type="button"
+        onClick={() => inspector.toggle()}
+        className="bg-card border-border text-foreground h-10 rounded-full border px-4 text-sm shadow-md"
+      >
+        <Trans>Work on this task</Trans>
+      </button>
     </div>
   );
 

@@ -1,5 +1,6 @@
 import { isTauri } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { platform } from "@tauri-apps/plugin-os";
 import {
   ArrowLeftIcon,
   PanelLeftCloseIcon,
@@ -23,6 +24,7 @@ import {
   commands as windowsCommands,
   events as windowsEvents,
 } from "@hypr/plugin-windows";
+import { Kbd } from "@hypr/ui/components/ui/kbd";
 import {
   type ImperativePanelHandle,
   ResizableHandle,
@@ -79,7 +81,13 @@ type LeftSidebarSizeStyle = CSSProperties & {
 };
 
 export function ClassicMainBody() {
-  const { leftsidebar } = useShell();
+  let inspectorShortcut = "Ctrl+J";
+  try {
+    if (platform() === "macos") inspectorShortcut = "⌘J";
+  } catch {
+    // Vite-only previews do not expose the Tauri platform API.
+  }
+  const { inspector, leftsidebar } = useShell();
   const currentTab = useTabs((state) => state.currentTab);
   const { runEscapeShortcut } = useClassicMainShortcuts();
   const [leftSidebarPanelConstraints, setLeftSidebarPanelConstraints] =
@@ -96,8 +104,10 @@ export function ClassicMainBody() {
   const leftSidebarDefaultSizeTrackingRef = useRef(true);
   const pendingLeftSidebarDefaultSizeRef = useRef<number | null>(null);
   const syncDefaultLeftSidebarPanelSizeRef = useRef<() => void>(() => {});
-  const [showIgnoredTimelineEvents, setShowIgnoredTimelineEvents] =
-    useState(false);
+  // The sidebar no longer exposes a toggle for ignored calendar events
+  // (that lived in the retired TimelineView); upcoming-meeting status
+  // always excludes them until a future surface reintroduces the control.
+  const showIgnoredTimelineEvents = false;
   const [showDevtoolsPanelButton, setShowDevtoolsPanelButton] = useState(false);
   const [devtoolsPanelOpen, setDevtoolsPanelOpen] = useState(false);
   leftSidebarPanelConstraintsRef.current = leftSidebarPanelConstraints;
@@ -525,6 +535,25 @@ export function ClassicMainBody() {
       style={leftSidebarSizeStyle}
       className="relative flex h-full min-w-0 flex-1 flex-col"
     >
+      {isOnboarding ? null : (
+        <button
+          type="button"
+          data-tauri-drag-region="false"
+          aria-label={inspector.open ? "Close inspector" : "Ask"}
+          aria-pressed={inspector.open}
+          onClick={() => inspector.toggle()}
+          className={cn([
+            "absolute top-2 right-3 z-50 flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-xs",
+            "text-muted-foreground hover:text-foreground border-transparent transition-colors",
+            inspector.open
+              ? "bg-sidebar-accent text-foreground border-border"
+              : "hover:bg-accent",
+          ])}
+        >
+          <span>Ask</span>
+          <Kbd className="text-[10px]">{inspectorShortcut}</Kbd>
+        </button>
+      )}
       {isOnboarding ||
       showSidebarTimeline ? null : showCollapsedSidebarTimelineChrome ? (
         <div
@@ -629,13 +658,7 @@ export function ClassicMainBody() {
                     : "-translate-x-3 opacity-0",
                 ])}
               >
-                <ClassicMainSidebar
-                  timelineHeader={timelineHeader}
-                  showIgnoredTimelineEvents={showIgnoredTimelineEvents}
-                  onShowIgnoredTimelineEventsChange={
-                    setShowIgnoredTimelineEvents
-                  }
-                />
+                <ClassicMainSidebar timelineHeader={timelineHeader} />
               </div>
             </ResizablePanel>
             <ResizableHandle

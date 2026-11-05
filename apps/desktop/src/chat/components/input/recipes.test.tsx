@@ -17,10 +17,7 @@ const { clearContentMock, editorState, shellState } = vi.hoisted(() => ({
     submitShortcut: undefined as undefined | "mod-enter" | "enter",
   },
   shellState: {
-    mode: "RightPanelOpen" as
-      | "FloatingClosed"
-      | "FloatingOpen"
-      | "RightPanelOpen",
+    inspectorOpen: true,
   },
 }));
 
@@ -75,8 +72,8 @@ vi.mock("@hypr/plugin-analytics", () => ({
 
 vi.mock("~/contexts/shell", () => ({
   useShell: () => ({
-    chat: {
-      mode: shellState.mode,
+    inspector: {
+      open: shellState.inspectorOpen,
     },
   }),
 }));
@@ -106,7 +103,7 @@ describe("ChatMessageInput Recipe Slash Commands", () => {
     editorState.onSubmit = undefined;
     editorState.onUpdate = undefined;
     editorState.submitShortcut = undefined;
-    shellState.mode = "RightPanelOpen";
+    shellState.inspectorOpen = true;
   });
 
   it("opens slash command menu when typing '/' and lists built-in recipes", () => {

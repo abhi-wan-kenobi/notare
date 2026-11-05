@@ -15,6 +15,7 @@
   --font-sans:
     system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-hand: "Bradley Hand", "Segoe Print", "Comic Sans MS", cursive;
+  --font-serif: "Iowan Old Style", Charter, Georgia, serif;
 
   --color-border: hsl(var(--border));
   --color-input: hsl(var(--input));
@@ -38,6 +39,7 @@
 
   /* State-channel tokens — docs/DESIGN-DIRECTION.md §2 (mirrors packages/ui) */
   --color-rec: hsl(var(--rec));
+  --color-lime: hsl(var(--lime));
   --color-ok: hsl(var(--ok));
   --color-accent-glow: hsl(var(--accent-glow));
   --color-accent-glow-end: hsl(var(--accent-glow-end));
@@ -71,6 +73,7 @@
   --animate-kbd-press: kbd-press 0.4s ease-out forwards;
 
   --animate-wiggle: wiggle 1s ease-in-out infinite;
+  --animate-dock-bar: dock-bar 0.7s ease-in-out infinite alternate;
 
   /* The orb (docs/DESIGN-DIRECTION.md §3b) — the one element allowed
      continuous animation: slow idle hue drift + soft live pulse. */
@@ -82,6 +85,12 @@
   @keyframes orb-spin {
     to {
       transform: rotate(1turn);
+    }
+  }
+
+  @keyframes dock-bar {
+    to {
+      height: 15px;
     }
   }
 
@@ -201,6 +210,14 @@
   }
 }
 
+@utility page-title {
+  font-family: var(--font-serif);
+  font-size: 1.875rem;
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+}
+
 @layer utilities {
   /* https://www.joshwcomeau.com/css/custom-css-reset/ */
 
@@ -299,13 +316,6 @@
   [data-settings-content] [data-slot="select-trigger"],
   [data-settings-content] [data-slot="select-trigger"]:hover {
     box-shadow: none !important;
-  }
-
-  [data-chat-floating-anchor]:has([data-chat-cta-trigger]:is(:hover, :focus-visible, :focus-within))
-    [data-transcript-scroll-chip] {
-    --transcript-scroll-chip-bottom: calc(
-      3.75rem + env(safe-area-inset-bottom)
-    );
   }
 }
 

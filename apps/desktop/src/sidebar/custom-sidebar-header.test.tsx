@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  chatMode: "FloatingClosed",
+  chatMode: "Closed",
   currentTab: { type: "settings" } as { type: string } | null,
   openCurrent: vi.fn(),
   select: vi.fn(),
@@ -37,7 +37,7 @@ describe("CustomSidebarHeader", () => {
   });
 
   beforeEach(() => {
-    mocks.chatMode = "FloatingClosed";
+    mocks.chatMode = "Closed";
     mocks.currentTab = { type: "settings" };
     mocks.openCurrent.mockClear();
     mocks.select.mockClear();
@@ -65,19 +65,8 @@ describe("CustomSidebarHeader", () => {
     expect(mocks.openCurrent).not.toHaveBeenCalled();
   });
 
-  it("closes floating chat before opening home", () => {
-    mocks.chatMode = "FloatingOpen";
-
-    render(<CustomSidebarHeader title="Contacts" />);
-
-    fireEvent.click(screen.getByRole("button", { name: "Go home" }));
-
-    expect(mocks.sendEvent).toHaveBeenCalledWith({ type: "CLOSE" });
-    expect(mocks.openCurrent).not.toHaveBeenCalled();
-  });
-
-  it("closes right panel chat before opening home", () => {
-    mocks.chatMode = "RightPanelOpen";
+  it("closes the open inspector before opening home", () => {
+    mocks.chatMode = "Open";
 
     render(<CustomSidebarHeader title="Contacts" />);
 

@@ -22,7 +22,7 @@ export function CustomSidebarHeader({
   const openCurrent = useTabs((state) => state.openCurrent);
 
   const handleBack = useCallback(() => {
-    if (chat.mode !== "FloatingClosed") {
+    if (chat.mode === "Open") {
       chat.sendEvent({ type: "CLOSE" });
       return;
     }

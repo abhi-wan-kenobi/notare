@@ -1,196 +1,119 @@
 import { beforeEach, describe, expect, test } from "vitest";
 
-import {
-  goToNotesSurface,
-  openSurfaceTab,
-  surfaceFromTabType,
-  type SurfaceId,
-} from "./surface-navigation";
+import { openSurfaceTab, surfaceFromTabType } from "./surface-navigation";
 
-import { useTabs } from "~/store/zustand/tabs";
+import { uniqueIdfromTab, useTabs } from "~/store/zustand/tabs";
 import {
   createSessionTab,
   createSettingsTab,
   resetTabsStore,
 } from "~/store/zustand/tabs/test-utils";
 
-type SpecialSurface = Exclude<SurfaceId, "notes">;
+describe("surfaceFromTabType", () => {
+  test("maps the empty tab to home", () => {
+    expect(surfaceFromTabType("empty")).toBe("home");
+  });
 
-const SPECIAL_SURFACES: SpecialSurface[] = [
-  "calendar",
-  "contacts",
-  "templates",
-  "settings",
-];
+  test("maps sessions, meetings and series tabs to meetings", () => {
+    expect(surfaceFromTabType("sessions")).toBe("meetings");
+    expect(surfaceFromTabType("meetings")).toBe("meetings");
+    expect(surfaceFromTabType("series")).toBe("meetings");
+  });
 
-const openNoteTab = (id: string) => {
-  const note = createSessionTab({ id });
-  useTabs.getState().openNew(note);
-  return note;
-};
+  test("maps the remaining primary and library surfaces 1:1", () => {
+    expect(surfaceFromTabType("calendar")).toBe("calendar");
+    expect(surfaceFromTabType("action-items")).toBe("action-items");
+    expect(surfaceFromTabType("templates")).toBe("templates");
+    expect(surfaceFromTabType("snippets")).toBe("snippets");
+    expect(surfaceFromTabType("contacts")).toBe("contacts");
+    expect(surfaceFromTabType("trash")).toBe("trash");
+    expect(surfaceFromTabType("settings")).toBe("settings");
+  });
 
-const currentSurface = () =>
-  surfaceFromTabType(useTabs.getState().currentTab?.type);
+  test("returns undefined for tab types with no sidebar row", () => {
+    expect(surfaceFromTabType("search")).toBeUndefined();
+    expect(surfaceFromTabType("onboarding")).toBeUndefined();
+    expect(surfaceFromTabType(undefined)).toBeUndefined();
+  });
+});
 
-const countTabsOfSurface = (surface: SpecialSurface) =>
-  useTabs.getState().tabs.filter((tab) => tab.type === surface).length;
-
-describe("surface rail navigation", () => {
+describe("openSurfaceTab", () => {
   beforeEach(() => {
     resetTabsStore();
   });
 
-  test("goToNotesSurface is a no-op on a notes surface", () => {
-    openNoteTab("note-1");
+  test("home reuses an existing empty tab instead of opening a duplicate", () => {
+    const homeTab = {
+      type: "empty" as const,
+      active: false,
+      slotId: "s1",
+      pinned: false,
+    };
+    useTabs.getState().openNew(homeTab);
+    const countBefore = useTabs.getState().tabs.length;
 
-    goToNotesSurface();
+    openSurfaceTab("home");
 
-    expect(useTabs.getState().currentTab).toMatchObject({
-      type: "sessions",
-      id: "note-1",
-    });
-    expect(useTabs.getState().tabs).toHaveLength(1);
+    expect(useTabs.getState().tabs.length).toBe(countBefore);
+    expect(useTabs.getState().currentTab?.type).toBe("empty");
   });
 
-  describe.each(SPECIAL_SURFACES)("notes → %s → notes", (surface) => {
-    test("returns to the origin note", () => {
-      openNoteTab("note-1");
-
-      openSurfaceTab(surface);
-      expect(currentSurface()).toBe(surface);
-
-      goToNotesSurface();
-
-      expect(useTabs.getState().currentTab).toMatchObject({
-        type: "sessions",
-        id: "note-1",
-      });
-    });
+  test("home opens a fresh tab when none exists", () => {
+    openSurfaceTab("home");
+    expect(useTabs.getState().currentTab?.type).toBe("empty");
   });
 
-  const surfacePairs = SPECIAL_SURFACES.flatMap((from) =>
-    SPECIAL_SURFACES.filter((to) => to !== from).map(
-      (to) => [from, to] as const,
-    ),
-  );
+  test("opens the meetings, calendar and action-items list surfaces", () => {
+    openSurfaceTab("meetings");
+    expect(useTabs.getState().currentTab?.type).toBe("meetings");
 
-  describe.each(surfacePairs)("notes → %s → %s → notes", (first, second) => {
-    test("rail shows each surface and notes returns to the origin note", () => {
-      openNoteTab("note-1");
-
-      openSurfaceTab(first);
-      expect(currentSurface()).toBe(first);
-
-      openSurfaceTab(second);
-      expect(currentSurface()).toBe(second);
-
-      // The Notes action must land on the note, never on the first special
-      // surface (the reported wrong-surface bug).
-      goToNotesSurface();
-      expect(useTabs.getState().currentTab).toMatchObject({
-        type: "sessions",
-        id: "note-1",
-      });
-
-      expect(countTabsOfSurface(first)).toBe(1);
-      expect(countTabsOfSurface(second)).toBe(1);
-    });
-  });
-
-  test("three-surface chain still returns to the origin note", () => {
-    openNoteTab("note-1");
-
-    openSurfaceTab("settings");
     openSurfaceTab("calendar");
+    expect(useTabs.getState().currentTab?.type).toBe("calendar");
+
+    openSurfaceTab("action-items");
+    expect(useTabs.getState().currentTab?.type).toBe("action-items");
+  });
+
+  test("opens the library surfaces", () => {
     openSurfaceTab("templates");
-    expect(currentSurface()).toBe("templates");
+    expect(useTabs.getState().currentTab?.type).toBe("templates");
 
-    goToNotesSurface();
+    openSurfaceTab("snippets");
+    expect(useTabs.getState().currentTab?.type).toBe("snippets");
 
+    openSurfaceTab("contacts");
     expect(useTabs.getState().currentTab).toMatchObject({
-      type: "sessions",
-      id: "note-1",
+      type: "contacts",
+      state: { selected: null },
     });
+
+    openSurfaceTab("trash");
+    expect(useTabs.getState().currentTab?.type).toBe("trash");
   });
 
-  test("revisiting a surface in a chain reuses its tab", () => {
-    openNoteTab("note-1");
-
+  test("opens settings", () => {
     openSurfaceTab("settings");
+    expect(useTabs.getState().currentTab?.type).toBe("settings");
+  });
+
+  test("does not disturb an already-open note when opening another surface", () => {
+    const note = createSessionTab({ id: "note-1" });
+    useTabs.getState().openNew(note);
+
     openSurfaceTab("calendar");
-    openSurfaceTab("settings");
 
-    expect(currentSurface()).toBe("settings");
-    expect(countTabsOfSurface("settings")).toBe(1);
-    expect(countTabsOfSurface("calendar")).toBe(1);
-
-    goToNotesSurface();
-    expect(useTabs.getState().currentTab).toMatchObject({
-      type: "sessions",
-      id: "note-1",
-    });
-  });
-
-  test("origin follows the most recently visited note", () => {
-    const noteA = openNoteTab("note-a");
-    openSurfaceTab("settings");
-
-    const noteB = openNoteTab("note-b");
-    openSurfaceTab("settings");
-    expect(countTabsOfSurface("settings")).toBe(1);
-
-    goToNotesSurface();
-    expect(useTabs.getState().currentTab).toMatchObject({
-      type: "sessions",
-      id: noteB.id,
-    });
     expect(
       useTabs
         .getState()
-        .tabs.some((tab) => tab.type === "sessions" && tab.id === noteA.id),
+        .tabs.some((tab) => uniqueIdfromTab(tab) === uniqueIdfromTab(note)),
     ).toBe(true);
   });
 
-  test("chain with no note origin falls back to a home tab", () => {
-    const settings = createSettingsTab({ active: true });
+  test("settings tab created elsewhere is still reachable via its own surface", () => {
+    const settings = createSettingsTab();
     useTabs.getState().openNew(settings);
-
-    openSurfaceTab("calendar");
-    expect(currentSurface()).toBe("calendar");
-
-    goToNotesSurface();
-
-    expect(useTabs.getState().currentTab).toMatchObject({ type: "empty" });
-  });
-
-  test("stale return origin (slot now holds another tab) falls back to home", () => {
-    openNoteTab("note-1");
-    openSurfaceTab("settings");
-
-    // Simulate the origin slot being reused by a different note.
-    useTabs.setState((state) => ({
-      tabs: state.tabs.map((tab) =>
-        tab.type === "sessions" ? { ...tab, id: "note-2" } : tab,
-      ),
-    }));
-
-    goToNotesSurface();
-
-    expect(useTabs.getState().currentTab).toMatchObject({ type: "empty" });
-  });
-
-  test("closing the origin note clears the surface's return origin", () => {
-    const note = openNoteTab("note-1");
-    openSurfaceTab("settings");
-
-    const noteTab = useTabs
-      .getState()
-      .tabs.find((tab) => tab.type === "sessions" && tab.id === note.id);
-    expect(noteTab).toBeTruthy();
-    useTabs.getState().close(noteTab!);
-
-    goToNotesSurface();
-
-    expect(useTabs.getState().currentTab).toMatchObject({ type: "empty" });
+    expect(surfaceFromTabType(useTabs.getState().currentTab?.type)).toBe(
+      "settings",
+    );
   });
 });

@@ -9,6 +9,7 @@ import {
 import { forwardRef, useImperativeHandle, useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("@tauri-apps/plugin-os", () => ({ platform: () => "linux" }));
 import { commands } from "~/types/tauri.gen";
 
 const mocks = vi.hoisted(() => ({
@@ -161,6 +162,7 @@ vi.mock("@hypr/ui/components/ui/resizable", () => ({
 
 vi.mock("~/contexts/shell", () => ({
   useShell: () => ({
+    inspector: { open: false, toggle: vi.fn() },
     leftsidebar: mocks.leftsidebar,
   }),
 }));
@@ -304,7 +306,12 @@ describe("ClassicMainBody", () => {
     expect(screen.getByTestId("panel-group").dataset.autoSaveId).toBe(
       "classic-main-sidebar",
     );
-    expect(screen.getByTestId("panel-group").previousElementSibling).toBeNull();
+    expect(
+      screen
+        .getByTestId("panel-group")
+        .previousElementSibling?.getAttribute("aria-label"),
+    ).toBe("Ask");
+    expect(screen.getByText("Ctrl+J")).toBeTruthy();
     expect(screen.getByTestId("classic-main-sidebar")).toBeTruthy();
     expect(screen.getByTestId("resize-handle").dataset.className).toContain(
       "after:w-2",

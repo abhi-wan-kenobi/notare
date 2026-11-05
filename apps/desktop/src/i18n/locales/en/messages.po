@@ -36,6 +36,16 @@ msgstr "(default)"
 msgid "{0} item(s)"
 msgstr "{0} item(s)"
 
+#. placeholder {0}: occurrences.length
+#: src/main/series/index.tsx
+msgid "{0} occurrences"
+msgstr "{0} occurrences"
+
+#. placeholder {0}: items.length
+#: src/main/action-items/index.tsx
+msgid "{0} open"
+msgstr "{0} open"
+
 #. placeholder {0}: issue.user?.login
 #: src/task/resource-view.tsx
 msgid "{0} opened on"
@@ -53,6 +63,10 @@ msgstr "{duplicateCandidateCount} already in your dictionary — skipped."
 #: src/session/components/outer-header/overflow/schedule-followup.tsx
 msgid "{minutes} min"
 msgstr "{minutes} min"
+
+#: src/main/home/index.tsx
+msgid "{scheduledTodayCount} scheduled today · {recordedThisWeekCount} recorded this week · {openActionItemsCount} open actions"
+msgstr "{scheduledTodayCount} scheduled today · {recordedThisWeekCount} recorded this week · {openActionItemsCount} open actions"
 
 #: src/settings/general/account.tsx
 msgid "{trialDaysRemaining} day left"
@@ -110,6 +124,10 @@ msgstr "7 days"
 msgid "90 days"
 msgstr "90 days"
 
+#: src/main/home/index.tsx
+msgid "A clear view of the day."
+msgstr "A clear view of the day."
+
 #: src/dictation/orb.tsx
 msgid "A dark glass sphere lit by a hot caustic band."
 msgstr "A dark glass sphere lit by a hot caustic band."
@@ -166,7 +184,9 @@ msgstr "Accessibility"
 msgid "Account"
 msgstr "Account"
 
+#: src/main/action-items/index.tsx
 #: src/session/components/action-items/index.tsx
+#: src/sidebar/index.tsx
 msgid "Action items"
 msgstr "Action items"
 
@@ -293,6 +313,10 @@ msgstr "AI-generated summary of all interactions and notes with this contact wil
 msgid "All {0} trashed items will be permanently deleted. This cannot be undone."
 msgstr "All {0} trashed items will be permanently deleted. This cannot be undone."
 
+#: src/main/home/index.tsx
+msgid "All meetings"
+msgstr "All meetings"
+
 #: src/shared/open-note-dialog.tsx
 msgid "All Notes"
 msgstr "All Notes"
@@ -363,14 +387,9 @@ msgstr "Are you sure you want to delete \"{0}\"? This action cannot be undone."
 msgid "Ask & search about anything, or be creative!"
 msgstr "Ask & search about anything, or be creative!"
 
-#: src/chat/components/input/index.tsx
-#: src/shared/chat-cta.tsx
-msgid "Ask anything"
-msgstr "Ask anything"
-
-#: src/shared/chat-cta.tsx
-msgid "Ask Notare anything"
-msgstr "Ask Notare anything"
+#: src/shared/dock/index.tsx
+msgid "Ask anything across your meetings…"
+msgstr "Ask anything across your meetings…"
 
 #: src/task/resource-view.tsx
 msgid "Assignees:"
@@ -482,8 +501,8 @@ msgstr "Built-in"
 #: src/session/components/outer-header/overflow/schedule-followup.tsx
 #: src/settings/general/permissions.tsx
 #: src/sidebar/calendar.tsx
+#: src/sidebar/index.tsx
 #: src/sidebar/settings.tsx
-#: src/sidebar/surface-nav.tsx
 msgid "Calendar"
 msgstr "Calendar"
 
@@ -689,6 +708,10 @@ msgstr "Collect and deliver when you stop"
 msgid "Combine at least one of Ctrl, Alt, Shift or Super with a key."
 msgstr "Combine at least one of Ctrl, Alt, Shift or Super with a key."
 
+#: src/main/home/index.tsx
+msgid "Coming up"
+msgstr "Coming up"
+
 #: src/task/resource-view.tsx
 msgid "comment"
 msgstr "comment"
@@ -802,8 +825,8 @@ msgid "Connecting…"
 msgstr "Connecting…"
 
 #: src/sidebar/contacts.tsx
+#: src/sidebar/index.tsx
 #: src/sidebar/settings.tsx
-#: src/sidebar/surface-nav.tsx
 msgid "Contacts"
 msgstr "Contacts"
 
@@ -1479,10 +1502,6 @@ msgstr "Fix punctuation and remove fillers and false starts with your configured
 msgid "Flags"
 msgstr "Flags"
 
-#: src/chat/components/toolbar-controls.tsx
-msgid "Float chat"
-msgstr "Float chat"
-
 #: src/settings/general/app-settings.tsx
 msgid "Floating bar look"
 msgstr "Floating bar look"
@@ -1668,6 +1687,10 @@ msgstr "Hold the dictation shortcut to talk; release to stop and deliver."
 msgid "Hold to talk"
 msgstr "Hold to talk"
 
+#: src/sidebar/index.tsx
+msgid "Home"
+msgstr "Home"
+
 #: src/calendar/components/google/content.tsx
 msgid "How do I get this file?"
 msgstr "How do I get this file?"
@@ -1851,6 +1874,10 @@ msgstr "Learn how to fix this"
 msgid "Legacy JSON and Markdown files were removed"
 msgstr "Legacy JSON and Markdown files were removed"
 
+#: src/sidebar/index.tsx
+msgid "Library"
+msgstr "Library"
+
 #: src/settings/general/theme.tsx
 msgid "Light"
 msgstr "Light"
@@ -2009,7 +2036,9 @@ msgstr "Medium confidence"
 msgid "Meeting"
 msgstr "Meeting"
 
+#: src/main/meetings/index.tsx
 #: src/settings/general/app-settings.tsx
+#: src/sidebar/index.tsx
 msgid "Meetings"
 msgstr "Meetings"
 
@@ -2144,10 +2173,6 @@ msgstr "Never connected"
 msgid "New chat"
 msgstr "New chat"
 
-#: src/main/empty.tsx
-msgid "New Note"
-msgstr "New Note"
-
 #. placeholder {0}: displayPath(pendingPath ?? undefined, home)
 #: src/settings/general/storage/notes-location.tsx
 msgid "New notes will be saved to {0}. You can also move your existing notes there. If the folder already contains files, your notes are copied and the originals stay in place. The app will restart to apply the change."
@@ -2246,6 +2271,10 @@ msgstr "No matching languages found"
 msgid "No matching people"
 msgstr "No matching people"
 
+#: src/main/meetings/index.tsx
+msgid "No meetings yet."
+msgstr "No meetings yet."
+
 #: src/settings/ai/stt/select.tsx
 msgid "No models are available for this provider."
 msgstr "No models are available for this provider."
@@ -2265,6 +2294,14 @@ msgstr "No notes for this version yet."
 #: src/shared/open-note-dialog.tsx
 msgid "No notes found."
 msgstr "No notes found."
+
+#: src/main/home/index.tsx
+msgid "No notes yet."
+msgstr "No notes yet."
+
+#: src/main/action-items/index.tsx
+msgid "No open action items."
+msgstr "No open action items."
 
 #: src/session/components/note-input/transcript/renderer/speaker-assign.tsx
 msgid "No people"
@@ -2361,7 +2398,6 @@ msgid "Note breadcrumb"
 msgstr "Note breadcrumb"
 
 #: src/contacts/details.tsx
-#: src/sidebar/surface-nav.tsx
 msgid "Notes"
 msgstr "Notes"
 
@@ -2401,6 +2437,10 @@ msgstr "Nothing matched \"{trimmedQuery}\". Try different words."
 #: src/settings/personalization/dictionary-settings.tsx
 msgid "Nothing new to import — every entry already matched."
 msgstr "Nothing new to import — every entry already matched."
+
+#: src/main/home/index.tsx
+msgid "Nothing on the calendar."
+msgstr "Nothing on the calendar."
 
 #: src/session/components/note-input/header.tsx
 #: src/stt/useLiveTranscriptCopyShortcuts.ts
@@ -2470,6 +2510,7 @@ msgstr "Open"
 msgid "Open {0} settings"
 msgstr "Open {0} settings"
 
+#: src/main/home/index.tsx
 #: src/sidebar/timeline/index.tsx
 msgid "Open calendar"
 msgstr "Open calendar"
@@ -2499,10 +2540,6 @@ msgstr "Open Google Cloud console"
 msgid "Open in New Window"
 msgstr "Open in New Window"
 
-#: src/chat/components/toolbar-controls.tsx
-msgid "Open in right panel"
-msgstr "Open in right panel"
-
 #: src/meeting-float/window.tsx
 msgid "Open main window"
 msgstr "Open main window"
@@ -2510,6 +2547,10 @@ msgstr "Open main window"
 #: src/onboarding/final.tsx
 msgid "Open Notare"
 msgstr "Open Notare"
+
+#: src/main/home/index.tsx
+msgid "Open notes"
+msgstr "Open notes"
 
 #: src/task/resource-view.tsx
 msgid "Open on GitHub"
@@ -2697,6 +2738,10 @@ msgstr "Pre-Meeting Briefs"
 msgid "Preparation window"
 msgstr "Preparation window"
 
+#: src/main/home/index.tsx
+msgid "Prepare"
+msgstr "Prepare"
+
 #: src/session/components/outer-header/overflow/export-modal.tsx
 msgid "Preparing transcript..."
 msgstr "Preparing transcript..."
@@ -2720,6 +2765,10 @@ msgstr "Preview"
 #: src/session/components/note-input/search/bar.tsx
 msgid "Previous match"
 msgstr "Previous match"
+
+#: src/sidebar/index.tsx
+msgid "Primary"
+msgstr "Primary"
 
 #: src/settings/ai/stt/shared.tsx
 msgid "Prioritizes speed over accuracy."
@@ -2757,17 +2806,26 @@ msgstr "Raw transcript"
 msgid "Re-transcribe with"
 msgstr "Re-transcribe with"
 
+#: src/shared/dock/index.tsx
+msgid "Ready"
+msgstr "Ready"
+
 #: src/onboarding/index.tsx
 msgid "Ready to go"
 msgstr "Ready to go"
 
 #: src/shared/open-note-dialog.tsx
+#: src/sidebar/index.tsx
 msgid "Recent"
 msgstr "Recent"
 
 #: src/settings/webhook/index.tsx
 msgid "Recent deliveries"
 msgstr "Recent deliveries"
+
+#: src/main/home/index.tsx
+msgid "Recent notes"
+msgstr "Recent notes"
 
 #: src/settings/recipes/index.tsx
 #: src/sidebar/settings.tsx
@@ -3025,10 +3083,6 @@ msgstr "Schedule follow-up"
 msgid "Scope"
 msgstr "Scope"
 
-#: src/sidebar/surface-nav.tsx
-msgid "Search"
-msgstr "Search"
-
 #: src/search/page/index.tsx
 msgid "Search across all your meetings..."
 msgstr "Search across all your meetings..."
@@ -3064,6 +3118,10 @@ msgstr "Search installed apps..."
 #: src/settings/general/main-language.tsx
 msgid "Search language..."
 msgstr "Search language..."
+
+#: src/sidebar/index.tsx
+msgid "Search notes and actions"
+msgstr "Search notes and actions"
 
 #: src/contacts/details.tsx
 msgid "Search or add company"
@@ -3194,6 +3252,10 @@ msgstr "Send Notare events to an endpoint you control. Off by default — nothin
 msgid "Send test event"
 msgstr "Send test event"
 
+#: src/main/series/index.tsx
+msgid "Series"
+msgstr "Series"
+
 #: src/settings/mcp/index.tsx
 msgid "Server Port"
 msgstr "Server Port"
@@ -3226,9 +3288,8 @@ msgstr "Set as default"
 msgid "Set up the OAuth consent screen: audience <0>External</0>, then add your own Gmail address as a test user."
 msgstr "Set up the OAuth consent screen: audience <0>External</0>, then add your own Gmail address as a test user."
 
-#: src/main/empty.tsx
+#: src/sidebar/index.tsx
 #: src/sidebar/settings.tsx
-#: src/sidebar/surface-nav.tsx
 msgid "Settings"
 msgstr "Settings"
 
@@ -3394,7 +3455,7 @@ msgstr "Skip"
 msgid "Smileys & People"
 msgstr "Smileys & People"
 
-#: src/sidebar/surface-nav.tsx
+#: src/sidebar/index.tsx
 msgid "Snippets"
 msgstr "Snippets"
 
@@ -3446,9 +3507,9 @@ msgstr "Start dictation"
 msgid "Start Notare at login"
 msgstr "Start Notare at login"
 
-#: src/main/empty.tsx
-msgid "Start Recording"
-msgstr "Start Recording"
+#: src/shared/dock/index.tsx
+msgid "Start recording"
+msgstr "Start recording"
 
 #: src/settings/ai/llm/configure.tsx
 msgid "Start the gateway with <0>omp auth-gateway serve --bind=127.0.0.1:4000</0>"
@@ -3493,6 +3554,7 @@ msgid "Stop listening"
 msgstr "Stop listening"
 
 #: src/meeting-float/window.tsx
+#: src/shared/dock/index.tsx
 msgid "Stop recording"
 msgstr "Stop recording"
 
@@ -3563,10 +3625,6 @@ msgstr "Supports many languages."
 msgid "Supports Markdown and"
 msgstr "Supports Markdown and"
 
-#: src/sidebar/surface-nav.tsx
-msgid "Switch view"
-msgstr "Switch view"
-
 #: src/templates/template-icon-picker.tsx
 msgid "Symbols"
 msgstr "Symbols"
@@ -3609,8 +3667,8 @@ msgstr "Template actions"
 msgid "Template content with Jinja2: {{ variable }}, {% if condition %}"
 msgstr "Template content with Jinja2: {{ variable }}, {% if condition %}"
 
+#: src/sidebar/index.tsx
 #: src/sidebar/settings.tsx
-#: src/sidebar/surface-nav.tsx
 #: src/templates/template-sidebar.tsx
 msgid "Templates"
 msgstr "Templates"
@@ -3794,7 +3852,7 @@ msgstr "Translate to"
 msgid "Translation target language"
 msgstr "Translation target language"
 
-#: src/sidebar/surface-nav.tsx
+#: src/sidebar/index.tsx
 #: src/trash/index.tsx
 msgid "Trash"
 msgstr "Trash"
@@ -3854,11 +3912,16 @@ msgstr "Unofficial"
 msgid "Unpin"
 msgstr "Unpin"
 
+#: src/main/action-items/index.tsx
+#: src/main/home/index.tsx
+#: src/main/meetings/index.tsx
+#: src/main/series/index.tsx
 #: src/search/page/index.tsx
 #: src/session/components/outer-header/overflow/export-modal.tsx
 #: src/session/components/title-input.tsx
 #: src/shared/open-note-dialog.tsx
 #: src/shared/ui/resource-list/preview-header.tsx
+#: src/sidebar/index.tsx
 #: src/sidebar/timeline/item.tsx
 #: src/templates/details.tsx
 #: src/templates/sections-editor.tsx

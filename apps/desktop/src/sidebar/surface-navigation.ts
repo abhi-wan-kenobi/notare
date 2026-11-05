@@ -1,104 +1,78 @@
-import { type Tab, uniqueIdfromTab, useTabs } from "~/store/zustand/tabs";
+import { type Tab, useTabs } from "~/store/zustand/tabs";
 
 export type SurfaceId =
-  | "notes"
-  | "search"
-  | "snippets"
+  | "home"
+  | "meetings"
   | "calendar"
-  | "contacts"
+  | "action-items"
   | "templates"
+  | "snippets"
+  | "contacts"
   | "trash"
   | "settings";
 
-export const SPECIAL_SURFACE_TYPES: Tab["type"][] = [
-  "calendar",
-  "contacts",
-  "templates",
-  "settings",
-];
-
 export const surfaceFromTabType = (
   type: Tab["type"] | undefined,
-): SurfaceId => {
+): SurfaceId | undefined => {
   switch (type) {
-    case "search":
-      return "search";
-    case "snippets":
-      return "snippets";
-    case "trash":
-      return "trash";
+    case "empty":
+      return "home";
+    case "sessions":
+    case "meetings":
+    case "series":
+      return "meetings";
     case "calendar":
       return "calendar";
-    case "contacts":
-      return "contacts";
+    case "action-items":
+      return "action-items";
     case "templates":
       return "templates";
+    case "snippets":
+      return "snippets";
+    case "contacts":
+      return "contacts";
+    case "trash":
+      return "trash";
     case "settings":
       return "settings";
     default:
-      return "notes";
+      return undefined;
   }
 };
 
-/**
- * Rail "Notes" click: leave the current special surface and land back on a
- * notes-family tab. The return origin must never be another special surface
- * (that would make the Notes button navigate to e.g. Templates), so origins
- * that fail that check fall through to the home tab.
- */
-export const goToNotesSurface = () => {
-  const { tabs, currentTab, select, openCurrent } = useTabs.getState();
-
-  if (!currentTab || !SPECIAL_SURFACE_TYPES.includes(currentTab.type)) {
-    return;
-  }
-
-  const returnToSlotId = currentTab.returnToSlotId;
-  const returnTab = returnToSlotId
-    ? tabs.find(
-        (tab) =>
-          tab.slotId === returnToSlotId &&
-          tab.slotId !== currentTab.slotId &&
-          !SPECIAL_SURFACE_TYPES.includes(tab.type) &&
-          (!currentTab.returnToTabId ||
-            uniqueIdfromTab(tab) === currentTab.returnToTabId),
-      )
-    : null;
-  if (returnTab) {
-    select(returnTab);
-    return;
-  }
-
-  const existingHomeTab = tabs.find((tab) => tab.type === "empty");
-  if (existingHomeTab) {
-    select(existingHomeTab);
-    return;
-  }
-
-  openCurrent({ type: "empty" });
-};
-
-export const openSurfaceTab = (surface: Exclude<SurfaceId, "notes">) => {
-  const { openNew } = useTabs.getState();
+export const openSurfaceTab = (surface: SurfaceId) => {
+  const { openNew, openCurrent, select, tabs } = useTabs.getState();
 
   switch (surface) {
-    case "search":
-      openNew({ type: "search" });
+    case "home": {
+      const existingHomeTab = tabs.find((tab) => tab.type === "empty");
+      if (existingHomeTab) {
+        select(existingHomeTab);
+        return;
+      }
+      openCurrent({ type: "empty" });
       return;
-    case "snippets":
-      openNew({ type: "snippets" });
-      return;
-    case "trash":
-      openNew({ type: "trash" });
+    }
+    case "meetings":
+      openNew({ type: "meetings" });
       return;
     case "calendar":
       openNew({ type: "calendar" });
       return;
-    case "contacts":
-      openNew({ type: "contacts", state: { selected: null } });
+    case "action-items":
+      openNew({ type: "action-items" });
       return;
     case "templates":
       openNew({ type: "templates" });
+      return;
+    case "snippets":
+      openNew({ type: "snippets" });
+      return;
+    case "contacts":
+      openNew({ type: "contacts", state: { selected: null } });
+      return;
+    case "trash":
+      openNew({ type: "trash" });
       return;
     case "settings":
       openNew({ type: "settings" });

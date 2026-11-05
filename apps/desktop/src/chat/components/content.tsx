@@ -13,6 +13,7 @@ import {
   readSessionContextDragData,
 } from "~/chat/context/session-drag";
 import type { DisplayEntity } from "~/chat/context/use-chat-context-pipeline";
+import { useChatContext } from "~/chat/state/chat-context";
 import type { HyprUIMessage } from "~/chat/types";
 import { id } from "~/shared/utils";
 
@@ -26,7 +27,6 @@ type QueuedChatMessage = {
 const EMPTY_QUEUED_MESSAGES: readonly QueuedChatMessage[] = Object.freeze([]);
 
 export function ChatContent({
-  layout = "floating",
   sessionId,
   messages,
   sendMessage,
@@ -45,7 +45,6 @@ export function ChatContent({
   isSystemPromptReady,
   children,
 }: {
-  layout?: "floating" | "right-panel";
   sessionId: string;
   messages: HyprUIMessage[];
   sendMessage: (
@@ -76,7 +75,6 @@ export function ChatContent({
   children?: React.ReactNode;
 }) {
   const isModelConfigured = !!model;
-  const isFloating = layout === "floating";
   const disabled = !isSystemPromptReady;
   const isBusy = status === "submitted" || status === "streaming";
   const [queueState, setQueueState] = useState<{
@@ -141,6 +139,29 @@ export function ChatContent({
       setQueuedMessages,
     ],
   );
+  const pendingPrompt = useChatContext((state) => state.pendingPrompt);
+  const setPendingPrompt = useChatContext((state) => state.setPendingPrompt);
+  const sentPendingPromptRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!pendingPrompt || isBusy || !isSystemPromptReady) {
+      return;
+    }
+    if (sentPendingPromptRef.current === pendingPrompt) {
+      return;
+    }
+    sentPendingPromptRef.current = pendingPrompt;
+    setPendingPrompt(null);
+    submitOrQueueMessage(pendingPrompt, [
+      { type: "text", text: pendingPrompt },
+    ]);
+  }, [
+    pendingPrompt,
+    isBusy,
+    isSystemPromptReady,
+    setPendingPrompt,
+    submitOrQueueMessage,
+  ]);
   const removeQueuedMessage = useCallback(
     (queuedMessageId: string) => {
       setQueuedMessages((messages) =>
@@ -212,11 +233,7 @@ export function ChatContent({
 
   return (
     <div
-      className={
-        isFloating
-          ? "flex max-h-full min-h-0 flex-col overflow-hidden"
-          : "flex min-h-0 flex-1 flex-col overflow-hidden"
-      }
+      className="flex min-h-0 flex-1 flex-col overflow-hidden"
       data-chat-content
       onDragOver={handleDragOver}
       onDrop={handleDrop}

@@ -213,32 +213,33 @@
       (rec is reserved for recording state only).
   */
   :root {
-    --background: 220 16% 96%; /* #F4F5F7 bg */
-    --foreground: 223 14% 10%; /* #16181D text */
-    --card: 0 0% 100%; /* #FFFFFF surface */
-    --card-foreground: 223 14% 10%;
-    --popover: 0 0% 100%; /* surface-raised = white + shadow */
-    --popover-foreground: 223 14% 10%;
-    --primary: 235 79% 57%; /* #3947E8 cobalt */
+    --background: 60 24% 96%; /* #F7F7F2 canvas */
+    --foreground: 0 0% 16%; /* #292929 ink */
+    --card: 0 0% 100%; /* #FFFFFF raised */
+    --card-foreground: 0 0% 16%;
+    --popover: 0 0% 100%; /* surface-raised */
+    --popover-foreground: 0 0% 16%;
+    --primary: 240 60% 60%; /* #5B5BD6 indigo */
     --primary-foreground: 0 0% 100%;
-    --secondary: 220 16% 93%;
-    --secondary-foreground: 223 14% 10%;
-    --muted: 220 16% 93%;
-    --muted-foreground: 222 10% 40%; /* #5C6270 text-muted */
-    --accent: 221 15% 91%; /* hover surface */
-    --accent-foreground: 223 14% 10%;
-    --destructive: 0 68% 50%;
+    --secondary: 57 20% 92%; /* wash */
+    --secondary-foreground: 40 2% 30%; /* strong */
+    --muted: 57 20% 92%; /* wash */
+    --muted-foreground: 60 2% 44%; /* secondary text */
+    --accent: 56 14% 88%; /* wash-hover */
+    --accent-foreground: 0 0% 16%;
+    --destructive: 0 57% 51%; /* #C93B3B muted red */
     --destructive-foreground: 0 0% 98%;
     --alert: 0 86% 97%;
     --alert-foreground: 0 72% 42%;
     --alert-border: 0 90% 86%;
-    --border: 223 14% 90%; /* #E3E5EA hairlines */
-    --input: 223 14% 90%;
-    --ring: 235 79% 57%; /* cobalt focus */
-    --app-floating-chrome: 220 17% 93%;
-    --app-floating-panel: 220 16% 96%;
-    --app-floating-border: 222 15% 87%;
-    --rec: 354 73% 54%; /* #E03546 recording ONLY */
+    --border: 55 10% 81%; /* line */
+    --input: 55 10% 81%;
+    --ring: 240 60% 60%; /* indigo focus */
+    --app-floating-chrome: 60 19% 94%; /* sunken */
+    --app-floating-panel: 60 24% 96%; /* canvas */
+    --app-floating-border: 55 10% 81%; /* line */
+    --rec: 354 73% 54%; /* #E03546 recording ONLY (meeting-float window) */
+    --lime: 83 100% 37%; /* #74BD00 live-audio accent (dock) */
     --ok: 153 66% 39%; /* #22A56B verified / saved / connected */
     --accent-glow: 190 100% 72%; /* #6EE7FF iridescent rim start */
     --accent-glow-end: 255 92% 76%; /* #A78BFA iridescent rim end */
@@ -248,39 +249,42 @@
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
     --radius: 0.5rem;
-    --sidebar-accent: 222 15% 89%;
+    --sidebar-accent: 240 20% 92%; /* accent-soft */
     --kbd-shadow-outer: rgba(0, 0, 0, 0.1);
     --kbd-shadow-inset: rgba(255, 255, 255, 0.8);
     --kbd-shadow-outer-hover: rgba(0, 0, 0, 0.15);
+    --shadow-sm: 0 1px 3px rgba(34, 31, 20, 0.1);
+    --shadow-md: 0 8px 24px rgba(34, 31, 20, 0.12);
   }
 
   .dark {
-    --background: 223 24% 6%; /* #0B0D12 blue-black canvas */
-    --foreground: 225 21% 93%; /* #E8EAF0 text */
-    --card: 224 23% 9%; /* #12151D surface */
-    --card-foreground: 225 21% 93%;
-    --popover: 224 22% 13%; /* #1A1E29 surface-raised */
-    --popover-foreground: 225 21% 93%;
-    --primary: 235 100% 65%; /* #4D5CFF cobalt */
+    --background: 0 0% 16%; /* #292929 canvas */
+    --foreground: 60 40% 98%; /* #FCFCF8 ink */
+    --card: 0 0% 13%; /* #212121 sunken */
+    --card-foreground: 60 40% 98%;
+    --popover: 60 1% 19%; /* #313130 raised */
+    --popover-foreground: 60 40% 98%;
+    --primary: 240 82% 76%; /* #9292F4 indigo */
     --primary-foreground: 0 0% 100%;
-    --secondary: 224 22% 13%;
-    --secondary-foreground: 225 21% 93%;
-    --muted: 224 22% 13%;
-    --muted-foreground: 224 13% 60%; /* #8B92A6 text-muted */
-    --accent: 225 21% 18%; /* hover surface */
-    --accent-foreground: 225 21% 93%;
-    --destructive: 0 60% 45%;
+    --secondary: 0 0% 21%; /* wash */
+    --secondary-foreground: 60 6% 81%; /* strong */
+    --muted: 0 0% 21%; /* wash */
+    --muted-foreground: 60 3% 64%; /* secondary text */
+    --accent: 0 0% 24%; /* wash-hover */
+    --accent-foreground: 60 40% 98%;
+    --destructive: 0 57% 59%; /* #C93B3B muted red, lightened for dark */
     --destructive-foreground: 0 0% 98%;
     --alert: 0 50% 14%;
     --alert-foreground: 0 86% 72%;
     --alert-border: 0 45% 24%;
-    --border: 225 22% 18%; /* #232837 hairlines, primary depth cue */
-    --input: 225 22% 18%;
-    --ring: 235 100% 65%; /* cobalt focus */
-    --app-floating-chrome: 224 22% 13%;
-    --app-floating-panel: 224 23% 9%;
-    --app-floating-border: 224 21% 21%;
-    --rec: 354 100% 65%; /* #FF4D5E recording ONLY */
+    --border: 0 0% 29%; /* line */
+    --input: 0 0% 29%;
+    --ring: 240 82% 76%; /* indigo focus */
+    --app-floating-chrome: 0 0% 13%; /* sunken */
+    --app-floating-panel: 0 0% 16%; /* canvas */
+    --app-floating-border: 0 0% 29%; /* line */
+    --rec: 354 100% 65%; /* #FF4D5E recording ONLY (meeting-float window) */
+    --lime: 83 100% 37%; /* #74BD00 live-audio accent (dock) */
     --ok: 151 65% 54%; /* #3DD68C verified / saved / connected */
     --accent-glow: 190 100% 72%; /* #6EE7FF */
     --accent-glow-end: 255 92% 76%; /* #A78BFA */
@@ -289,10 +293,12 @@
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
-    --sidebar-accent: 224 22% 13%;
+    --sidebar-accent: 240 11% 25%; /* accent-soft */
     --kbd-shadow-outer: rgba(0, 0, 0, 0.35);
     --kbd-shadow-inset: rgba(255, 255, 255, 0.08);
     --kbd-shadow-outer-hover: rgba(0, 0, 0, 0.5);
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.4);
   }
 
   .theme {

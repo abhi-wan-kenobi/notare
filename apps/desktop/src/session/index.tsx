@@ -5,7 +5,6 @@ import React, { useEffect, useRef } from "react";
 import { commands as fsSyncCommands } from "@hypr/plugin-fs-sync";
 
 import { ActionItemsPanel } from "./components/action-items";
-import { FloatingActionButton } from "./components/floating";
 import {
   NoteInput,
   shouldShowTranscriptTabSpinner,
@@ -34,6 +33,7 @@ import { useInvalidateAudioOnRecordingFinish } from "./use-invalidate-audio-on-f
 import * as AudioPlayer from "~/audio-player";
 import { BriefCard } from "~/services/briefs";
 import { useSession } from "~/session/queries";
+import { Dock } from "~/shared/dock";
 import { type Tab, useTabs } from "~/store/zustand/tabs";
 import { useListener } from "~/stt/contexts";
 import { consumePendingUpload } from "~/stt/pending-upload";
@@ -168,7 +168,7 @@ function TabContentNoteInner({
   });
   const updateSessionTabState = useTabs((state) => state.updateSessionTabState);
 
-  const { skipReason } = useAutoEnhance(tab);
+  useAutoEnhance(tab);
   const isTranscribing = shouldShowTranscriptTabSpinner(sessionMode);
   const isLiveSessionActive = sessionMode === "active";
   const editorTabs = React.useMemo(
@@ -222,15 +222,7 @@ function TabContentNoteInner({
             }
           />
         }
-        floatingButton={
-          <FloatingActionButton
-            allowListening={!standaloneWindow}
-            audioExists={audioExists}
-            currentView={currentView}
-            skipReason={skipReason}
-            tab={tab}
-          />
-        }
+        floatingButton={<Dock sessionId={tab.id} />}
       >
         <div className="flex h-full min-h-0 flex-col">
           {showTopAudioPlayer ? (
