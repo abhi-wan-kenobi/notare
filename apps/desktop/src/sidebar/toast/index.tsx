@@ -95,9 +95,13 @@ export function ToastArea({
   const clearTransientToast = useTransientToast((state) => state.clearToast);
   const isAiTranscriptionTabActive =
     currentTab?.type === "settings" &&
-    currentTab.state?.tab === "transcription";
+    currentTab.state?.tab === "ai" &&
+    currentTab.state?.section === "transcription";
   const isAiIntelligenceTabActive =
-    currentTab?.type === "settings" && currentTab.state?.tab === "intelligence";
+    currentTab?.type === "settings" &&
+    currentTab.state?.tab === "ai" &&
+    (currentTab.state?.section === "intelligence" ||
+      !currentTab.state?.section);
   const activeTranscriptSessionId =
     currentTab?.type === "sessions" &&
     currentTab.state.view?.type === "transcript"
@@ -120,11 +124,12 @@ export function ToastArea({
   }, [auth]);
 
   const openAiTab = useCallback(
-    (tab: "intelligence" | "transcription") => {
+    (section: "intelligence" | "transcription") => {
+      const state = { tab: "ai" as const, section };
       if (currentTab?.type === "settings") {
-        updateSettingsTabState(currentTab, { tab });
+        updateSettingsTabState(currentTab, state);
       } else {
-        openNew({ type: "settings", state: { tab } });
+        openNew({ type: "settings", state });
       }
     },
     [currentTab, openNew, updateSettingsTabState],

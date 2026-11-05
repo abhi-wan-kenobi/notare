@@ -2,7 +2,7 @@ import "./test-matchers";
 
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-import { type Tab, useTabs } from ".";
+import { type SettingsTab, type Tab, useTabs } from ".";
 import {
   createContactsTab,
   createSettingsTab,
@@ -103,7 +103,7 @@ describe("Basic Tab Actions", () => {
   test("openNew reuses settings tab and updates requested subsection", () => {
     const settings = createSettingsTab({
       active: false,
-      state: { tab: "app" },
+      state: { tab: "general" },
     });
     const session = createSessionTab({ id: "tab1", active: false });
 
@@ -112,22 +112,26 @@ describe("Basic Tab Actions", () => {
     useTabs.getState().openNew(
       createSettingsTab({
         active: false,
-        state: { tab: "notifications" },
+        state: { tab: "general", section: "notifications" },
       }),
     );
 
     const state = useTabs.getState();
     expect(state).toMatchTabsInOrder([
-      { type: "settings", active: true, state: { tab: "notifications" } },
+      {
+        type: "settings",
+        active: true,
+        state: { tab: "general", section: "notifications" },
+      },
       { id: "tab1", active: false, type: "sessions" },
     ]);
     expect(state).toHaveCurrentTab({
       type: "settings",
-      state: { tab: "notifications" },
+      state: { tab: "general", section: "notifications" },
     });
     expect(state).toHaveLastHistoryEntry({
       type: "settings",
-      state: { tab: "notifications" },
+      state: { tab: "general", section: "notifications" },
     });
   });
 
@@ -166,12 +170,12 @@ describe("Basic Tab Actions", () => {
     const openedSession2 = useTabs.getState().currentTab!;
     useTabs.getState().openNew({
       type: "settings",
-      state: { tab: "notifications" },
+      state: { tab: "general", section: "notifications" },
     });
 
     expect(useTabs.getState()).toHaveCurrentTab({
       type: "settings",
-      state: { tab: "notifications" },
+      state: { tab: "general", section: "notifications" },
       returnToSlotId: openedSession2.slotId,
     });
   });
@@ -184,12 +188,12 @@ describe("Basic Tab Actions", () => {
     useTabs.getState().openNew({ type: "settings" });
     useTabs.getState().openNew({
       type: "settings",
-      state: { tab: "notifications" },
+      state: { tab: "general", section: "notifications" },
     });
 
     expect(useTabs.getState()).toHaveCurrentTab({
       type: "settings",
-      state: { tab: "notifications" },
+      state: { tab: "general", section: "notifications" },
       returnToSlotId: openedSession.slotId,
     });
   });
@@ -202,12 +206,12 @@ describe("Basic Tab Actions", () => {
     useTabs.getState().clearSelection();
     useTabs.getState().openNew({
       type: "settings",
-      state: { tab: "notifications" },
+      state: { tab: "general", section: "notifications" },
     });
 
     expect(useTabs.getState()).toHaveCurrentTab({
       type: "settings",
-      state: { tab: "notifications" },
+      state: { tab: "general", section: "notifications" },
     });
     expect(useTabs.getState().currentTab?.returnToSlotId).toBeUndefined();
   });
@@ -241,39 +245,56 @@ describe("Basic Tab Actions", () => {
     expect(useTabs.getState().currentTab?.returnToSlotId).toBeUndefined();
   });
 
-  test("openNew defaults bare settings tabs to app", () => {
+  test("openNew defaults bare settings tabs to general", () => {
     useTabs.getState().openNew({ type: "settings" });
 
     expect(useTabs.getState()).toHaveCurrentTab({
       type: "settings",
-      state: { tab: "app" },
+      state: { tab: "general", section: null },
     });
     expect(useTabs.getState()).toMatchTabsInOrder([
-      { type: "settings", active: true, state: { tab: "app" } },
+      {
+        type: "settings",
+        active: true,
+        state: { tab: "general", section: null },
+      },
     ]);
   });
 
-  test("openNew falls back from removed settings tabs to app", () => {
-    useTabs.getState().openNew({ type: "settings", state: { tab: "lab" } });
+  test("openNew falls back from removed settings tabs to general", () => {
+    useTabs.getState().openNew({
+      type: "settings",
+      state: { tab: "lab" as unknown as SettingsTab },
+    });
 
     expect(useTabs.getState()).toHaveCurrentTab({
       type: "settings",
-      state: { tab: "app" },
+      state: { tab: "general", section: null },
     });
     expect(useTabs.getState()).toMatchTabsInOrder([
-      { type: "settings", active: true, state: { tab: "app" } },
+      {
+        type: "settings",
+        active: true,
+        state: { tab: "general", section: null },
+      },
     ]);
   });
 
-  test("openNew falls back from legacy data settings tab to app", () => {
-    useTabs.getState().openNew({ type: "settings", state: { tab: "data" } });
-
+  test("openNew falls back from legacy data settings tab to account", () => {
+    useTabs.getState().openNew({
+      type: "settings",
+      state: { tab: "data" as unknown as SettingsTab },
+    });
     expect(useTabs.getState()).toHaveCurrentTab({
       type: "settings",
-      state: { tab: "app" },
+      state: { tab: "account", section: "data" },
     });
     expect(useTabs.getState()).toMatchTabsInOrder([
-      { type: "settings", active: true, state: { tab: "app" } },
+      {
+        type: "settings",
+        active: true,
+        state: { tab: "account", section: "data" },
+      },
     ]);
   });
 
@@ -282,10 +303,14 @@ describe("Basic Tab Actions", () => {
 
     expect(useTabs.getState()).toHaveCurrentTab({
       type: "settings",
-      state: { tab: "account" },
+      state: { tab: "account", section: null },
     });
     expect(useTabs.getState()).toMatchTabsInOrder([
-      { type: "settings", active: true, state: { tab: "account" } },
+      {
+        type: "settings",
+        active: true,
+        state: { tab: "account", section: null },
+      },
     ]);
   });
 

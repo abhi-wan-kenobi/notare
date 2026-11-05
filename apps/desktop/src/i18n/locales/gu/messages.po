@@ -122,14 +122,6 @@ msgstr ""
 msgid "{sessionsNeedingSummaryCount} need a summary"
 msgstr ""
 
-#: src/settings/general/account.tsx
-msgid "{trialDaysRemaining} day left"
-msgstr ""
-
-#: src/settings/general/account.tsx
-msgid "{trialDaysRemaining} days left"
-msgstr ""
-
 #: src/settings/ai/llm/disclosure-modal.tsx
 msgid "<0>Account risk:</0> Vendors may modify or disable CLI access at any time, and using these tokens in third-party software carries the risk of affecting your account standing according to the vendor's terms."
 msgstr ""
@@ -170,6 +162,10 @@ msgstr ""
 msgid "30 days"
 msgstr ""
 
+#: src/calendar/components/google/content.tsx
+msgid "6 setup steps in Google Cloud console"
+msgstr ""
+
 #: src/settings/dictation/retention.tsx
 msgid "7 days"
 msgstr ""
@@ -184,6 +180,10 @@ msgstr ""
 
 #: src/dictation/orb.tsx
 msgid "A dark glass sphere lit by a hot caustic band."
+msgstr ""
+
+#: src/settings/index.tsx
+msgid "A few thoughtful controls for your workspace on this device."
 msgstr ""
 
 #: src/dictation/orb.tsx
@@ -234,11 +234,9 @@ msgstr ""
 msgid "Accessibility"
 msgstr ""
 
-#: src/settings/general/account.tsx
-msgid "Account"
-msgstr ""
-
+#: src/settings/index.tsx
 #: src/shared/command-palette/index.tsx
+#: src/sidebar/settings.tsx
 msgid "Account & Storage"
 msgstr ""
 
@@ -360,7 +358,9 @@ msgstr ""
 msgid "After recording"
 msgstr ""
 
+#: src/settings/index.tsx
 #: src/shared/command-palette/index.tsx
+#: src/sidebar/settings.tsx
 msgid "AI & Speech"
 msgstr ""
 
@@ -436,12 +436,15 @@ msgid "API Key"
 msgstr ""
 
 #: src/settings/general/index.tsx
-#: src/sidebar/settings.tsx
 msgid "App"
 msgstr "એપ"
 
 #: src/settings/general/theme.tsx
 msgid "Appearance"
+msgstr ""
+
+#: src/settings/index.tsx
+msgid "Appearance & preferences"
 msgstr ""
 
 #: src/calendar/components/google/content.tsx
@@ -592,12 +595,15 @@ msgstr ""
 #: src/settings/general/permissions.tsx
 #: src/sidebar/calendar.tsx
 #: src/sidebar/index.tsx
-#: src/sidebar/settings.tsx
 msgid "Calendar"
 msgstr ""
 
 #: src/onboarding/index.tsx
 msgid "Calendar connected"
+msgstr ""
+
+#: src/settings/index.tsx
+msgid "Calendar providers"
 msgstr ""
 
 #: src/settings/ai/stt/select.tsx
@@ -606,11 +612,11 @@ msgstr ""
 
 #: src/onboarding/transcription.tsx
 #: src/session/components/outer-header/overflow/schedule-followup.tsx
+#: src/settings/account/index.tsx
 #: src/settings/ai/llm/disclosure-modal.tsx
 #: src/settings/ai/llm/openrouter-sign-in.tsx
 #: src/settings/ai/llm/select.tsx
 #: src/settings/ai/llm/subscription-card.tsx
-#: src/settings/general/account.tsx
 #: src/settings/general/storage/legacy-cleanup.tsx
 #: src/settings/general/storage/notes-location.tsx
 #: src/settings/personalization/dictionary-settings.tsx
@@ -830,10 +836,6 @@ msgstr ""
 msgid "Company"
 msgstr ""
 
-#: src/settings/general/account.tsx
-msgid "Compare Free and Pro before you sign in."
-msgstr ""
-
 #: src/settings/sync/index.tsx
 msgid "Compare the numbers shown on both devices."
 msgstr ""
@@ -844,10 +846,6 @@ msgstr ""
 
 #: src/instruction/index.tsx
 msgid "Complete sign-in in your browser, then return to Notare."
-msgstr ""
-
-#: src/settings/general/account.tsx
-msgid "Complete the sign-in flow in your browser, then come back here if Notare does not reconnect automatically."
 msgstr ""
 
 #: src/instruction/index.tsx
@@ -882,6 +880,10 @@ msgstr ""
 msgid "Confirm pairing"
 msgstr ""
 
+#: src/settings/account/index.tsx
+msgid "Confirm reset"
+msgstr ""
+
 #. placeholder {0}: deviceName || "the other device"
 #: src/settings/sync/index.tsx
 msgid "Confirm with {0}"
@@ -914,12 +916,18 @@ msgstr ""
 msgid "Connect your integration"
 msgstr ""
 
+#: src/calendar/components/google/content.tsx
 #: src/settings/ai/stt/select.tsx
 msgid "Connected"
 msgstr ""
 
+#: src/calendar/components/google/content.tsx
 #: src/settings/gmail/index.tsx
 msgid "Connected Accounts"
+msgstr ""
+
+#: src/settings/index.tsx
+msgid "Connected services"
 msgstr ""
 
 #: src/settings/gmail/index.tsx
@@ -928,12 +936,7 @@ msgstr ""
 
 #: src/sidebar/contacts.tsx
 #: src/sidebar/index.tsx
-#: src/sidebar/settings.tsx
 msgid "Contacts"
-msgstr ""
-
-#: src/sidebar/settings.tsx
-msgid "Context"
 msgstr ""
 
 #: src/onboarding/calendar.tsx
@@ -1073,6 +1076,10 @@ msgstr ""
 msgid "Creating event…"
 msgstr ""
 
+#: src/settings/ai/shared/index.tsx
+msgid "Credentials stored in system keychain"
+msgstr ""
+
 #: src/main/series/index.tsx
 msgid "Current"
 msgstr ""
@@ -1095,6 +1102,14 @@ msgstr ""
 
 #: src/settings/general/theme.tsx
 msgid "Dark"
+msgstr ""
+
+#: src/settings/account/index.tsx
+msgid "Data controls"
+msgstr ""
+
+#: src/settings/account/index.tsx
+msgid "Database & storage"
 msgstr ""
 
 #: src/session/components/outer-header/overflow/schedule-followup.tsx
@@ -1124,6 +1139,14 @@ msgstr ""
 #: src/templates/sections-editor.tsx
 #: src/templates/template-form.tsx
 msgid "Delete"
+msgstr ""
+
+#: src/settings/account/index.tsx
+msgid "Delete all local data"
+msgstr ""
+
+#: src/settings/account/index.tsx
+msgid "Delete all local data?"
 msgstr ""
 
 #: src/sidebar/timeline/item.tsx
@@ -1229,16 +1252,11 @@ msgstr ""
 msgid "Devices"
 msgstr ""
 
-#: src/sidebar/settings.tsx
-msgid "Devices (preview)"
-msgstr ""
-
 #: src/settings/dictation/translation.tsx
 msgid "Dictate in any language, insert the text in {targetLabel}. Requires AI cleanup's language model; falls back to normal cleanup when no model is available."
 msgstr ""
 
 #: src/settings/dictation/index.tsx
-#: src/sidebar/settings.tsx
 #: src/snippets/entry-row.tsx
 msgid "Dictation"
 msgstr ""
@@ -1268,13 +1286,26 @@ msgstr ""
 msgid "Discarded"
 msgstr ""
 
+#: src/calendar/components/google/content.tsx
 #: src/settings/gmail/index.tsx
 #: src/settings/todo/provider-content.tsx
 msgid "Disconnect"
 msgstr ""
 
+#: src/calendar/components/google/content.tsx
+msgid "Disconnect & remove client"
+msgstr ""
+
+#: src/calendar/components/google/content.tsx
+msgid "Disconnect all"
+msgstr ""
+
 #: src/settings/todo/github.tsx
 msgid "Disconnect private repo access."
+msgstr ""
+
+#: src/calendar/components/google/content.tsx
+msgid "Display Google Calendar events on the main calendar view"
 msgstr ""
 
 #: src/settings/general/storage/notes-location.tsx
@@ -1491,14 +1522,6 @@ msgstr ""
 msgid "Enter the instruction prompt for the model... (Use {{selection}} to insert selected text)"
 msgstr ""
 
-#: src/settings/ai/shared/index.tsx
-msgid "Enter your API key"
-msgstr ""
-
-#: src/settings/ai/shared/index.tsx
-msgid "Enter your API key (optional)"
-msgstr ""
-
 #: src/calendar/components/ics/content.tsx
 msgid "event"
 msgstr ""
@@ -1542,12 +1565,17 @@ msgstr ""
 
 #: src/session/components/outer-header/overflow/export-modal.tsx
 #: src/session/components/outer-header/overflow/index.tsx
+#: src/settings/account/index.tsx
 #: src/settings/personalization/dictionary-settings.tsx
 msgid "Export"
 msgstr ""
 
 #: src/settings/personalization/dictionary-settings.tsx
 msgid "Export failed: {exportError}"
+msgstr ""
+
+#: src/settings/account/index.tsx
+msgid "Export notes"
 msgstr ""
 
 #: src/session/components/outer-header/overflow/export-modal.tsx
@@ -1580,6 +1608,10 @@ msgstr ""
 
 #: src/task/resource-view.tsx
 msgid "Failed to load pull request"
+msgstr ""
+
+#: src/settings/ai/shared/index.tsx
+msgid "Failed to save"
 msgstr ""
 
 #: src/settings/ai/stt/shared.tsx
@@ -1621,10 +1653,6 @@ msgstr ""
 
 #: src/instruction/index.tsx
 msgid "Finish checkout in your browser, then return to Notare."
-msgstr ""
-
-#: src/settings/general/account.tsx
-msgid "Finish sign-in"
 msgstr ""
 
 #: src/dictation/host.tsx
@@ -1679,10 +1707,6 @@ msgstr ""
 msgid "Forever"
 msgstr ""
 
-#: src/settings/general/account.tsx
-msgid "Free"
-msgstr ""
-
 #: src/templates/template-icon-picker.tsx
 msgid "Frequently used"
 msgstr ""
@@ -1709,11 +1733,9 @@ msgstr ""
 msgid "Gateway found, but requires authentication. Run <0>omp auth-gateway token</0> to print your bearer token."
 msgstr ""
 
-#: src/sidebar/settings.tsx
-msgid "General"
-msgstr ""
-
+#: src/settings/index.tsx
 #: src/shared/command-palette/index.tsx
+#: src/sidebar/settings.tsx
 msgid "General & System"
 msgstr ""
 
@@ -1734,10 +1756,6 @@ msgstr ""
 msgid "Get notified 5 minutes before calendar events start"
 msgstr ""
 
-#: src/settings/general/account.tsx
-msgid "Get started"
-msgstr ""
-
 #: src/onboarding/account/before-login.tsx
 msgid "Get started for free"
 msgstr ""
@@ -1751,7 +1769,6 @@ msgid "Global shortcut that starts or stops dictation. Click the combo, then pre
 msgstr ""
 
 #: src/settings/gmail/index.tsx
-#: src/sidebar/settings.tsx
 msgid "Gmail (beta)"
 msgstr ""
 
@@ -1828,7 +1845,6 @@ msgstr ""
 msgid "Hide Deleted Events"
 msgstr ""
 
-#: src/calendar/components/google/content.tsx
 #: src/calendar/components/outlook/content.tsx
 msgid "Hide setup steps"
 msgstr ""
@@ -1881,6 +1897,10 @@ msgstr ""
 msgid "Human"
 msgstr ""
 
+#: src/settings/ai/shared/index.tsx
+msgid "ℹ Status: Ready · Keychain protected"
+msgstr ""
+
 #: src/settings/ai/llm/disclosure-modal.tsx
 msgid "I Understand and Accept"
 msgstr ""
@@ -1891,10 +1911,6 @@ msgstr ""
 
 #: src/settings/ai/llm/subscription-card.tsx
 msgid "If the automatic callback did not complete, paste the authorization code from your browser below:"
-msgstr ""
-
-#: src/settings/general/account.tsx
-msgid "If the browser does not reopen Notare, use the paste-link fallback in the sign-in instruction window."
 msgstr ""
 
 #: src/calendar/components/google/content.tsx
@@ -1949,16 +1965,13 @@ msgstr ""
 msgid "Installed"
 msgstr ""
 
-#: src/sidebar/settings.tsx
-msgid "Integrations"
-msgstr ""
-
+#: src/settings/index.tsx
 #: src/shared/command-palette/index.tsx
+#: src/sidebar/settings.tsx
 msgid "Integrations & Sync"
 msgstr ""
 
 #: src/settings/ai/llm/index.tsx
-#: src/sidebar/settings.tsx
 msgid "Intelligence"
 msgstr ""
 
@@ -2018,6 +2031,10 @@ msgstr ""
 msgid "Keeps the microphone open while idle so dictation starts instantly. Your system may show the mic-in-use indicator the whole time."
 msgstr ""
 
+#: src/settings/ai/shared/index.tsx
+msgid "Keychain protected"
+msgstr ""
+
 #: src/settings/sync/index.tsx
 msgid "Label (optional), e.g. \"Work laptop\""
 msgstr ""
@@ -2029,6 +2046,10 @@ msgstr "ભાષા અને પ્રદેશ"
 #: src/settings/general/main-language.tsx
 msgid "Language for summaries, chats, and AI-generated responses"
 msgstr "સારાંશ, ચેટ્સ અને AI-જનરેટેડ પ્રતિસાદો માટેની ભાષા"
+
+#: src/settings/index.tsx
+msgid "Language models"
+msgstr ""
 
 #. placeholder {0}: formatDistanceToNow(new Date(peer.lastSeen * 1000), { addSuffix: true })
 #: src/settings/sync/index.tsx
@@ -2145,8 +2166,24 @@ msgstr ""
 msgid "Loading…"
 msgstr ""
 
+#: src/settings/index.tsx
+msgid "Local integrations"
+msgstr ""
+
 #: src/settings/ai/llm/select.tsx
 msgid "Local models"
+msgstr ""
+
+#: src/settings/account/index.tsx
+msgid "Local profile"
+msgstr ""
+
+#: src/settings/account/index.tsx
+msgid "Local SQLite database on this device"
+msgstr ""
+
+#: src/settings/index.tsx
+msgid "Local system"
 msgstr ""
 
 #: src/settings/ai/llm/routing.tsx
@@ -2177,10 +2214,6 @@ msgstr ""
 msgid "Manage"
 msgstr ""
 
-#: src/settings/general/account.tsx
-msgid "Manage billing"
-msgstr ""
-
 #: src/sidebar/calendar.tsx
 msgid "Manage calendars"
 msgstr ""
@@ -2193,6 +2226,10 @@ msgstr ""
 msgid "Mappings fix recurring misrecognitions in your dictated text — \"far eye\" always becomes \"FarEye\". Flat terms just bias the recognizer toward names or jargon while you speak, without rewriting anything."
 msgstr ""
 
+#: src/settings/account/index.tsx
+msgid "Markdown or JSON · All meetings, summaries, and action items"
+msgstr ""
+
 #: src/settings/webhook/index.tsx
 msgid "Master switch for outbound delivery."
 msgstr ""
@@ -2203,10 +2240,6 @@ msgstr ""
 
 #: src/session/components/note-input/search/bar.tsx
 msgid "Match whole word"
-msgstr ""
-
-#: src/sidebar/settings.tsx
-msgid "MCP Server"
 msgstr ""
 
 #: src/session/components/action-items/index.tsx
@@ -2531,6 +2564,10 @@ msgstr ""
 msgid "No models ready to use."
 msgstr ""
 
+#: src/settings/account/index.tsx
+msgid "No Notare account required"
+msgstr ""
+
 #: src/changelog/index.tsx
 msgid "No notes for this version yet."
 msgstr ""
@@ -2601,6 +2638,10 @@ msgstr ""
 msgid "None"
 msgstr ""
 
+#: src/settings/ai/shared/index.tsx
+msgid "Not configured"
+msgstr ""
+
 #: src/settings/ai/llm/subscription-card.tsx
 msgid "Not connected"
 msgstr ""
@@ -2669,6 +2710,10 @@ msgstr ""
 msgid "Notes only"
 msgstr ""
 
+#: src/settings/account/index.tsx
+msgid "Notes storage & audio retention"
+msgstr ""
+
 #: src/trash/index.tsx
 msgid "Notes you delete land here first and stay until you empty the trash."
 msgstr ""
@@ -2700,7 +2745,7 @@ msgid "Nothing transcribed yet"
 msgstr ""
 
 #: src/settings/general/index.tsx
-#: src/sidebar/settings.tsx
+#: src/settings/index.tsx
 msgid "Notifications"
 msgstr "સૂચના"
 
@@ -2747,6 +2792,10 @@ msgstr ""
 
 #: src/settings/ai/llm/configure.tsx
 msgid "omp gateway not detected"
+msgstr ""
+
+#: src/settings/account/index.tsx
+msgid "On this device"
 msgstr ""
 
 #: src/settings/todo/github.tsx
@@ -2969,7 +3018,6 @@ msgid "permission panel."
 msgstr ""
 
 #: src/settings/general/index.tsx
-#: src/sidebar/settings.tsx
 msgid "Permissions"
 msgstr ""
 
@@ -2981,8 +3029,11 @@ msgstr ""
 msgid "Person"
 msgstr ""
 
+#: src/settings/account/index.tsx
+msgid "Personal workspace"
+msgstr ""
+
 #: src/settings/personalization/index.tsx
-#: src/sidebar/settings.tsx
 msgid "Personalization"
 msgstr ""
 
@@ -3006,16 +3057,12 @@ msgstr ""
 msgid "Pip"
 msgstr ""
 
-#: src/settings/general/account.tsx
-msgid "Plan & Billing"
-msgstr ""
-
-#: src/settings/general/account.tsx
-msgid "Plans"
-msgstr ""
-
 #: src/settings/ai/llm/briefs.tsx
 msgid "Pre-Meeting Briefs"
+msgstr ""
+
+#: src/settings/index.tsx
+msgid "Preferences"
 msgstr ""
 
 #: src/settings/ai/llm/briefs.tsx
@@ -3070,10 +3117,6 @@ msgstr ""
 msgid "Pro"
 msgstr ""
 
-#: src/settings/general/account.tsx
-msgid "Pro trial"
-msgstr ""
-
 #: src/settings/ai/llm/configure.tsx
 msgid "Probing omp gateway…"
 msgstr ""
@@ -3098,8 +3141,13 @@ msgstr ""
 msgid "Re-transcribe with"
 msgstr ""
 
+#: src/settings/ai/shared/index.tsx
 #: src/shared/dock/index.tsx
 msgid "Ready"
+msgstr ""
+
+#: src/settings/ai/shared/index.tsx
+msgid "Ready · Saved"
 msgstr ""
 
 #: src/onboarding/index.tsx
@@ -3118,9 +3166,9 @@ msgstr ""
 msgid "Recent notes"
 msgstr ""
 
+#: src/settings/index.tsx
 #: src/settings/recipes/index.tsx
 #: src/shared/command-palette/index.tsx
-#: src/sidebar/settings.tsx
 msgid "Recipes"
 msgstr ""
 
@@ -3177,10 +3225,6 @@ msgstr ""
 msgid "Reduce background noise on your microphone before transcription. Applies to new sessions only; recordings are always saved unprocessed."
 msgstr ""
 
-#: src/settings/general/account.tsx
-msgid "Refresh billing status"
-msgstr ""
-
 #: src/calendar/components/calendar-selection.tsx
 msgid "Refresh calendars"
 msgstr ""
@@ -3229,6 +3273,10 @@ msgstr ""
 msgid "Remove this device?"
 msgstr ""
 
+#: src/settings/account/index.tsx
+msgid "Removes notes, recordings, and saved credentials from this device"
+msgstr ""
+
 #: src/settings/sync/index.tsx
 msgid "Removing..."
 msgstr ""
@@ -3239,10 +3287,6 @@ msgstr ""
 
 #: src/instruction/index.tsx
 msgid "Reopen in browser"
-msgstr ""
-
-#: src/settings/general/account.tsx
-msgid "Reopen sign-in page"
 msgstr ""
 
 #: src/session/components/note-input/search/bar.tsx
@@ -3299,6 +3343,10 @@ msgstr ""
 msgid "Reset"
 msgstr ""
 
+#: src/settings/account/index.tsx
+msgid "Reset Local Data"
+msgstr ""
+
 #: src/settings/personalization/index.tsx
 msgid "Reset to default"
 msgstr ""
@@ -3350,6 +3398,14 @@ msgstr ""
 msgid "Reuses the live model for batch transcription."
 msgstr ""
 
+#: src/settings/account/index.tsx
+msgid "Reveal in folder"
+msgstr ""
+
+#: src/settings/account/index.tsx
+msgid "Review reset"
+msgstr ""
+
 #: src/dictation/orb.tsx
 msgid "Ring"
 msgstr ""
@@ -3389,6 +3445,10 @@ msgstr ""
 
 #: src/session/components/outer-header/metadata/date.tsx
 msgid "Save date"
+msgstr ""
+
+#: src/settings/ai/shared/index.tsx
+msgid "Saved"
 msgstr ""
 
 #: src/settings/sync/index.tsx
@@ -3621,6 +3681,7 @@ msgstr ""
 msgid "Set up the OAuth consent screen: audience <0>External</0>, then add your own Gmail address as a test user."
 msgstr ""
 
+#: src/settings/index.tsx
 #: src/sidebar/index.tsx
 #: src/sidebar/settings.tsx
 msgid "Settings"
@@ -3679,6 +3740,10 @@ msgstr ""
 msgid "Show in {0}"
 msgstr ""
 
+#: src/calendar/components/google/content.tsx
+msgid "Show in Calendar"
+msgstr ""
+
 #: src/settings/ai/stt/select.tsx
 msgid "Show in file manager"
 msgstr ""
@@ -3708,16 +3773,11 @@ msgid "Show tray icon"
 msgstr ""
 
 #: src/settings/ai/llm/subscription-card.tsx
-#: src/settings/general/account.tsx
 msgid "Sign in"
 msgstr ""
 
 #: src/settings/todo/github.tsx
 msgid "Sign in for private repo access."
-msgstr ""
-
-#: src/settings/general/account.tsx
-msgid "Sign in for Pro"
 msgstr ""
 
 #: src/settings/ai/llm/select.tsx
@@ -3727,14 +3787,6 @@ msgstr ""
 #. placeholder {0}: config.displayName
 #: src/settings/todo/provider-content.tsx
 msgid "Sign in to connect {0}"
-msgstr ""
-
-#: src/settings/general/account.tsx
-msgid "Sign in to Notare"
-msgstr ""
-
-#: src/settings/general/account.tsx
-msgid "Sign in to unlock cloud transcription and AI models, plus Pro features like sharing."
 msgstr ""
 
 #: src/instruction/index.tsx
@@ -3750,22 +3802,16 @@ msgid "Sign in with your Claude, ChatGPT, or Google account to use your subscrip
 msgstr ""
 
 #: src/settings/ai/llm/subscription-card.tsx
-#: src/settings/general/account.tsx
 msgid "Sign out"
 msgstr ""
 
 #: src/onboarding/account/after-login.tsx
 #: src/settings/ai/llm/subscription-card.tsx
-#: src/settings/general/account.tsx
 msgid "Signed in"
 msgstr ""
 
 #: src/settings/ai/llm/subscription-card.tsx
 msgid "Signing in with your browser…"
-msgstr ""
-
-#: src/settings/general/account.tsx
-msgid "Signing out..."
 msgstr ""
 
 #: src/settings/webhook/index.tsx
@@ -3834,6 +3880,10 @@ msgstr ""
 
 #: src/settings/general/app-settings.tsx
 msgid "Speakers"
+msgstr ""
+
+#: src/settings/index.tsx
+msgid "Speech recognition"
 msgstr ""
 
 #: src/settings/general/storage/legacy-cleanup.tsx
@@ -3934,6 +3984,10 @@ msgstr ""
 msgid "Storage Updated"
 msgstr ""
 
+#: src/settings/ai/shared/index.tsx
+msgid "Stored in system keychain"
+msgstr ""
+
 #: src/instruction/index.tsx
 msgid "Submit callback URL"
 msgstr ""
@@ -3996,6 +4050,10 @@ msgstr ""
 msgid "Sync is off, so pairing won't do anything yet. Turn it on above first."
 msgstr ""
 
+#: src/calendar/components/google/content.tsx
+msgid "Sync now"
+msgstr ""
+
 #: src/settings/sync/index.tsx
 msgid "Sync running"
 msgstr ""
@@ -4023,7 +4081,6 @@ msgid "Template content with Jinja2: {{ variable }}, {% if condition %}"
 msgstr ""
 
 #: src/sidebar/index.tsx
-#: src/sidebar/settings.tsx
 #: src/templates/template-sidebar.tsx
 msgid "Templates"
 msgstr ""
@@ -4079,6 +4136,10 @@ msgstr ""
 
 #: src/chat/components/message/loading.tsx
 msgid "Thinking..."
+msgstr ""
+
+#: src/settings/account/index.tsx
+msgid "This action cannot be undone. All notes, transcript recordings, and locally configured API keys will be deleted from this device."
 msgstr ""
 
 #: src/settings/sync/index.tsx
@@ -4156,6 +4217,10 @@ msgstr ""
 msgid "Title"
 msgstr ""
 
+#: src/settings/account/index.tsx
+msgid "To complete resetting local data, quit Notare and clear the data directory, or delete the app support folder."
+msgstr ""
+
 #: src/main/home/index.tsx
 #: src/main/meetings/index.tsx
 #: src/snippets/index.tsx
@@ -4210,7 +4275,6 @@ msgstr ""
 
 #: src/settings/ai/stt/index.tsx
 #: src/settings/general/app-settings.tsx
-#: src/sidebar/settings.tsx
 msgid "Transcription"
 msgstr ""
 
@@ -4245,10 +4309,6 @@ msgstr ""
 
 #: src/templates/template-icon-picker.tsx
 msgid "Travel & Places"
-msgstr ""
-
-#: src/settings/general/account.tsx
-msgid "Trial"
 msgstr ""
 
 #: src/onboarding/account/after-login.tsx
@@ -4421,8 +4481,16 @@ msgstr ""
 msgid "Verification failed. Check the code and try again."
 msgstr ""
 
+#: src/settings/ai/shared/index.tsx
+msgid "Verify & Save"
+msgstr ""
+
 #: src/settings/general/storage/legacy-cleanup.tsx
 msgid "Verifying the SQLite migration status"
+msgstr ""
+
+#: src/settings/ai/shared/index.tsx
+msgid "Verifying…"
 msgstr ""
 
 #. placeholder {0}: update.version ?? ""
@@ -4462,7 +4530,6 @@ msgid "Warm petals that bloom and breathe with your voice."
 msgstr ""
 
 #: src/settings/webhook/index.tsx
-#: src/sidebar/settings.tsx
 msgid "Webhooks"
 msgstr ""
 
@@ -4545,14 +4612,6 @@ msgstr ""
 
 #: src/onboarding/account/after-login.tsx
 msgid "You're on a Pro trial"
-msgstr ""
-
-#: src/settings/general/account.tsx
-msgid "You're on the <0>{planLabel}</0> plan"
-msgstr ""
-
-#: src/settings/general/account.tsx
-msgid "Your Account"
 msgstr ""
 
 #: src/main/meetings/index.tsx

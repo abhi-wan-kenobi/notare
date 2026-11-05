@@ -14,6 +14,7 @@ import { PROVIDERS } from "./shared";
 
 import { isCloudProvider } from "~/ai/scope";
 import { ModelCombobox } from "~/settings/ai/shared/model-combobox";
+import { SettingsExpander } from "~/settings/components";
 import { useAiProvider } from "~/settings/providers";
 import { useSetSettingValues } from "~/settings/queries";
 import { useConfigValues } from "~/shared/config";
@@ -79,11 +80,8 @@ export function ScopedModelSettings() {
 
   return (
     <section>
-      <details className="group flex flex-col gap-4">
-        <summary className="text-muted-foreground hover:text-foreground cursor-pointer text-sm font-medium select-none hover:underline">
-          <Trans>Advanced: per-task models</Trans>
-        </summary>
-        <div className="mt-4 flex flex-col gap-4">
+      <SettingsExpander title={<Trans>Advanced: per-task models</Trans>}>
+        <div className="flex flex-col gap-4">
           <p className="text-muted-foreground text-xs">
             <Trans>
               Override the model used for specific tasks. Anything left on "Use
@@ -171,7 +169,7 @@ export function ScopedModelSettings() {
             />
           </div>
         </div>
-      </details>
+      </SettingsExpander>
     </section>
   );
 }

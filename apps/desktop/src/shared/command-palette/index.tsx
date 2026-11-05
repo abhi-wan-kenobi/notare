@@ -144,9 +144,9 @@ export function OpenNoteDialog({
   const theme = useConfigValue("theme") as ThemePreference;
   const setTheme = useSetSettingValue("theme");
   const settingsHubs: { label: string; tab: SettingsTab }[] = [
-    { label: t`General & System`, tab: "app" },
-    { label: t`AI & Speech`, tab: "intelligence" },
-    { label: t`Integrations & Sync`, tab: "sync" },
+    { label: t`General & System`, tab: "general" },
+    { label: t`AI & Speech`, tab: "ai" },
+    { label: t`Integrations & Sync`, tab: "integrations" },
     { label: t`Account & Storage`, tab: "account" },
   ];
 
@@ -366,7 +366,7 @@ export function OpenNoteDialog({
                     key={tab}
                     value={`${t`Open settings`} ${label}`}
                     label={`${t`Open settings`} · ${label}`}
-                    shortcut={tab === "app" ? `${shortcut},` : undefined}
+                    shortcut={tab === "general" ? `${shortcut},` : undefined}
                     icon={<SettingsIcon />}
                     onSelect={() => openSettings(tab)}
                   />

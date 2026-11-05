@@ -1,11 +1,14 @@
 import { Trans } from "@lingui/react/macro";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { open as selectFile } from "@tauri-apps/plugin-dialog";
+import { RefreshCwIcon } from "lucide-react";
 import { useCallback, useState } from "react";
 
 import { commands as calendarCommands } from "@hypr/plugin-calendar";
 import type { GoogleAccountStatus } from "@hypr/plugin-calendar";
 import { commands as openerCommands } from "@hypr/plugin-opener2";
+import { Button } from "@hypr/ui/components/ui/button";
+import { Switch } from "@hypr/ui/components/ui/switch";
 
 import { useSync } from "../context";
 import {
@@ -14,6 +17,11 @@ import {
 } from "../oauth/calendar-selection";
 import type { CalendarProvider } from "../shared";
 
+import {
+  setCalendarProviderHidden,
+  useHiddenCalendarProviders,
+} from "~/calendar/hidden-providers";
+import { SettingsExpander } from "~/settings/components";
 const STATUS_QUERY_KEY = ["google-calendar-account"];
 
 function useGoogleAccountStatus() {
@@ -256,84 +264,74 @@ const GOOGLE_CREDENTIALS_URL =
  * client JSON comes from.
  */
 function SetupGuide({ docsPath }: { docsPath: string | undefined }) {
-  const [open, setOpen] = useState(false);
-
   return (
-    <div className="flex flex-col gap-1">
-      <button
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-        className="text-muted-foreground hover:text-foreground cursor-pointer self-start text-xs underline transition-colors"
-      >
-        {open ? (
-          <Trans>Hide setup steps</Trans>
-        ) : (
-          <Trans>How do I get this file?</Trans>
-        )}
-      </button>
-      {open && (
-        <div className="border-border bg-muted/40 flex flex-col gap-2 rounded-md border p-2">
-          <ol className="text-muted-foreground list-decimal space-y-1 pl-4 text-xs">
-            <li>
-              <Trans>
-                Create a project in the Google Cloud console (any name, it's
-                free).
-              </Trans>
-            </li>
-            <li>
-              <Trans>Enable the Google Calendar API for that project.</Trans>
-            </li>
-            <li>
-              <Trans>
-                Set up the OAuth consent screen: audience{" "}
-                <span className="text-foreground font-medium">External</span>,
-                then add your own Gmail address as a test user.
-              </Trans>
-            </li>
-            <li>
-              <Trans>
-                Go to Credentials → Create credentials → OAuth client ID.
-              </Trans>
-            </li>
-            <li>
-              <Trans>
-                Application type:{" "}
-                <span className="text-foreground font-medium">Desktop app</span>{" "}
-                — not “Web application”.
-              </Trans>
-            </li>
-            <li>
-              <Trans>Download the JSON, then select it here.</Trans>
-            </li>
-          </ol>
-          <p className="text-xs text-amber-700">
+    <SettingsExpander
+      title={<Trans>How do I get this file?</Trans>}
+      description={<Trans>6 setup steps in Google Cloud console</Trans>}
+    >
+      <div className="border-border bg-muted/40 flex flex-col gap-2 rounded-md border p-3">
+        <ol className="text-muted-foreground list-decimal space-y-1 pl-4 text-xs">
+          <li>
             <Trans>
-              If you see redirect URI / JavaScript origin fields, you picked Web
-              — choose Desktop app instead.
+              Create a project in the Google Cloud console (any name, it's
+              free).
             </Trans>
-          </p>
-          <div className="flex items-center gap-2">
+          </li>
+          <li>
+            <Trans>Enable the Google Calendar API for that project.</Trans>
+          </li>
+          <li>
+            <Trans>
+              Set up the OAuth consent screen: audience{" "}
+              <span className="text-foreground font-medium">External</span>,
+              then add your own Gmail address as a test user.
+            </Trans>
+          </li>
+          <li>
+            <Trans>
+              Go to Credentials → Create credentials → OAuth client ID.
+            </Trans>
+          </li>
+          <li>
+            <Trans>
+              Application type:{" "}
+              <span className="text-foreground font-medium">Desktop app</span> —
+              not “Web application”.
+            </Trans>
+          </li>
+          <li>
+            <Trans>Download the JSON, then select it here.</Trans>
+          </li>
+        </ol>
+        <p className="text-xs text-amber-700">
+          <Trans>
+            If you see redirect URI / JavaScript origin fields, you picked Web —
+            choose Desktop app instead.
+          </Trans>
+        </p>
+        <div className="flex items-center gap-2 pt-1">
+          <button
+            type="button"
+            onClick={() =>
+              void openerCommands.openUrl(GOOGLE_CREDENTIALS_URL, null)
+            }
+            className="text-muted-foreground hover:text-foreground cursor-pointer text-xs underline transition-colors"
+          >
+            <Trans>Open Google Cloud console</Trans>
+          </button>
+          <span className="text-muted-foreground text-xs">·</span>
+          {docsPath && (
             <button
-              onClick={() =>
-                void openerCommands.openUrl(GOOGLE_CREDENTIALS_URL, null)
-              }
+              type="button"
+              onClick={() => void openerCommands.openUrl(docsPath, null)}
               className="text-muted-foreground hover:text-foreground cursor-pointer text-xs underline transition-colors"
             >
-              <Trans>Open Google Cloud console</Trans>
+              <Trans>Full setup guide</Trans>
             </button>
-            <span className="text-muted-foreground text-xs">·</span>
-            {docsPath && (
-              <button
-                onClick={() => void openerCommands.openUrl(docsPath, null)}
-                className="text-muted-foreground hover:text-foreground cursor-pointer text-xs underline transition-colors"
-              >
-                <Trans>Full setup guide</Trans>
-              </button>
-            )}
-          </div>
+          )}
         </div>
-      )}
-    </div>
+      </div>
+    </SettingsExpander>
   );
 }
 
@@ -424,35 +422,72 @@ function ConnectedGoogleContent({
 }) {
   const { groups, handleRefresh, handleToggle, isLoading } =
     useOAuthCalendarSelection(config);
+  const { scheduleSync } = useSync();
+  const hiddenProviderIds = useHiddenCalendarProviders();
+  const isHidden = hiddenProviderIds.includes(config.id);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  const handleManualSync = useCallback(() => {
+    setIsSyncing(true);
+    scheduleSync();
+    handleRefresh();
+    setTimeout(() => setIsSyncing(false), 800);
+  }, [handleRefresh, scheduleSync]);
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="border-border bg-card/50 flex flex-col gap-1.5 rounded-md border p-2">
-        <span className="text-muted-foreground text-[11px] font-medium tracking-wider uppercase">
-          Connected Accounts
+      {/* Status Bar: Connected State + Sync Now Ghost Pill */}
+      <div className="border-border/60 flex items-center justify-between gap-2 border-b pb-2">
+        <div className="flex items-center gap-2">
+          <span className="size-2 shrink-0 rounded-full bg-emerald-500" />
+          <span className="text-xs font-medium text-emerald-600">
+            <Trans>Connected</Trans>
+          </span>
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleManualSync}
+          disabled={isSyncing || isLoading}
+          className="border-border/60 hover:bg-muted text-muted-foreground hover:text-foreground h-7 rounded-full border px-3 text-xs"
+        >
+          <RefreshCwIcon
+            className={`mr-1.5 size-3 ${isSyncing || isLoading ? "animate-spin" : ""}`}
+          />
+          <Trans>Sync now</Trans>
+        </Button>
+      </div>
+
+      {/* Connected Accounts */}
+      <div className="border-border bg-card/50 flex flex-col gap-1.5 rounded-md border p-2.5">
+        <span className="text-muted-foreground text-[10px] font-semibold tracking-wider uppercase">
+          <Trans>Connected Accounts</Trans>
         </span>
         <div className="flex flex-col gap-1">
           {(accounts ?? []).map((acc) => (
             <div
               key={acc.email}
-              className="hover:bg-accent/40 flex items-center justify-between rounded px-1.5 py-1 text-xs"
+              className="hover:bg-accent/40 flex items-center justify-between rounded px-2 py-1 text-xs"
             >
               <span
-                className="max-w-[200px] truncate font-mono text-xs"
+                className="max-w-[220px] truncate font-mono text-xs"
                 title={acc.email}
               >
                 {acc.email}
               </span>
-              <button
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => onDisconnect(acc.email)}
-                className="cursor-pointer text-xs text-red-500 underline hover:text-red-700"
+                className="text-destructive hover:bg-destructive/10 hover:text-destructive h-6 px-2 text-xs"
               >
-                Remove
-              </button>
+                <Trans>Disconnect</Trans>
+              </Button>
             </div>
           ))}
         </div>
         <button
+          type="button"
           onClick={onConnect}
           disabled={isConnecting}
           className="text-muted-foreground hover:text-foreground cursor-pointer self-start pt-1 text-xs underline disabled:opacity-50"
@@ -461,6 +496,7 @@ function ConnectedGoogleContent({
         </button>
       </div>
 
+      {/* Monitored Calendars */}
       <OAuthCalendarSelection
         groups={groups}
         onToggle={handleToggle}
@@ -468,19 +504,42 @@ function ConnectedGoogleContent({
         isLoading={isLoading}
       />
 
+      {/* Hidden-provider toggle */}
+      <div className="border-border/60 flex items-center justify-between border-t pt-2.5">
+        <div className="flex flex-col">
+          <span className="text-xs font-medium">
+            <Trans>Show in Calendar</Trans>
+          </span>
+          <span className="text-muted-foreground text-[11px]">
+            <Trans>
+              Display Google Calendar events on the main calendar view
+            </Trans>
+          </span>
+        </div>
+        <Switch
+          checked={!isHidden}
+          onCheckedChange={(checked) =>
+            void setCalendarProviderHidden(config.id, !checked)
+          }
+          aria-label="Show in Calendar"
+        />
+      </div>
+
       <div className="flex items-center gap-3 pt-1">
         <button
+          type="button"
           onClick={() => onDisconnect()}
-          className="cursor-pointer text-xs text-red-500 underline hover:text-red-700"
+          className="text-destructive hover:text-destructive/80 cursor-pointer text-xs underline"
         >
-          Disconnect all
+          <Trans>Disconnect all</Trans>
         </button>
         <span className="text-muted-foreground text-xs">•</span>
         <button
+          type="button"
           onClick={onReset}
-          className="text-muted-foreground cursor-pointer text-xs underline hover:text-red-500"
+          className="text-muted-foreground hover:text-destructive cursor-pointer text-xs underline"
         >
-          Disconnect & remove client
+          <Trans>Disconnect &amp; remove client</Trans>
         </button>
       </div>
     </div>

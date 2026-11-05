@@ -57,7 +57,7 @@ describe("usePairLinkHandler", () => {
     expect(mocks.openNew).toHaveBeenCalledTimes(1);
     expect(mocks.openNew).toHaveBeenCalledWith({
       type: "settings",
-      state: { tab: "sync" },
+      state: { tab: "integrations", section: "sync" },
     });
   });
 
@@ -85,7 +85,7 @@ describe("usePairLinkHandler", () => {
     expect(usePendingPairLink.getState().link).toBe("notare://pair#warm");
     expect(mocks.openNew).toHaveBeenCalledWith({
       type: "settings",
-      state: { tab: "sync" },
+      state: { tab: "integrations", section: "sync" },
     });
   });
 
