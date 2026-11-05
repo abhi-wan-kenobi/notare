@@ -1,19 +1,25 @@
 import { Trans } from "@lingui/react/macro";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { open as selectFile } from "@tauri-apps/plugin-dialog";
+import { RefreshCwIcon } from "lucide-react";
 import { useCallback, useState } from "react";
 
 import { commands as calendarCommands } from "@hypr/plugin-calendar";
 import type { GoogleAccountStatus } from "@hypr/plugin-calendar";
 import { commands as openerCommands } from "@hypr/plugin-opener2";
+import { Button } from "@hypr/ui/components/ui/button";
+import { Switch } from "@hypr/ui/components/ui/switch";
 
+import {
+  setCalendarProviderHidden,
+  useHiddenCalendarProviders,
+} from "~/calendar/hidden-providers";
 import { useSync } from "../context";
 import {
   OAuthCalendarSelection,
   useOAuthCalendarSelection,
 } from "../oauth/calendar-selection";
 import type { CalendarProvider } from "../shared";
-
 const STATUS_QUERY_KEY = ["google-calendar-account"];
 
 function useGoogleAccountStatus() {
@@ -424,35 +430,72 @@ function ConnectedGoogleContent({
 }) {
   const { groups, handleRefresh, handleToggle, isLoading } =
     useOAuthCalendarSelection(config);
+  const { scheduleSync } = useSync();
+  const hiddenProviderIds = useHiddenCalendarProviders();
+  const isHidden = hiddenProviderIds.includes(config.id);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  const handleManualSync = useCallback(() => {
+    setIsSyncing(true);
+    scheduleSync();
+    handleRefresh();
+    setTimeout(() => setIsSyncing(false), 800);
+  }, [handleRefresh, scheduleSync]);
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="border-border bg-card/50 flex flex-col gap-1.5 rounded-md border p-2">
-        <span className="text-muted-foreground text-[11px] font-medium tracking-wider uppercase">
-          Connected Accounts
+      {/* Status Bar: Connected State + Sync Now Ghost Pill */}
+      <div className="flex items-center justify-between gap-2 border-border/60 border-b pb-2">
+        <div className="flex items-center gap-2">
+          <span className="size-2 rounded-full bg-emerald-500 shrink-0" />
+          <span className="text-xs font-medium text-emerald-600">
+            <Trans>Connected</Trans>
+          </span>
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleManualSync}
+          disabled={isSyncing || isLoading}
+          className="rounded-full border border-border/60 hover:bg-muted text-xs h-7 px-3 text-muted-foreground hover:text-foreground"
+        >
+          <RefreshCwIcon
+            className={`mr-1.5 size-3 ${isSyncing || isLoading ? "animate-spin" : ""}`}
+          />
+          <Trans>Sync now</Trans>
+        </Button>
+      </div>
+
+      {/* Connected Accounts */}
+      <div className="border-border bg-card/50 flex flex-col gap-1.5 rounded-md border p-2.5">
+        <span className="text-muted-foreground text-[10px] font-semibold tracking-wider uppercase">
+          <Trans>Connected Accounts</Trans>
         </span>
         <div className="flex flex-col gap-1">
           {(accounts ?? []).map((acc) => (
             <div
               key={acc.email}
-              className="hover:bg-accent/40 flex items-center justify-between rounded px-1.5 py-1 text-xs"
+              className="hover:bg-accent/40 flex items-center justify-between rounded px-2 py-1 text-xs"
             >
               <span
-                className="max-w-[200px] truncate font-mono text-xs"
+                className="max-w-[220px] truncate font-mono text-xs"
                 title={acc.email}
               >
                 {acc.email}
               </span>
-              <button
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => onDisconnect(acc.email)}
-                className="cursor-pointer text-xs text-red-500 underline hover:text-red-700"
+                className="h-6 px-2 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
               >
-                Remove
-              </button>
+                <Trans>Disconnect</Trans>
+              </Button>
             </div>
           ))}
         </div>
         <button
+          type="button"
           onClick={onConnect}
           disabled={isConnecting}
           className="text-muted-foreground hover:text-foreground cursor-pointer self-start pt-1 text-xs underline disabled:opacity-50"
@@ -461,6 +504,7 @@ function ConnectedGoogleContent({
         </button>
       </div>
 
+      {/* Monitored Calendars */}
       <OAuthCalendarSelection
         groups={groups}
         onToggle={handleToggle}
@@ -468,19 +512,40 @@ function ConnectedGoogleContent({
         isLoading={isLoading}
       />
 
+      {/* Hidden-provider toggle */}
+      <div className="border-border/60 flex items-center justify-between border-t pt-2.5">
+        <div className="flex flex-col">
+          <span className="text-xs font-medium">
+            <Trans>Show in Calendar</Trans>
+          </span>
+          <span className="text-muted-foreground text-[11px]">
+            <Trans>Display Google Calendar events on the main calendar view</Trans>
+          </span>
+        </div>
+        <Switch
+          checked={!isHidden}
+          onCheckedChange={(checked) =>
+            void setCalendarProviderHidden(config.id, !checked)
+          }
+          aria-label="Show in Calendar"
+        />
+      </div>
+
       <div className="flex items-center gap-3 pt-1">
         <button
+          type="button"
           onClick={() => onDisconnect()}
-          className="cursor-pointer text-xs text-red-500 underline hover:text-red-700"
+          className="cursor-pointer text-xs text-destructive underline hover:text-destructive/80"
         >
-          Disconnect all
+          <Trans>Disconnect all</Trans>
         </button>
         <span className="text-muted-foreground text-xs">•</span>
         <button
+          type="button"
           onClick={onReset}
-          className="text-muted-foreground cursor-pointer text-xs underline hover:text-red-500"
+          className="text-muted-foreground cursor-pointer text-xs underline hover:text-destructive"
         >
-          Disconnect & remove client
+          <Trans>Disconnect &amp; remove client</Trans>
         </button>
       </div>
     </div>
