@@ -248,7 +248,7 @@ describe("session SQLite operations", () => {
       sql: string;
       params: unknown[];
     }>;
-    expect(statements).toHaveLength(8);
+    expect(statements).toHaveLength(9);
     expect(
       statements.every((statement) =>
         statement.sql.includes("deleted_at IS NULL"),
@@ -265,7 +265,7 @@ describe("session SQLite operations", () => {
     mocks.execute.mockResolvedValueOnce([
       { id: "session-1", title: "Planning" },
     ]);
-    mocks.executeTransaction.mockResolvedValueOnce([0, 0, 0, 0, 0, 0, 0, 0]);
+    mocks.executeTransaction.mockResolvedValueOnce([0, 0, 0, 0, 0, 0, 0, 0, 0]);
 
     await expect(softDeleteSession("session-1")).resolves.toBeNull();
   });
@@ -316,7 +316,7 @@ describe("session SQLite operations", () => {
   });
 
   it("restores only rows carrying the deletion's exact tombstone", async () => {
-    mocks.executeTransaction.mockResolvedValueOnce([1, 1, 1, 1, 1, 1, 1, 1]);
+    mocks.executeTransaction.mockResolvedValueOnce([1, 1, 1, 1, 1, 1, 1, 1, 1]);
     await restoreDeletedSession({
       session: { id: "session-1", title: "Planning" },
       tombstone: "2026-07-10T12:00:00.000Z",
@@ -327,7 +327,7 @@ describe("session SQLite operations", () => {
       sql: string;
       params: unknown[];
     }>;
-    expect(statements).toHaveLength(8);
+    expect(statements).toHaveLength(9);
     expect(
       statements.every((statement) => statement.sql.includes("deleted_at = ?")),
     ).toBe(true);

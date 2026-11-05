@@ -12,7 +12,6 @@ import { useChatAutoScroll } from "./use-chat-auto-scroll";
 import type { ContextRef } from "~/chat/context/entities";
 import { chatFloatingControlClassNames } from "~/chat/surface";
 import type { HyprUIMessage } from "~/chat/types";
-import { useShell } from "~/contexts/shell";
 
 export function ChatBody({
   messages,
@@ -35,9 +34,6 @@ export function ChatBody({
     contextRefs?: ContextRef[],
   ) => void;
 }) {
-  const { chat } = useShell();
-  const isRightPanel = chat.mode === "RightPanelOpen";
-  const isFloating = chat.mode === "FloatingOpen";
   const {
     contentRef,
     isAtBottom,
@@ -49,30 +45,17 @@ export function ChatBody({
   } = useChatAutoScroll(status);
 
   return (
-    <div
-      className={cn([
-        "relative flex min-h-0 flex-col",
-        isRightPanel ? "flex-1" : "flex-auto",
-      ])}
-    >
+    <div className="relative flex min-h-0 flex-1 flex-col">
       <div
         ref={scrollRef}
         onScroll={updateAutoScrollState}
         onWheel={handleWheel}
-        className={cn([
-          "flex min-h-0 flex-col overflow-y-auto",
-          isRightPanel ? "flex-1" : "max-h-[min(36rem,70vh)] flex-auto",
-        ])}
+        className="flex min-h-0 flex-1 flex-col overflow-y-auto"
       >
         <div
           ref={contentRef}
-          className={cn([
-            "flex flex-col",
-            isRightPanel && "min-h-full flex-1",
-            isRightPanel ? "px-3 py-5" : "px-3 py-3",
-          ])}
+          className="flex min-h-full flex-1 flex-col px-3 py-5"
         >
-          {!isFloating && <div className="flex-1" />}
           {messages.length === 0 ? (
             <ChatBodyEmpty
               isModelConfigured={isModelConfigured}

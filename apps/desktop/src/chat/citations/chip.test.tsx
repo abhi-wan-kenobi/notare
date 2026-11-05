@@ -93,4 +93,38 @@ describe("CitationChip", () => {
     expect(onNavigate).toHaveBeenCalledWith("session-1", 30000);
     expect(pendingSeek.requestSeek).not.toHaveBeenCalled();
   });
+
+  it("renders timestamp variant as ▸ mm:ss and seeks the active session", () => {
+    const seekListener = vi.fn();
+    window.addEventListener("notare:seek", seekListener);
+
+    useTabs.setState({
+      currentTab: {
+        type: "sessions",
+        id: "active-session",
+        state: { view: null, autoStart: false },
+        active: true,
+        slotId: "default",
+        pinned: false,
+      },
+    });
+
+    render(<CitationChip ms={75000} variant="timestamp" />);
+
+    const button = screen.getByRole("button");
+    expect(button.textContent).toContain("▸");
+    expect(button.textContent).toContain("01:15");
+
+    fireEvent.click(button);
+
+    expect(pendingSeek.requestSeek).toHaveBeenCalledWith(
+      "active-session",
+      75000,
+    );
+    expect(seekListener).toHaveBeenCalledTimes(1);
+    const event = seekListener.mock.calls[0][0] as CustomEvent;
+    expect(event.detail).toEqual({ ms: 75000, sessionId: "active-session" });
+
+    window.removeEventListener("notare:seek", seekListener);
+  });
 });

@@ -1,4 +1,6 @@
+import { useLingui } from "@lingui/react/macro";
 import { format } from "date-fns";
+import { RepeatIcon } from "lucide-react";
 import { useCallback, useMemo } from "react";
 
 import { Button } from "@hypr/ui/components/ui/button";
@@ -25,10 +27,15 @@ import { useTabs } from "~/store/zustand/tabs";
 export function EventChip({
   eventId,
   event,
+  className,
+  showTime = true,
 }: {
   eventId: string;
   event: TimelineEventRow | undefined;
+  className?: string;
+  showTime?: boolean;
 }) {
+  const { t } = useLingui();
   const tz = useTimezone();
   const { ignoreEvent, ignoreSeries } = useIgnoredEvents();
   const title = event?.title ?? undefined;
@@ -87,29 +94,40 @@ export function EventChip({
       <PopoverTrigger asChild>
         {isAllDay ? (
           <button
-            className={cn([
+            className={cn(
               "text-primary-foreground w-full truncate rounded px-1.5 py-0.5 text-left text-xs leading-tight",
               "cursor-pointer select-none hover:opacity-80",
-            ])}
-            style={{ backgroundColor: color }}
+              className,
+            )}
+            style={{ backgroundColor: color, borderLeftColor: color }}
             onContextMenu={showContextMenu}
           >
             {title}
           </button>
         ) : (
           <button
-            className={cn([
+            className={cn(
               "flex w-full items-center gap-1 rounded pl-0.5 text-left text-xs leading-tight",
               "cursor-pointer select-none hover:opacity-80",
-            ])}
+              className,
+            )}
+            style={{ borderLeftColor: color }}
             onContextMenu={showContextMenu}
           >
             <div
               className="w-[2.5px] shrink-0 self-stretch rounded-full"
               style={{ backgroundColor: color }}
             />
-            <span className="truncate">{title}</span>
-            {startedAt && (
+            <span className="min-w-0 flex-1 truncate">{title}</span>
+            {recurrenceSeriesId && (
+              <span
+                title={t`Recurring event`}
+                className="text-muted-foreground shrink-0"
+              >
+                <RepeatIcon className="size-3" />
+              </span>
+            )}
+            {showTime && startedAt && (
               <span className="text-muted-foreground ml-auto shrink-0 font-mono">
                 {startedAt}
               </span>

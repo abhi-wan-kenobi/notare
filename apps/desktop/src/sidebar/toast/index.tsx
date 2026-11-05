@@ -38,7 +38,7 @@ type ElementRect = {
 };
 
 const DEFAULT_TOP_OFFSET_PX = 56;
-const LEFT_SIDEBAR_TOP_OFFSET_PX = 36;
+const CANVAS_TOP_MARGIN_PX = 16;
 const MAIN_SURFACE_SELECTOR = "[data-chat-floating-anchor]";
 const MAIN_CONTENT_PANEL_SELECTOR = "[data-main-content-panel]";
 
@@ -95,9 +95,13 @@ export function ToastArea({
   const clearTransientToast = useTransientToast((state) => state.clearToast);
   const isAiTranscriptionTabActive =
     currentTab?.type === "settings" &&
-    currentTab.state?.tab === "transcription";
+    currentTab.state?.tab === "ai" &&
+    currentTab.state?.section === "transcription";
   const isAiIntelligenceTabActive =
-    currentTab?.type === "settings" && currentTab.state?.tab === "intelligence";
+    currentTab?.type === "settings" &&
+    currentTab.state?.tab === "ai" &&
+    (currentTab.state?.section === "intelligence" ||
+      !currentTab.state?.section);
   const activeTranscriptSessionId =
     currentTab?.type === "sessions" &&
     currentTab.state.view?.type === "transcript"
@@ -120,11 +124,12 @@ export function ToastArea({
   }, [auth]);
 
   const openAiTab = useCallback(
-    (tab: "intelligence" | "transcription") => {
+    (section: "intelligence" | "transcription") => {
+      const state = { tab: "ai" as const, section };
       if (currentTab?.type === "settings") {
-        updateSettingsTabState(currentTab, { tab });
+        updateSettingsTabState(currentTab, state);
       } else {
-        openNew({ type: "settings", state: { tab } });
+        openNew({ type: "settings", state });
       }
     },
     [currentTab, openNew, updateSettingsTabState],
@@ -417,8 +422,10 @@ function getMainSurfacePosition({
     left:
       anchor === "main-content-panel" || placement === "left-sidebar"
         ? horizontalAnchorRect.left + horizontalAnchorRect.width / 2
-        : `calc(50% + ${contentOffset}px)`,
-    top: verticalAnchorRect.top + LEFT_SIDEBAR_TOP_OFFSET_PX,
+        : mainSurfaceRect
+          ? mainSurfaceRect.left + mainSurfaceRect.width / 2
+          : `calc(50% + ${contentOffset}px)`,
+    top: verticalAnchorRect.top + CANVAS_TOP_MARGIN_PX,
   };
 }
 
@@ -433,7 +440,7 @@ function getFallbackPosition({
     left: `calc(50% + ${contentOffset}px)`,
     top:
       placement === "left-sidebar"
-        ? LEFT_SIDEBAR_TOP_OFFSET_PX
+        ? CANVAS_TOP_MARGIN_PX
         : DEFAULT_TOP_OFFSET_PX,
   };
 }

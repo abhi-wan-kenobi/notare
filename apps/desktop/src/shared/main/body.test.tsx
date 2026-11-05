@@ -7,6 +7,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("@tauri-apps/plugin-os", () => ({ platform: () => "linux" }));
 const mocks = vi.hoisted(() => ({
   createNewNote: vi.fn(),
   openNew: vi.fn(),
@@ -133,6 +134,7 @@ vi.mock("~/main/shell-sidebar", () => ({
 
 vi.mock("~/contexts/shell", () => ({
   useShell: () => ({
+    inspector: { open: false, toggle: vi.fn() },
     leftsidebar: {
       expanded: mocks.leftSidebarExpanded,
       toggleExpanded: mocks.toggleLeftSidebar,
@@ -140,7 +142,7 @@ vi.mock("~/contexts/shell", () => ({
   }),
 }));
 
-vi.mock("~/shared/open-note-dialog", () => ({
+vi.mock("~/shared/command-palette", () => ({
   useOpenNoteDialog: () => ({
     open: mocks.openSearch,
   }),

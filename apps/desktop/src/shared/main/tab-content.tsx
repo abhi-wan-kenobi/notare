@@ -3,6 +3,9 @@ import { TabContentChangelog } from "~/changelog";
 import { TabContentContact } from "~/contacts";
 import { TabContentHuman } from "~/contacts/humans";
 import { TabContentEdit } from "~/edit";
+import { TabContentActionItems } from "~/main/action-items";
+import { TabContentMeetings } from "~/main/meetings";
+import { TabContentSeries } from "~/main/series";
 import { TabContentOnboarding } from "~/onboarding";
 import { TabContentSearch } from "~/search/page";
 import { TabContentNote } from "~/session";
@@ -34,6 +37,15 @@ export function MainTabContent({ tab }: { tab: Tab }) {
   }
   if (tab.type === "trash") {
     return <TabContentTrash />;
+  }
+  if (tab.type === "meetings") {
+    return <TabContentMeetings />;
+  }
+  if (tab.type === "action-items") {
+    return <TabContentActionItems />;
+  }
+  if (tab.type === "series") {
+    return <TabContentSeries tab={tab} />;
   }
   if (tab.type === "changelog") {
     return <TabContentChangelog tab={tab} />;

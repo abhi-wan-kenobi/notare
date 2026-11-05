@@ -1,8 +1,15 @@
 import { Icon } from "@iconify-icon/react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { type AnyFieldApi, useForm } from "@tanstack/react-form";
-import { ExternalLink } from "lucide-react";
-import type { ReactNode } from "react";
+import {
+  AlertCircleIcon,
+  CheckCircle2Icon,
+  ExternalLink,
+  EyeIcon,
+  EyeOffIcon,
+  Loader2Icon,
+} from "lucide-react";
+import { type ReactNode, useState } from "react";
 import { Streamdown } from "streamdown";
 
 import { commands as analyticsCommands } from "@hypr/plugin-analytics";
@@ -13,8 +20,10 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@hypr/ui/components/ui/accordion";
+import { Button } from "@hypr/ui/components/ui/button";
 import {
   InputGroup,
+  InputGroupButton,
   InputGroupInput,
 } from "@hypr/ui/components/ui/input-group";
 import {
@@ -32,6 +41,7 @@ import {
 } from "./eligibility";
 
 import { useBillingAccess } from "~/auth/billing";
+import { SettingsExpander } from "~/settings/components";
 import {
   useAiProvider,
   useAiProviders,
@@ -173,6 +183,11 @@ export function NonHyprProviderCard({
     providers,
   );
 
+  const [saveStatus, setSaveStatus] = useState<
+    "idle" | "verifying" | "saved" | "error"
+  >("idle");
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+
   const requiredFields = getRequiredConfigFields(config.requirements);
   const showApiKey = requiredFields.includes("api_key");
   const showBaseUrl = requiredFields.includes("base_url");
@@ -197,15 +212,25 @@ export function NonHyprProviderCard({
         base_url: config.baseUrl ?? "",
         api_key: "",
       } satisfies AIProvider),
-    listeners: {
-      onChange: ({ formApi }) => {
-        queueMicrotask(() => {
-          void formApi.handleSubmit();
-        });
-      },
-    },
     validators: { onChange: aiProviderSchema },
   });
+
+  const handleVerifyAndSave = async () => {
+    setSaveStatus("verifying");
+    setStatusMessage(null);
+    try {
+      await form.handleSubmit();
+      setSaveStatus("saved");
+      setStatusMessage(t`Ready · Saved`);
+      setTimeout(() => {
+        setSaveStatus("idle");
+        setStatusMessage(null);
+      }, 3000);
+    } catch (err) {
+      setSaveStatus("error");
+      setStatusMessage(err instanceof Error ? err.message : t`Failed to save`);
+    }
+  };
 
   return (
     <AccordionItem
@@ -223,10 +248,25 @@ export function NonHyprProviderCard({
             "text-muted-foreground cursor-not-allowed",
         ])}
       >
-        <div className="flex items-center gap-2">
-          <ProviderIconSlot>{config.icon}</ProviderIconSlot>
-          <span>{config.displayName}</span>
-          {config.badge && <ProviderBadge badge={config.badge} />}
+        <div className="flex flex-1 items-center justify-between gap-2 pr-2">
+          <div className="flex items-center gap-2">
+            <ProviderIconSlot>{config.icon}</ProviderIconSlot>
+            <span>{config.displayName}</span>
+            {config.badge && <ProviderBadge badge={config.badge} />}
+          </div>
+          <div className="flex items-center gap-2 normal-case">
+            {isConfigured ? (
+              <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-600">
+                <span className="size-2 rounded-full bg-emerald-500" />
+                <Trans>Ready</Trans>
+              </span>
+            ) : (
+              <span className="text-muted-foreground inline-flex items-center gap-1.5 text-xs">
+                <span className="bg-muted-foreground/30 size-2 rounded-full" />
+                <Trans>Not configured</Trans>
+              </span>
+            )}
+          </div>
         </div>
       </AccordionTrigger>
       <AccordionContent
@@ -262,8 +302,9 @@ export function NonHyprProviderCard({
                 <FormField
                   field={field}
                   label={t`API Key`}
-                  placeholder={t`Enter your API key`}
+                  placeholder={t`Stored in system keychain`}
                   type="password"
+                  hint={<Trans>Keychain protected</Trans>}
                 />
               )}
             </form.Field>
@@ -306,11 +347,8 @@ export function NonHyprProviderCard({
             </div>
           )}
           {((!showBaseUrl && config.baseUrl) || !showApiKey) && (
-            <details className="flex flex-col gap-4 pt-2">
-              <summary className="text-muted-foreground hover:text-foreground cursor-pointer text-xs hover:underline">
-                <Trans>Advanced</Trans>
-              </summary>
-              <div className="mt-4 flex flex-col gap-4">
+            <SettingsExpander title={<Trans>Advanced</Trans>}>
+              <div className="flex flex-col gap-4">
                 {!showBaseUrl && config.baseUrl && (
                   <form.Field name="base_url">
                     {(field) => <FormField field={field} label={t`Base URL`} />}
@@ -322,15 +360,61 @@ export function NonHyprProviderCard({
                       <FormField
                         field={field}
                         label={t`API Key`}
-                        placeholder={t`Enter your API key (optional)`}
+                        placeholder={t`Stored in system keychain`}
                         type="password"
+                        hint={<Trans>Keychain protected</Trans>}
                       />
                     )}
                   </form.Field>
                 )}
               </div>
-            </details>
+            </SettingsExpander>
           )}
+
+          {/* Solid Pill Action Bar with inline status */}
+          <div className="border-border/60 flex items-center justify-between border-t pt-3">
+            <div className="flex items-center gap-2 text-xs">
+              {saveStatus === "verifying" && (
+                <span className="text-muted-foreground flex items-center gap-1.5">
+                  <Loader2Icon className="size-3.5 animate-spin" />
+                  <Trans>Verifying…</Trans>
+                </span>
+              )}
+              {saveStatus === "saved" && (
+                <span className="flex items-center gap-1.5 font-medium text-emerald-600">
+                  <CheckCircle2Icon className="size-3.5" />
+                  <span>{statusMessage ?? <Trans>Saved</Trans>}</span>
+                </span>
+              )}
+              {saveStatus === "error" && (
+                <span className="text-destructive flex items-center gap-1.5 font-medium">
+                  <AlertCircleIcon className="size-3.5" />
+                  <span>{statusMessage ?? <Trans>Failed to save</Trans>}</span>
+                </span>
+              )}
+              {saveStatus === "idle" && (
+                <span className="text-muted-foreground text-[11px]">
+                  {isConfigured ? (
+                    <Trans>ℹ Status: Ready · Keychain protected</Trans>
+                  ) : (
+                    <Trans>Credentials stored in system keychain</Trans>
+                  )}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-3">
+              <Button
+                type="button"
+                onClick={() => void handleVerifyAndSave()}
+                disabled={
+                  saveStatus === "verifying" || locked || config.disabled
+                }
+                className="bg-primary text-primary-foreground hover:bg-primary/90 h-8 rounded-full px-4 text-xs font-medium shadow-xs"
+              >
+                <Trans>Verify &amp; Save</Trans>
+              </Button>
+            </div>
+          </div>
         </form>
       </AccordionContent>
     </AccordionItem>
@@ -442,12 +526,22 @@ function FormField({
   label,
   placeholder,
   type,
+  hint,
 }: {
   field: AnyFieldApi;
   label: string;
   placeholder?: string;
   type?: string;
+  hint?: ReactNode;
 }) {
+  const [showPassword, setShowPassword] = useState(false);
+  const isPassword = type === "password";
+  const effectiveType = isPassword
+    ? showPassword
+      ? "text"
+      : "password"
+    : type;
+
   const {
     meta: { errors, isTouched },
   } = field.state;
@@ -462,16 +556,30 @@ function FormField({
 
   return (
     <div className="flex flex-col gap-2">
-      <label className="block text-xs font-medium">{label}</label>
+      <div className="flex items-center justify-between">
+        <label className="block text-xs font-medium">{label}</label>
+        {hint && (
+          <span className="text-muted-foreground text-[11px]">{hint}</span>
+        )}
+      </div>
       <InputGroup className="bg-card">
         <InputGroupInput
           name={field.name}
-          type={type}
+          type={effectiveType}
           value={field.state.value}
           onChange={(e) => field.handleChange(e.target.value)}
           placeholder={placeholder}
           aria-invalid={hasError}
         />
+        {isPassword && (
+          <InputGroupButton
+            type="button"
+            onClick={() => setShowPassword((prev) => !prev)}
+            aria-label={showPassword ? "Hide password" : "Show password"}
+          >
+            {showPassword ? <EyeOffIcon size={14} /> : <EyeIcon size={14} />}
+          </InputGroupButton>
+        )}
       </InputGroup>
       {errorMessage && (
         <p className="text-destructive flex items-center gap-1.5 text-xs">

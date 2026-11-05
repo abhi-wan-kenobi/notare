@@ -38,6 +38,7 @@ export const WordSpan = memo(function WordSpan(props: WordSpanProps) {
       onClick={() => canSeek && props.onClickWord(props.word)}
       className={className}
       data-word-id={props.word.id}
+      data-word-start-ms={props.word.start_ms}
     >
       {content}
     </span>

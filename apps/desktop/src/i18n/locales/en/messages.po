@@ -31,20 +31,68 @@ msgstr "(default: 8787)"
 msgid "(default)"
 msgstr "(default)"
 
+#. placeholder {0}: attendees.length === 1 ? "attendee" : "attendees"
+#: src/session/meeting-detail.tsx
+msgid "{0}"
+msgstr "{0}"
+
 #. placeholder {0}: sessions.length
 #: src/trash/index.tsx
 msgid "{0} item(s)"
 msgstr "{0} item(s)"
+
+#. placeholder {0}: attendee.name
+#: src/main/series/index.tsx
+msgid "{0} joined this series."
+msgstr "{0} joined this series."
+
+#. placeholder {0}: attendee.name
+#: src/main/series/index.tsx
+msgid "{0} left this series."
+msgstr "{0} left this series."
+
+#. placeholder {0}: occurrences.length
+#: src/main/series/index.tsx
+msgid "{0} meetings"
+msgstr "{0} meetings"
+
+#. placeholder {0}: occurrences.length
+#: src/main/series/index.tsx
+msgid "{0} meetings · newest first"
+msgstr "{0} meetings · newest first"
+
+#. placeholder {0}: meeting.action_count
+#: src/main/meetings/index.tsx
+msgid "{0} open"
+msgstr "{0} open"
+
+#. placeholder {0}: occurrence.open_item_count
+#: src/main/series/index.tsx
+msgid "{0} open actions"
+msgstr "{0} open actions"
 
 #. placeholder {0}: issue.user?.login
 #: src/task/resource-view.tsx
 msgid "{0} opened on"
 msgstr "{0} opened on"
 
+#. placeholder {0}: carryOver.length
+#: src/main/series/index.tsx
+msgid "{0} still open"
+msgstr "{0} still open"
+
 #. placeholder {0}: status.fileCount
 #: src/settings/general/storage/legacy-cleanup.tsx
 msgid "{0} verified legacy files can be removed"
 msgstr "{0} verified legacy files can be removed"
+
+#: src/main/meetings/index.tsx
+msgid "{attendeeCount} attendee"
+msgstr "{attendeeCount} attendee"
+
+#: src/main/meetings/index.tsx
+msgid "{attendeeCount} attendees"
+msgstr "{attendeeCount} attendees"
 
 #: src/settings/personalization/dictionary-settings.tsx
 msgid "{duplicateCandidateCount} already in your dictionary — skipped."
@@ -54,13 +102,25 @@ msgstr "{duplicateCandidateCount} already in your dictionary — skipped."
 msgid "{minutes} min"
 msgstr "{minutes} min"
 
-#: src/settings/general/account.tsx
-msgid "{trialDaysRemaining} day left"
-msgstr "{trialDaysRemaining} day left"
+#: src/main/home/index.tsx
+msgid "{openActionItemsCount} open action items"
+msgstr "{openActionItemsCount} open action items"
 
-#: src/settings/general/account.tsx
-msgid "{trialDaysRemaining} days left"
-msgstr "{trialDaysRemaining} days left"
+#: src/main/action-items/index.tsx
+msgid "{openCount} open"
+msgstr "{openCount} open"
+
+#: src/main/home/index.tsx
+msgid "{recordedThisWeekCount} recorded this week"
+msgstr "{recordedThisWeekCount} recorded this week"
+
+#: src/main/home/index.tsx
+msgid "{scheduledTodayCount} scheduled today"
+msgstr "{scheduledTodayCount} scheduled today"
+
+#: src/main/home/index.tsx
+msgid "{sessionsNeedingSummaryCount} need a summary"
+msgstr "{sessionsNeedingSummaryCount} need a summary"
 
 #: src/settings/ai/llm/disclosure-modal.tsx
 msgid "<0>Account risk:</0> Vendors may modify or disable CLI access at any time, and using these tokens in third-party software carries the risk of affecting your account standing according to the vendor's terms."
@@ -102,6 +162,10 @@ msgstr "3 days"
 msgid "30 days"
 msgstr "30 days"
 
+#: src/calendar/components/google/content.tsx
+msgid "6 setup steps in Google Cloud console"
+msgstr "6 setup steps in Google Cloud console"
+
 #: src/settings/dictation/retention.tsx
 msgid "7 days"
 msgstr "7 days"
@@ -110,9 +174,17 @@ msgstr "7 days"
 msgid "90 days"
 msgstr "90 days"
 
+#: src/main/home/index.tsx
+msgid "A clear view of the day."
+msgstr "A clear view of the day."
+
 #: src/dictation/orb.tsx
 msgid "A dark glass sphere lit by a hot caustic band."
 msgstr "A dark glass sphere lit by a hot caustic band."
+
+#: src/settings/index.tsx
+msgid "A few thoughtful controls for your workspace on this device."
+msgstr "A few thoughtful controls for your workspace on this device."
 
 #: src/dictation/orb.tsx
 msgid "A friendly blob that listens through its face."
@@ -162,17 +234,31 @@ msgstr "Aa"
 msgid "Accessibility"
 msgstr "Accessibility"
 
-#: src/settings/general/account.tsx
-msgid "Account"
-msgstr "Account"
+#: src/settings/index.tsx
+#: src/shared/command-palette/index.tsx
+#: src/sidebar/settings.tsx
+msgid "Account & Storage"
+msgstr "Account & Storage"
 
+#: src/main/series/index.tsx
+msgid "Action closed"
+msgstr "Action closed"
+
+#: src/main/action-items/index.tsx
 #: src/session/components/action-items/index.tsx
+#: src/session/meeting-detail.tsx
+#: src/shared/command-palette/index.tsx
+#: src/sidebar/index.tsx
 msgid "Action items"
 msgstr "Action items"
 
 #: src/settings/webhook/index.tsx
 msgid "Action items updated"
 msgstr "Action items updated"
+
+#: src/shared/command-palette/index.tsx
+msgid "Actions"
+msgstr "Actions"
 
 #: src/settings/ai/stt/select.tsx
 msgid "Activate"
@@ -272,6 +358,12 @@ msgstr "Advanced: per-task models"
 msgid "After recording"
 msgstr "After recording"
 
+#: src/settings/index.tsx
+#: src/shared/command-palette/index.tsx
+#: src/sidebar/settings.tsx
+msgid "AI & Speech"
+msgstr "AI & Speech"
+
 #: src/settings/dictation/index.tsx
 msgid "AI cleanup"
 msgstr "AI cleanup"
@@ -288,14 +380,24 @@ msgstr "AI cleanup isn't using a language model right now, so translation will f
 msgid "AI-generated summary of all interactions and notes with this contact will appear here. This will synthesize key discussion points, action items, and relationship context across all meetings and notes."
 msgstr "AI-generated summary of all interactions and notes with this contact will appear here. This will synthesize key discussion points, action items, and relationship context across all meetings and notes."
 
+#: src/main/meetings/index.tsx
+msgid "All"
+msgstr "All"
+
 #. placeholder {0}: sessions.length
 #: src/trash/index.tsx
 msgid "All {0} trashed items will be permanently deleted. This cannot be undone."
 msgstr "All {0} trashed items will be permanently deleted. This cannot be undone."
 
-#: src/shared/open-note-dialog.tsx
-msgid "All Notes"
-msgstr "All Notes"
+#: src/calendar/components/week-view.tsx
+#: src/sidebar/calendar.tsx
+msgid "All day"
+msgstr "All day"
+
+#: src/main/home/index.tsx
+#: src/shared/command-palette/index.tsx
+msgid "All meetings"
+msgstr "All meetings"
 
 #: src/onboarding/permissions.tsx
 msgid "Allow access"
@@ -334,13 +436,16 @@ msgid "API Key"
 msgstr "API Key"
 
 #: src/settings/general/index.tsx
-#: src/sidebar/settings.tsx
 msgid "App"
 msgstr "App"
 
 #: src/settings/general/theme.tsx
 msgid "Appearance"
 msgstr "Appearance"
+
+#: src/settings/index.tsx
+msgid "Appearance & preferences"
+msgstr "Appearance & preferences"
 
 #: src/calendar/components/google/content.tsx
 msgid "Application type: <0>Desktop app</0> — not “Web application”."
@@ -363,18 +468,25 @@ msgstr "Are you sure you want to delete \"{0}\"? This action cannot be undone."
 msgid "Ask & search about anything, or be creative!"
 msgstr "Ask & search about anything, or be creative!"
 
-#: src/chat/components/input/index.tsx
-#: src/shared/chat-cta.tsx
-msgid "Ask anything"
-msgstr "Ask anything"
-
-#: src/shared/chat-cta.tsx
-msgid "Ask Notare anything"
-msgstr "Ask Notare anything"
+#: src/shared/dock/index.tsx
+msgid "Ask anything across your meetings…"
+msgstr "Ask anything across your meetings…"
 
 #: src/task/resource-view.tsx
 msgid "Assignees:"
 msgstr "Assignees:"
+
+#: src/session/meeting-detail.tsx
+msgid "At a glance"
+msgstr "At a glance"
+
+#: src/main/series/index.tsx
+msgid "Attendee joined"
+msgstr "Attendee joined"
+
+#: src/main/series/index.tsx
+msgid "Attendee left"
+msgstr "Attendee left"
 
 #: src/session/components/outer-header/overflow/schedule-followup.tsx
 msgid "Attendees"
@@ -482,8 +594,7 @@ msgstr "Built-in"
 #: src/session/components/outer-header/overflow/schedule-followup.tsx
 #: src/settings/general/permissions.tsx
 #: src/sidebar/calendar.tsx
-#: src/sidebar/settings.tsx
-#: src/sidebar/surface-nav.tsx
+#: src/sidebar/index.tsx
 msgid "Calendar"
 msgstr "Calendar"
 
@@ -491,17 +602,21 @@ msgstr "Calendar"
 msgid "Calendar connected"
 msgstr "Calendar connected"
 
+#: src/settings/index.tsx
+msgid "Calendar providers"
+msgstr "Calendar providers"
+
 #: src/settings/ai/stt/select.tsx
 msgid "Can transcribe while the meeting is happening."
 msgstr "Can transcribe while the meeting is happening."
 
 #: src/onboarding/transcription.tsx
 #: src/session/components/outer-header/overflow/schedule-followup.tsx
+#: src/settings/account/index.tsx
 #: src/settings/ai/llm/disclosure-modal.tsx
 #: src/settings/ai/llm/openrouter-sign-in.tsx
 #: src/settings/ai/llm/select.tsx
 #: src/settings/ai/llm/subscription-card.tsx
-#: src/settings/general/account.tsx
 #: src/settings/general/storage/legacy-cleanup.tsx
 #: src/settings/general/storage/notes-location.tsx
 #: src/settings/personalization/dictionary-settings.tsx
@@ -517,6 +632,14 @@ msgstr "Cancel"
 msgid "Cancel date edit"
 msgstr "Cancel date edit"
 
+#: src/main/action-items/index.tsx
+msgid "Carried over"
+msgstr "Carried over"
+
+#: src/main/series/index.tsx
+msgid "Carried-over actions"
+msgstr "Carried-over actions"
+
 #: src/settings/personalization/dictionary-settings.tsx
 msgid "Case-sensitive"
 msgstr "Case-sensitive"
@@ -529,6 +652,10 @@ msgstr "Change"
 #: src/settings/dictation/shortcut-recorder.tsx
 msgid "Change shortcut"
 msgstr "Change shortcut"
+
+#: src/session/meeting-detail.tsx
+msgid "Chapters"
+msgstr "Chapters"
 
 #: src/settings/ai/llm/scoped-models.tsx
 msgid "Chat"
@@ -649,7 +776,7 @@ msgstr "Clone"
 
 #: src/changelog/index.tsx
 #: src/session/components/note-input/search/bar.tsx
-#: src/shared/open-note-dialog.tsx
+#: src/shared/command-palette/index.tsx
 msgid "Close"
 msgstr "Close"
 
@@ -689,6 +816,10 @@ msgstr "Collect and deliver when you stop"
 msgid "Combine at least one of Ctrl, Alt, Shift or Super with a key."
 msgstr "Combine at least one of Ctrl, Alt, Shift or Super with a key."
 
+#: src/main/home/index.tsx
+msgid "Coming up"
+msgstr "Coming up"
+
 #: src/task/resource-view.tsx
 msgid "comment"
 msgstr "comment"
@@ -705,10 +836,6 @@ msgstr "comments"
 msgid "Company"
 msgstr "Company"
 
-#: src/settings/general/account.tsx
-msgid "Compare Free and Pro before you sign in."
-msgstr "Compare Free and Pro before you sign in."
-
 #: src/settings/sync/index.tsx
 msgid "Compare the numbers shown on both devices."
 msgstr "Compare the numbers shown on both devices."
@@ -720,10 +847,6 @@ msgstr "Complete"
 #: src/instruction/index.tsx
 msgid "Complete sign-in in your browser, then return to Notare."
 msgstr "Complete sign-in in your browser, then return to Notare."
-
-#: src/settings/general/account.tsx
-msgid "Complete the sign-in flow in your browser, then come back here if Notare does not reconnect automatically."
-msgstr "Complete the sign-in flow in your browser, then come back here if Notare does not reconnect automatically."
 
 #: src/instruction/index.tsx
 msgid "Complete your purchase"
@@ -757,6 +880,10 @@ msgstr "Confirm"
 msgid "Confirm pairing"
 msgstr "Confirm pairing"
 
+#: src/settings/account/index.tsx
+msgid "Confirm reset"
+msgstr "Confirm reset"
+
 #. placeholder {0}: deviceName || "the other device"
 #: src/settings/sync/index.tsx
 msgid "Confirm with {0}"
@@ -789,27 +916,28 @@ msgstr "Connect your Google account to create follow-up email drafts directly in
 msgid "Connect your integration"
 msgstr "Connect your integration"
 
+#: src/calendar/components/google/content.tsx
 #: src/settings/ai/stt/select.tsx
 msgid "Connected"
 msgstr "Connected"
 
+#: src/calendar/components/google/content.tsx
 #: src/settings/gmail/index.tsx
 msgid "Connected Accounts"
 msgstr "Connected Accounts"
+
+#: src/settings/index.tsx
+msgid "Connected services"
+msgstr "Connected services"
 
 #: src/settings/gmail/index.tsx
 msgid "Connecting…"
 msgstr "Connecting…"
 
 #: src/sidebar/contacts.tsx
-#: src/sidebar/settings.tsx
-#: src/sidebar/surface-nav.tsx
+#: src/sidebar/index.tsx
 msgid "Contacts"
 msgstr "Contacts"
-
-#: src/sidebar/settings.tsx
-msgid "Context"
-msgstr "Context"
 
 #: src/onboarding/calendar.tsx
 #: src/onboarding/transcription.tsx
@@ -948,6 +1076,18 @@ msgstr "Created"
 msgid "Creating event…"
 msgstr "Creating event…"
 
+#: src/settings/ai/shared/index.tsx
+msgid "Credentials stored in system keychain"
+msgstr "Credentials stored in system keychain"
+
+#: src/main/series/index.tsx
+msgid "Current"
+msgstr "Current"
+
+#: src/main/series/index.tsx
+msgid "Current meeting"
+msgstr "Current meeting"
+
 #: src/settings/general/app-settings.tsx
 msgid "Current version"
 msgstr "Current version"
@@ -964,6 +1104,14 @@ msgstr "Custom model identifier"
 msgid "Dark"
 msgstr "Dark"
 
+#: src/settings/account/index.tsx
+msgid "Data controls"
+msgstr "Data controls"
+
+#: src/settings/account/index.tsx
+msgid "Database & storage"
+msgstr "Database & storage"
+
 #: src/session/components/outer-header/overflow/schedule-followup.tsx
 msgid "Date & time"
 msgstr "Date & time"
@@ -971,6 +1119,18 @@ msgstr "Date & time"
 #: src/session/components/outer-header/metadata/date.tsx
 msgid "Date and time are required"
 msgstr "Date and time are required"
+
+#: src/session/meeting-detail.tsx
+msgid "Decision"
+msgstr "Decision"
+
+#: src/main/series/index.tsx
+msgid "Decision made"
+msgstr "Decision made"
+
+#: src/session/meeting-detail.tsx
+msgid "Decisions"
+msgstr "Decisions"
 
 #: src/session/components/outer-header/overflow/delete.tsx
 #: src/settings/ai/llm/select.tsx
@@ -981,10 +1141,25 @@ msgstr "Date and time are required"
 msgid "Delete"
 msgstr "Delete"
 
+#: src/settings/account/index.tsx
+msgid "Delete all local data"
+msgstr "Delete all local data"
+
+#: src/settings/account/index.tsx
+msgid "Delete all local data?"
+msgstr "Delete all local data?"
+
 #: src/sidebar/timeline/item.tsx
 msgid "Delete All Recurring Events"
 msgstr "Delete All Recurring Events"
 
+#: src/calendar/components/week-view.tsx
+#: src/sidebar/calendar.tsx
+msgid "Delete Entire Series"
+msgstr "Delete Entire Series"
+
+#: src/calendar/components/week-view.tsx
+#: src/sidebar/calendar.tsx
 #: src/sidebar/timeline/item.tsx
 msgid "Delete Event"
 msgstr "Delete Event"
@@ -1017,6 +1192,8 @@ msgstr "Delete recording"
 msgid "Delete Selected ({sessionCount})"
 msgstr "Delete Selected ({sessionCount})"
 
+#: src/calendar/components/week-view.tsx
+#: src/sidebar/calendar.tsx
 #: src/sidebar/timeline/item.tsx
 msgid "Delete This Event"
 msgstr "Delete This Event"
@@ -1075,16 +1252,11 @@ msgstr "Device sync isn't available in this build"
 msgid "Devices"
 msgstr "Devices"
 
-#: src/sidebar/settings.tsx
-msgid "Devices (preview)"
-msgstr "Devices (preview)"
-
 #: src/settings/dictation/translation.tsx
 msgid "Dictate in any language, insert the text in {targetLabel}. Requires AI cleanup's language model; falls back to normal cleanup when no model is available."
 msgstr "Dictate in any language, insert the text in {targetLabel}. Requires AI cleanup's language model; falls back to normal cleanup when no model is available."
 
 #: src/settings/dictation/index.tsx
-#: src/sidebar/settings.tsx
 #: src/snippets/entry-row.tsx
 msgid "Dictation"
 msgstr "Dictation"
@@ -1114,14 +1286,27 @@ msgstr "Direct device-to-device sync isn't included in this build of Notare."
 msgid "Discarded"
 msgstr "Discarded"
 
+#: src/calendar/components/google/content.tsx
 #: src/settings/gmail/index.tsx
 #: src/settings/todo/provider-content.tsx
 msgid "Disconnect"
 msgstr "Disconnect"
 
+#: src/calendar/components/google/content.tsx
+msgid "Disconnect & remove client"
+msgstr "Disconnect & remove client"
+
+#: src/calendar/components/google/content.tsx
+msgid "Disconnect all"
+msgstr "Disconnect all"
+
 #: src/settings/todo/github.tsx
 msgid "Disconnect private repo access."
 msgstr "Disconnect private repo access."
+
+#: src/calendar/components/google/content.tsx
+msgid "Display Google Calendar events on the main calendar view"
+msgstr "Display Google Calendar events on the main calendar view"
 
 #: src/settings/general/storage/notes-location.tsx
 msgid "Don't move"
@@ -1134,6 +1319,15 @@ msgstr "Don't save"
 #: src/settings/general/notification.tsx
 msgid "Don't show notifications when Do-Not-Disturb is enabled on your system"
 msgstr "Don't show notifications when Do-Not-Disturb is enabled on your system"
+
+#: src/main/action-items/index.tsx
+msgid "Done"
+msgstr "Done"
+
+#. placeholder {0}: doneItems.length
+#: src/main/action-items/index.tsx
+msgid "Done ({0})"
+msgstr "Done ({0})"
 
 #: src/onboarding/transcription.tsx
 #: src/settings/ai/llm/select.tsx
@@ -1190,6 +1384,11 @@ msgstr "Downloading… {0}%"
 #: src/session/components/outer-header/overflow/followup.tsx
 msgid "Drafting email…"
 msgstr "Drafting email…"
+
+#. placeholder {0}: dueDate && isValid(dueDate) ? format(dueDate, "MMM d") : item.due_at
+#: src/main/action-items/index.tsx
+msgid "Due {0}"
+msgstr "Due {0}"
 
 #: src/templates/details.tsx
 #: src/templates/template-form.tsx
@@ -1323,14 +1522,6 @@ msgstr "Enter template title"
 msgid "Enter the instruction prompt for the model... (Use {{selection}} to insert selected text)"
 msgstr "Enter the instruction prompt for the model... (Use {{selection}} to insert selected text)"
 
-#: src/settings/ai/shared/index.tsx
-msgid "Enter your API key"
-msgstr "Enter your API key"
-
-#: src/settings/ai/shared/index.tsx
-msgid "Enter your API key (optional)"
-msgstr "Enter your API key (optional)"
-
 #: src/calendar/components/ics/content.tsx
 msgid "event"
 msgstr "event"
@@ -1346,6 +1537,11 @@ msgstr "events"
 #: src/settings/webhook/index.tsx
 msgid "Events to send"
 msgstr "Events to send"
+
+#: src/main/home/index.tsx
+#: src/session/meeting-detail.tsx
+msgid "Every two weeks"
+msgstr "Every two weeks"
 
 #: src/chat/components/scope-selector.tsx
 msgid "Everything"
@@ -1370,6 +1566,7 @@ msgstr "Expires in {0}"
 
 #: src/session/components/outer-header/overflow/export-modal.tsx
 #: src/session/components/outer-header/overflow/index.tsx
+#: src/settings/account/index.tsx
 #: src/settings/personalization/dictionary-settings.tsx
 msgid "Export"
 msgstr "Export"
@@ -1377,6 +1574,10 @@ msgstr "Export"
 #: src/settings/personalization/dictionary-settings.tsx
 msgid "Export failed: {exportError}"
 msgstr "Export failed: {exportError}"
+
+#: src/settings/account/index.tsx
+msgid "Export notes"
+msgstr "Export notes"
 
 #: src/session/components/outer-header/overflow/export-modal.tsx
 msgid "Exporting..."
@@ -1410,6 +1611,10 @@ msgstr "Failed to load issue"
 msgid "Failed to load pull request"
 msgstr "Failed to load pull request"
 
+#: src/settings/ai/shared/index.tsx
+msgid "Failed to save"
+msgstr "Failed to save"
+
 #: src/settings/ai/stt/shared.tsx
 msgid "Fast"
 msgstr "Fast"
@@ -1430,14 +1635,18 @@ msgstr "Favorite template"
 msgid "File format"
 msgstr "File format"
 
+#: src/main/action-items/index.tsx
+msgid "Filter action items"
+msgstr "Filter action items"
+
+#: src/main/meetings/index.tsx
+msgid "Filter meetings"
+msgstr "Filter meetings"
+
 #. placeholder {0}: (config.filterLabel ?? "repository").toLowerCase()
 #: src/settings/todo/provider-content.tsx
 msgid "Filter synced items by {0}."
 msgstr "Filter synced items by {0}."
-
-#: src/shared/open-note-dialog.tsx
-msgid "Find a note..."
-msgstr "Find a note..."
 
 #: src/search/page/index.tsx
 msgid "Find anything across your notes and transcripts — by keyword or by meaning."
@@ -1446,10 +1655,6 @@ msgstr "Find anything across your notes and transcripts — by keyword or by mea
 #: src/instruction/index.tsx
 msgid "Finish checkout in your browser, then return to Notare."
 msgstr "Finish checkout in your browser, then return to Notare."
-
-#: src/settings/general/account.tsx
-msgid "Finish sign-in"
-msgstr "Finish sign-in"
 
 #: src/dictation/host.tsx
 msgid "Finish the current dictation before pasting the last one."
@@ -1479,10 +1684,6 @@ msgstr "Fix punctuation and remove fillers and false starts with your configured
 msgid "Flags"
 msgstr "Flags"
 
-#: src/chat/components/toolbar-controls.tsx
-msgid "Float chat"
-msgstr "Float chat"
-
 #: src/settings/general/app-settings.tsx
 msgid "Floating bar look"
 msgstr "Floating bar look"
@@ -1507,13 +1708,22 @@ msgstr "For enabled notifications"
 msgid "Forever"
 msgstr "Forever"
 
-#: src/settings/general/account.tsx
-msgid "Free"
-msgstr "Free"
-
 #: src/templates/template-icon-picker.tsx
 msgid "Frequently used"
 msgstr "Frequently used"
+
+#: src/sidebar/calendar.tsx
+msgid "Fri"
+msgstr "Fri"
+
+#. placeholder {0}: formatDateShort(item.source_started_at)
+#: src/main/series/index.tsx
+msgid "from {0}"
+msgstr "from {0}"
+
+#: src/main/action-items/index.tsx
+msgid "from {sourceDateFormatted} · {sourceTitle}"
+msgstr "from {sourceDateFormatted} · {sourceTitle}"
 
 #: src/calendar/components/google/content.tsx
 #: src/calendar/components/outlook/content.tsx
@@ -1524,9 +1734,11 @@ msgstr "Full setup guide"
 msgid "Gateway found, but requires authentication. Run <0>omp auth-gateway token</0> to print your bearer token."
 msgstr "Gateway found, but requires authentication. Run <0>omp auth-gateway token</0> to print your bearer token."
 
+#: src/settings/index.tsx
+#: src/shared/command-palette/index.tsx
 #: src/sidebar/settings.tsx
-msgid "General"
-msgstr "General"
+msgid "General & System"
+msgstr "General & System"
 
 #: src/settings/sync/index.tsx
 msgid "Generate a new code"
@@ -1545,10 +1757,6 @@ msgstr "Generating title..."
 msgid "Get notified 5 minutes before calendar events start"
 msgstr "Get notified 5 minutes before calendar events start"
 
-#: src/settings/general/account.tsx
-msgid "Get started"
-msgstr "Get started"
-
 #: src/onboarding/account/before-login.tsx
 msgid "Get started for free"
 msgstr "Get started for free"
@@ -1562,7 +1770,6 @@ msgid "Global shortcut that starts or stops dictation. Click the combo, then pre
 msgstr "Global shortcut that starts or stops dictation. Click the combo, then press the keys you want - at least one of Ctrl, Alt, Shift or Super plus a key."
 
 #: src/settings/gmail/index.tsx
-#: src/sidebar/settings.tsx
 msgid "Gmail (beta)"
 msgstr "Gmail (beta)"
 
@@ -1639,7 +1846,6 @@ msgstr "Hide captions"
 msgid "Hide Deleted Events"
 msgstr "Hide Deleted Events"
 
-#: src/calendar/components/google/content.tsx
 #: src/calendar/components/outlook/content.tsx
 msgid "Hide setup steps"
 msgstr "Hide setup steps"
@@ -1668,6 +1874,10 @@ msgstr "Hold the dictation shortcut to talk; release to stop and deliver."
 msgid "Hold to talk"
 msgstr "Hold to talk"
 
+#: src/sidebar/index.tsx
+msgid "Home"
+msgstr "Home"
+
 #: src/calendar/components/google/content.tsx
 msgid "How do I get this file?"
 msgstr "How do I get this file?"
@@ -1688,6 +1898,10 @@ msgstr "How long the mic must be active before triggering"
 msgid "Human"
 msgstr "Human"
 
+#: src/settings/ai/shared/index.tsx
+msgid "ℹ Status: Ready · Keychain protected"
+msgstr "ℹ Status: Ready · Keychain protected"
+
 #: src/settings/ai/llm/disclosure-modal.tsx
 msgid "I Understand and Accept"
 msgstr "I Understand and Accept"
@@ -1699,10 +1913,6 @@ msgstr "Icons"
 #: src/settings/ai/llm/subscription-card.tsx
 msgid "If the automatic callback did not complete, paste the authorization code from your browser below:"
 msgstr "If the automatic callback did not complete, paste the authorization code from your browser below:"
-
-#: src/settings/general/account.tsx
-msgid "If the browser does not reopen Notare, use the paste-link fallback in the sign-in instruction window."
-msgstr "If the browser does not reopen Notare, use the paste-link fallback in the sign-in instruction window."
 
 #: src/calendar/components/google/content.tsx
 msgid "If you see redirect URI / JavaScript origin fields, you picked Web — choose Desktop app instead."
@@ -1756,12 +1966,13 @@ msgstr "Insert below"
 msgid "Installed"
 msgstr "Installed"
 
+#: src/settings/index.tsx
+#: src/shared/command-palette/index.tsx
 #: src/sidebar/settings.tsx
-msgid "Integrations"
-msgstr "Integrations"
+msgid "Integrations & Sync"
+msgstr "Integrations & Sync"
 
 #: src/settings/ai/llm/index.tsx
-#: src/sidebar/settings.tsx
 msgid "Intelligence"
 msgstr "Intelligence"
 
@@ -1821,6 +2032,10 @@ msgstr "Keep the transcript exactly as recognized."
 msgid "Keeps the microphone open while idle so dictation starts instantly. Your system may show the mic-in-use indicator the whole time."
 msgstr "Keeps the microphone open while idle so dictation starts instantly. Your system may show the mic-in-use indicator the whole time."
 
+#: src/settings/ai/shared/index.tsx
+msgid "Keychain protected"
+msgstr "Keychain protected"
+
 #: src/settings/sync/index.tsx
 msgid "Label (optional), e.g. \"Work laptop\""
 msgstr "Label (optional), e.g. \"Work laptop\""
@@ -1833,10 +2048,22 @@ msgstr "Language & Region"
 msgid "Language for summaries, chats, and AI-generated responses"
 msgstr "Language for summaries, chats, and AI-generated responses"
 
+#: src/settings/index.tsx
+msgid "Language models"
+msgstr "Language models"
+
 #. placeholder {0}: formatDistanceToNow(new Date(peer.lastSeen * 1000), { addSuffix: true })
 #: src/settings/sync/index.tsx
 msgid "Last seen {0}"
 msgstr "Last seen {0}"
+
+#: src/main/meetings/index.tsx
+msgid "Last week"
+msgstr "Last week"
+
+#: src/main/home/index.tsx
+msgid "Later this week"
+msgstr "Later this week"
 
 #: src/session/components/note-input/header.tsx
 #: src/stt/useLiveTranscriptCopyShortcuts.ts
@@ -1850,6 +2077,10 @@ msgstr "Learn how to fix this"
 #: src/settings/general/storage/legacy-cleanup.tsx
 msgid "Legacy JSON and Markdown files were removed"
 msgstr "Legacy JSON and Markdown files were removed"
+
+#: src/sidebar/index.tsx
+msgid "Library"
+msgstr "Library"
 
 #: src/settings/general/theme.tsx
 msgid "Light"
@@ -1936,9 +2167,25 @@ msgstr "Loading..."
 msgid "Loading…"
 msgstr "Loading…"
 
+#: src/settings/index.tsx
+msgid "Local integrations"
+msgstr "Local integrations"
+
 #: src/settings/ai/llm/select.tsx
 msgid "Local models"
 msgstr "Local models"
+
+#: src/settings/account/index.tsx
+msgid "Local profile"
+msgstr "Local profile"
+
+#: src/settings/account/index.tsx
+msgid "Local SQLite database on this device"
+msgstr "Local SQLite database on this device"
+
+#: src/settings/index.tsx
+msgid "Local system"
+msgstr "Local system"
 
 #: src/settings/ai/llm/routing.tsx
 msgid "Local-first: Notare prefers a local model (Ollama or LM Studio) and only uses a cloud provider when you explicitly select one above."
@@ -1968,9 +2215,9 @@ msgstr "Make sure this code matches on both devices."
 msgid "Manage"
 msgstr "Manage"
 
-#: src/settings/general/account.tsx
-msgid "Manage billing"
-msgstr "Manage billing"
+#: src/sidebar/calendar.tsx
+msgid "Manage calendars"
+msgstr "Manage calendars"
 
 #: src/settings/general/app-settings.tsx
 msgid "Manual"
@@ -1979,6 +2226,10 @@ msgstr "Manual"
 #: src/settings/personalization/dictionary-settings.tsx
 msgid "Mappings fix recurring misrecognitions in your dictated text — \"far eye\" always becomes \"FarEye\". Flat terms just bias the recognizer toward names or jargon while you speak, without rewriting anything."
 msgstr "Mappings fix recurring misrecognitions in your dictated text — \"far eye\" always becomes \"FarEye\". Flat terms just bias the recognizer toward names or jargon while you speak, without rewriting anything."
+
+#: src/settings/account/index.tsx
+msgid "Markdown or JSON · All meetings, summaries, and action items"
+msgstr "Markdown or JSON · All meetings, summaries, and action items"
 
 #: src/settings/webhook/index.tsx
 msgid "Master switch for outbound delivery."
@@ -1991,10 +2242,6 @@ msgstr "Match case"
 #: src/session/components/note-input/search/bar.tsx
 msgid "Match whole word"
 msgstr "Match whole word"
-
-#: src/sidebar/settings.tsx
-msgid "MCP Server"
-msgstr "MCP Server"
 
 #: src/session/components/action-items/index.tsx
 msgid "Medium"
@@ -2009,7 +2256,15 @@ msgstr "Medium confidence"
 msgid "Meeting"
 msgstr "Meeting"
 
+#: src/session/meeting-detail.tsx
+msgid "meetings"
+msgstr "meetings"
+
+#: src/main/meetings/index.tsx
+#: src/session/index.tsx
 #: src/settings/general/app-settings.tsx
+#: src/shared/command-palette/index.tsx
+#: src/sidebar/index.tsx
 msgid "Meetings"
 msgstr "Meetings"
 
@@ -2071,6 +2326,14 @@ msgstr "Migration needs attention"
 msgid "Migration status unavailable"
 msgstr "Migration status unavailable"
 
+#: src/main/action-items/index.tsx
+msgid "Mine"
+msgstr "Mine"
+
+#: src/sidebar/calendar.tsx
+msgid "Mini calendar"
+msgstr "Mini calendar"
+
 #: src/settings/dictation/index.tsx
 msgid "Model"
 msgstr "Model"
@@ -2083,6 +2346,10 @@ msgstr "Model being used"
 msgid "Model Context Protocol (MCP)"
 msgstr "Model Context Protocol (MCP)"
 
+#: src/sidebar/calendar.tsx
+msgid "Mon"
+msgstr "Mon"
+
 #: src/settings/general/week-start.tsx
 msgid "Monday"
 msgstr "Monday"
@@ -2090,6 +2357,11 @@ msgstr "Monday"
 #: src/dictation/orb.tsx
 msgid "Mono"
 msgstr "Mono"
+
+#: src/main/home/index.tsx
+#: src/session/meeting-detail.tsx
+msgid "Monthly"
+msgstr "Monthly"
 
 #: src/session/components/floating/options-menu.tsx
 msgid "More options"
@@ -2144,9 +2416,13 @@ msgstr "Never connected"
 msgid "New chat"
 msgstr "New chat"
 
-#: src/main/empty.tsx
-msgid "New Note"
-msgstr "New Note"
+#: src/calendar/components/calendar-view.tsx
+msgid "New meeting"
+msgstr "New meeting"
+
+#: src/shared/command-palette/index.tsx
+msgid "New note"
+msgstr "New note"
 
 #. placeholder {0}: displayPath(pendingPath ?? undefined, home)
 #: src/settings/general/storage/notes-location.tsx
@@ -2157,6 +2433,10 @@ msgstr "New notes will be saved to {0}. You can also move your existing notes th
 msgid "New recipe"
 msgstr "New recipe"
 
+#: src/main/series/index.tsx
+msgid "New topic"
+msgstr "New topic"
+
 #: src/contacts/shared.tsx
 msgid "Newest"
 msgstr "Newest"
@@ -2165,6 +2445,10 @@ msgstr "Newest"
 msgid "Next match"
 msgstr "Next match"
 
+#: src/sidebar/calendar.tsx
+msgid "Next month"
+msgstr "Next month"
+
 #: src/session/components/action-items/index.tsx
 msgid "No action items found in this meeting."
 msgstr "No action items found in this meeting."
@@ -2172,6 +2456,10 @@ msgstr "No action items found in this meeting."
 #: src/session/components/action-items/index.tsx
 msgid "No action items yet"
 msgstr "No action items yet"
+
+#: src/main/action-items/index.tsx
+msgid "No action items."
+msgstr "No action items."
 
 #: src/dictation/host.tsx
 msgid "No AI model is configured for dictation cleanup - used basic cleanup instead."
@@ -2185,9 +2473,17 @@ msgstr "No apps found."
 msgid "No calendars found"
 msgstr "No calendars found"
 
+#: src/main/series/index.tsx
+msgid "No changes to show."
+msgstr "No changes to show."
+
 #: src/templates/details.tsx
 msgid "No community templates available"
 msgstr "No community templates available"
+
+#: src/main/action-items/index.tsx
+msgid "No completed action items."
+msgstr "No completed action items."
 
 #: src/task/resource-view.tsx
 msgid "No content."
@@ -2217,6 +2513,10 @@ msgstr "No dictionary entries yet."
 msgid "No emoji found"
 msgstr "No emoji found"
 
+#: src/sidebar/calendar.tsx
+msgid "No events"
+msgstr "No events"
+
 #: src/settings/gmail/index.tsx
 msgid "No Gmail accounts connected yet."
 msgstr "No Gmail accounts connected yet."
@@ -2237,6 +2537,10 @@ msgstr "No legacy JSON or Markdown files remain"
 msgid "No local transcription models are available."
 msgstr "No local transcription models are available."
 
+#: src/shared/command-palette/index.tsx
+msgid "No matching commands or notes."
+msgstr "No matching commands or notes."
+
 #: src/settings/general/main-language.tsx
 #: src/settings/general/spoken-languages.tsx
 msgid "No matching languages found"
@@ -2245,6 +2549,10 @@ msgstr "No matching languages found"
 #: src/session/components/note-input/transcript/renderer/speaker-assign.tsx
 msgid "No matching people"
 msgstr "No matching people"
+
+#: src/main/meetings/index.tsx
+msgid "No meetings found."
+msgstr "No meetings found."
 
 #: src/settings/ai/stt/select.tsx
 msgid "No models are available for this provider."
@@ -2258,13 +2566,25 @@ msgstr "No models available."
 msgid "No models ready to use."
 msgstr "No models ready to use."
 
+#: src/settings/account/index.tsx
+msgid "No Notare account required"
+msgstr "No Notare account required"
+
 #: src/changelog/index.tsx
 msgid "No notes for this version yet."
 msgstr "No notes for this version yet."
 
-#: src/shared/open-note-dialog.tsx
-msgid "No notes found."
-msgstr "No notes found."
+#: src/main/home/index.tsx
+msgid "No notes yet."
+msgstr "No notes yet."
+
+#: src/main/series/index.tsx
+msgid "No open actions"
+msgstr "No open actions"
+
+#: src/main/series/index.tsx
+msgid "No open items carried over."
+msgstr "No open items carried over."
 
 #: src/session/components/note-input/transcript/renderer/speaker-assign.tsx
 msgid "No people"
@@ -2285,6 +2605,10 @@ msgstr "No recipes match your search."
 #: src/settings/recipes/index.tsx
 msgid "No recipes yet."
 msgstr "No recipes yet."
+
+#: src/session/index.tsx
+msgid "No recording audio available for this meeting."
+msgstr "No recording audio available for this meeting."
 
 #: src/contacts/details.tsx
 msgid "No related notes found"
@@ -2315,6 +2639,10 @@ msgstr "No transcript to extract from yet."
 #: src/settings/dictation/index.tsx
 msgid "None"
 msgstr "None"
+
+#: src/settings/ai/shared/index.tsx
+msgid "Not configured"
+msgstr "Not configured"
 
 #: src/settings/ai/llm/subscription-card.tsx
 msgid "Not connected"
@@ -2361,7 +2689,6 @@ msgid "Note breadcrumb"
 msgstr "Note breadcrumb"
 
 #: src/contacts/details.tsx
-#: src/sidebar/surface-nav.tsx
 msgid "Notes"
 msgstr "Notes"
 
@@ -2380,6 +2707,14 @@ msgstr "Notes copied"
 #: src/settings/general/storage/notes-location.tsx
 msgid "Notes folder"
 msgstr "Notes folder"
+
+#: src/main/meetings/index.tsx
+msgid "Notes only"
+msgstr "Notes only"
+
+#: src/settings/account/index.tsx
+msgid "Notes storage & audio retention"
+msgstr "Notes storage & audio retention"
 
 #: src/trash/index.tsx
 msgid "Notes you delete land here first and stay until you empty the trash."
@@ -2402,13 +2737,17 @@ msgstr "Nothing matched \"{trimmedQuery}\". Try different words."
 msgid "Nothing new to import — every entry already matched."
 msgstr "Nothing new to import — every entry already matched."
 
+#: src/main/home/index.tsx
+msgid "Nothing on the calendar."
+msgstr "Nothing on the calendar."
+
 #: src/session/components/note-input/header.tsx
 #: src/stt/useLiveTranscriptCopyShortcuts.ts
 msgid "Nothing transcribed yet"
 msgstr "Nothing transcribed yet"
 
 #: src/settings/general/index.tsx
-#: src/sidebar/settings.tsx
+#: src/settings/index.tsx
 msgid "Notifications"
 msgstr "Notifications"
 
@@ -2433,6 +2772,10 @@ msgstr "Official builds include the second Gmail client credentials. In developm
 msgid "Offload model layers to Apple Silicon / Metal GPU for faster inference."
 msgstr "Offload model layers to Apple Silicon / Metal GPU for faster inference."
 
+#: src/main/meetings/index.tsx
+msgid "Older"
+msgstr "Older"
+
 #: src/contacts/shared.tsx
 msgid "Oldest"
 msgstr "Oldest"
@@ -2453,11 +2796,21 @@ msgstr "omp gateway detected (bearer token required)"
 msgid "omp gateway not detected"
 msgstr "omp gateway not detected"
 
+#: src/session/meeting-detail.tsx
+msgid "on"
+msgstr "on"
+
+#: src/settings/account/index.tsx
+msgid "On this device"
+msgstr "On this device"
+
 #: src/settings/todo/github.tsx
 msgid "Only public repositories are supported."
 msgstr "Only public repositories are supported."
 
 #: src/calendar/components/apple/permission.tsx
+#: src/main/action-items/index.tsx
+#: src/main/meetings/index.tsx
 #: src/task/resource-view.tsx
 msgid "Open"
 msgstr "Open"
@@ -2470,9 +2823,18 @@ msgstr "Open"
 msgid "Open {0} settings"
 msgstr "Open {0} settings"
 
+#: src/shared/command-palette/index.tsx
+msgid "Open Action items"
+msgstr "Open Action items"
+
+#: src/main/home/index.tsx
 #: src/sidebar/timeline/index.tsx
 msgid "Open calendar"
 msgstr "Open calendar"
+
+#: src/shared/command-palette/index.tsx
+msgid "Open Calendar"
+msgstr "Open Calendar"
 
 #: src/calendar/components/calendar-selection.tsx
 msgid "Open calendar account actions"
@@ -2494,22 +2856,35 @@ msgstr "Open floating panel"
 msgid "Open Google Cloud console"
 msgstr "Open Google Cloud console"
 
+#: src/shared/command-palette/index.tsx
+msgid "Open Home"
+msgstr "Open Home"
+
 #: src/session/components/outer-header/overflow/index.tsx
 #: src/sidebar/timeline/item.tsx
 msgid "Open in New Window"
 msgstr "Open in New Window"
 
-#: src/chat/components/toolbar-controls.tsx
-msgid "Open in right panel"
-msgstr "Open in right panel"
-
 #: src/meeting-float/window.tsx
 msgid "Open main window"
 msgstr "Open main window"
 
+#: src/shared/command-palette/index.tsx
+msgid "Open Meetings"
+msgstr "Open Meetings"
+
 #: src/onboarding/final.tsx
 msgid "Open Notare"
 msgstr "Open Notare"
+
+#: src/calendar/components/week-view.tsx
+#: src/sidebar/calendar.tsx
+msgid "Open note"
+msgstr "Open note"
+
+#: src/main/home/index.tsx
+msgid "Open notes"
+msgstr "Open notes"
 
 #: src/task/resource-view.tsx
 msgid "Open on GitHub"
@@ -2520,6 +2895,7 @@ msgid "Open repository on GitHub"
 msgstr "Open repository on GitHub"
 
 #: src/onboarding/permissions.tsx
+#: src/shared/command-palette/index.tsx
 msgid "Open settings"
 msgstr "Open settings"
 
@@ -2556,6 +2932,10 @@ msgstr "Others"
 #: src/settings/dictation/index.tsx
 msgid "Output"
 msgstr "Output"
+
+#: src/main/action-items/index.tsx
+msgid "Overdue"
+msgstr "Overdue"
 
 #: src/settings/ai/llm/scoped-models.tsx
 msgid "Override the model used for specific tasks. Anything left on \"Use default model\" falls back to the model selected above."
@@ -2644,7 +3024,6 @@ msgid "permission panel."
 msgstr "permission panel."
 
 #: src/settings/general/index.tsx
-#: src/sidebar/settings.tsx
 msgid "Permissions"
 msgstr "Permissions"
 
@@ -2656,8 +3035,11 @@ msgstr "Permissions granted"
 msgid "Person"
 msgstr "Person"
 
+#: src/settings/account/index.tsx
+msgid "Personal workspace"
+msgstr "Personal workspace"
+
 #: src/settings/personalization/index.tsx
-#: src/sidebar/settings.tsx
 msgid "Personalization"
 msgstr "Personalization"
 
@@ -2681,21 +3063,25 @@ msgstr "Pinned snippets are always kept, no matter this setting."
 msgid "Pip"
 msgstr "Pip"
 
-#: src/settings/general/account.tsx
-msgid "Plan & Billing"
-msgstr "Plan & Billing"
-
-#: src/settings/general/account.tsx
-msgid "Plans"
-msgstr "Plans"
-
 #: src/settings/ai/llm/briefs.tsx
 msgid "Pre-Meeting Briefs"
 msgstr "Pre-Meeting Briefs"
 
+#: src/settings/index.tsx
+msgid "Preferences"
+msgstr "Preferences"
+
 #: src/settings/ai/llm/briefs.tsx
 msgid "Preparation window"
 msgstr "Preparation window"
+
+#: src/main/home/index.tsx
+msgid "Prepare"
+msgstr "Prepare"
+
+#: src/main/series/index.tsx
+msgid "Prepare next"
+msgstr "Prepare next"
 
 #: src/session/components/outer-header/overflow/export-modal.tsx
 msgid "Preparing transcript..."
@@ -2721,6 +3107,14 @@ msgstr "Preview"
 msgid "Previous match"
 msgstr "Previous match"
 
+#: src/sidebar/calendar.tsx
+msgid "Previous month"
+msgstr "Previous month"
+
+#: src/sidebar/index.tsx
+msgid "Primary"
+msgstr "Primary"
+
 #: src/settings/ai/stt/shared.tsx
 msgid "Prioritizes speed over accuracy."
 msgstr "Prioritizes speed over accuracy."
@@ -2728,10 +3122,6 @@ msgstr "Prioritizes speed over accuracy."
 #: src/settings/ai/stt/select.tsx
 msgid "Pro"
 msgstr "Pro"
-
-#: src/settings/general/account.tsx
-msgid "Pro trial"
-msgstr "Pro trial"
 
 #: src/settings/ai/llm/configure.tsx
 msgid "Probing omp gateway…"
@@ -2757,11 +3147,20 @@ msgstr "Raw transcript"
 msgid "Re-transcribe with"
 msgstr "Re-transcribe with"
 
+#: src/settings/ai/shared/index.tsx
+#: src/shared/dock/index.tsx
+msgid "Ready"
+msgstr "Ready"
+
+#: src/settings/ai/shared/index.tsx
+msgid "Ready · Saved"
+msgstr "Ready · Saved"
+
 #: src/onboarding/index.tsx
 msgid "Ready to go"
 msgstr "Ready to go"
 
-#: src/shared/open-note-dialog.tsx
+#: src/sidebar/index.tsx
 msgid "Recent"
 msgstr "Recent"
 
@@ -2769,8 +3168,13 @@ msgstr "Recent"
 msgid "Recent deliveries"
 msgstr "Recent deliveries"
 
+#: src/main/home/index.tsx
+msgid "Recent notes"
+msgstr "Recent notes"
+
+#: src/settings/index.tsx
 #: src/settings/recipes/index.tsx
-#: src/sidebar/settings.tsx
+#: src/shared/command-palette/index.tsx
 msgid "Recipes"
 msgstr "Recipes"
 
@@ -2787,9 +3191,38 @@ msgstr "Reconnect required"
 msgid "Record"
 msgstr "Record"
 
+#: src/main/meetings/index.tsx
+msgid "Recorded"
+msgstr "Recorded"
+
+#: src/session/meeting-detail.tsx
+msgid "Recording"
+msgstr "Recording"
+
 #: src/meeting-float/window.tsx
 msgid "Recording time"
 msgstr "Recording time"
+
+#: src/main/action-items/index.tsx
+#: src/main/meetings/index.tsx
+#: src/session/meeting-detail.tsx
+msgid "Recurring"
+msgstr "Recurring"
+
+#: src/calendar/components/event-chip.tsx
+#: src/calendar/components/week-view.tsx
+#: src/main/home/index.tsx
+#: src/sidebar/calendar.tsx
+msgid "Recurring event"
+msgstr "Recurring event"
+
+#: src/main/series/index.tsx
+msgid "Recurring meeting series"
+msgstr "Recurring meeting series"
+
+#: src/main/series/index.tsx
+msgid "Recurring series"
+msgstr "Recurring series"
 
 #: src/calendar/components/outlook/content.tsx
 msgid "Redirect URI: select platform <0>Mobile and desktop applications</0> and enter <1>http://localhost</1>."
@@ -2798,10 +3231,6 @@ msgstr "Redirect URI: select platform <0>Mobile and desktop applications</0> and
 #: src/settings/general/app-settings.tsx
 msgid "Reduce background noise on your microphone before transcription. Applies to new sessions only; recordings are always saved unprocessed."
 msgstr "Reduce background noise on your microphone before transcription. Applies to new sessions only; recordings are always saved unprocessed."
-
-#: src/settings/general/account.tsx
-msgid "Refresh billing status"
-msgstr "Refresh billing status"
 
 #: src/calendar/components/calendar-selection.tsx
 msgid "Refresh calendars"
@@ -2851,6 +3280,10 @@ msgstr "Remove repository"
 msgid "Remove this device?"
 msgstr "Remove this device?"
 
+#: src/settings/account/index.tsx
+msgid "Removes notes, recordings, and saved credentials from this device"
+msgstr "Removes notes, recordings, and saved credentials from this device"
+
 #: src/settings/sync/index.tsx
 msgid "Removing..."
 msgstr "Removing..."
@@ -2862,10 +3295,6 @@ msgstr "Reopen checkout page"
 #: src/instruction/index.tsx
 msgid "Reopen in browser"
 msgstr "Reopen in browser"
-
-#: src/settings/general/account.tsx
-msgid "Reopen sign-in page"
-msgstr "Reopen sign-in page"
 
 #: src/session/components/note-input/search/bar.tsx
 msgid "Replace"
@@ -2921,6 +3350,10 @@ msgstr "Required to sync Apple Calendar events into Notare"
 msgid "Reset"
 msgstr "Reset"
 
+#: src/settings/account/index.tsx
+msgid "Reset Local Data"
+msgstr "Reset Local Data"
+
 #: src/settings/personalization/index.tsx
 msgid "Reset to default"
 msgstr "Reset to default"
@@ -2972,6 +3405,14 @@ msgstr "Retry update"
 msgid "Reuses the live model for batch transcription."
 msgstr "Reuses the live model for batch transcription."
 
+#: src/settings/account/index.tsx
+msgid "Reveal in folder"
+msgstr "Reveal in folder"
+
+#: src/settings/account/index.tsx
+msgid "Review reset"
+msgstr "Review reset"
+
 #: src/dictation/orb.tsx
 msgid "Ring"
 msgstr "Ring"
@@ -2997,6 +3438,10 @@ msgstr "Runs after the recording finishes, not during the meeting."
 msgid "Same as live model"
 msgstr "Same as live model"
 
+#: src/sidebar/calendar.tsx
+msgid "Sat"
+msgstr "Sat"
+
 #: src/settings/personalization/dictionary-settings.tsx
 #: src/settings/personalization/index.tsx
 #: src/settings/recipes/index.tsx
@@ -3009,6 +3454,10 @@ msgstr "Save"
 msgid "Save date"
 msgstr "Save date"
 
+#: src/settings/ai/shared/index.tsx
+msgid "Saved"
+msgstr "Saved"
+
 #: src/settings/sync/index.tsx
 msgid "Scan this on the other device, or copy the link."
 msgstr "Scan this on the other device, or copy the link."
@@ -3017,6 +3466,7 @@ msgstr "Scan this on the other device, or copy the link."
 msgid "Schedule"
 msgstr "Schedule"
 
+#: src/session/components/outer-header/overflow/index.tsx
 #: src/session/components/outer-header/overflow/schedule-followup.tsx
 msgid "Schedule follow-up"
 msgstr "Schedule follow-up"
@@ -3024,10 +3474,6 @@ msgstr "Schedule follow-up"
 #: src/settings/recipes/index.tsx
 msgid "Scope"
 msgstr "Scope"
-
-#: src/sidebar/surface-nav.tsx
-msgid "Search"
-msgstr "Search"
 
 #: src/search/page/index.tsx
 msgid "Search across all your meetings..."
@@ -3041,13 +3487,9 @@ msgstr "Search contacts..."
 msgid "Search emoji..."
 msgstr "Search emoji..."
 
-#: src/shared/open-note-dialog.tsx
+#: src/shared/command-palette/index.tsx
 msgid "Search everything"
 msgstr "Search everything"
-
-#: src/shared/open-note-dialog.tsx
-msgid "Search everything for \"{trimmedQuery}\""
-msgstr "Search everything for \"{trimmedQuery}\""
 
 #: src/templates/template-icon-picker.tsx
 msgid "Search icons..."
@@ -3064,6 +3506,18 @@ msgstr "Search installed apps..."
 #: src/settings/general/main-language.tsx
 msgid "Search language..."
 msgstr "Search language..."
+
+#: src/main/meetings/index.tsx
+msgid "Search meetings"
+msgstr "Search meetings"
+
+#: src/sidebar/index.tsx
+msgid "Search notes and actions"
+msgstr "Search notes and actions"
+
+#: src/shared/command-palette/index.tsx
+msgid "Search notes, pages, and actions…"
+msgstr "Search notes, pages, and actions…"
 
 #: src/contacts/details.tsx
 msgid "Search or add company"
@@ -3174,6 +3628,10 @@ msgstr "Select..."
 msgid "Selected"
 msgstr "Selected"
 
+#: src/sidebar/calendar.tsx
+msgid "Selected day events"
+msgstr "Selected day events"
+
 #: src/settings/general/app-settings.tsx
 msgid "Send anonymous usage analytics to help improve Notare."
 msgstr "Send anonymous usage analytics to help improve Notare."
@@ -3193,6 +3651,10 @@ msgstr "Send Notare events to an endpoint you control. Off by default — nothin
 #: src/settings/webhook/index.tsx
 msgid "Send test event"
 msgstr "Send test event"
+
+#: src/main/meetings/index.tsx
+msgid "Series"
+msgstr "Series"
 
 #: src/settings/mcp/index.tsx
 msgid "Server Port"
@@ -3226,11 +3688,15 @@ msgstr "Set as default"
 msgid "Set up the OAuth consent screen: audience <0>External</0>, then add your own Gmail address as a test user."
 msgstr "Set up the OAuth consent screen: audience <0>External</0>, then add your own Gmail address as a test user."
 
-#: src/main/empty.tsx
+#: src/settings/index.tsx
+#: src/sidebar/index.tsx
 #: src/sidebar/settings.tsx
-#: src/sidebar/surface-nav.tsx
 msgid "Settings"
 msgstr "Settings"
+
+#: src/session/components/outer-header/overflow/index.tsx
+msgid "Share"
+msgstr "Share"
 
 #: src/settings/sync/index.tsx
 msgid "Share this fingerprint with another device to pair it."
@@ -3281,6 +3747,10 @@ msgstr "Show floating bar"
 msgid "Show in {0}"
 msgstr "Show in {0}"
 
+#: src/calendar/components/google/content.tsx
+msgid "Show in Calendar"
+msgstr "Show in Calendar"
+
 #: src/settings/ai/stt/select.tsx
 msgid "Show in file manager"
 msgstr "Show in file manager"
@@ -3310,17 +3780,12 @@ msgid "Show tray icon"
 msgstr "Show tray icon"
 
 #: src/settings/ai/llm/subscription-card.tsx
-#: src/settings/general/account.tsx
 msgid "Sign in"
 msgstr "Sign in"
 
 #: src/settings/todo/github.tsx
 msgid "Sign in for private repo access."
 msgstr "Sign in for private repo access."
-
-#: src/settings/general/account.tsx
-msgid "Sign in for Pro"
-msgstr "Sign in for Pro"
 
 #: src/settings/ai/llm/select.tsx
 msgid "Sign in in settings to use this provider."
@@ -3330,14 +3795,6 @@ msgstr "Sign in in settings to use this provider."
 #: src/settings/todo/provider-content.tsx
 msgid "Sign in to connect {0}"
 msgstr "Sign in to connect {0}"
-
-#: src/settings/general/account.tsx
-msgid "Sign in to Notare"
-msgstr "Sign in to Notare"
-
-#: src/settings/general/account.tsx
-msgid "Sign in to unlock cloud transcription and AI models, plus Pro features like sharing."
-msgstr "Sign in to unlock cloud transcription and AI models, plus Pro features like sharing."
 
 #: src/instruction/index.tsx
 msgid "Sign in to your account"
@@ -3352,23 +3809,17 @@ msgid "Sign in with your Claude, ChatGPT, or Google account to use your subscrip
 msgstr "Sign in with your Claude, ChatGPT, or Google account to use your subscription directly without entering API keys."
 
 #: src/settings/ai/llm/subscription-card.tsx
-#: src/settings/general/account.tsx
 msgid "Sign out"
 msgstr "Sign out"
 
 #: src/onboarding/account/after-login.tsx
 #: src/settings/ai/llm/subscription-card.tsx
-#: src/settings/general/account.tsx
 msgid "Signed in"
 msgstr "Signed in"
 
 #: src/settings/ai/llm/subscription-card.tsx
 msgid "Signing in with your browser…"
 msgstr "Signing in with your browser…"
-
-#: src/settings/general/account.tsx
-msgid "Signing out..."
-msgstr "Signing out..."
 
 #: src/settings/webhook/index.tsx
 msgid "Signing secret"
@@ -3377,6 +3828,10 @@ msgstr "Signing secret"
 #: src/dictation/orb.tsx
 msgid "Silk"
 msgstr "Silk"
+
+#: src/session/meeting-detail.tsx
+msgid "since"
+msgstr "since"
 
 #: src/settings/recipes/index.tsx
 msgid "Single meeting"
@@ -3394,7 +3849,7 @@ msgstr "Skip"
 msgid "Smileys & People"
 msgstr "Smileys & People"
 
-#: src/sidebar/surface-nav.tsx
+#: src/sidebar/index.tsx
 msgid "Snippets"
 msgstr "Snippets"
 
@@ -3434,6 +3889,10 @@ msgstr "Source"
 msgid "Speakers"
 msgstr "Speakers"
 
+#: src/settings/index.tsx
+msgid "Speech recognition"
+msgstr "Speech recognition"
+
 #: src/settings/general/storage/legacy-cleanup.tsx
 msgid "SQLite migration verification is incomplete"
 msgstr "SQLite migration verification is incomplete"
@@ -3446,9 +3905,10 @@ msgstr "Start dictation"
 msgid "Start Notare at login"
 msgstr "Start Notare at login"
 
-#: src/main/empty.tsx
-msgid "Start Recording"
-msgstr "Start Recording"
+#: src/shared/command-palette/index.tsx
+#: src/shared/dock/index.tsx
+msgid "Start recording"
+msgstr "Start recording"
 
 #: src/settings/ai/llm/configure.tsx
 msgid "Start the gateway with <0>omp auth-gateway serve --bind=127.0.0.1:4000</0>"
@@ -3493,6 +3953,7 @@ msgid "Stop listening"
 msgstr "Stop listening"
 
 #: src/meeting-float/window.tsx
+#: src/shared/dock/index.tsx
 msgid "Stop recording"
 msgstr "Stop recording"
 
@@ -3530,18 +3991,27 @@ msgstr "Storage configured"
 msgid "Storage Updated"
 msgstr "Storage Updated"
 
+#: src/settings/ai/shared/index.tsx
+msgid "Stored in system keychain"
+msgstr "Stored in system keychain"
+
 #: src/instruction/index.tsx
 msgid "Submit callback URL"
 msgstr "Submit callback URL"
 
 #: src/contacts/details.tsx
 #: src/session/components/outer-header/overflow/export-modal.tsx
+#: src/session/meeting-detail.tsx
 msgid "Summary"
 msgstr "Summary"
 
 #: src/settings/personalization/index.tsx
 msgid "Summary instructions"
 msgstr "Summary instructions"
+
+#: src/sidebar/calendar.tsx
+msgid "Sun"
+msgstr "Sun"
 
 #: src/settings/general/week-start.tsx
 msgid "Sunday"
@@ -3563,9 +4033,13 @@ msgstr "Supports many languages."
 msgid "Supports Markdown and"
 msgstr "Supports Markdown and"
 
-#: src/sidebar/surface-nav.tsx
-msgid "Switch view"
-msgstr "Switch view"
+#: src/shared/command-palette/index.tsx
+msgid "Switch to dark theme"
+msgstr "Switch to dark theme"
+
+#: src/shared/command-palette/index.tsx
+msgid "Switch to light theme"
+msgstr "Switch to light theme"
 
 #: src/templates/template-icon-picker.tsx
 msgid "Symbols"
@@ -3582,6 +4056,10 @@ msgstr "Sync idle"
 #: src/settings/sync/index.tsx
 msgid "Sync is off, so pairing won't do anything yet. Turn it on above first."
 msgstr "Sync is off, so pairing won't do anything yet. Turn it on above first."
+
+#: src/calendar/components/google/content.tsx
+msgid "Sync now"
+msgstr "Sync now"
 
 #: src/settings/sync/index.tsx
 msgid "Sync running"
@@ -3609,8 +4087,7 @@ msgstr "Template actions"
 msgid "Template content with Jinja2: {{ variable }}, {% if condition %}"
 msgstr "Template content with Jinja2: {{ variable }}, {% if condition %}"
 
-#: src/sidebar/settings.tsx
-#: src/sidebar/surface-nav.tsx
+#: src/sidebar/index.tsx
 #: src/templates/template-sidebar.tsx
 msgid "Templates"
 msgstr "Templates"
@@ -3668,6 +4145,10 @@ msgstr "These instructions take priority over the selected template when they co
 msgid "Thinking..."
 msgstr "Thinking..."
 
+#: src/settings/account/index.tsx
+msgid "This action cannot be undone. All notes, transcript recordings, and locally configured API keys will be deleted from this device."
+msgstr "This action cannot be undone. All notes, transcript recordings, and locally configured API keys will be deleted from this device."
+
 #: src/settings/sync/index.tsx
 msgid "This changes how Notare stores notes so they can sync. Back up first?"
 msgstr "This changes how Notare stores notes so they can sync. Back up first?"
@@ -3714,6 +4195,10 @@ msgstr "This model can't produce structured output. Pick a different model."
 msgid "This will remove {0} legacy files and free {1}. Your app data will not be affected because the migration to SQLite is complete."
 msgstr "This will remove {0} legacy files and free {1}. Your app data will not be affected because the migration to SQLite is complete."
 
+#: src/sidebar/calendar.tsx
+msgid "Thu"
+msgstr "Thu"
+
 #: src/settings/todo/index.tsx
 msgid "Ticket"
 msgstr "Ticket"
@@ -3721,6 +4206,10 @@ msgstr "Ticket"
 #: src/settings/dictation/index.tsx
 msgid "Tidy whitespace, capitalize sentences and drop trailing fragments. Instant and fully offline."
 msgstr "Tidy whitespace, capitalize sentences and drop trailing fragments. Instant and fully offline."
+
+#: src/main/series/index.tsx
+msgid "Timeline"
+msgstr "Timeline"
 
 #: src/settings/general/timezone.tsx
 msgid "Timezone"
@@ -3735,6 +4224,12 @@ msgstr "Tip: The Notare team loves our users!"
 msgid "Title"
 msgstr "Title"
 
+#: src/settings/account/index.tsx
+msgid "To complete resetting local data, quit Notare and clear the data directory, or delete the app support folder."
+msgstr "To complete resetting local data, quit Notare and clear the data directory, or delete the app support folder."
+
+#: src/main/home/index.tsx
+#: src/main/meetings/index.tsx
 #: src/snippets/index.tsx
 msgid "Today"
 msgstr "Today"
@@ -3743,6 +4238,10 @@ msgstr "Today"
 msgid "Toggle action item"
 msgstr "Toggle action item"
 
+#: src/shared/command-palette/index.tsx
+msgid "Toggle inspector"
+msgstr "Toggle inspector"
+
 #: src/settings/dictation/index.tsx
 msgid "Toggle press"
 msgstr "Toggle press"
@@ -3750,6 +4249,18 @@ msgstr "Toggle press"
 #: src/settings/dictation/shortcut-recorder.tsx
 msgid "Toggle shortcut"
 msgstr "Toggle shortcut"
+
+#: src/shared/command-palette/index.tsx
+msgid "Toggle theme"
+msgstr "Toggle theme"
+
+#: src/main/home/index.tsx
+msgid "Tomorrow"
+msgstr "Tomorrow"
+
+#: src/main/series/index.tsx
+msgid "Topic no longer active"
+msgstr "Topic no longer active"
 
 #: src/settings/general/app-settings.tsx
 msgid "Transcribe in real time during a meeting. Turn this off to transcribe only after you stop — lighter for long meetings, and audio is always recorded either way. Applies to new sessions only."
@@ -3765,12 +4276,12 @@ msgstr "Transcribes while the meeting is happening and powers the dictation orb.
 
 #: src/session/components/note-input/header.tsx
 #: src/session/components/outer-header/overflow/export-modal.tsx
+#: src/session/meeting-detail.tsx
 msgid "Transcript"
 msgstr "Transcript"
 
 #: src/settings/ai/stt/index.tsx
 #: src/settings/general/app-settings.tsx
-#: src/sidebar/settings.tsx
 msgid "Transcription"
 msgstr "Transcription"
 
@@ -3794,7 +4305,7 @@ msgstr "Translate to"
 msgid "Translation target language"
 msgstr "Translation target language"
 
-#: src/sidebar/surface-nav.tsx
+#: src/sidebar/index.tsx
 #: src/trash/index.tsx
 msgid "Trash"
 msgstr "Trash"
@@ -3807,10 +4318,6 @@ msgstr "Trash is empty"
 msgid "Travel & Places"
 msgstr "Travel & Places"
 
-#: src/settings/general/account.tsx
-msgid "Trial"
-msgstr "Trial"
-
 #: src/onboarding/account/after-login.tsx
 msgid "Trial activated - 14 days of Pro"
 msgstr "Trial activated - 14 days of Pro"
@@ -3818,6 +4325,10 @@ msgstr "Trial activated - 14 days of Pro"
 #: src/settings/sync/index.tsx
 msgid "Try again"
 msgstr "Try again"
+
+#: src/sidebar/calendar.tsx
+msgid "Tue"
+msgstr "Tue"
 
 #: src/dictation/orb.tsx
 msgid "Twin cobalt rings inside a soft glowing halo."
@@ -3854,11 +4365,18 @@ msgstr "Unofficial"
 msgid "Unpin"
 msgstr "Unpin"
 
+#: src/calendar/components/week-view.tsx
+#: src/main/action-items/index.tsx
+#: src/main/home/index.tsx
+#: src/main/meetings/index.tsx
+#: src/main/series/index.tsx
 #: src/search/page/index.tsx
 #: src/session/components/outer-header/overflow/export-modal.tsx
 #: src/session/components/title-input.tsx
-#: src/shared/open-note-dialog.tsx
+#: src/shared/command-palette/index.tsx
 #: src/shared/ui/resource-list/preview-header.tsx
+#: src/sidebar/calendar.tsx
+#: src/sidebar/index.tsx
 #: src/sidebar/timeline/item.tsx
 #: src/templates/details.tsx
 #: src/templates/sections-editor.tsx
@@ -3866,9 +4384,18 @@ msgstr "Unpin"
 msgid "Untitled"
 msgstr "Untitled"
 
+#: src/session/index.tsx
+#: src/session/meeting-detail.tsx
+msgid "Untitled meeting"
+msgstr "Untitled meeting"
+
 #: src/contacts/details.tsx
 msgid "Untitled Note"
 msgstr "Untitled Note"
+
+#: src/main/meetings/index.tsx
+msgid "Upcoming"
+msgstr "Upcoming"
 
 #. placeholder {0}: file.title
 #: src/calendar/components/ics/content.tsx
@@ -3961,9 +4488,17 @@ msgstr "Used for the accurate pass after a recording ends, imported files, and r
 msgid "Verification failed. Check the code and try again."
 msgstr "Verification failed. Check the code and try again."
 
+#: src/settings/ai/shared/index.tsx
+msgid "Verify & Save"
+msgstr "Verify & Save"
+
 #: src/settings/general/storage/legacy-cleanup.tsx
 msgid "Verifying the SQLite migration status"
 msgstr "Verifying the SQLite migration status"
+
+#: src/settings/ai/shared/index.tsx
+msgid "Verifying…"
+msgstr "Verifying…"
 
 #. placeholder {0}: update.version ?? ""
 #: src/settings/general/app-settings.tsx
@@ -4002,17 +4537,29 @@ msgid "Warm petals that bloom and breathe with your voice."
 msgstr "Warm petals that bloom and breathe with your voice."
 
 #: src/settings/webhook/index.tsx
-#: src/sidebar/settings.tsx
 msgid "Webhooks"
 msgstr "Webhooks"
+
+#: src/sidebar/calendar.tsx
+msgid "Wed"
+msgstr "Wed"
 
 #: src/settings/general/week-start.tsx
 msgid "Week starts on"
 msgstr "Week starts on"
 
+#: src/main/home/index.tsx
+#: src/session/meeting-detail.tsx
+msgid "Weekly"
+msgstr "Weekly"
+
 #: src/onboarding/index.tsx
 msgid "Welcome to Notare"
 msgstr "Welcome to Notare"
+
+#: src/main/series/index.tsx
+msgid "What changed since last time"
+msgstr "What changed since last time"
 
 #: src/changelog/index.tsx
 msgid "What's new in {version}?"
@@ -4030,6 +4577,7 @@ msgstr "Work on this task"
 msgid "Wrong text, or names/jargon to prefer"
 msgstr "Wrong text, or names/jargon to prefer"
 
+#: src/main/meetings/index.tsx
 #: src/snippets/index.tsx
 msgid "Yesterday"
 msgstr "Yesterday"
@@ -4074,13 +4622,9 @@ msgstr "You need to sign in to use Notare's language model"
 msgid "You're on a Pro trial"
 msgstr "You're on a Pro trial"
 
-#: src/settings/general/account.tsx
-msgid "You're on the <0>{planLabel}</0> plan"
-msgstr "You're on the <0>{planLabel}</0> plan"
-
-#: src/settings/general/account.tsx
-msgid "Your Account"
-msgstr "Your Account"
+#: src/main/meetings/index.tsx
+msgid "Your conversations, notes, and what comes next."
+msgstr "Your conversations, notes, and what comes next."
 
 #: src/session/components/note-input/enhanced/config-error.tsx
 msgid "Your Notare plan has expired. Configure another language model or renew your plan"

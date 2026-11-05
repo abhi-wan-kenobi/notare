@@ -32,7 +32,10 @@ export function usePairLinkHandler() {
         return;
       }
       usePendingPairLink.getState().set(pending.link);
-      openNew({ type: "settings", state: { tab: "sync" } });
+      openNew({
+        type: "settings",
+        state: { tab: "integrations", section: "sync" },
+      });
     };
 
     const unlisten = deeplink2Events.deepLinkEvent.listen(({ payload }) => {

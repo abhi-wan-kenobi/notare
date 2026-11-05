@@ -4,7 +4,6 @@ import { Loader2Icon } from "lucide-react";
 
 import { commands as analyticsCommands } from "@hypr/plugin-analytics";
 
-export { SettingsAccount } from "./account";
 import { AppSettingsView } from "./app-settings";
 import {
   CORE_TRANSCRIPTION_LANGUAGE_CODES,
@@ -14,7 +13,6 @@ import { MainLanguageView } from "./main-language";
 import { NotificationSettingsView } from "./notification";
 import { Permissions } from "./permissions";
 import { SpokenLanguagesView } from "./spoken-languages";
-import { StorageSettingsView } from "./storage";
 import { ThemeSelector } from "./theme";
 import { TimezoneSelector } from "./timezone";
 import { WeekStartSelector } from "./week-start";
@@ -276,8 +274,6 @@ function SettingsAppContent({
           </form.Field>
         </div>
       </div>
-
-      <StorageSettingsView />
     </div>
   );
 }

@@ -3,16 +3,17 @@ import type React from "react";
 
 import { cn } from "@hypr/utils";
 
-import { requestSeek } from "~/audio-player/pending-seek";
 import { formatTimestamp } from "~/chat/citations/parser";
 import { useSessionSummaries } from "~/session/queries";
+import { seekTo } from "~/session/seek";
 import { useTabs } from "~/store/zustand/tabs";
 
 export interface CitationChipProps {
-  sessionId: string;
+  sessionId?: string;
   ms: number;
   raw?: string;
   className?: string;
+  variant?: "default" | "timestamp";
   onNavigate?: (sessionId: string, ms: number) => void;
 }
 
@@ -21,13 +22,20 @@ export function CitationChip({
   ms,
   raw,
   className,
+  variant,
   onNavigate,
 }: CitationChipProps) {
   const sessions = useSessionSummaries();
-  const session = sessions.find((s) => s.id === sessionId);
+  const currentTab = useTabs((state) => state.currentTab);
+  const currentSessionId =
+    currentTab?.type === "sessions" ? currentTab.id : undefined;
+  const effectiveSessionId = sessionId ?? currentSessionId;
+  const session = effectiveSessionId
+    ? sessions.find((s) => s.id === effectiveSessionId)
+    : undefined;
 
-  // If unknown session id, render as plain text without crashing
-  if (!session) {
+  // If unknown session id in default mode, render as plain text without crashing
+  if (sessionId && !session && variant !== "timestamp") {
     return (
       <span className="text-muted-foreground font-mono text-xs">
         {raw ?? `[[src:${sessionId}@${ms}]]`}
@@ -35,27 +43,64 @@ export function CitationChip({
     );
   }
 
-  const title = session.title?.trim() || "Untitled meeting";
+  const title = session?.title?.trim() || "Untitled meeting";
   const formattedTime = formatTimestamp(ms);
 
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
 
-    if (onNavigate) {
-      onNavigate(sessionId, ms);
+    if (onNavigate && effectiveSessionId) {
+      onNavigate(effectiveSessionId, ms);
       return;
     }
 
-    requestSeek(sessionId, ms);
-    useTabs.getState().openNew({ type: "sessions", id: sessionId });
+    // The session store records the pending seek and dispatches `notare:seek`
+    // for the open note; opening the tab (below) covers a note that isn't open.
+    seekTo(ms, effectiveSessionId ?? undefined);
+
+    if (effectiveSessionId) {
+      const tab = useTabs.getState().currentTab;
+      if (tab?.type !== "sessions" || tab.id !== effectiveSessionId) {
+        useTabs
+          .getState()
+          .openNew({ type: "sessions", id: effectiveSessionId });
+      }
+    }
   };
 
+  if (variant === "timestamp") {
+    return (
+      <button
+        type="button"
+        data-citation-chip
+        data-session-id={effectiveSessionId}
+        data-timestamp-ms={ms}
+        onClick={handleClick}
+        title={
+          session?.title
+            ? `${session.title} · ${formattedTime}`
+            : `Jump to ${formattedTime}`
+        }
+        className={cn([
+          "group mx-1 inline-flex items-center gap-1 align-middle select-none",
+          "border-border/70 bg-card/90 text-foreground rounded-md border px-1.5 py-0.5 text-xs font-medium",
+          "hover:border-border hover:bg-accent/40 active:bg-accent/60 cursor-pointer shadow-xs transition-colors",
+          className,
+        ])}
+      >
+        <span className="text-accent/80 shrink-0 font-mono text-xs">▸</span>
+        <span className="font-mono text-[11px] tabular-nums">
+          {formattedTime}
+        </span>
+      </button>
+    );
+  }
   return (
     <button
       type="button"
       data-citation-chip
-      data-session-id={sessionId}
+      data-session-id={effectiveSessionId}
       data-timestamp-ms={ms}
       onClick={handleClick}
       title={`Jump to "${title}" at ${formattedTime}`}

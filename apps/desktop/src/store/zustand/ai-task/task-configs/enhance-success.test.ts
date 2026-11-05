@@ -12,8 +12,12 @@ const mocks = vi.hoisted(() => ({
   loadSessionContentSnapshot: vi.fn(),
   persistGeneratedEnhancedNote: vi.fn().mockResolvedValue(undefined),
   persistGeneratedTitle: vi.fn().mockResolvedValue(true),
+  replaceSessionDecisions: vi.fn().mockResolvedValue(undefined),
 }));
 
+vi.mock("~/session/queries", () => ({
+  replaceSessionDecisions: mocks.replaceSessionDecisions,
+}));
 vi.mock("~/session/content-queries", () => ({
   loadSessionContentSnapshot: mocks.loadSessionContentSnapshot,
 }));
@@ -233,5 +237,21 @@ describe("enhanceSuccess.onSuccess", () => {
 
     expect(params.startTask).not.toHaveBeenCalled();
     expect(mocks.persistGeneratedTitle).not.toHaveBeenCalled();
+  });
+  it("extracts fenced decisions block and calls replaceSessionDecisions", async () => {
+    const snapshot = createSnapshot("Existing title");
+    mocks.loadSessionContentSnapshot.mockResolvedValue(snapshot);
+    const params = createParams();
+    params.text =
+      '# Note\n\nBody text\n\n```decisions\n[{"text":"Launch on Monday","owner":"Bob","at_ms":12000}]\n```';
+
+    await enhanceSuccess.onSuccess?.(params);
+
+    expect(mocks.replaceSessionDecisions).toHaveBeenCalledWith("session-1", [
+      { text: "Launch on Monday", owner: "Bob", atMs: 12000 },
+    ]);
+    const persistedNoteCall =
+      mocks.persistGeneratedEnhancedNote.mock.calls[0][0];
+    expect(persistedNoteCall.note.nextContent).not.toContain("```decisions");
   });
 });

@@ -55,7 +55,8 @@ export const createSettingsTab = (
   pinned: overrides.pinned ?? false,
   slotId: overrides.slotId ?? id(),
   state: {
-    tab: "app",
+    tab: "general",
+    section: null,
     ...overrides.state,
   },
 });
@@ -83,7 +84,7 @@ const createDefaultTabsState = (): TabsStateSlice => ({
   onClose: null,
   onEmpty: null,
   closedTabs: [],
-  chatMode: "FloatingClosed",
+  chatMode: "Closed",
 });
 
 export const seedTabsStore = (

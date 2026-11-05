@@ -29,7 +29,7 @@ export function TabContentChangelog({
   const showExpandedSidebarTimelineHeader = leftsidebar.expanded;
 
   useMountEffect(() => {
-    if (chat.mode !== "FloatingClosed") {
+    if (chat.mode === "Open") {
       chat.sendEvent({ type: "CLOSE" });
     }
   });

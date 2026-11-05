@@ -34,12 +34,14 @@ export function OuterHeader({
   sessionId,
   currentView,
   standaloneWindow = false,
+  showMeetingActions = false,
   title,
   centerTitle = false,
 }: {
   sessionId: string;
   currentView: EditorView;
   standaloneWindow?: boolean;
+  showMeetingActions?: boolean;
   title?: React.ReactNode;
   centerTitle?: boolean;
 }) {
@@ -89,6 +91,7 @@ export function OuterHeader({
         <HeaderMeetingControl sessionId={sessionId} sessionMode={sessionMode} />
         <OverflowButton
           standaloneWindow={standaloneWindow}
+          showMeetingActions={showMeetingActions}
           sessionId={sessionId}
           currentView={currentView}
         />

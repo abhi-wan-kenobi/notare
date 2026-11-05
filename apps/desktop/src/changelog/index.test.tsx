@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   chat: {
-    mode: "FloatingClosed",
+    mode: "Closed",
     sendEvent: vi.fn(),
   },
   changelog: { content: "Release notes" as string | null, loading: false },
@@ -52,7 +52,7 @@ import type { Tab } from "~/store/zustand/tabs";
 
 describe("TabContentChangelog", () => {
   beforeEach(() => {
-    mocks.chat.mode = "FloatingClosed";
+    mocks.chat.mode = "Closed";
     mocks.chat.sendEvent.mockClear();
     mocks.close.mockClear();
     mocks.leftsidebar.expanded = true;
