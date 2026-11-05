@@ -14,6 +14,7 @@ import {
   setCalendarProviderHidden,
   useHiddenCalendarProviders,
 } from "~/calendar/hidden-providers";
+import { SettingsExpander } from "~/settings/components";
 import { useSync } from "../context";
 import {
   OAuthCalendarSelection,
@@ -262,84 +263,74 @@ const GOOGLE_CREDENTIALS_URL =
  * client JSON comes from.
  */
 function SetupGuide({ docsPath }: { docsPath: string | undefined }) {
-  const [open, setOpen] = useState(false);
-
   return (
-    <div className="flex flex-col gap-1">
-      <button
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-        className="text-muted-foreground hover:text-foreground cursor-pointer self-start text-xs underline transition-colors"
-      >
-        {open ? (
-          <Trans>Hide setup steps</Trans>
-        ) : (
-          <Trans>How do I get this file?</Trans>
-        )}
-      </button>
-      {open && (
-        <div className="border-border bg-muted/40 flex flex-col gap-2 rounded-md border p-2">
-          <ol className="text-muted-foreground list-decimal space-y-1 pl-4 text-xs">
-            <li>
-              <Trans>
-                Create a project in the Google Cloud console (any name, it's
-                free).
-              </Trans>
-            </li>
-            <li>
-              <Trans>Enable the Google Calendar API for that project.</Trans>
-            </li>
-            <li>
-              <Trans>
-                Set up the OAuth consent screen: audience{" "}
-                <span className="text-foreground font-medium">External</span>,
-                then add your own Gmail address as a test user.
-              </Trans>
-            </li>
-            <li>
-              <Trans>
-                Go to Credentials → Create credentials → OAuth client ID.
-              </Trans>
-            </li>
-            <li>
-              <Trans>
-                Application type:{" "}
-                <span className="text-foreground font-medium">Desktop app</span>{" "}
-                — not “Web application”.
-              </Trans>
-            </li>
-            <li>
-              <Trans>Download the JSON, then select it here.</Trans>
-            </li>
-          </ol>
-          <p className="text-xs text-amber-700">
+    <SettingsExpander
+      title={<Trans>How do I get this file?</Trans>}
+      description={<Trans>6 setup steps in Google Cloud console</Trans>}
+    >
+      <div className="border-border bg-muted/40 flex flex-col gap-2 rounded-md border p-3">
+        <ol className="text-muted-foreground list-decimal space-y-1 pl-4 text-xs">
+          <li>
             <Trans>
-              If you see redirect URI / JavaScript origin fields, you picked Web
-              — choose Desktop app instead.
+              Create a project in the Google Cloud console (any name, it's
+              free).
             </Trans>
-          </p>
-          <div className="flex items-center gap-2">
+          </li>
+          <li>
+            <Trans>Enable the Google Calendar API for that project.</Trans>
+          </li>
+          <li>
+            <Trans>
+              Set up the OAuth consent screen: audience{" "}
+              <span className="text-foreground font-medium">External</span>,
+              then add your own Gmail address as a test user.
+            </Trans>
+          </li>
+          <li>
+            <Trans>
+              Go to Credentials → Create credentials → OAuth client ID.
+            </Trans>
+          </li>
+          <li>
+            <Trans>
+              Application type:{" "}
+              <span className="text-foreground font-medium">Desktop app</span>{" "}
+              — not “Web application”.
+            </Trans>
+          </li>
+          <li>
+            <Trans>Download the JSON, then select it here.</Trans>
+          </li>
+        </ol>
+        <p className="text-xs text-amber-700">
+          <Trans>
+            If you see redirect URI / JavaScript origin fields, you picked Web
+            — choose Desktop app instead.
+          </Trans>
+        </p>
+        <div className="flex items-center gap-2 pt-1">
+          <button
+            type="button"
+            onClick={() =>
+              void openerCommands.openUrl(GOOGLE_CREDENTIALS_URL, null)
+            }
+            className="text-muted-foreground hover:text-foreground cursor-pointer text-xs underline transition-colors"
+          >
+            <Trans>Open Google Cloud console</Trans>
+          </button>
+          <span className="text-muted-foreground text-xs">·</span>
+          {docsPath && (
             <button
-              onClick={() =>
-                void openerCommands.openUrl(GOOGLE_CREDENTIALS_URL, null)
-              }
+              type="button"
+              onClick={() => void openerCommands.openUrl(docsPath, null)}
               className="text-muted-foreground hover:text-foreground cursor-pointer text-xs underline transition-colors"
             >
-              <Trans>Open Google Cloud console</Trans>
+              <Trans>Full setup guide</Trans>
             </button>
-            <span className="text-muted-foreground text-xs">·</span>
-            {docsPath && (
-              <button
-                onClick={() => void openerCommands.openUrl(docsPath, null)}
-                className="text-muted-foreground hover:text-foreground cursor-pointer text-xs underline transition-colors"
-              >
-                <Trans>Full setup guide</Trans>
-              </button>
-            )}
-          </div>
+          )}
         </div>
-      )}
-    </div>
+      </div>
+    </SettingsExpander>
   );
 }
 

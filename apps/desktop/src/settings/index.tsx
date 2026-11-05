@@ -210,6 +210,7 @@ function SettingsSection({
   );
 }
 
+export { CalendarSidebarContent as CalendarProvidersSection } from "~/calendar/components/sidebar";
 export {
   SectionLabel,
   SettingsExpander,
