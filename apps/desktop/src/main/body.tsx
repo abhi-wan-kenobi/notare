@@ -1,5 +1,6 @@
 import { isTauri } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { platform } from "@tauri-apps/plugin-os";
 import {
   ArrowLeftIcon,
   PanelLeftCloseIcon,
@@ -80,6 +81,7 @@ type LeftSidebarSizeStyle = CSSProperties & {
 };
 
 export function ClassicMainBody() {
+  const inspectorShortcut = platform() === "macos" ? "⌘J" : "Ctrl+J";
   const { inspector, leftsidebar } = useShell();
   const currentTab = useTabs((state) => state.currentTab);
   const { runEscapeShortcut } = useClassicMainShortcuts();
@@ -544,7 +546,7 @@ export function ClassicMainBody() {
           ])}
         >
           <span>Ask</span>
-          <Kbd className="text-[10px]">⌘J</Kbd>
+          <Kbd className="text-[10px]">{inspectorShortcut}</Kbd>
         </button>
       )}
       {isOnboarding ||
