@@ -253,7 +253,11 @@ describe("Basic Tab Actions", () => {
       state: { tab: "general", section: null },
     });
     expect(useTabs.getState()).toMatchTabsInOrder([
-      { type: "settings", active: true, state: { tab: "general", section: null } },
+      {
+        type: "settings",
+        active: true,
+        state: { tab: "general", section: null },
+      },
     ]);
   });
 
@@ -268,7 +272,11 @@ describe("Basic Tab Actions", () => {
       state: { tab: "general", section: null },
     });
     expect(useTabs.getState()).toMatchTabsInOrder([
-      { type: "settings", active: true, state: { tab: "general", section: null } },
+      {
+        type: "settings",
+        active: true,
+        state: { tab: "general", section: null },
+      },
     ]);
   });
 
@@ -305,7 +313,6 @@ describe("Basic Tab Actions", () => {
       },
     ]);
   });
-
 
   test("select toggles active flag without changing history", () => {
     const tabA = createSessionTab({ active: true });

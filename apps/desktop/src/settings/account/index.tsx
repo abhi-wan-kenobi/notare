@@ -23,8 +23,8 @@ import {
 } from "@hypr/ui/components/ui/dialog";
 
 import { SectionLabel, SettingsRow } from "~/settings/components";
-import { displayPath } from "~/settings/general/storage/path-utils";
 import { StorageSettingsView } from "~/settings/general/storage";
+import { displayPath } from "~/settings/general/storage/path-utils";
 
 export function AccountSettingsView() {
   const { t } = useLingui();
@@ -140,7 +140,8 @@ export function AccountSettingsView() {
             title={<Trans>Delete all local data</Trans>}
             description={
               <Trans>
-                Removes notes, recordings, and saved credentials from this device
+                Removes notes, recordings, and saved credentials from this
+                device
               </Trans>
             }
             trailing={
@@ -168,7 +169,8 @@ export function AccountSettingsView() {
             <DialogDescription className="text-xs">
               <Trans>
                 This action cannot be undone. All notes, transcript recordings,
-                and locally configured API keys will be deleted from this device.
+                and locally configured API keys will be deleted from this
+                device.
               </Trans>
             </DialogDescription>
           </DialogHeader>

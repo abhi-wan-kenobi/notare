@@ -79,7 +79,9 @@ function SettingsView({ tab }: { tab: Extract<Tab, { type: "settings" }> }) {
             </div>
             <SettingsPageTitle title={<Trans>Settings</Trans>} />
             <p className="text-muted-foreground mt-3 text-sm">
-              <Trans>A few thoughtful controls for your workspace on this device.</Trans>
+              <Trans>
+                A few thoughtful controls for your workspace on this device.
+              </Trans>
             </p>
             <nav
               aria-label="Settings hubs"

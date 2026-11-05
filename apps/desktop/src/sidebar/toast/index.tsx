@@ -100,7 +100,8 @@ export function ToastArea({
   const isAiIntelligenceTabActive =
     currentTab?.type === "settings" &&
     currentTab.state?.tab === "ai" &&
-    (currentTab.state?.section === "intelligence" || !currentTab.state?.section);
+    (currentTab.state?.section === "intelligence" ||
+      !currentTab.state?.section);
   const activeTranscriptSessionId =
     currentTab?.type === "sessions" &&
     currentTab.state.view?.type === "transcript"

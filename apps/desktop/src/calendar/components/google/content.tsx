@@ -10,17 +10,18 @@ import { commands as openerCommands } from "@hypr/plugin-opener2";
 import { Button } from "@hypr/ui/components/ui/button";
 import { Switch } from "@hypr/ui/components/ui/switch";
 
-import {
-  setCalendarProviderHidden,
-  useHiddenCalendarProviders,
-} from "~/calendar/hidden-providers";
-import { SettingsExpander } from "~/settings/components";
 import { useSync } from "../context";
 import {
   OAuthCalendarSelection,
   useOAuthCalendarSelection,
 } from "../oauth/calendar-selection";
 import type { CalendarProvider } from "../shared";
+
+import {
+  setCalendarProviderHidden,
+  useHiddenCalendarProviders,
+} from "~/calendar/hidden-providers";
+import { SettingsExpander } from "~/settings/components";
 const STATUS_QUERY_KEY = ["google-calendar-account"];
 
 function useGoogleAccountStatus() {
@@ -294,8 +295,8 @@ function SetupGuide({ docsPath }: { docsPath: string | undefined }) {
           <li>
             <Trans>
               Application type:{" "}
-              <span className="text-foreground font-medium">Desktop app</span>{" "}
-              — not “Web application”.
+              <span className="text-foreground font-medium">Desktop app</span> —
+              not “Web application”.
             </Trans>
           </li>
           <li>
@@ -304,8 +305,8 @@ function SetupGuide({ docsPath }: { docsPath: string | undefined }) {
         </ol>
         <p className="text-xs text-amber-700">
           <Trans>
-            If you see redirect URI / JavaScript origin fields, you picked Web
-            — choose Desktop app instead.
+            If you see redirect URI / JavaScript origin fields, you picked Web —
+            choose Desktop app instead.
           </Trans>
         </p>
         <div className="flex items-center gap-2 pt-1">
@@ -436,9 +437,9 @@ function ConnectedGoogleContent({
   return (
     <div className="flex flex-col gap-3">
       {/* Status Bar: Connected State + Sync Now Ghost Pill */}
-      <div className="flex items-center justify-between gap-2 border-border/60 border-b pb-2">
+      <div className="border-border/60 flex items-center justify-between gap-2 border-b pb-2">
         <div className="flex items-center gap-2">
-          <span className="size-2 rounded-full bg-emerald-500 shrink-0" />
+          <span className="size-2 shrink-0 rounded-full bg-emerald-500" />
           <span className="text-xs font-medium text-emerald-600">
             <Trans>Connected</Trans>
           </span>
@@ -448,7 +449,7 @@ function ConnectedGoogleContent({
           size="sm"
           onClick={handleManualSync}
           disabled={isSyncing || isLoading}
-          className="rounded-full border border-border/60 hover:bg-muted text-xs h-7 px-3 text-muted-foreground hover:text-foreground"
+          className="border-border/60 hover:bg-muted text-muted-foreground hover:text-foreground h-7 rounded-full border px-3 text-xs"
         >
           <RefreshCwIcon
             className={`mr-1.5 size-3 ${isSyncing || isLoading ? "animate-spin" : ""}`}
@@ -478,7 +479,7 @@ function ConnectedGoogleContent({
                 variant="ghost"
                 size="sm"
                 onClick={() => onDisconnect(acc.email)}
-                className="h-6 px-2 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+                className="text-destructive hover:bg-destructive/10 hover:text-destructive h-6 px-2 text-xs"
               >
                 <Trans>Disconnect</Trans>
               </Button>
@@ -510,7 +511,9 @@ function ConnectedGoogleContent({
             <Trans>Show in Calendar</Trans>
           </span>
           <span className="text-muted-foreground text-[11px]">
-            <Trans>Display Google Calendar events on the main calendar view</Trans>
+            <Trans>
+              Display Google Calendar events on the main calendar view
+            </Trans>
           </span>
         </div>
         <Switch
@@ -526,7 +529,7 @@ function ConnectedGoogleContent({
         <button
           type="button"
           onClick={() => onDisconnect()}
-          className="cursor-pointer text-xs text-destructive underline hover:text-destructive/80"
+          className="text-destructive hover:text-destructive/80 cursor-pointer text-xs underline"
         >
           <Trans>Disconnect all</Trans>
         </button>
@@ -534,7 +537,7 @@ function ConnectedGoogleContent({
         <button
           type="button"
           onClick={onReset}
-          className="text-muted-foreground cursor-pointer text-xs underline hover:text-destructive"
+          className="text-muted-foreground hover:text-destructive cursor-pointer text-xs underline"
         >
           <Trans>Disconnect &amp; remove client</Trans>
         </button>

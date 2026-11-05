@@ -55,7 +55,9 @@ export const isTabInputSupported = (
 
 export type SettingsTab = "general" | "ai" | "integrations" | "account";
 
-export const isSettingsTab = (tab: string | null | undefined): tab is SettingsTab => {
+export const isSettingsTab = (
+  tab: string | null | undefined,
+): tab is SettingsTab => {
   switch (tab) {
     case "general":
     case "ai":
@@ -284,7 +286,9 @@ export const getDefaultState = (tab: TabInput): Tab => {
         ...base,
         type: "settings",
         state: normalizeSettingsState(
-          tab.state as { tab?: string | null; section?: string | null } | undefined,
+          tab.state as
+            | { tab?: string | null; section?: string | null }
+            | undefined,
         ),
       };
     }

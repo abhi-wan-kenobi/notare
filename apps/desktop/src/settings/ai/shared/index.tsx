@@ -261,8 +261,8 @@ export function NonHyprProviderCard({
                 <Trans>Ready</Trans>
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-                <span className="size-2 rounded-full bg-muted-foreground/30" />
+              <span className="text-muted-foreground inline-flex items-center gap-1.5 text-xs">
+                <span className="bg-muted-foreground/30 size-2 rounded-full" />
                 <Trans>Not configured</Trans>
               </span>
             )}
@@ -375,19 +375,19 @@ export function NonHyprProviderCard({
           <div className="border-border/60 flex items-center justify-between border-t pt-3">
             <div className="flex items-center gap-2 text-xs">
               {saveStatus === "verifying" && (
-                <span className="flex items-center gap-1.5 text-muted-foreground">
+                <span className="text-muted-foreground flex items-center gap-1.5">
                   <Loader2Icon className="size-3.5 animate-spin" />
                   <Trans>Verifying…</Trans>
                 </span>
               )}
               {saveStatus === "saved" && (
-                <span className="flex items-center gap-1.5 text-emerald-600 font-medium">
+                <span className="flex items-center gap-1.5 font-medium text-emerald-600">
                   <CheckCircle2Icon className="size-3.5" />
                   <span>{statusMessage ?? <Trans>Saved</Trans>}</span>
                 </span>
               )}
               {saveStatus === "error" && (
-                <span className="flex items-center gap-1.5 text-destructive font-medium">
+                <span className="text-destructive flex items-center gap-1.5 font-medium">
                   <AlertCircleIcon className="size-3.5" />
                   <span>{statusMessage ?? <Trans>Failed to save</Trans>}</span>
                 </span>
@@ -409,7 +409,7 @@ export function NonHyprProviderCard({
                 disabled={
                   saveStatus === "verifying" || locked || config.disabled
                 }
-                className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90 h-8 px-4 text-xs font-medium shadow-xs"
+                className="bg-primary text-primary-foreground hover:bg-primary/90 h-8 rounded-full px-4 text-xs font-medium shadow-xs"
               >
                 <Trans>Verify &amp; Save</Trans>
               </Button>
