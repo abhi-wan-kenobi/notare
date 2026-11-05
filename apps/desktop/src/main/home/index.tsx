@@ -40,7 +40,7 @@ function HomeView() {
   const tz = useTimezone();
   const now = useMemo(() => new Date(), []);
   const nowIso = useMemo(() => now.toISOString(), [now]);
-  const todayKey = format(now, "yyyy-MM-dd");
+  const todayKey = format(toTz(now, tz), "yyyy-MM-dd");
 
   const eventsTable = useTimelineEventsTable();
   const sessions = useSessionSummaries();
@@ -112,7 +112,9 @@ function HomeView() {
     if (!eventsTable) return 0;
     return Object.values(eventsTable).filter((event) => {
       if (!event.title || !event.started_at) return false;
-      return format(new Date(event.started_at), "yyyy-MM-dd") === todayKey;
+      return (
+        format(toTz(event.started_at as string, tz), "yyyy-MM-dd") === todayKey
+      );
     }).length;
   }, [eventsTable, todayKey]);
 
@@ -134,7 +136,7 @@ function HomeView() {
     <div className="relative h-full w-full">
       <div className="mx-auto flex h-full w-full max-w-[700px] flex-col overflow-y-auto px-8 py-9">
         <div className="text-muted-foreground text-[11px] font-semibold tracking-wide uppercase">
-          {format(now, "EEEE · MMMM d, yyyy")}
+          {format(toTz(now, tz), "EEEE · MMMM d, yyyy")}
         </div>
         <h1 className="page-title mt-2">
           <Trans>A clear view of the day.</Trans>

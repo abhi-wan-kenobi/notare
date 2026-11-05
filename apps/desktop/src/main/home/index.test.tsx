@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
     external_event_id: string;
   }[],
   openActionItemsCount: 0,
+  timezone: "America/Los_Angeles",
   openCurrent: vi.fn(),
   openNew: vi.fn(),
   newNote: vi.fn(),
@@ -26,9 +27,12 @@ vi.mock("~/shared/dock", () => ({
 }));
 
 vi.mock("~/calendar/hooks", () => ({
-  useTimezone: () => undefined,
+  useTimezone: () => mocks.timezone,
   useWeekStartsOn: () => 0,
-  toTz: (date: string) => new Date(date),
+  toTz: (date: string | Date, tz?: string) =>
+    tz
+      ? new Date(new Date(date).toLocaleString("en-US", { timeZone: tz }))
+      : new Date(date),
 }));
 
 vi.mock("~/calendar/queries", () => ({
@@ -84,6 +88,7 @@ describe("TabContentHome", () => {
     mocks.sessions = [];
     mocks.sessionLinks = [];
     mocks.openActionItemsCount = 0;
+    mocks.timezone = "America/Los_Angeles";
     mocks.openCurrent.mockClear();
     mocks.newNote.mockClear();
   });
@@ -115,6 +120,20 @@ describe("TabContentHome", () => {
         /1 scheduled today · 1 recorded this week · 3 open actions/,
       ),
     ).toBeTruthy();
+  });
+  it("counts today's events in the selected timezone", () => {
+    vi.setSystemTime(new Date("2026-11-05T08:00:00.000Z"));
+    mocks.eventsTable = {
+      "evt-1": {
+        title: "Evening meeting",
+        started_at: "2026-11-06T02:00:00.000Z",
+      },
+    };
+
+    renderHome();
+
+    expect(screen.getByText(/1 scheduled today/)).toBeTruthy();
+    vi.useRealTimers();
   });
 
   it("only lists future events in Coming up, sorted by start time", () => {
