@@ -97,13 +97,25 @@ msgstr "{duplicateCandidateCount} already in your dictionary — skipped."
 msgid "{minutes} min"
 msgstr "{minutes} min"
 
+#: src/main/home/index.tsx
+msgid "{openActionItemsCount} open action items"
+msgstr "{openActionItemsCount} open action items"
+
 #: src/main/action-items/index.tsx
 msgid "{openCount} open"
 msgstr "{openCount} open"
 
 #: src/main/home/index.tsx
-msgid "{scheduledTodayCount} scheduled today · {recordedThisWeekCount} recorded this week · {openActionItemsCount} open actions"
-msgstr "{scheduledTodayCount} scheduled today · {recordedThisWeekCount} recorded this week · {openActionItemsCount} open actions"
+msgid "{recordedThisWeekCount} recorded this week"
+msgstr "{recordedThisWeekCount} recorded this week"
+
+#: src/main/home/index.tsx
+msgid "{scheduledTodayCount} scheduled today"
+msgstr "{scheduledTodayCount} scheduled today"
+
+#: src/main/home/index.tsx
+msgid "{sessionsNeedingSummaryCount} need a summary"
+msgstr "{sessionsNeedingSummaryCount} need a summary"
 
 #: src/settings/general/account.tsx
 msgid "{trialDaysRemaining} day left"
@@ -1467,6 +1479,10 @@ msgstr "events"
 msgid "Events to send"
 msgstr "Events to send"
 
+#: src/main/home/index.tsx
+msgid "Every two weeks"
+msgstr "Every two weeks"
+
 #: src/chat/components/scope-selector.tsx
 msgid "Everything"
 msgstr "Everything"
@@ -1983,6 +1999,10 @@ msgstr "Last seen {0}"
 msgid "Last week"
 msgstr "Last week"
 
+#: src/main/home/index.tsx
+msgid "Later this week"
+msgstr "Later this week"
+
 #: src/session/components/note-input/header.tsx
 #: src/stt/useLiveTranscriptCopyShortcuts.ts
 msgid "Latest transcript chunk copied"
@@ -2246,6 +2266,10 @@ msgstr "Monday"
 #: src/dictation/orb.tsx
 msgid "Mono"
 msgstr "Mono"
+
+#: src/main/home/index.tsx
+msgid "Monthly"
+msgstr "Monthly"
 
 #: src/session/components/floating/options-menu.tsx
 msgid "More options"
@@ -3043,6 +3067,10 @@ msgstr "Recording time"
 #: src/main/meetings/index.tsx
 msgid "Recurring"
 msgstr "Recurring"
+
+#: src/main/home/index.tsx
+msgid "Recurring event"
+msgstr "Recurring event"
 
 #: src/main/series/index.tsx
 msgid "Recurring meeting series"
@@ -4013,6 +4041,7 @@ msgstr "Tip: The Notare team loves our users!"
 msgid "Title"
 msgstr "Title"
 
+#: src/main/home/index.tsx
 #: src/main/meetings/index.tsx
 #: src/snippets/index.tsx
 msgid "Today"
@@ -4037,6 +4066,10 @@ msgstr "Toggle shortcut"
 #: src/shared/command-palette/index.tsx
 msgid "Toggle theme"
 msgstr "Toggle theme"
+
+#: src/main/home/index.tsx
+msgid "Tomorrow"
+msgstr "Tomorrow"
 
 #: src/main/series/index.tsx
 msgid "Topic no longer active"
@@ -4309,6 +4342,10 @@ msgstr "Webhooks"
 #: src/settings/general/week-start.tsx
 msgid "Week starts on"
 msgstr "Week starts on"
+
+#: src/main/home/index.tsx
+msgid "Weekly"
+msgstr "Weekly"
 
 #: src/onboarding/index.tsx
 msgid "Welcome to Notare"

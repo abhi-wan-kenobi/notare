@@ -97,12 +97,24 @@ msgstr ""
 msgid "{minutes} min"
 msgstr ""
 
+#: src/main/home/index.tsx
+msgid "{openActionItemsCount} open action items"
+msgstr ""
+
 #: src/main/action-items/index.tsx
 msgid "{openCount} open"
 msgstr ""
 
 #: src/main/home/index.tsx
-msgid "{scheduledTodayCount} scheduled today · {recordedThisWeekCount} recorded this week · {openActionItemsCount} open actions"
+msgid "{recordedThisWeekCount} recorded this week"
+msgstr ""
+
+#: src/main/home/index.tsx
+msgid "{scheduledTodayCount} scheduled today"
+msgstr ""
+
+#: src/main/home/index.tsx
+msgid "{sessionsNeedingSummaryCount} need a summary"
 msgstr ""
 
 #: src/settings/general/account.tsx
@@ -1467,6 +1479,10 @@ msgstr ""
 msgid "Events to send"
 msgstr ""
 
+#: src/main/home/index.tsx
+msgid "Every two weeks"
+msgstr ""
+
 #: src/chat/components/scope-selector.tsx
 msgid "Everything"
 msgstr ""
@@ -1983,6 +1999,10 @@ msgstr ""
 msgid "Last week"
 msgstr ""
 
+#: src/main/home/index.tsx
+msgid "Later this week"
+msgstr ""
+
 #: src/session/components/note-input/header.tsx
 #: src/stt/useLiveTranscriptCopyShortcuts.ts
 msgid "Latest transcript chunk copied"
@@ -2245,6 +2265,10 @@ msgstr ""
 
 #: src/dictation/orb.tsx
 msgid "Mono"
+msgstr ""
+
+#: src/main/home/index.tsx
+msgid "Monthly"
 msgstr ""
 
 #: src/session/components/floating/options-menu.tsx
@@ -3042,6 +3066,10 @@ msgstr ""
 #: src/main/action-items/index.tsx
 #: src/main/meetings/index.tsx
 msgid "Recurring"
+msgstr ""
+
+#: src/main/home/index.tsx
+msgid "Recurring event"
 msgstr ""
 
 #: src/main/series/index.tsx
@@ -4013,6 +4041,7 @@ msgstr ""
 msgid "Title"
 msgstr ""
 
+#: src/main/home/index.tsx
 #: src/main/meetings/index.tsx
 #: src/snippets/index.tsx
 msgid "Today"
@@ -4036,6 +4065,10 @@ msgstr ""
 
 #: src/shared/command-palette/index.tsx
 msgid "Toggle theme"
+msgstr ""
+
+#: src/main/home/index.tsx
+msgid "Tomorrow"
 msgstr ""
 
 #: src/main/series/index.tsx
@@ -4308,6 +4341,10 @@ msgstr ""
 
 #: src/settings/general/week-start.tsx
 msgid "Week starts on"
+msgstr ""
+
+#: src/main/home/index.tsx
+msgid "Weekly"
 msgstr ""
 
 #: src/onboarding/index.tsx
