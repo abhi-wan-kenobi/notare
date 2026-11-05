@@ -7,6 +7,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("@tauri-apps/plugin-os", () => ({ platform: () => "linux" }));
 const mocks = vi.hoisted(() => ({
   createNewNote: vi.fn(),
   openNew: vi.fn(),

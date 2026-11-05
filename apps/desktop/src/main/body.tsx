@@ -81,7 +81,12 @@ type LeftSidebarSizeStyle = CSSProperties & {
 };
 
 export function ClassicMainBody() {
-  const inspectorShortcut = platform() === "macos" ? "⌘J" : "Ctrl+J";
+  let inspectorShortcut = "Ctrl+J";
+  try {
+    if (platform() === "macos") inspectorShortcut = "⌘J";
+  } catch {
+    // Vite-only previews do not expose the Tauri platform API.
+  }
   const { inspector, leftsidebar } = useShell();
   const currentTab = useTabs((state) => state.currentTab);
   const { runEscapeShortcut } = useClassicMainShortcuts();
