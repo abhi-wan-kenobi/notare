@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-sync-revoke-peer"
+description = "Enables the sync_revoke_peer command without any pre-configured scope."
+commands.allow = ["sync_revoke_peer"]
+
+[[permission]]
+identifier = "deny-sync-revoke-peer"
+description = "Denies the sync_revoke_peer command without any pre-configured scope."
+commands.deny = ["sync_revoke_peer"]

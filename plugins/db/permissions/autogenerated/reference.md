@@ -23,6 +23,13 @@ Default permissions for the plugin
 - `allow-sync-remove-peer`
 - `allow-sync-start`
 - `allow-sync-stop`
+- `allow-pairing-create-offer`
+- `allow-pairing-join`
+- `allow-pairing-status`
+- `allow-pairing-confirm`
+- `allow-sync-revoke-peer`
+- `allow-get-legacy-import-report`
+- `allow-run-legacy-import`
 - `allow-list-recipes`
 - `allow-upsert-recipe`
 - `allow-delete-recipe`
@@ -351,6 +358,110 @@ Denies the list_recipes command without any pre-configured scope.
 <tr>
 <td>
 
+`db:allow-pairing-confirm`
+
+</td>
+<td>
+
+Enables the pairing_confirm command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`db:deny-pairing-confirm`
+
+</td>
+<td>
+
+Denies the pairing_confirm command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`db:allow-pairing-create-offer`
+
+</td>
+<td>
+
+Enables the pairing_create_offer command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`db:deny-pairing-create-offer`
+
+</td>
+<td>
+
+Denies the pairing_create_offer command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`db:allow-pairing-join`
+
+</td>
+<td>
+
+Enables the pairing_join command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`db:deny-pairing-join`
+
+</td>
+<td>
+
+Denies the pairing_join command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`db:allow-pairing-status`
+
+</td>
+<td>
+
+Enables the pairing_status command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`db:deny-pairing-status`
+
+</td>
+<td>
+
+Denies the pairing_status command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
 `db:allow-run-legacy-import`
 
 </td>
@@ -474,6 +585,32 @@ Enables the sync_remove_peer command without any pre-configured scope.
 <td>
 
 Denies the sync_remove_peer command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`db:allow-sync-revoke-peer`
+
+</td>
+<td>
+
+Enables the sync_revoke_peer command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`db:deny-sync-revoke-peer`
+
+</td>
+<td>
+
+Denies the sync_revoke_peer command without any pre-configured scope.
 
 </td>
 </tr>

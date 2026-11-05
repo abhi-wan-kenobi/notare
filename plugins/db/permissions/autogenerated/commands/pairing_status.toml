@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-pairing-status"
+description = "Enables the pairing_status command without any pre-configured scope."
+commands.allow = ["pairing_status"]
+
+[[permission]]
+identifier = "deny-pairing-status"
+description = "Denies the pairing_status command without any pre-configured scope."
+commands.deny = ["pairing_status"]

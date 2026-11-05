@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-pairing-confirm"
+description = "Enables the pairing_confirm command without any pre-configured scope."
+commands.allow = ["pairing_confirm"]
+
+[[permission]]
+identifier = "deny-pairing-confirm"
+description = "Denies the pairing_confirm command without any pre-configured scope."
+commands.deny = ["pairing_confirm"]
