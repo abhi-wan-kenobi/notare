@@ -203,6 +203,12 @@ const chatComponents = {
   },
   a: (props: React.AnchorHTMLAttributes<HTMLAnchorElement>) => {
     const href = props.href;
+    if (href?.startsWith("citation-timestamp:")) {
+      const ms = Number.parseInt(href.slice("citation-timestamp:".length), 10);
+      if (!Number.isNaN(ms)) {
+        return <CitationChip ms={ms} variant="timestamp" />;
+      }
+    }
     if (href?.startsWith("citation:")) {
       const parsed = parseCitation(`[[src:${href.slice(9)}]]`);
       if (parsed) {
@@ -210,6 +216,7 @@ const chatComponents = {
           <CitationChip
             sessionId={parsed.sessionId}
             ms={parsed.ms}
+            variant="timestamp"
             raw={
               typeof props.children === "string" ? props.children : undefined
             }
@@ -217,7 +224,6 @@ const chatComponents = {
         );
       }
     }
-
     return (
       <a
         href={href}

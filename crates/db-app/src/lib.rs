@@ -116,6 +116,11 @@ pub const APP_MIGRATION_STEPS: &[hypr_db_migrate::MigrationStep] = &[
         scope: hypr_db_migrate::MigrationScope::Plain,
         sql: include_str!("../migrations/20261103000000_sync_peer_cursors.sql"),
     },
+    hypr_db_migrate::MigrationStep {
+        id: "20261105090000_series_backfill",
+        scope: hypr_db_migrate::MigrationScope::Plain,
+        sql: include_str!("../migrations/20261105090000_series_backfill.sql"),
+    },
 ];
 
 pub fn schema() -> hypr_db_migrate::DbSchema {
@@ -1042,5 +1047,70 @@ mod tests {
         assert_eq!(row.category, None);
         assert_eq!(row.targets_json, None);
         assert_eq!(row.sections_json, "[]");
+    }
+
+    #[tokio::test]
+    async fn series_backfill_migration_adds_column_and_populates_series_id() {
+        let db = Db::connect_memory_plain().await.unwrap();
+        let backfill_index = APP_MIGRATION_STEPS
+            .iter()
+            .position(|step| step.id == "20261105090000_series_backfill")
+            .unwrap();
+
+        // Migrate up to the step before series_backfill
+        hypr_db_migrate::migrate(
+            &db,
+            hypr_db_migrate::DbSchema {
+                steps: &APP_MIGRATION_STEPS[..backfill_index],
+                validate_crr_table: crr_alter_guard_required,
+            },
+        )
+        .await
+        .unwrap();
+
+        // Column does not exist yet
+        let col_before: bool = sqlx::query_scalar(
+            "SELECT COUNT(*) > 0 FROM pragma_table_info('action_items') WHERE name = 'carried_from_session_id'",
+        )
+        .fetch_one(db.pool())
+        .await
+        .unwrap();
+        assert!(!col_before);
+
+        // Insert an event with recurrence_series_id
+        sqlx::query(
+            "INSERT INTO events (id, calendar_id, title, started_at, ended_at, recurrence_series_id)
+             VALUES ('ev-1', 'cal-1', 'Weekly 1:1', '2026-11-01T10:00:00Z', '2026-11-01T10:30:00Z', 'series-123')",
+        )
+        .execute(db.pool())
+        .await
+        .unwrap();
+
+        // Insert a session referencing ev-1 with empty series_id and empty event_json
+        sqlx::query(
+            "INSERT INTO sessions (id, title, event_id, series_id, started_at, created_at, event_json)
+             VALUES ('sess-1', 'Weekly 1:1', 'ev-1', '', '2026-11-01T10:00:00Z', '2026-11-01T10:00:00Z', '')",
+        )
+        .execute(db.pool())
+        .await
+        .unwrap();
+
+        // Now run the full migration including series_backfill
+        hypr_db_migrate::migrate(&db, schema()).await.unwrap();
+
+        let col_after: bool = sqlx::query_scalar(
+            "SELECT COUNT(*) > 0 FROM pragma_table_info('action_items') WHERE name = 'carried_from_session_id'",
+        )
+        .fetch_one(db.pool())
+        .await
+        .unwrap();
+        assert!(col_after);
+
+        let series_id: String =
+            sqlx::query_scalar("SELECT series_id FROM sessions WHERE id = 'sess-1'")
+                .fetch_one(db.pool())
+                .await
+                .unwrap();
+        assert_eq!(series_id, "series-123");
     }
 }

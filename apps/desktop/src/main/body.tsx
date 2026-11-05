@@ -43,6 +43,7 @@ import {
 import { useClassicMainShortcuts } from "./useShortcuts";
 
 import { useShell } from "~/contexts/shell";
+import { useOpenNoteDialog } from "~/shared/command-palette";
 import { ContentErrorBoundary } from "~/shared/content-error-boundary";
 import { scrollElementByWheel } from "~/shared/dom/scroll-wheel";
 import { useMountEffect } from "~/shared/hooks/useMountEffect";
@@ -50,7 +51,6 @@ import {
   NOTE_SURFACE_MIN_WIDTH_PX,
   usesNoteSurfaceMinWidth,
 } from "~/shared/main/layout-widths";
-import { useOpenNoteDialog } from "~/shared/open-note-dialog";
 import { useNewNote } from "~/shared/useNewNote";
 import { useSidebarUpcomingMeetingStatus } from "~/sidebar/timeline/upcoming-meeting";
 import {

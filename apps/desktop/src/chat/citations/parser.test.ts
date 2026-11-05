@@ -5,6 +5,7 @@ import {
   formatTimestamp,
   parseCitation,
   parseCitationSegments,
+  parseTimestampToMs,
   replaceCitationsForRendering,
 } from "./parser";
 
@@ -113,11 +114,43 @@ describe("citation parser", () => {
     });
   });
 
+  describe("parseTimestampToMs", () => {
+    it("parses valid mm:ss timestamps", () => {
+      expect(parseTimestampToMs("01:15")).toBe(75000);
+      expect(parseTimestampToMs("11:40")).toBe(700000);
+      expect(parseTimestampToMs("0:05")).toBe(5000);
+    });
+
+    it("parses valid hh:mm:ss timestamps", () => {
+      expect(parseTimestampToMs("1:02:03")).toBe(3723000);
+    });
+
+    it("returns null for invalid timestamps", () => {
+      expect(parseTimestampToMs("invalid")).toBeNull();
+      expect(parseTimestampToMs("10:65")).toBeNull();
+      expect(parseTimestampToMs("-1:20")).toBeNull();
+    });
+  });
+
   describe("replaceCitationsForRendering", () => {
     it("replaces citations with markdown links", () => {
       const text = "Check [[src:sess-1@1000]] for details.";
       expect(replaceCitationsForRendering(text)).toBe(
         "Check [src:sess-1@1000](citation:sess-1@1000) for details.",
+      );
+    });
+
+    it("replaces [mm:ss] timestamps with citation links", () => {
+      const text = "Topic discussed at [01:15] and concluded at [11:40].";
+      expect(replaceCitationsForRendering(text)).toBe(
+        "Topic discussed at [▸ 01:15](citation-timestamp:75000) and concluded at [▸ 11:40](citation-timestamp:700000).",
+      );
+    });
+
+    it("replaces at_ms numbers with citation links", () => {
+      const text = 'Result has "at_ms": 75000 in output.';
+      expect(replaceCitationsForRendering(text)).toBe(
+        "Result has at_ms: [▸ 01:15](citation-timestamp:75000) in output.",
       );
     });
 
