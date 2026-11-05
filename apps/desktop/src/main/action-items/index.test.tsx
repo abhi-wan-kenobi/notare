@@ -63,8 +63,9 @@ vi.mock("./queries", () => ({
 }));
 
 vi.mock("~/store/zustand/tabs", () => ({
-  useTabs: (selector: (state: { openCurrent: typeof mocks.openCurrent }) => unknown) =>
-    selector({ openCurrent: mocks.openCurrent }),
+  useTabs: (
+    selector: (state: { openCurrent: typeof mocks.openCurrent }) => unknown,
+  ) => selector({ openCurrent: mocks.openCurrent }),
 }));
 
 import { TabContentActionItems } from "./index";
@@ -129,7 +130,9 @@ describe("TabContentActionItems", () => {
     expect(screen.getByText("Finalize gateway auth rotation")).toBeDefined();
     expect(screen.getByText("Publish rollout checklist")).toBeDefined();
     expect(screen.getByText("Carried over")).toBeDefined();
-    expect(screen.getByText("from Oct 28 · Sprint Planning Prev")).toBeDefined();
+    expect(
+      screen.getByText("from Oct 28 · Sprint Planning Prev"),
+    ).toBeDefined();
     expect(screen.getByText("Alice Sharma")).toBeDefined();
     expect(screen.getByText("Abhishek Gupta")).toBeDefined();
   });

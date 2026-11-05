@@ -1,8 +1,9 @@
 import { Trans, useLingui } from "@lingui/react/macro";
-import { cn } from "@hypr/utils";
 import { format, isValid, parseISO } from "date-fns";
 import { RepeatIcon, SearchIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+
+import { cn } from "@hypr/utils";
 
 import { useLiveQuery } from "~/db";
 import { StandardContentWrapper } from "~/shared/main";
@@ -66,7 +67,8 @@ export function TabContentMeetings() {
 function getMeetingsTabFilter(tab: unknown): Filter | undefined {
   if (!tab || typeof tab !== "object") return undefined;
   if (!("type" in tab) || tab.type !== "meetings") return undefined;
-  if (!("state" in tab) || !tab.state || typeof tab.state !== "object") return undefined;
+  if (!("state" in tab) || !tab.state || typeof tab.state !== "object")
+    return undefined;
   if ("filter" in tab.state && typeof tab.state.filter === "string") {
     const f = tab.state.filter;
     if (f === "all" || f === "recorded" || f === "upcoming" || f === "series") {
@@ -94,7 +96,8 @@ function MeetingsView() {
   const handleFilterChange = (nextFilter: Filter) => {
     setFilter(nextFilter);
     useTabs.setState((state) => {
-      if (!state.currentTab || state.currentTab.type !== "meetings") return state;
+      if (!state.currentTab || state.currentTab.type !== "meetings")
+        return state;
       const currentState =
         "state" in state.currentTab &&
         state.currentTab.state &&
@@ -155,7 +158,8 @@ function MeetingsView() {
 
       if (!q) return true;
 
-      const searchable = `${meeting.title} ${meeting.attendees ?? ""}`.toLowerCase();
+      const searchable =
+        `${meeting.title} ${meeting.attendees ?? ""}`.toLowerCase();
       return searchable.includes(q);
     });
   }, [meetings, filter, search]);
@@ -258,7 +262,7 @@ function MeetingsView() {
 
       <div className="my-6 flex flex-wrap items-center gap-3.5">
         <div
-          className="flex items-center gap-1 p-0.5 rounded-[9px] border border-border/50 bg-muted/60"
+          className="border-border/50 bg-muted/60 flex items-center gap-1 rounded-[9px] border p-0.5"
           role="group"
           aria-label={t`Filter meetings`}
         >
@@ -269,7 +273,7 @@ function MeetingsView() {
               aria-pressed={filter === value}
               onClick={() => handleFilterChange(value)}
               className={cn(
-                "h-[30px] px-3 rounded-[6px] text-xs transition-colors font-medium capitalize",
+                "h-[30px] rounded-[6px] px-3 text-xs font-medium capitalize transition-colors",
                 filter === value
                   ? "bg-card text-foreground shadow-xs"
                   : "text-muted-foreground hover:text-foreground",
@@ -288,15 +292,15 @@ function MeetingsView() {
           ))}
         </div>
 
-        <label className="flex items-center gap-2 h-9 min-w-[225px] flex-1 px-2.5 rounded-lg border border-border bg-card text-xs text-muted-foreground focus-within:ring-1 focus-within:ring-ring cursor-text">
-          <SearchIcon size={14} className="shrink-0 text-muted-foreground" />
+        <label className="border-border bg-card text-muted-foreground focus-within:ring-ring flex h-9 min-w-[225px] flex-1 cursor-text items-center gap-2 rounded-lg border px-2.5 text-xs focus-within:ring-1">
+          <SearchIcon size={14} className="text-muted-foreground shrink-0" />
           <input
             type="search"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder={t`Search meetings`}
             aria-label={t`Search meetings`}
-            className="w-full bg-transparent border-0 outline-none text-foreground placeholder:text-muted-foreground text-xs"
+            className="text-foreground placeholder:text-muted-foreground w-full border-0 bg-transparent text-xs outline-none"
           />
         </label>
       </div>
@@ -368,34 +372,34 @@ function MeetingsView() {
                         openCurrent({ type: "sessions", id: meeting.id });
                       }
                     }}
-                    className="group border-t border-border/40 py-2 px-1 min-h-[54px] grid grid-cols-[minmax(230px,1.4fr)_minmax(260px,1.3fr)_110px_32px] max-lg:grid-cols-[minmax(180px,1fr)_minmax(180px,1fr)_95px] max-md:grid-cols-[minmax(130px,1fr)_auto] items-center gap-3.5 text-left cursor-pointer hover:bg-accent/30 rounded-xs transition-colors"
+                    className="group border-border/40 hover:bg-accent/30 grid min-h-[54px] cursor-pointer grid-cols-[minmax(230px,1.4fr)_minmax(260px,1.3fr)_110px_32px] items-center gap-3.5 rounded-xs border-t px-1 py-2 text-left transition-colors max-lg:grid-cols-[minmax(180px,1fr)_minmax(180px,1fr)_95px] max-md:grid-cols-[minmax(130px,1fr)_auto]"
                   >
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5 truncate">
-                        <span className="text-[13px] font-medium text-foreground truncate">
+                        <span className="text-foreground truncate text-[13px] font-medium">
                           {meeting.title || <Trans>Untitled</Trans>}
                         </span>
                         {meeting.series_id ? (
                           <RepeatIcon
                             size={13}
-                            className="text-muted-foreground shrink-0 inline-block"
+                            className="text-muted-foreground inline-block shrink-0"
                             aria-label={t`Recurring`}
                           />
                         ) : null}
                       </div>
-                      <div className="text-muted-foreground text-[11px] mt-0.5 truncate">
+                      <div className="text-muted-foreground mt-0.5 truncate text-[11px]">
                         {meetingMeta}
                       </div>
                     </div>
 
-                    <div className="text-muted-foreground text-[11px] truncate max-md:hidden">
+                    <div className="text-muted-foreground truncate text-[11px] max-md:hidden">
                       {attendeeFacts}
                     </div>
 
-                    <div className="text-muted-foreground text-[11px] whitespace-nowrap text-right justify-self-end">
+                    <div className="text-muted-foreground justify-self-end text-right text-[11px] whitespace-nowrap">
                       <span>{statusText}</span>
                       {meeting.action_count > 0 ? (
-                        <span className="text-muted-foreground text-[10px] ml-2">
+                        <span className="text-muted-foreground ml-2 text-[10px]">
                           <Trans>{meeting.action_count} open</Trans>
                         </span>
                       ) : null}
@@ -408,7 +412,7 @@ function MeetingsView() {
                           e.stopPropagation();
                           openCurrent({ type: "sessions", id: meeting.id });
                         }}
-                        className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity h-[27px] px-2.5 rounded-full border border-border text-foreground hover:bg-accent/50 text-[11px] font-medium shrink-0 flex items-center justify-center cursor-pointer"
+                        className="border-border text-foreground hover:bg-accent/50 flex h-[27px] shrink-0 cursor-pointer items-center justify-center rounded-full border px-2.5 text-[11px] font-medium opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
                       >
                         <Trans>Open</Trans>
                       </button>

@@ -1,8 +1,9 @@
 import { Trans, useLingui } from "@lingui/react/macro";
-import { cn } from "@hypr/utils";
 import { format, isValid, parseISO } from "date-fns";
 import { RepeatIcon } from "lucide-react";
 import { useMemo, useState } from "react";
+
+import { cn } from "@hypr/utils";
 
 import {
   type AllActionItem,
@@ -63,13 +64,11 @@ function ActionItemsView() {
     const dueDay = item.due_at ? item.due_at.slice(0, 10) : "";
     const todayStr = format(new Date(), "yyyy-MM-dd");
     const isOverdue =
-      !isDone &&
-      /^\d{4}-\d{2}-\d{2}$/.test(dueDay) &&
-      dueDay < todayStr;
+      !isDone && /^\d{4}-\d{2}-\d{2}$/.test(dueDay) && dueDay < todayStr;
 
     const isCarriedOver = Boolean(
       item.carried_from_session_id &&
-        item.carried_from_session_id !== item.session_id,
+      item.carried_from_session_id !== item.session_id,
     );
 
     const sourceDateRaw =
@@ -88,7 +87,7 @@ function ActionItemsView() {
       <div
         key={item.id}
         className={cn(
-          "grid grid-cols-[18px_minmax(0,1fr)_118px_88px] max-sm:grid-cols-[18px_minmax(0,1fr)_74px] gap-3 items-start py-2.5 border-b border-border/40 text-xs",
+          "border-border/40 grid grid-cols-[18px_minmax(0,1fr)_118px_88px] items-start gap-3 border-b py-2.5 text-xs max-sm:grid-cols-[18px_minmax(0,1fr)_74px]",
           isDone && "text-muted-foreground/70",
         )}
       >
@@ -97,36 +96,36 @@ function ActionItemsView() {
           checked={isDone}
           onChange={() => toggle(item)}
           aria-label={item.text}
-          className="accent-primary mt-1 size-3.5 rounded border-border cursor-pointer shrink-0"
+          className="accent-primary border-border mt-1 size-3.5 shrink-0 cursor-pointer rounded"
         />
-        <div className="leading-snug min-w-0">
+        <div className="min-w-0 leading-snug">
           <span
             className={cn(
               "text-xs break-words",
-              isDone && "line-through text-muted-foreground",
+              isDone && "text-muted-foreground line-through",
             )}
           >
             {item.text}
           </span>
           {isCarriedOver ? (
-            <span className="inline-flex items-center ml-1.5 px-1.5 py-0.5 border border-border rounded-full text-[9px] text-muted-foreground align-baseline">
+            <span className="border-border text-muted-foreground ml-1.5 inline-flex items-center rounded-full border px-1.5 py-0.5 align-baseline text-[9px]">
               <Trans>Carried over</Trans>
             </span>
           ) : null}
           {sourceDateFormatted && sourceTitle ? (
-            <span className="block text-[10px] text-muted-foreground/80 mt-1">
+            <span className="text-muted-foreground/80 mt-1 block text-[10px]">
               <Trans>
                 from {sourceDateFormatted} · {sourceTitle}
               </Trans>
             </span>
           ) : null}
         </div>
-        <span className="text-[11px] text-muted-foreground truncate max-sm:hidden">
+        <span className="text-muted-foreground truncate text-[11px] max-sm:hidden">
           {item.owner_name}
         </span>
         <div className="text-right">
           {isDone ? (
-            <span className="text-[11px] text-muted-foreground whitespace-nowrap">
+            <span className="text-muted-foreground text-[11px] whitespace-nowrap">
               <Trans>Done</Trans>
             </span>
           ) : item.due_at ? (
@@ -134,12 +133,15 @@ function ActionItemsView() {
               className={cn(
                 "text-[11px] whitespace-nowrap",
                 isOverdue
-                  ? "text-[#9A5D57] dark:text-[#E07A70] font-medium"
+                  ? "font-medium text-[#9A5D57] dark:text-[#E07A70]"
                   : "text-muted-foreground",
               )}
             >
               <Trans>
-                Due {dueDate && isValid(dueDate) ? format(dueDate, "MMM d") : item.due_at}
+                Due{" "}
+                {dueDate && isValid(dueDate)
+                  ? format(dueDate, "MMM d")
+                  : item.due_at}
               </Trans>
             </span>
           ) : null}
@@ -171,10 +173,10 @@ function ActionItemsView() {
             aria-pressed={filter === value}
             onClick={() => setFilter(value)}
             className={cn(
-              "h-[30px] px-3 rounded-full border text-xs transition-colors capitalize",
+              "h-[30px] rounded-full border px-3 text-xs capitalize transition-colors",
               filter === value
                 ? "border-border bg-card text-foreground font-medium shadow-xs"
-                : "border-transparent text-muted-foreground hover:text-foreground hover:bg-accent/40",
+                : "text-muted-foreground hover:text-foreground hover:bg-accent/40 border-transparent",
             )}
           >
             {value === "open" ? (
@@ -212,7 +214,7 @@ function ActionItemsView() {
                   onClick={() =>
                     openCurrent({ type: "sessions", id: sessionId })
                   }
-                  className="hover:underline flex items-center gap-1.5 text-left text-foreground"
+                  className="text-foreground flex items-center gap-1.5 text-left hover:underline"
                 >
                   <span>{first.session_title || <Trans>Untitled</Trans>}</span>
                   {first.series_id ? (
@@ -223,7 +225,7 @@ function ActionItemsView() {
                     />
                   ) : null}
                 </button>
-                <span className="text-muted-foreground font-sans text-[11px] shrink-0 ml-3">
+                <span className="text-muted-foreground ml-3 shrink-0 font-sans text-[11px]">
                   {sessionDate && isValid(sessionDate)
                     ? format(sessionDate, "MMM d")
                     : ""}
@@ -240,14 +242,12 @@ function ActionItemsView() {
       )}
 
       {filter !== "done" && doneItems.length > 0 ? (
-        <details className="done-disclosure mt-7 border-t border-border pt-3">
-          <summary className="cursor-pointer text-xs text-muted-foreground font-medium hover:text-foreground">
+        <details className="done-disclosure border-border mt-7 border-t pt-3">
+          <summary className="text-muted-foreground hover:text-foreground cursor-pointer text-xs font-medium">
             <Trans>Done ({doneItems.length})</Trans>
           </summary>
           <div className="mt-2">
-            {doneItems.map((item) =>
-              renderActionRow(item, item.session_title),
-            )}
+            {doneItems.map((item) => renderActionRow(item, item.session_title))}
           </div>
         </details>
       ) : null}

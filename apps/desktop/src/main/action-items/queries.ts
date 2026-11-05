@@ -21,7 +21,10 @@ export type AllActionItem = {
 
 const EMPTY: AllActionItem[] = [];
 
-export function useAllActionItems(filter: AllActionItemFilter, userId?: string) {
+export function useAllActionItems(
+  filter: AllActionItemFilter,
+  userId?: string,
+) {
   const currentOwnerUserId = useOwnerUserId() ?? "";
   const effectiveUserId = userId ?? currentOwnerUserId;
 
