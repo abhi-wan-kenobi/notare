@@ -236,6 +236,34 @@ mod test {
         std::fs::write(OUTPUT_FILE, format!("// @ts-nocheck\n{content}")).unwrap();
     }
 
+    /// Every command the frontend can invoke must be allowed by the plugin's
+    /// default permission set, or Tauri's ACL rejects it at runtime with
+    /// "command plugin:db|<name> not allowed by ACL". 0.6.6–0.6.9 shipped the
+    /// five pairing commands without permissions, so QR / link pairing never
+    /// worked in a release (reported 2026-11-05).
+    #[test]
+    fn every_command_has_a_default_permission() {
+        let bindings = std::fs::read_to_string("./js/bindings.gen.ts").unwrap();
+        let invoked: std::collections::BTreeSet<String> = bindings
+            .match_indices("TAURI_INVOKE(\"plugin:db|")
+            .map(|(i, _)| {
+                let rest = &bindings[i + "TAURI_INVOKE(\"plugin:db|".len()..];
+                rest[..rest.find('"').unwrap()].to_string()
+            })
+            .collect();
+        assert!(!invoked.is_empty());
+
+        let defaults = std::fs::read_to_string("./permissions/default.toml").unwrap();
+        let missing: Vec<&String> = invoked
+            .iter()
+            .filter(|cmd| !defaults.contains(&format!("\"allow-{}\"", cmd.replace('_', "-"))))
+            .collect();
+        assert!(
+            missing.is_empty(),
+            "commands without a default permission (add to plugins/db/build.rs COMMANDS and permissions/default.toml): {missing:?}"
+        );
+    }
+
     fn capture_channel() -> (Channel<QueryEvent>, Arc<Mutex<Vec<QueryEvent>>>) {
         let events = Arc::new(Mutex::new(Vec::new()));
         let captured = Arc::clone(&events);

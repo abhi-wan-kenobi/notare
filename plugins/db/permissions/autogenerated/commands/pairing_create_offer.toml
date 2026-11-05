@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-pairing-create-offer"
+description = "Enables the pairing_create_offer command without any pre-configured scope."
+commands.allow = ["pairing_create_offer"]
+
+[[permission]]
+identifier = "deny-pairing-create-offer"
+description = "Denies the pairing_create_offer command without any pre-configured scope."
+commands.deny = ["pairing_create_offer"]
