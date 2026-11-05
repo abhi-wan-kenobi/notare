@@ -6,6 +6,7 @@ import {
   endOfMonth,
   endOfWeek,
   format,
+  parseISO,
   isSameMonth,
   startOfMonth,
   startOfDay,
@@ -36,6 +37,7 @@ import { cn } from "@hypr/utils";
 
 import { useSync } from "./context";
 import { DayCell } from "./day-cell";
+import { WeekView } from "./week-view";
 
 import {
   useCalendarData,
@@ -43,6 +45,7 @@ import {
   useNow,
   useWeekStartsOn,
 } from "~/calendar/hooks";
+import { useCalendarSelection } from "~/calendar/selection";
 import {
   createPinchAccumulator,
   resolveCalendarLayout,
@@ -106,18 +109,30 @@ export function CalendarView() {
   const [compactVisibleStart, setCompactVisibleStart] = useState(() =>
     startOfDay(now),
   );
+  const selectedDate = useCalendarSelection((state) => state.selectedDate);
+  const selectDate = useCalendarSelection((state) => state.selectDate);
   const containerRef = useRef<HTMLDivElement>(null);
   const compactScrollRef = useRef<HTMLDivElement>(null);
   const compactBaseRef = useRef(startOfDay(now));
   const widthCols = useVisibleCols(containerRef);
   const { zoom, zoomBy } = useCalendarZoom();
   const { isMonthView, cols } = resolveCalendarLayout(zoom, widthCols);
+  const isWeekView = zoom === "week";
   const calendarData = useCalendarData();
   const enabledCalendars = useEnabledCalendars();
 
   useMountEffect(() => {
     scheduleSync();
   });
+
+  useEffect(() => {
+    if (!selectedDate) return;
+    const next = startOfDay(parseISO(selectedDate));
+    compactBaseRef.current = next;
+    setVisibleStart(next);
+    setCompactVisibleStart(next);
+    setCurrentMonth(next);
+  }, [selectedDate]);
 
   // Pinch / Ctrl+wheel zoom. Needs a non-passive native listener: React's
   // onWheel is passive, so it can't stop the webview's own page zoom.
@@ -134,13 +149,16 @@ export function CalendarView() {
 
   const advanceCompact = useCallback(
     (direction: -1 | 1) => {
-      const next = addDays(compactBaseRef.current, direction * cols);
+      const next = addDays(
+        compactBaseRef.current,
+        direction * (isWeekView ? 7 : cols),
+      );
       compactBaseRef.current = next;
       setVisibleStart(next);
+      selectDate(next);
     },
-    [cols],
+    [cols, isWeekView, selectDate],
   );
-
   const goToPrev = useCallback(() => {
     if (isMonthView) {
       setCurrentMonth((m) => subMonths(m, 1));
@@ -163,7 +181,8 @@ export function CalendarView() {
     setCurrentMonth(now);
     setVisibleStart(todayStart);
     setCompactVisibleStart(todayStart);
-  }, [now]);
+    selectDate(todayStart);
+  }, [now, selectDate]);
 
   const days = useMemo(() => {
     if (isMonthView) {
@@ -174,11 +193,19 @@ export function CalendarView() {
       return eachDayOfInterval({ start: calStart, end: calEnd });
     }
 
+    if (isWeekView) {
+      const weekStart = startOfWeek(visibleStart, weekOpts);
+      return eachDayOfInterval({
+        start: weekStart,
+        end: addDays(weekStart, 6),
+      });
+    }
+
     return eachDayOfInterval({
       start: addDays(visibleStart, -COMPACT_SCROLL_PAST_DAYS),
       end: addDays(visibleStart, COMPACT_SCROLL_FUTURE_DAYS - 1),
     });
-  }, [currentMonth, isMonthView, visibleStart, weekOpts]);
+  }, [currentMonth, isMonthView, isWeekView, visibleStart, weekOpts]);
 
   const visibleRange = useMemo<CalendarSyncRange | null>(() => {
     const firstDay = days[0];
@@ -261,7 +288,9 @@ export function CalendarView() {
           <h2 className="text-foreground text-sm font-semibold">
             {isMonthView
               ? format(currentMonth, "MMMM yyyy")
-              : format(compactVisibleStart, "MMMM yyyy")}
+              : isWeekView
+                ? `${format(days[0], "MMM d")}–${format(days[6], "d, yyyy")}`
+                : format(compactVisibleStart, "MMMM yyyy")}
           </h2>
           <CalendarSyncHeaderControls />
         </div>
@@ -378,6 +407,8 @@ export function CalendarView() {
             ))}
           </div>
         </>
+      ) : isWeekView ? (
+        <WeekView days={days} calendarData={calendarData} />
       ) : (
         <div
           ref={compactScrollRef}
