@@ -54,10 +54,13 @@ vi.mock("~/sidebar/surface-navigation", () => ({
 }));
 
 vi.mock("~/db", () => ({
-  useLiveQuery: ({ sql }: { sql: string }) =>
-    sql.includes("FROM sessions")
-      ? { data: mocks.sessionLinks }
-      : { data: mocks.openActionItemsCount },
+  useLiveQuery: ({ sql }: { sql: string }) => {
+    if (sql.includes("FROM sessions")) return { data: mocks.sessionLinks };
+    if (sql.includes("FROM action_items")) {
+      return { data: mocks.openActionItemsCount };
+    }
+    throw new Error(`Unexpected Home live query: ${sql}`);
+  },
 }));
 
 type MockTabsState = {
@@ -131,6 +134,21 @@ describe("TabContentHome", () => {
 
     expect(screen.getByText(/1 scheduled today/)).toBeTruthy();
     expect(screen.getByText("Evening meeting")).toBeTruthy();
+  });
+  it("uses the selected timezone for the recorded-this-week boundary", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-11-08T08:30:00.000Z"));
+    mocks.sessions = [
+      {
+        id: "s-before-week",
+        title: "Previous local week",
+        created_at: "2026-11-08T07:30:00.000Z",
+      },
+    ];
+
+    renderHome();
+
+    expect(screen.getByText(/0 recorded this week/)).toBeTruthy();
   });
 
   it("only lists future events in Coming up, sorted by start time", () => {

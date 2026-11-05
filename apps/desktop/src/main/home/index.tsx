@@ -120,12 +120,12 @@ function HomeView() {
 
   const weekStartsOn = useWeekStartsOn();
   const recordedThisWeekCount = useMemo(() => {
-    const weekStartMs = startOfWeek(now, { weekStartsOn }).getTime();
+    const weekStartMs = startOfWeek(toTz(now, tz), { weekStartsOn }).getTime();
     return sessions.filter((session) => {
       const created = new Date(session.created_at).getTime();
       return !Number.isNaN(created) && created >= weekStartMs;
     }).length;
-  }, [sessions, weekStartsOn, now]);
+  }, [sessions, weekStartsOn, now, tz]);
 
   const recentNotes = sessions.slice(0, RECENT_NOTES_LIMIT);
 
