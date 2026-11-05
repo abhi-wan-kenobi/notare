@@ -60,11 +60,16 @@ vi.mock("~/db", () => ({
   },
 }));
 
+type MockTabsState = {
+  openCurrent: typeof mocks.openCurrent;
+  openNew: typeof mocks.openNew;
+};
+
 vi.mock("~/store/zustand/tabs", () => ({
-  useTabs: (selector: (state: typeof state) => unknown) => selector(state),
+  useTabs: (selector: (state: MockTabsState) => unknown) => selector(state),
 }));
 
-const state = {
+const state: MockTabsState = {
   openCurrent: mocks.openCurrent,
   openNew: mocks.openNew,
 };
@@ -106,7 +111,9 @@ describe("TabContentHome", () => {
     renderHome();
 
     expect(
-      screen.getByText(/1 scheduled today · 1 recorded this week · 3 open actions/),
+      screen.getByText(
+        /1 scheduled today · 1 recorded this week · 3 open actions/,
+      ),
     ).toBeTruthy();
   });
 

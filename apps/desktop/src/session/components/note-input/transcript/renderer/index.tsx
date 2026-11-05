@@ -101,22 +101,21 @@ export function TranscriptViewer({
         : [];
 
   const canShowScrollChip = !currentActive && (!isAtTop || !isAtBottom);
-  const scrollChip =
-    !canShowScrollChip
-      ? null
-      : scrollTarget === "bottom" && !isAtBottom
+  const scrollChip = !canShowScrollChip
+    ? null
+    : scrollTarget === "bottom" && !isAtBottom
+      ? {
+          icon: ArrowDownIcon,
+          label: "Go to bottom",
+          onClick: scrollToBottom,
+        }
+      : scrollTarget === "top" && !isAtTop
         ? {
-            icon: ArrowDownIcon,
-            label: "Go to bottom",
-            onClick: scrollToBottom,
+            icon: ArrowUpIcon,
+            label: "Go to top",
+            onClick: scrollToTop,
           }
-        : scrollTarget === "top" && !isAtTop
-          ? {
-              icon: ArrowUpIcon,
-              label: "Go to top",
-              onClick: scrollToTop,
-            }
-          : null;
+        : null;
   const ScrollChipIcon = scrollChip?.icon;
   const isBottomScrollChip = scrollTarget === "bottom";
 

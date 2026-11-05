@@ -2,8 +2,8 @@ import { Trans } from "@lingui/react/macro";
 import { format, isValid, parseISO } from "date-fns";
 import { useCallback, useMemo } from "react";
 
-import { StandardContentWrapper } from "~/shared/main";
 import { useSessionSummaries } from "~/session/queries";
+import { StandardContentWrapper } from "~/shared/main";
 import { useTabs } from "~/store/zustand/tabs";
 
 /**
@@ -62,7 +62,7 @@ function MeetingsView() {
             <h2 className="text-muted-foreground font-serif text-[15px] font-medium">
               {day}
             </h2>
-            <div className="border-border/80 mt-1 divide-y divide-border border-t">
+            <div className="border-border/80 divide-border mt-1 divide-y border-t">
               {daySessions.map((session) => (
                 <button
                   key={session.id}

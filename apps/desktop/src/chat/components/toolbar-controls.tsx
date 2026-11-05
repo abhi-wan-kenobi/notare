@@ -1,11 +1,5 @@
 import { Trans, useLingui } from "@lingui/react/macro";
-import {
-  ChevronDown,
-  History,
-  MessageCircle,
-  Plus,
-  X,
-} from "lucide-react";
+import { ChevronDown, History, MessageCircle, Plus, X } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@hypr/ui/components/ui/button";

@@ -34,7 +34,6 @@ vi.mock("~/audio-player/provider", () => ({
   useAudioTime: () => ({ current: 0 }),
 }));
 
-
 vi.mock("./selection-menu", () => ({
   SelectionMenu: () => null,
 }));

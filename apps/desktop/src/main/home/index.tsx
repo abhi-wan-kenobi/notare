@@ -6,11 +6,11 @@ import { useMemo } from "react";
 import { toTz, useTimezone, useWeekStartsOn } from "~/calendar/hooks";
 import { useTimelineEventsTable } from "~/calendar/queries";
 import { useLiveQuery } from "~/db";
+import { useSessionSummaries } from "~/session/queries";
 import { Dock } from "~/shared/dock";
 import { StandardContentWrapper } from "~/shared/main";
 import { useNewNote } from "~/shared/useNewNote";
 import { openSurfaceTab } from "~/sidebar/surface-navigation";
-import { useSessionSummaries } from "~/session/queries";
 import { type Tab, useTabs } from "~/store/zustand/tabs";
 
 const COMING_UP_LIMIT = 4;

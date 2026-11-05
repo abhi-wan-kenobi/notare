@@ -20,7 +20,7 @@ import { useSTTConnection } from "~/stt/useSTTConnection";
 export function Dock({ sessionId }: { sessionId?: string }) {
   return (
     <div className="pointer-events-none absolute right-0 bottom-3 left-0 z-20 flex justify-center px-4">
-      <div className="border-border bg-card shadow-md pointer-events-auto flex h-12 w-full max-w-[700px] items-center rounded-2xl border p-1">
+      <div className="border-border bg-card pointer-events-auto flex h-12 w-full max-w-[700px] items-center rounded-2xl border p-1 shadow-md">
         <DockRecordSegment sessionId={sessionId} />
         <DockAskSegment />
       </div>

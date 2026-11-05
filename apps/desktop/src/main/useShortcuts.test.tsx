@@ -613,7 +613,6 @@ describe("useClassicMainShortcuts", () => {
     expect(hoisted.openCurrent).not.toHaveBeenCalled();
   });
 
-
   it("opens home from a note when escape is prevented without a focused target", () => {
     hoisted.currentTab = {
       active: true,

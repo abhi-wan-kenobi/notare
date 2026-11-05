@@ -1,7 +1,6 @@
 import { useCallback, useMemo } from "react";
 
 import { useChatContext } from "~/chat/state/chat-context";
-
 import type { useChatMode } from "~/chat/state/use-chat-mode";
 
 /**

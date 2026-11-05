@@ -307,7 +307,7 @@ export function ChatMessageInput({
         <div className="mb-1 min-h-0">
           <ChatEditor
             ref={editorRef}
-            className="chat-input-editor text-sm max-h-[40vh] overflow-y-auto overscroll-contain"
+            className="chat-input-editor max-h-[40vh] overflow-y-auto overscroll-contain text-sm"
             initialContent={initialContent}
             mentionConfig={mentionConfig}
             placeholder={placeholder}
@@ -318,37 +318,37 @@ export function ChatMessageInput({
         </div>
 
         <div className="flex shrink-0 items-center justify-between">
-            <div />
-            {isStreaming ? (
-              <Button
-                onClick={onStop}
-                size="icon"
-                variant="ghost"
-                className="h-7 w-7 rounded-full"
-                aria-label={t`Stop response`}
-              >
-                <SquareIcon size={14} className="fill-current" />
-              </Button>
-            ) : (
-              <button
-                type="button"
-                aria-label={t`Send message`}
-                onClick={handleSubmit}
-                disabled={isSendDisabled}
-                className={cn([
-                  "chat-input-send",
-                  "border-border text-muted-foreground/60 inline-flex size-7 shrink-0 items-center justify-center rounded-full border transition-all duration-100",
-                  !isSendDisabled && [
-                    "bg-primary text-primary-foreground border-stone-600",
-                    "hover:bg-primary/90",
-                    "active:bg-primary/80 active:scale-[0.97]",
-                  ],
-                ])}
-              >
-                <ArrowUpIcon size={15} strokeWidth={2.25} />
-              </button>
-            )}
-          </div>
+          <div />
+          {isStreaming ? (
+            <Button
+              onClick={onStop}
+              size="icon"
+              variant="ghost"
+              className="h-7 w-7 rounded-full"
+              aria-label={t`Stop response`}
+            >
+              <SquareIcon size={14} className="fill-current" />
+            </Button>
+          ) : (
+            <button
+              type="button"
+              aria-label={t`Send message`}
+              onClick={handleSubmit}
+              disabled={isSendDisabled}
+              className={cn([
+                "chat-input-send",
+                "border-border text-muted-foreground/60 inline-flex size-7 shrink-0 items-center justify-center rounded-full border transition-all duration-100",
+                !isSendDisabled && [
+                  "bg-primary text-primary-foreground border-stone-600",
+                  "hover:bg-primary/90",
+                  "active:bg-primary/80 active:scale-[0.97]",
+                ],
+              ])}
+            >
+              <ArrowUpIcon size={15} strokeWidth={2.25} />
+            </button>
+          )}
+        </div>
       </div>
     </Container>
   );

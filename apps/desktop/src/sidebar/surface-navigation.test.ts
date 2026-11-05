@@ -43,7 +43,12 @@ describe("openSurfaceTab", () => {
   });
 
   test("home reuses an existing empty tab instead of opening a duplicate", () => {
-    const homeTab = { type: "empty" as const, active: false, slotId: "s1", pinned: false };
+    const homeTab = {
+      type: "empty" as const,
+      active: false,
+      slotId: "s1",
+      pinned: false,
+    };
     useTabs.getState().openNew(homeTab);
     const countBefore = useTabs.getState().tabs.length;
 
@@ -112,4 +117,3 @@ describe("openSurfaceTab", () => {
     );
   });
 });
-

@@ -153,9 +153,7 @@ describe("ChatToolbarControls", () => {
     );
     expect(newChatButton.getAttribute("title")).toBeNull();
     expect(closeButton.className).toContain("rounded-full");
-    expect(closeButton.className).toContain(
-      "hover:!bg-primary-foreground/14",
-    );
+    expect(closeButton.className).toContain("hover:!bg-primary-foreground/14");
     expect(closeButton.getAttribute("title")).toBeNull();
   });
 

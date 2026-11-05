@@ -1,11 +1,11 @@
-import { TabContentActionItems } from "~/main/action-items";
-import { TabContentMeetings } from "~/main/meetings";
-import { TabContentSeries } from "~/main/series";
 import { TabContentCalendar } from "~/calendar";
 import { TabContentChangelog } from "~/changelog";
 import { TabContentContact } from "~/contacts";
 import { TabContentHuman } from "~/contacts/humans";
 import { TabContentEdit } from "~/edit";
+import { TabContentActionItems } from "~/main/action-items";
+import { TabContentMeetings } from "~/main/meetings";
+import { TabContentSeries } from "~/main/series";
 import { TabContentOnboarding } from "~/onboarding";
 import { TabContentSearch } from "~/search/page";
 import { TabContentNote } from "~/session";

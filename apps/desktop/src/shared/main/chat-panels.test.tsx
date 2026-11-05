@@ -44,11 +44,7 @@ vi.mock("~/store/zustand/tabs", () => ({
 }));
 
 vi.mock("~/chat/components/chat-panel", () => ({
-  ChatPanelFrame: ({
-    sessionProps,
-  }: {
-    sessionProps: unknown;
-  }) => (
+  ChatPanelFrame: ({ sessionProps }: { sessionProps: unknown }) => (
     <div
       data-has-session={String(sessionProps === mocks.sessionProps)}
       data-testid="chat-view"

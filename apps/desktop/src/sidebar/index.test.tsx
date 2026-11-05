@@ -98,9 +98,7 @@ describe("LeftSidebar", () => {
     expect(
       screen
         .getByTestId("timeline-header")
-        .parentElement?.contains(
-          screen.getByTestId("sidebar-default-content"),
-        ),
+        .parentElement?.contains(screen.getByTestId("sidebar-default-content")),
     ).toBe(true);
   });
 
@@ -125,15 +123,11 @@ describe("LeftSidebar", () => {
     render(<LeftSidebar />);
 
     expect(screen.getByText("Notare")).toBeTruthy();
-    expect(
-      screen.getByText("Search notes and actions"),
-    ).toBeTruthy();
+    expect(screen.getByText("Search notes and actions")).toBeTruthy();
     expect(screen.getByRole("button", { name: /Home/ })).toBeTruthy();
     expect(screen.getByRole("button", { name: /Meetings/ })).toBeTruthy();
     expect(screen.getByRole("button", { name: /Calendar/ })).toBeTruthy();
-    expect(
-      screen.getByRole("button", { name: /Action items/ }),
-    ).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Action items/ })).toBeTruthy();
     expect(screen.getByRole("button", { name: /Settings/ })).toBeTruthy();
   });
 
@@ -165,9 +159,9 @@ describe("LeftSidebar", () => {
     mocks.liveQueryCount = 3;
     render(<LeftSidebar />);
 
-    expect(screen.getByRole("button", { name: /Action items/ }).textContent).toContain(
-      "3",
-    );
+    expect(
+      screen.getByRole("button", { name: /Action items/ }).textContent,
+    ).toContain("3");
   });
 
   it("opens each primary and library surface", () => {

@@ -238,9 +238,7 @@ function isFromSessionSurface(target: EventTarget | null) {
   );
 }
 
-function isChatInputFocused(
-  mode: ReturnType<typeof useShell>["chat"]["mode"],
-) {
+function isChatInputFocused(mode: ReturnType<typeof useShell>["chat"]["mode"]) {
   if (mode === "Closed") {
     return false;
   }
