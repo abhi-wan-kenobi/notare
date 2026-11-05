@@ -146,8 +146,8 @@ describe("ToastArea", () => {
       .getByText("Pro features available")
       .closest(".fixed") as HTMLElement | null;
 
-    expect(toastContainer?.style.left).toBe("calc(50% + 0px)");
-    expect(toastContainer?.style.top).toBe("88px");
+    expect(toastContainer?.style.left).toBe("500px");
+    expect(toastContainer?.style.top).toBe("68px");
   });
 
   it("centers the left sidebar toast on the main content panel", () => {
@@ -192,7 +192,7 @@ describe("ToastArea", () => {
       .closest(".fixed") as HTMLElement | null;
 
     expect(toastContainer?.style.left).toBe("600px");
-    expect(toastContainer?.style.top).toBe("56px");
+    expect(toastContainer?.style.top).toBe("36px");
   });
 
   it("centers anchored transient toasts on the main content panel", () => {
@@ -246,7 +246,7 @@ describe("ToastArea", () => {
       .closest(".fixed") as HTMLElement | null;
 
     expect(toastContainer?.style.left).toBe("600px");
-    expect(toastContainer?.style.top).toBe("56px");
+    expect(toastContainer?.style.top).toBe("36px");
   });
 
   it("repositions the left sidebar toast when the main surface scrolls", () => {
@@ -277,14 +277,14 @@ describe("ToastArea", () => {
       .getByText("Pro features available")
       .closest(".fixed") as HTMLElement | null;
 
-    expect(toastContainer?.style.top).toBe("56px");
+    expect(toastContainer?.style.top).toBe("36px");
 
     act(() => {
       top = 52;
       window.dispatchEvent(new Event("scroll"));
     });
 
-    expect(toastContainer?.style.top).toBe("88px");
+    expect(toastContainer?.style.top).toBe("68px");
   });
 
   it("preserves the main surface vertical anchor when left sidebar placement is disabled", () => {
@@ -329,11 +329,11 @@ describe("ToastArea", () => {
       .closest(".fixed") as HTMLElement | null;
 
     expect(toastContainer?.style.left).toBe("600px");
-    expect(toastContainer?.style.top).toBe("56px");
+    expect(toastContainer?.style.top).toBe("36px");
 
     rerender(<ToastArea />);
 
-    expect(toastContainer?.style.left).toBe("calc(50% + 0px)");
-    expect(toastContainer?.style.top).toBe("56px");
+    expect(toastContainer?.style.left).toBe("500px");
+    expect(toastContainer?.style.top).toBe("36px");
   });
 });

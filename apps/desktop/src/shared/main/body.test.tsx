@@ -142,7 +142,7 @@ vi.mock("~/contexts/shell", () => ({
   }),
 }));
 
-vi.mock("~/shared/open-note-dialog", () => ({
+vi.mock("~/shared/command-palette", () => ({
   useOpenNoteDialog: () => ({
     open: mocks.openSearch,
   }),

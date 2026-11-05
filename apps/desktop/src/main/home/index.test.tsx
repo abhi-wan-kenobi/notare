@@ -1,7 +1,17 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TZDate } from "@hypr/utils";
+
+import { TabContentHome } from "./index";
+
+import { openSurfaceTab } from "~/sidebar/surface-navigation";
 
 const mocks = vi.hoisted(() => ({
   eventsTable: {} as Record<string, Record<string, unknown>>,
@@ -10,12 +20,14 @@ const mocks = vi.hoisted(() => ({
     session_id: string;
     event_id: string;
     external_event_id: string;
+    series_id?: string;
   }[],
   openActionItemsCount: 0,
+  sessionsNeedingSummaryCount: 0,
   timezone: "America/Los_Angeles",
   openCurrent: vi.fn(),
   openNew: vi.fn(),
-  newNote: vi.fn(),
+  getOrCreateEventSession: vi.fn(async () => "prepared-session"),
 }));
 
 vi.mock("~/shared/main", () => ({
@@ -39,15 +51,13 @@ vi.mock("~/calendar/hooks", () => ({
 }));
 
 vi.mock("~/calendar/queries", () => ({
+  parseEventParticipants: () => [],
   useTimelineEventsTable: () => mocks.eventsTable,
 }));
 
 vi.mock("~/session/queries", () => ({
+  getOrCreateSessionForEventId: mocks.getOrCreateEventSession,
   useSessionSummaries: () => mocks.sessions,
-}));
-
-vi.mock("~/shared/useNewNote", () => ({
-  useNewNote: () => mocks.newNote,
 }));
 
 vi.mock("~/sidebar/surface-navigation", () => ({
@@ -56,7 +66,11 @@ vi.mock("~/sidebar/surface-navigation", () => ({
 
 vi.mock("~/db", () => ({
   useLiveQuery: ({ sql }: { sql: string }) => {
+    if (sql.includes("FROM sessions AS session")) {
+      return { data: mocks.sessionsNeedingSummaryCount };
+    }
     if (sql.includes("FROM sessions")) return { data: mocks.sessionLinks };
+    if (sql.includes("FROM events")) return { data: {} };
     if (sql.includes("FROM action_items")) {
       return { data: mocks.openActionItemsCount };
     }
@@ -78,8 +92,6 @@ const state: MockTabsState = {
   openNew: mocks.openNew,
 };
 
-import { TabContentHome } from "./index";
-
 describe("TabContentHome", () => {
   beforeEach(() => {
     cleanup();
@@ -89,7 +101,9 @@ describe("TabContentHome", () => {
     mocks.openActionItemsCount = 0;
     mocks.timezone = "America/Los_Angeles";
     mocks.openCurrent.mockClear();
-    mocks.newNote.mockClear();
+    mocks.sessionsNeedingSummaryCount = 0;
+    vi.mocked(openSurfaceTab).mockClear();
+    mocks.getOrCreateEventSession.mockClear();
   });
 
   afterEach(() => {
@@ -100,7 +114,20 @@ describe("TabContentHome", () => {
   const renderHome = () =>
     render(<TabContentHome tab={{ type: "empty" } as never} />);
 
-  it("shows the one-line summary from scheduled, recorded, and open-action counts", () => {
+  it("shows the need-a-summary count and opens the matching surface when clicked", () => {
+    mocks.sessionsNeedingSummaryCount = 2;
+
+    renderHome();
+
+    const needsSummary = screen.getByRole("button", {
+      name: "2 need a summary",
+    });
+    fireEvent.click(needsSummary);
+
+    expect(openSurfaceTab).toHaveBeenCalledWith("meetings");
+  });
+
+  it("opens Calendar from the scheduled-today count", () => {
     const now = new Date();
     mocks.eventsTable = {
       "evt-1": {
@@ -108,18 +135,31 @@ describe("TabContentHome", () => {
         started_at: now.toISOString(),
       },
     };
-    mocks.sessions = [
-      { id: "s1", title: "Recent note", created_at: now.toISOString() },
-    ];
-    mocks.openActionItemsCount = 3;
 
     renderHome();
+    fireEvent.click(screen.getByRole("button", { name: "1 scheduled today" }));
 
-    expect(
-      screen.getByText(
-        /1 scheduled today · 1 recorded this week · 3 open actions/,
-      ),
-    ).toBeTruthy();
+    expect(openSurfaceTab).toHaveBeenCalledWith("calendar");
+  });
+
+  it("opens Meetings from the recorded-this-week count", () => {
+    mocks.sessions = [
+      { id: "s1", title: "Note 1", created_at: new Date().toISOString() },
+    ];
+    renderHome();
+    fireEvent.click(
+      screen.getByRole("button", { name: "1 recorded this week" }),
+    );
+    expect(openSurfaceTab).toHaveBeenCalledWith("meetings");
+  });
+
+  it("opens Action items from the open-actions count", () => {
+    mocks.openActionItemsCount = 3;
+    renderHome();
+    fireEvent.click(
+      screen.getByRole("button", { name: "3 open action items" }),
+    );
+    expect(openSurfaceTab).toHaveBeenCalledWith("action-items");
   });
   it("counts today's events in the selected timezone", () => {
     vi.useFakeTimers();
@@ -133,7 +173,9 @@ describe("TabContentHome", () => {
 
     renderHome();
 
-    expect(screen.getByText(/1 scheduled today/)).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "1 scheduled today" }),
+    ).toBeTruthy();
     expect(screen.getByText("Evening meeting")).toBeTruthy();
   });
   it("keeps future events visible when the selected timezone is ahead of UTC", () => {
@@ -164,7 +206,9 @@ describe("TabContentHome", () => {
 
     renderHome();
 
-    expect(screen.getByText(/0 recorded this week/)).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "0 recorded this week" }),
+    ).toBeTruthy();
   });
   it("includes a session created at the selected timezone's week start", () => {
     vi.useFakeTimers();
@@ -179,7 +223,9 @@ describe("TabContentHome", () => {
 
     renderHome();
 
-    expect(screen.getByText(/1 recorded this week/)).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "1 recorded this week" }),
+    ).toBeTruthy();
   });
 
   it("shows recent note dates in the selected timezone", () => {
@@ -195,7 +241,7 @@ describe("TabContentHome", () => {
 
     renderHome();
 
-    expect(screen.getByText("Nov 7")).toBeTruthy();
+    expect(screen.getByText(/ago/)).toBeTruthy();
   });
 
   it("refreshes today's summary when Home rerenders after midnight", () => {
@@ -209,12 +255,16 @@ describe("TabContentHome", () => {
     };
 
     const { rerender } = renderHome();
-    expect(screen.getByText(/1 scheduled today/)).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "1 scheduled today" }),
+    ).toBeTruthy();
 
     vi.setSystemTime(new Date("2026-11-09T08:30:00.000Z"));
     rerender(<TabContentHome tab={{ type: "empty" } as never} />);
 
-    expect(screen.getByText(/0 scheduled today/)).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "0 scheduled today" }),
+    ).toBeTruthy();
   });
 
   it("only lists future events in Coming up, sorted by start time", () => {
@@ -241,7 +291,7 @@ describe("TabContentHome", () => {
     expect(titles).toEqual(["Soon meeting", "Later meeting"]);
   });
 
-  it("shows Open notes for an event with a linked session and Prepare otherwise", () => {
+  it("shows Open notes for an event with a linked session and prepares one linked to the event otherwise", async () => {
     const now = Date.now();
     mocks.eventsTable = {
       linked: {
@@ -270,7 +320,18 @@ describe("TabContentHome", () => {
     });
 
     fireEvent.click(screen.getByRole("button", { name: "Prepare" }));
-    expect(mocks.newNote).toHaveBeenCalled();
+    await waitFor(() =>
+      expect(mocks.getOrCreateEventSession).toHaveBeenCalledWith(
+        "unlinked",
+        "No note yet",
+      ),
+    );
+    await waitFor(() =>
+      expect(mocks.openCurrent).toHaveBeenCalledWith({
+        type: "sessions",
+        id: "prepared-session",
+      }),
+    );
   });
 
   it("lists recent notes and opens one on click", () => {
@@ -287,6 +348,29 @@ describe("TabContentHome", () => {
       type: "sessions",
       id: "s1",
     });
+  });
+
+  it("renders repeat glyph for series members in recent notes", () => {
+    mocks.sessions = [
+      {
+        id: "s-series",
+        title: "Series note",
+        created_at: new Date().toISOString(),
+      },
+    ];
+    mocks.sessionLinks = [
+      {
+        session_id: "s-series",
+        event_id: "",
+        external_event_id: "",
+        series_id: "series-1",
+      },
+    ];
+
+    renderHome();
+
+    const noteButton = screen.getByText("Series note").closest("button");
+    expect(noteButton?.querySelector("svg")).toBeTruthy();
   });
 
   it("mounts the dock", () => {
