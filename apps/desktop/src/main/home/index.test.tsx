@@ -53,17 +53,11 @@ vi.mock("~/sidebar/surface-navigation", () => ({
   openSurfaceTab: vi.fn(),
 }));
 
-let queryCallIndex = 0;
 vi.mock("~/db", () => ({
-  useLiveQuery: () => {
-    // Two useLiveQuery calls per render, in declaration order: session
-    // links, then the open action items count.
-    const index = queryCallIndex % 2;
-    queryCallIndex += 1;
-    return index === 0
+  useLiveQuery: ({ sql }: { sql: string }) =>
+    sql.includes("FROM sessions")
       ? { data: mocks.sessionLinks }
-      : { data: mocks.openActionItemsCount };
-  },
+      : { data: mocks.openActionItemsCount },
 }));
 
 type MockTabsState = {
@@ -85,7 +79,6 @@ import { TabContentHome } from "./index";
 describe("TabContentHome", () => {
   beforeEach(() => {
     cleanup();
-    queryCallIndex = 0;
     mocks.eventsTable = {};
     mocks.sessions = [];
     mocks.sessionLinks = [];
@@ -97,6 +90,7 @@ describe("TabContentHome", () => {
 
   afterEach(() => {
     cleanup();
+    vi.useRealTimers();
   });
 
   const renderHome = () =>
@@ -124,6 +118,7 @@ describe("TabContentHome", () => {
     ).toBeTruthy();
   });
   it("counts today's events in the selected timezone", () => {
+    vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-11-05T08:00:00.000Z"));
     mocks.eventsTable = {
       "evt-1": {
@@ -135,7 +130,7 @@ describe("TabContentHome", () => {
     renderHome();
 
     expect(screen.getByText(/1 scheduled today/)).toBeTruthy();
-    vi.useRealTimers();
+    expect(screen.getByText("Evening meeting")).toBeTruthy();
   });
 
   it("only lists future events in Coming up, sorted by start time", () => {
