@@ -36,20 +36,45 @@ msgstr "(default)"
 msgid "{0} item(s)"
 msgstr "{0} item(s)"
 
+#. placeholder {0}: attendee.name
+#: src/main/series/index.tsx
+msgid "{0} joined this series."
+msgstr "{0} joined this series."
+
+#. placeholder {0}: attendee.name
+#: src/main/series/index.tsx
+msgid "{0} left this series."
+msgstr "{0} left this series."
+
 #. placeholder {0}: occurrences.length
 #: src/main/series/index.tsx
-msgid "{0} occurrences"
-msgstr "{0} occurrences"
+msgid "{0} meetings"
+msgstr "{0} meetings"
+
+#. placeholder {0}: occurrences.length
+#: src/main/series/index.tsx
+msgid "{0} meetings · newest first"
+msgstr "{0} meetings · newest first"
 
 #. placeholder {0}: meeting.action_count
 #: src/main/meetings/index.tsx
 msgid "{0} open"
 msgstr "{0} open"
 
+#. placeholder {0}: occurrence.open_item_count
+#: src/main/series/index.tsx
+msgid "{0} open actions"
+msgstr "{0} open actions"
+
 #. placeholder {0}: issue.user?.login
 #: src/task/resource-view.tsx
 msgid "{0} opened on"
 msgstr "{0} opened on"
+
+#. placeholder {0}: carryOver.length
+#: src/main/series/index.tsx
+msgid "{0} still open"
+msgstr "{0} still open"
 
 #. placeholder {0}: status.fileCount
 #: src/settings/general/storage/legacy-cleanup.tsx
@@ -199,6 +224,10 @@ msgstr "Account"
 #: src/shared/command-palette/index.tsx
 msgid "Account & Storage"
 msgstr "Account & Storage"
+
+#: src/main/series/index.tsx
+msgid "Action closed"
+msgstr "Action closed"
 
 #: src/main/action-items/index.tsx
 #: src/session/components/action-items/index.tsx
@@ -421,6 +450,14 @@ msgstr "Ask anything across your meetings…"
 msgid "Assignees:"
 msgstr "Assignees:"
 
+#: src/main/series/index.tsx
+msgid "Attendee joined"
+msgstr "Attendee joined"
+
+#: src/main/series/index.tsx
+msgid "Attendee left"
+msgstr "Attendee left"
+
 #: src/session/components/outer-header/overflow/schedule-followup.tsx
 msgid "Attendees"
 msgstr "Attendees"
@@ -565,6 +602,10 @@ msgstr "Cancel date edit"
 #: src/main/action-items/index.tsx
 msgid "Carried over"
 msgstr "Carried over"
+
+#: src/main/series/index.tsx
+msgid "Carried-over actions"
+msgstr "Carried-over actions"
 
 #: src/settings/personalization/dictionary-settings.tsx
 msgid "Case-sensitive"
@@ -1001,6 +1042,14 @@ msgstr "Created"
 msgid "Creating event…"
 msgstr "Creating event…"
 
+#: src/main/series/index.tsx
+msgid "Current"
+msgstr "Current"
+
+#: src/main/series/index.tsx
+msgid "Current meeting"
+msgstr "Current meeting"
+
 #: src/settings/general/app-settings.tsx
 msgid "Current version"
 msgstr "Current version"
@@ -1024,6 +1073,10 @@ msgstr "Date & time"
 #: src/session/components/outer-header/metadata/date.tsx
 msgid "Date and time are required"
 msgstr "Date and time are required"
+
+#: src/main/series/index.tsx
+msgid "Decision made"
+msgstr "Decision made"
 
 #: src/session/components/outer-header/overflow/delete.tsx
 #: src/settings/ai/llm/select.tsx
@@ -1581,6 +1634,11 @@ msgstr "Free"
 #: src/templates/template-icon-picker.tsx
 msgid "Frequently used"
 msgstr "Frequently used"
+
+#. placeholder {0}: formatDateShort(item.source_started_at)
+#: src/main/series/index.tsx
+msgid "from {0}"
+msgstr "from {0}"
 
 #: src/main/action-items/index.tsx
 msgid "from {sourceDateFormatted} · {sourceTitle}"
@@ -2255,6 +2313,10 @@ msgstr "New notes will be saved to {0}. You can also move your existing notes th
 msgid "New recipe"
 msgstr "New recipe"
 
+#: src/main/series/index.tsx
+msgid "New topic"
+msgstr "New topic"
+
 #: src/contacts/shared.tsx
 msgid "Newest"
 msgstr "Newest"
@@ -2286,6 +2348,10 @@ msgstr "No apps found."
 #: src/calendar/components/calendar-selection.tsx
 msgid "No calendars found"
 msgstr "No calendars found"
+
+#: src/main/series/index.tsx
+msgid "No changes to show."
+msgstr "No changes to show."
 
 #: src/templates/details.tsx
 msgid "No community templates available"
@@ -2379,6 +2445,14 @@ msgstr "No notes for this version yet."
 #: src/main/home/index.tsx
 msgid "No notes yet."
 msgstr "No notes yet."
+
+#: src/main/series/index.tsx
+msgid "No open actions"
+msgstr "No open actions"
+
+#: src/main/series/index.tsx
+msgid "No open items carried over."
+msgstr "No open items carried over."
 
 #: src/session/components/note-input/transcript/renderer/speaker-assign.tsx
 msgid "No people"
@@ -2850,6 +2924,10 @@ msgstr "Preparation window"
 msgid "Prepare"
 msgstr "Prepare"
 
+#: src/main/series/index.tsx
+msgid "Prepare next"
+msgstr "Prepare next"
+
 #: src/session/components/outer-header/overflow/export-modal.tsx
 msgid "Preparing transcript..."
 msgstr "Preparing transcript..."
@@ -2965,6 +3043,14 @@ msgstr "Recording time"
 #: src/main/meetings/index.tsx
 msgid "Recurring"
 msgstr "Recurring"
+
+#: src/main/series/index.tsx
+msgid "Recurring meeting series"
+msgstr "Recurring meeting series"
+
+#: src/main/series/index.tsx
+msgid "Recurring series"
+msgstr "Recurring series"
 
 #: src/calendar/components/outlook/content.tsx
 msgid "Redirect URI: select platform <0>Mobile and desktop applications</0> and enter <1>http://localhost</1>."
@@ -3374,7 +3460,6 @@ msgid "Send test event"
 msgstr "Send test event"
 
 #: src/main/meetings/index.tsx
-#: src/main/series/index.tsx
 msgid "Series"
 msgstr "Series"
 
@@ -3911,6 +3996,10 @@ msgstr "Ticket"
 msgid "Tidy whitespace, capitalize sentences and drop trailing fragments. Instant and fully offline."
 msgstr "Tidy whitespace, capitalize sentences and drop trailing fragments. Instant and fully offline."
 
+#: src/main/series/index.tsx
+msgid "Timeline"
+msgstr "Timeline"
+
 #: src/settings/general/timezone.tsx
 msgid "Timezone"
 msgstr "Timezone"
@@ -3948,6 +4037,10 @@ msgstr "Toggle shortcut"
 #: src/shared/command-palette/index.tsx
 msgid "Toggle theme"
 msgstr "Toggle theme"
+
+#: src/main/series/index.tsx
+msgid "Topic no longer active"
+msgstr "Topic no longer active"
 
 #: src/settings/general/app-settings.tsx
 msgid "Transcribe in real time during a meeting. Turn this off to transcribe only after you stop — lighter for long meetings, and audio is always recorded either way. Applies to new sessions only."
@@ -4220,6 +4313,10 @@ msgstr "Week starts on"
 #: src/onboarding/index.tsx
 msgid "Welcome to Notare"
 msgstr "Welcome to Notare"
+
+#: src/main/series/index.tsx
+msgid "What changed since last time"
+msgstr "What changed since last time"
 
 #: src/changelog/index.tsx
 msgid "What's new in {version}?"
