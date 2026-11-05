@@ -12,14 +12,14 @@ import {
   startOfWeek,
   subMonths,
 } from "date-fns";
-import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { ChevronLeftIcon, ChevronRightIcon, RepeatIcon } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { cn } from "@hypr/utils";
 
 import { CustomSidebarHeader } from "./custom-sidebar-header";
 
-import { EventChip } from "~/calendar/components/event-chip";
+import { useIgnoredEvents } from "~/calendar/ignored-events";
 import {
   toTz,
   useCalendarData,
@@ -28,7 +28,13 @@ import {
   useWeekStartsOn,
 } from "~/calendar/hooks";
 import { useCalendarSelection } from "~/calendar/selection";
-import { openSurfaceTab } from "~/sidebar/surface-navigation";
+import { getOrCreateSessionForEventId } from "~/session/queries";
+import {
+  type MenuItemDef,
+  useNativeContextMenu,
+} from "~/shared/hooks/useNativeContextMenu";
+import type { TimelineEventRow } from "~/sidebar/timeline/utils";
+import { type SettingsTab, useTabs } from "~/store/zustand/tabs";
 
 export function CalendarNav() {
   const { t } = useLingui();
@@ -147,31 +153,27 @@ export function CalendarNav() {
               <Trans>No events</Trans>
             </p>
           ) : (
-            <div className="divide-border divide-y">
-              {events.map(({ id, event }) => {
-                const time = event?.is_all_day
-                  ? t`All day`
-                  : event?.started_at
-                    ? format(toTz(event.started_at, tz), "HH:mm")
-                    : "";
-                return (
-                  <div key={id} className="flex items-start gap-2 py-2">
-                    <span className="text-muted-foreground w-10 shrink-0 pt-1 text-[10px] tabular-nums">
-                      {time}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <EventChip eventId={id} event={event} showTime={false} />
-                    </div>
-                  </div>
-                );
-              })}
+            <div className="space-y-1">
+              {events.map(({ id, event }) => (
+                <SidebarEventRow
+                  key={id}
+                  id={id}
+                  event={event}
+                  tz={tz}
+                />
+              ))}
             </div>
           )}
         </section>
         <button
           type="button"
-          className="text-muted-foreground hover:bg-accent hover:text-foreground mt-3 w-full rounded-full px-3 py-1.5 text-left text-xs"
-          onClick={() => openSurfaceTab("settings")}
+          className="text-muted-foreground hover:bg-accent hover:text-foreground mt-3 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs transition-colors"
+          onClick={() => {
+            useTabs.getState().openNew({
+              type: "settings",
+              state: { tab: "integrations" as unknown as SettingsTab },
+            });
+          }}
         >
           <Trans>Manage calendars</Trans>
         </button>
@@ -179,3 +181,108 @@ export function CalendarNav() {
     </div>
   );
 }
+
+function SidebarEventRow({
+  id,
+  event,
+  tz,
+}: {
+  id: string;
+  event: TimelineEventRow | undefined;
+  tz: string | undefined;
+}) {
+  const { t } = useLingui();
+  const openCurrent = useTabs((state) => state.openCurrent);
+  const { ignoreEvent, ignoreSeries } = useIgnoredEvents();
+
+  const handleOpen = useCallback(() => {
+    void getOrCreateSessionForEventId(id, event?.title || "Untitled")
+      .then((sessionId) => {
+        openCurrent({ type: "sessions", id: sessionId });
+      })
+      .catch((error) => {
+        console.error("[calendar] failed to open event note", error);
+      });
+  }, [id, event?.title, openCurrent]);
+
+  const handleIgnore = useCallback(() => {
+    if (event?.tracking_id_event) {
+      ignoreEvent(event.tracking_id_event);
+    }
+  }, [event?.tracking_id_event, ignoreEvent]);
+
+  const handleIgnoreSeries = useCallback(() => {
+    if (event?.recurrence_series_id) {
+      ignoreSeries(event.recurrence_series_id);
+    }
+  }, [event?.recurrence_series_id, ignoreSeries]);
+
+  const contextMenu = useMemo<MenuItemDef[]>(() => {
+    if (!event) return [];
+    const items: MenuItemDef[] = [
+      {
+        id: "open",
+        text: t`Open note`,
+        action: handleOpen,
+      },
+      {
+        id: "ignore",
+        text: event.recurrence_series_id
+          ? t`Delete This Event`
+          : t`Delete Event`,
+        action: handleIgnore,
+      },
+    ];
+    if (event.recurrence_series_id) {
+      items.push({
+        id: "ignore-series",
+        text: t`Delete Entire Series`,
+        action: handleIgnoreSeries,
+      });
+    }
+    return items;
+  }, [event, handleOpen, handleIgnore, handleIgnoreSeries, t]);
+
+  const showContextMenu = useNativeContextMenu(contextMenu);
+
+  const time = event?.is_all_day
+    ? t`All day`
+    : event?.started_at
+      ? format(toTz(event.started_at, tz), "HH:mm")
+      : "";
+  const color = event?.calendar_color || "var(--color-primary)";
+
+  return (
+    <button
+      type="button"
+      onClick={handleOpen}
+      onContextMenu={showContextMenu}
+      className={cn(
+        "group hover:bg-accent/60 flex w-full items-baseline gap-2 rounded-md px-1.5 py-1.5 text-left text-xs transition-colors",
+        "focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-1",
+      )}
+    >
+      <span className="text-muted-foreground w-10 shrink-0 font-mono text-[11px] font-medium tabular-nums">
+        {time}
+      </span>
+      <div
+        className="size-1.5 shrink-0 self-center rounded-full"
+        style={{ backgroundColor: color }}
+        aria-hidden="true"
+      />
+      <span className="text-foreground min-w-0 flex-1 truncate font-medium">
+        {event?.title || t`Untitled`}
+      </span>
+      {event?.recurrence_series_id && (
+        <span
+          title={t`Recurring event`}
+          className="text-muted-foreground shrink-0"
+        >
+          <RepeatIcon className="size-3" />
+        </span>
+      )}
+    </button>
+  );
+}
+
+export { CalendarNav as CalendarSidebar };
