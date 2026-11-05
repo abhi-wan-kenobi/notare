@@ -163,11 +163,7 @@ export function WeekView({
                   )}
                 >
                   {allDayEvents.map(({ id, event }) => (
-                    <AllDayEventChip
-                      key={id}
-                      eventId={id}
-                      event={event}
-                    />
+                    <AllDayEventChip key={id} eventId={id} event={event} />
                   ))}
                 </div>
               );
@@ -177,7 +173,7 @@ export function WeekView({
 
         {/* Time gutter labels */}
         <div
-          className="border-border/60 relative select-none border-r"
+          className="border-border/60 relative border-r select-none"
           style={{ height: HOUR_HEIGHT * (lastHour - firstHour) }}
         >
           {timeLabels.map((hour) => (
@@ -251,10 +247,7 @@ export function WeekView({
 
               {/* Quiet rounded event blocks */}
               {timedLayouts.map((item) => (
-                <WeekEventBlock
-                  key={item.eventId}
-                  layout={item}
-                />
+                <WeekEventBlock key={item.eventId} layout={item} />
               ))}
             </div>
           );
@@ -315,8 +308,9 @@ function computeTimedEventLayouts({
 
   // Sort by start time, longer duration first
   valid.sort((a, b) => {
-    if (a.startMinutes !== b.startMinutes) return a.startMinutes - b.startMinutes;
-    return (b.endMinutes - b.startMinutes) - (a.endMinutes - a.startMinutes);
+    if (a.startMinutes !== b.startMinutes)
+      return a.startMinutes - b.startMinutes;
+    return b.endMinutes - b.startMinutes - (a.endMinutes - a.startMinutes);
   });
 
   // Calculate overlapping groups to allocate columns
@@ -351,7 +345,8 @@ function computeTimedEventLayouts({
       // Find first column that is free
       let colIdx = columns.findIndex((colEnd) => colEnd <= item.startMinutes);
       if (colIdx === -1) {
-        colIdx = columns.length < totalCols ? columns.length : index % totalCols;
+        colIdx =
+          columns.length < totalCols ? columns.length : index % totalCols;
         columns[colIdx] = item.endMinutes;
       } else {
         columns[colIdx] = item.endMinutes;
@@ -371,13 +366,9 @@ function computeTimedEventLayouts({
 
       const colCount = Math.max(1, Math.min(cluster.length, totalCols));
       const width =
-        colCount === 1
-          ? "calc(100% - 8px)"
-          : `calc(${100 / colCount}% - 4px)`;
+        colCount === 1 ? "calc(100% - 8px)" : `calc(${100 / colCount}% - 4px)`;
       const left =
-        colCount === 1
-          ? "4px"
-          : `calc(${colIdx * (100 / colCount)}% + 2px)`;
+        colCount === 1 ? "4px" : `calc(${colIdx * (100 / colCount)}% + 2px)`;
 
       results.push({
         ...item,
@@ -450,7 +441,13 @@ function WeekEventBlock({ layout }: { layout: TimedEventLayout }) {
       });
     }
     return items;
-  }, [event.recurrence_series_id, handleOpen, handleIgnore, handleIgnoreSeries, t]);
+  }, [
+    event.recurrence_series_id,
+    handleOpen,
+    handleIgnore,
+    handleIgnoreSeries,
+    t,
+  ]);
 
   const showContextMenu = useNativeContextMenu(contextMenu);
 
@@ -471,7 +468,7 @@ function WeekEventBlock({ layout }: { layout: TimedEventLayout }) {
       className={cn(
         "group absolute z-10 flex flex-col justify-start rounded-[7px] border border-l-2 p-1.5 text-left transition-colors select-none",
         "bg-card border-border/70 hover:bg-accent/40 hover:border-border cursor-pointer",
-        "focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-1",
+        "focus-visible:ring-ring focus-visible:ring-1 focus-visible:outline-none",
       )}
       style={{
         top,
@@ -483,7 +480,7 @@ function WeekEventBlock({ layout }: { layout: TimedEventLayout }) {
       title={`${title} (${format(start, "h:mm a")} - ${format(end, "h:mm a")})`}
     >
       <div className="flex min-w-0 items-center gap-1">
-        <strong className="text-foreground truncate text-xs font-semibold leading-tight">
+        <strong className="text-foreground truncate text-xs leading-tight font-semibold">
           {title}
         </strong>
         {event.recurrence_series_id && (
@@ -534,7 +531,7 @@ function AllDayEventChip({
       style={{ borderLeftColor: color }}
       className={cn(
         "bg-card border-border/70 hover:bg-accent/40 flex w-full items-center gap-1 rounded-[5px] border border-l-2 px-1.5 py-0.5 text-left text-xs transition-colors",
-        "focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-1",
+        "focus-visible:ring-ring focus-visible:ring-1 focus-visible:outline-none",
       )}
     >
       <span className="text-foreground min-w-0 flex-1 truncate font-medium">

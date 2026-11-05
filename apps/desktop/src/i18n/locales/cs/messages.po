@@ -313,6 +313,11 @@ msgstr ""
 msgid "All {0} trashed items will be permanently deleted. This cannot be undone."
 msgstr ""
 
+#: src/calendar/components/week-view.tsx
+#: src/sidebar/calendar.tsx
+msgid "All day"
+msgstr ""
+
 #: src/main/home/index.tsx
 msgid "All meetings"
 msgstr ""
@@ -1008,6 +1013,13 @@ msgstr ""
 msgid "Delete All Recurring Events"
 msgstr ""
 
+#: src/calendar/components/week-view.tsx
+#: src/sidebar/calendar.tsx
+msgid "Delete Entire Series"
+msgstr ""
+
+#: src/calendar/components/week-view.tsx
+#: src/sidebar/calendar.tsx
 #: src/sidebar/timeline/item.tsx
 msgid "Delete Event"
 msgstr ""
@@ -1040,6 +1052,8 @@ msgstr ""
 msgid "Delete Selected ({sessionCount})"
 msgstr ""
 
+#: src/calendar/components/week-view.tsx
+#: src/sidebar/calendar.tsx
 #: src/sidebar/timeline/item.tsx
 msgid "Delete This Event"
 msgstr ""
@@ -1534,6 +1548,10 @@ msgstr ""
 msgid "Frequently used"
 msgstr ""
 
+#: src/sidebar/calendar.tsx
+msgid "Fri"
+msgstr ""
+
 #: src/calendar/components/google/content.tsx
 #: src/calendar/components/outlook/content.tsx
 msgid "Full setup guide"
@@ -1999,6 +2017,10 @@ msgstr ""
 msgid "Manage billing"
 msgstr ""
 
+#: src/sidebar/calendar.tsx
+msgid "Manage calendars"
+msgstr ""
+
 #: src/settings/general/app-settings.tsx
 msgid "Manual"
 msgstr ""
@@ -2100,6 +2122,10 @@ msgstr ""
 msgid "Migration status unavailable"
 msgstr ""
 
+#: src/sidebar/calendar.tsx
+msgid "Mini calendar"
+msgstr ""
+
 #: src/settings/dictation/index.tsx
 msgid "Model"
 msgstr ""
@@ -2110,6 +2136,10 @@ msgstr ""
 
 #: src/settings/mcp/index.tsx
 msgid "Model Context Protocol (MCP)"
+msgstr ""
+
+#: src/sidebar/calendar.tsx
+msgid "Mon"
 msgstr ""
 
 #: src/settings/general/week-start.tsx
@@ -2173,6 +2203,10 @@ msgstr ""
 msgid "New chat"
 msgstr ""
 
+#: src/calendar/components/calendar-view.tsx
+msgid "New meeting"
+msgstr ""
+
 #. placeholder {0}: displayPath(pendingPath ?? undefined, home)
 #: src/settings/general/storage/notes-location.tsx
 msgid "New notes will be saved to {0}. You can also move your existing notes there. If the folder already contains files, your notes are copied and the originals stay in place. The app will restart to apply the change."
@@ -2188,6 +2222,10 @@ msgstr ""
 
 #: src/session/components/note-input/search/bar.tsx
 msgid "Next match"
+msgstr ""
+
+#: src/sidebar/calendar.tsx
+msgid "Next month"
 msgstr ""
 
 #: src/session/components/action-items/index.tsx
@@ -2240,6 +2278,10 @@ msgstr ""
 
 #: src/templates/template-icon-picker.tsx
 msgid "No emoji found"
+msgstr ""
+
+#: src/sidebar/calendar.tsx
+msgid "No events"
 msgstr ""
 
 #: src/settings/gmail/index.tsx
@@ -2548,6 +2590,11 @@ msgstr ""
 msgid "Open Notare"
 msgstr ""
 
+#: src/calendar/components/week-view.tsx
+#: src/sidebar/calendar.tsx
+msgid "Open note"
+msgstr ""
+
 #: src/main/home/index.tsx
 msgid "Open notes"
 msgstr ""
@@ -2766,6 +2813,10 @@ msgstr ""
 msgid "Previous match"
 msgstr ""
 
+#: src/sidebar/calendar.tsx
+msgid "Previous month"
+msgstr ""
+
 #: src/sidebar/index.tsx
 msgid "Primary"
 msgstr ""
@@ -2847,6 +2898,12 @@ msgstr ""
 
 #: src/meeting-float/window.tsx
 msgid "Recording time"
+msgstr ""
+
+#: src/calendar/components/event-chip.tsx
+#: src/calendar/components/week-view.tsx
+#: src/sidebar/calendar.tsx
+msgid "Recurring event"
 msgstr ""
 
 #: src/calendar/components/outlook/content.tsx
@@ -3055,6 +3112,10 @@ msgstr ""
 msgid "Same as live model"
 msgstr ""
 
+#: src/sidebar/calendar.tsx
+msgid "Sat"
+msgstr ""
+
 #: src/settings/personalization/dictionary-settings.tsx
 #: src/settings/personalization/index.tsx
 #: src/settings/recipes/index.tsx
@@ -3230,6 +3291,10 @@ msgstr ""
 #: src/chat/components/scope-selector.tsx
 #: src/onboarding/transcription.tsx
 msgid "Selected"
+msgstr ""
+
+#: src/sidebar/calendar.tsx
+msgid "Selected day events"
 msgstr ""
 
 #: src/settings/general/app-settings.tsx
@@ -3605,6 +3670,10 @@ msgstr ""
 msgid "Summary instructions"
 msgstr ""
 
+#: src/sidebar/calendar.tsx
+msgid "Sun"
+msgstr ""
+
 #: src/settings/general/week-start.tsx
 msgid "Sunday"
 msgstr ""
@@ -3772,6 +3841,10 @@ msgstr ""
 msgid "This will remove {0} legacy files and free {1}. Your app data will not be affected because the migration to SQLite is complete."
 msgstr ""
 
+#: src/sidebar/calendar.tsx
+msgid "Thu"
+msgstr ""
+
 #: src/settings/todo/index.tsx
 msgid "Ticket"
 msgstr ""
@@ -3877,6 +3950,10 @@ msgstr ""
 msgid "Try again"
 msgstr ""
 
+#: src/sidebar/calendar.tsx
+msgid "Tue"
+msgstr ""
+
 #: src/dictation/orb.tsx
 msgid "Twin cobalt rings inside a soft glowing halo."
 msgstr ""
@@ -3912,6 +3989,7 @@ msgstr ""
 msgid "Unpin"
 msgstr ""
 
+#: src/calendar/components/week-view.tsx
 #: src/main/action-items/index.tsx
 #: src/main/home/index.tsx
 #: src/main/meetings/index.tsx
@@ -3921,6 +3999,7 @@ msgstr ""
 #: src/session/components/title-input.tsx
 #: src/shared/open-note-dialog.tsx
 #: src/shared/ui/resource-list/preview-header.tsx
+#: src/sidebar/calendar.tsx
 #: src/sidebar/index.tsx
 #: src/sidebar/timeline/item.tsx
 #: src/templates/details.tsx
@@ -4067,6 +4146,10 @@ msgstr ""
 #: src/settings/webhook/index.tsx
 #: src/sidebar/settings.tsx
 msgid "Webhooks"
+msgstr ""
+
+#: src/sidebar/calendar.tsx
+msgid "Wed"
 msgstr ""
 
 #: src/settings/general/week-start.tsx

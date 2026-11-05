@@ -95,12 +95,11 @@ vi.mock("~/calendar/hooks", () => ({
   }),
 }));
 
-import { useCalendarSelection } from "~/calendar/selection";
 import { CalendarNav, CalendarSidebar } from "./calendar";
 
-describe(
-  "CalendarSidebar / CalendarNav",
-  () => {
+import { useCalendarSelection } from "~/calendar/selection";
+
+describe("CalendarSidebar / CalendarNav", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     useCalendarSelection.getState().selectDate(mockNow);
@@ -167,6 +166,4 @@ describe(
 
     expect(useCalendarSelection.getState().selectedDate).toBe("2026-11-05");
   });
-  },
-  20000,
-);
+}, 20000);

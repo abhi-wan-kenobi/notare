@@ -104,9 +104,7 @@ const mockCalendarData = {
   sessionsById: {},
 };
 
-describe(
-  "WeekView",
-  () => {
+describe("WeekView", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -162,6 +160,4 @@ describe(
       });
     });
   });
-  },
-  20000,
-);
+}, 20000);

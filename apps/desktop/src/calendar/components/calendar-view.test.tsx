@@ -79,7 +79,8 @@ class MockResizeObserver {
   unobserve = vi.fn();
   disconnect = vi.fn();
 }
-globalThis.ResizeObserver = MockResizeObserver as unknown as typeof ResizeObserver;
+globalThis.ResizeObserver =
+  MockResizeObserver as unknown as typeof ResizeObserver;
 
 vi.mock("~/calendar/ignored-events", () => ({
   useIgnoredEvents: () => ({
@@ -94,70 +95,66 @@ vi.mock("~/shared/hooks/useNativeContextMenu", () => ({
 
 import { CalendarView } from "./calendar-view";
 
-describe(
-  "CalendarView",
-  () => {
-    let client: QueryClient;
+describe("CalendarView", () => {
+  let client: QueryClient;
 
-    beforeEach(() => {
-      vi.clearAllMocks();
-      mocks.zoom = "week";
-      client = new QueryClient({
-        defaultOptions: { queries: { retry: false } },
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.zoom = "week";
+    client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+  });
+
+  afterEach(() => {
+    cleanup();
+    client.clear();
+  });
+
+  it("renders New meeting button and calls createSession on click", async () => {
+    render(
+      <QueryClientProvider client={client}>
+        <CalendarView />
+      </QueryClientProvider>,
+    );
+
+    const newMeetingBtn = screen.getByRole("button", { name: /new meeting/i });
+    expect(newMeetingBtn).toBeTruthy();
+
+    fireEvent.click(newMeetingBtn);
+
+    expect(mocks.createSession).toHaveBeenCalled();
+    await vi.waitFor(() => {
+      expect(mocks.openNew).toHaveBeenCalledWith({
+        type: "sessions",
+        id: "new-session-123",
       });
     });
+  });
 
-    afterEach(() => {
-      cleanup();
-      client.clear();
-    });
+  it("renders WeekView when zoom is week", () => {
+    mocks.zoom = "week";
 
-    it("renders New meeting button and calls createSession on click", async () => {
-      render(
-        <QueryClientProvider client={client}>
-          <CalendarView />
-        </QueryClientProvider>,
-      );
+    render(
+      <QueryClientProvider client={client}>
+        <CalendarView />
+      </QueryClientProvider>,
+    );
 
-      const newMeetingBtn = screen.getByRole("button", { name: /new meeting/i });
-      expect(newMeetingBtn).toBeTruthy();
+    expect(screen.getByTestId("calendar-zoom-level").textContent).toBe("Week");
+    expect(screen.getByText("Mon")).toBeTruthy();
+    expect(screen.getByText("Wed")).toBeTruthy();
+  });
 
-      fireEvent.click(newMeetingBtn);
+  it("renders month grid when zoom is month", () => {
+    mocks.zoom = "month";
 
-      expect(mocks.createSession).toHaveBeenCalled();
-      await vi.waitFor(() => {
-        expect(mocks.openNew).toHaveBeenCalledWith({
-          type: "sessions",
-          id: "new-session-123",
-        });
-      });
-    });
+    render(
+      <QueryClientProvider client={client}>
+        <CalendarView />
+      </QueryClientProvider>,
+    );
 
-    it("renders WeekView when zoom is week", () => {
-      mocks.zoom = "week";
-
-      render(
-        <QueryClientProvider client={client}>
-          <CalendarView />
-        </QueryClientProvider>,
-      );
-
-      expect(screen.getByTestId("calendar-zoom-level").textContent).toBe("Week");
-      expect(screen.getByText("Mon")).toBeTruthy();
-      expect(screen.getByText("Wed")).toBeTruthy();
-    });
-
-    it("renders month grid when zoom is month", () => {
-      mocks.zoom = "month";
-
-      render(
-        <QueryClientProvider client={client}>
-          <CalendarView />
-        </QueryClientProvider>,
-      );
-
-      expect(screen.getByTestId("calendar-zoom-level").textContent).toBe("Month");
-    });
-  },
-  20000,
-);
+    expect(screen.getByTestId("calendar-zoom-level").textContent).toBe("Month");
+  });
+}, 20000);

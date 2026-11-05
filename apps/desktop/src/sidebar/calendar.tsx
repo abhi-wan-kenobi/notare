@@ -19,7 +19,6 @@ import { cn } from "@hypr/utils";
 
 import { CustomSidebarHeader } from "./custom-sidebar-header";
 
-import { useIgnoredEvents } from "~/calendar/ignored-events";
 import {
   toTz,
   useCalendarData,
@@ -27,6 +26,7 @@ import {
   useTimezone,
   useWeekStartsOn,
 } from "~/calendar/hooks";
+import { useIgnoredEvents } from "~/calendar/ignored-events";
 import { useCalendarSelection } from "~/calendar/selection";
 import { getOrCreateSessionForEventId } from "~/session/queries";
 import {
@@ -155,12 +155,7 @@ export function CalendarNav() {
           ) : (
             <div className="space-y-1">
               {events.map(({ id, event }) => (
-                <SidebarEventRow
-                  key={id}
-                  id={id}
-                  event={event}
-                  tz={tz}
-                />
+                <SidebarEventRow key={id} id={id} event={event} tz={tz} />
               ))}
             </div>
           )}
@@ -259,7 +254,7 @@ function SidebarEventRow({
       onContextMenu={showContextMenu}
       className={cn(
         "group hover:bg-accent/60 flex w-full items-baseline gap-2 rounded-md px-1.5 py-1.5 text-left text-xs transition-colors",
-        "focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-1",
+        "focus-visible:ring-ring focus-visible:ring-1 focus-visible:outline-none",
       )}
     >
       <span className="text-muted-foreground w-10 shrink-0 font-mono text-[11px] font-medium tabular-nums">
