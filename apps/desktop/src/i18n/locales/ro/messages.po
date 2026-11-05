@@ -41,8 +41,8 @@ msgstr ""
 msgid "{0} occurrences"
 msgstr ""
 
-#. placeholder {0}: items.length
-#: src/main/action-items/index.tsx
+#. placeholder {0}: meeting.action_count
+#: src/main/meetings/index.tsx
 msgid "{0} open"
 msgstr ""
 
@@ -56,12 +56,24 @@ msgstr ""
 msgid "{0} verified legacy files can be removed"
 msgstr ""
 
+#: src/main/meetings/index.tsx
+msgid "{attendeeCount} attendee"
+msgstr ""
+
+#: src/main/meetings/index.tsx
+msgid "{attendeeCount} attendees"
+msgstr ""
+
 #: src/settings/personalization/dictionary-settings.tsx
 msgid "{duplicateCandidateCount} already in your dictionary — skipped."
 msgstr ""
 
 #: src/session/components/outer-header/overflow/schedule-followup.tsx
 msgid "{minutes} min"
+msgstr ""
+
+#: src/main/action-items/index.tsx
+msgid "{openCount} open"
 msgstr ""
 
 #: src/main/home/index.tsx
@@ -308,6 +320,10 @@ msgstr ""
 msgid "AI-generated summary of all interactions and notes with this contact will appear here. This will synthesize key discussion points, action items, and relationship context across all meetings and notes."
 msgstr ""
 
+#: src/main/meetings/index.tsx
+msgid "All"
+msgstr ""
+
 #. placeholder {0}: sessions.length
 #: src/trash/index.tsx
 msgid "All {0} trashed items will be permanently deleted. This cannot be undone."
@@ -534,6 +550,10 @@ msgstr ""
 
 #: src/session/components/outer-header/metadata/date.tsx
 msgid "Cancel date edit"
+msgstr ""
+
+#: src/main/action-items/index.tsx
+msgid "Carried over"
 msgstr ""
 
 #: src/settings/personalization/dictionary-settings.tsx
@@ -1158,6 +1178,15 @@ msgstr ""
 msgid "Don't show notifications when Do-Not-Disturb is enabled on your system"
 msgstr ""
 
+#: src/main/action-items/index.tsx
+msgid "Done"
+msgstr ""
+
+#. placeholder {0}: doneItems.length
+#: src/main/action-items/index.tsx
+msgid "Done ({0})"
+msgstr ""
+
 #: src/onboarding/transcription.tsx
 #: src/settings/ai/llm/select.tsx
 #: src/settings/ai/stt/select.tsx
@@ -1212,6 +1241,11 @@ msgstr ""
 
 #: src/session/components/outer-header/overflow/followup.tsx
 msgid "Drafting email…"
+msgstr ""
+
+#. placeholder {0}: dueDate && isValid(dueDate) ? format(dueDate, "MMM d") : item.due_at
+#: src/main/action-items/index.tsx
+msgid "Due {0}"
 msgstr ""
 
 #: src/templates/details.tsx
@@ -1453,6 +1487,14 @@ msgstr ""
 msgid "File format"
 msgstr ""
 
+#: src/main/action-items/index.tsx
+msgid "Filter action items"
+msgstr ""
+
+#: src/main/meetings/index.tsx
+msgid "Filter meetings"
+msgstr ""
+
 #. placeholder {0}: (config.filterLabel ?? "repository").toLowerCase()
 #: src/settings/todo/provider-content.tsx
 msgid "Filter synced items by {0}."
@@ -1532,6 +1574,10 @@ msgstr ""
 
 #: src/templates/template-icon-picker.tsx
 msgid "Frequently used"
+msgstr ""
+
+#: src/main/action-items/index.tsx
+msgid "from {sourceDateFormatted} · {sourceTitle}"
 msgstr ""
 
 #: src/calendar/components/google/content.tsx
@@ -1861,6 +1907,10 @@ msgstr "Limba pentru rezumate, chaturi și răspunsuri generate de AI"
 msgid "Last seen {0}"
 msgstr ""
 
+#: src/main/meetings/index.tsx
+msgid "Last week"
+msgstr ""
+
 #: src/session/components/note-input/header.tsx
 #: src/stt/useLiveTranscriptCopyShortcuts.ts
 msgid "Latest transcript chunk copied"
@@ -2100,6 +2150,10 @@ msgstr ""
 msgid "Migration status unavailable"
 msgstr ""
 
+#: src/main/action-items/index.tsx
+msgid "Mine"
+msgstr ""
+
 #: src/settings/dictation/index.tsx
 msgid "Model"
 msgstr ""
@@ -2198,6 +2252,10 @@ msgstr ""
 msgid "No action items yet"
 msgstr ""
 
+#: src/main/action-items/index.tsx
+msgid "No action items."
+msgstr ""
+
 #: src/dictation/host.tsx
 msgid "No AI model is configured for dictation cleanup - used basic cleanup instead."
 msgstr ""
@@ -2212,6 +2270,10 @@ msgstr ""
 
 #: src/templates/details.tsx
 msgid "No community templates available"
+msgstr ""
+
+#: src/main/action-items/index.tsx
+msgid "No completed action items."
 msgstr ""
 
 #: src/task/resource-view.tsx
@@ -2272,7 +2334,7 @@ msgid "No matching people"
 msgstr ""
 
 #: src/main/meetings/index.tsx
-msgid "No meetings yet."
+msgid "No meetings found."
 msgstr ""
 
 #: src/settings/ai/stt/select.tsx
@@ -2297,10 +2359,6 @@ msgstr ""
 
 #: src/main/home/index.tsx
 msgid "No notes yet."
-msgstr ""
-
-#: src/main/action-items/index.tsx
-msgid "No open action items."
 msgstr ""
 
 #: src/session/components/note-input/transcript/renderer/speaker-assign.tsx
@@ -2417,6 +2475,10 @@ msgstr ""
 msgid "Notes folder"
 msgstr ""
 
+#: src/main/meetings/index.tsx
+msgid "Notes only"
+msgstr ""
+
 #: src/trash/index.tsx
 msgid "Notes you delete land here first and stay until you empty the trash."
 msgstr ""
@@ -2473,6 +2535,10 @@ msgstr ""
 msgid "Offload model layers to Apple Silicon / Metal GPU for faster inference."
 msgstr ""
 
+#: src/main/meetings/index.tsx
+msgid "Older"
+msgstr ""
+
 #: src/contacts/shared.tsx
 msgid "Oldest"
 msgstr ""
@@ -2498,6 +2564,8 @@ msgid "Only public repositories are supported."
 msgstr ""
 
 #: src/calendar/components/apple/permission.tsx
+#: src/main/action-items/index.tsx
+#: src/main/meetings/index.tsx
 #: src/task/resource-view.tsx
 msgid "Open"
 msgstr ""
@@ -2596,6 +2664,10 @@ msgstr ""
 
 #: src/settings/dictation/index.tsx
 msgid "Output"
+msgstr ""
+
+#: src/main/action-items/index.tsx
+msgid "Overdue"
 msgstr ""
 
 #: src/settings/ai/llm/scoped-models.tsx
@@ -2845,8 +2917,17 @@ msgstr ""
 msgid "Record"
 msgstr ""
 
+#: src/main/meetings/index.tsx
+msgid "Recorded"
+msgstr ""
+
 #: src/meeting-float/window.tsx
 msgid "Recording time"
+msgstr ""
+
+#: src/main/action-items/index.tsx
+#: src/main/meetings/index.tsx
+msgid "Recurring"
 msgstr ""
 
 #: src/calendar/components/outlook/content.tsx
@@ -3119,6 +3200,10 @@ msgstr ""
 msgid "Search language..."
 msgstr "Căutați limba..."
 
+#: src/main/meetings/index.tsx
+msgid "Search meetings"
+msgstr ""
+
 #: src/sidebar/index.tsx
 msgid "Search notes and actions"
 msgstr ""
@@ -3252,6 +3337,7 @@ msgstr ""
 msgid "Send test event"
 msgstr ""
 
+#: src/main/meetings/index.tsx
 #: src/main/series/index.tsx
 msgid "Series"
 msgstr ""
@@ -3793,6 +3879,7 @@ msgstr ""
 msgid "Title"
 msgstr ""
 
+#: src/main/meetings/index.tsx
 #: src/snippets/index.tsx
 msgid "Today"
 msgstr ""
@@ -3931,6 +4018,10 @@ msgstr ""
 
 #: src/contacts/details.tsx
 msgid "Untitled Note"
+msgstr ""
+
+#: src/main/meetings/index.tsx
+msgid "Upcoming"
 msgstr ""
 
 #. placeholder {0}: file.title
@@ -4093,6 +4184,7 @@ msgstr ""
 msgid "Wrong text, or names/jargon to prefer"
 msgstr ""
 
+#: src/main/meetings/index.tsx
 #: src/snippets/index.tsx
 msgid "Yesterday"
 msgstr ""
@@ -4143,6 +4235,10 @@ msgstr ""
 
 #: src/settings/general/account.tsx
 msgid "Your Account"
+msgstr ""
+
+#: src/main/meetings/index.tsx
+msgid "Your conversations, notes, and what comes next."
 msgstr ""
 
 #: src/session/components/note-input/enhanced/config-error.tsx
