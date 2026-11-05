@@ -132,9 +132,22 @@ export function MeetingDetail({
               >
                 <Repeat2Icon size={14} className="shrink-0" />
                 <span>
-                  {series.cadence} on{" "}
-                  {date.toLocaleDateString(undefined, { weekday: "long" })} ·{" "}
-                  {series.meetingCount} <Trans>meetings</Trans> ·{" "}
+                  {series.cadence ? (
+                    <>
+                      {series.cadence === "Weekly" ? (
+                        <Trans>Weekly</Trans>
+                      ) : series.cadence === "Biweekly" ? (
+                        <Trans>Every two weeks</Trans>
+                      ) : (
+                        <Trans>Monthly</Trans>
+                      )}{" "}
+                      <Trans>on</Trans>{" "}
+                      {date.toLocaleDateString(undefined, { weekday: "long" })}
+                    </>
+                  ) : (
+                    <Trans>Recurring</Trans>
+                  )}{" "}
+                  · {series.meetingCount} <Trans>meetings</Trans> ·{" "}
                   <Trans>since</Trans>{" "}
                   {new Date(series.firstStartedAt).toLocaleDateString(
                     undefined,

@@ -1539,6 +1539,7 @@ msgid "Events to send"
 msgstr ""
 
 #: src/main/home/index.tsx
+#: src/session/meeting-detail.tsx
 msgid "Every two weeks"
 msgstr ""
 
@@ -2358,6 +2359,7 @@ msgid "Mono"
 msgstr ""
 
 #: src/main/home/index.tsx
+#: src/session/meeting-detail.tsx
 msgid "Monthly"
 msgstr ""
 
@@ -2794,6 +2796,10 @@ msgstr ""
 msgid "omp gateway not detected"
 msgstr ""
 
+#: src/session/meeting-detail.tsx
+msgid "on"
+msgstr ""
+
 #: src/settings/account/index.tsx
 msgid "On this device"
 msgstr ""
@@ -3199,6 +3205,7 @@ msgstr ""
 
 #: src/main/action-items/index.tsx
 #: src/main/meetings/index.tsx
+#: src/session/meeting-detail.tsx
 msgid "Recurring"
 msgstr ""
 
@@ -4542,6 +4549,7 @@ msgid "Week starts on"
 msgstr ""
 
 #: src/main/home/index.tsx
+#: src/session/meeting-detail.tsx
 msgid "Weekly"
 msgstr ""
 

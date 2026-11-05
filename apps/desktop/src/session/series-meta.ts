@@ -13,7 +13,8 @@ export type SessionSeriesMeta = {
   meetingCount: number;
   firstStartedAt: string;
   latestStartedAt: string;
-  cadence: string;
+  /** Null until the series has two occurrences to measure a gap between. */
+  cadence: "Weekly" | "Biweekly" | "Monthly" | null;
 };
 
 export function useSessionSeriesMeta(
@@ -47,18 +48,23 @@ export function useSessionSeriesMeta(
     mapRows: (rows) => {
       const row = rows[0];
       if (!row?.series_id) return null;
-      const gapDays = row.previous_started_at
-        ? Math.abs(
-            Date.parse(row.latest_started_at) -
-              Date.parse(row.previous_started_at),
-          ) / 86_400_000
-        : 0;
+      const gapDays =
+        row.previous_started_at && row.latest_started_at
+          ? Math.abs(
+              Date.parse(row.latest_started_at) -
+                Date.parse(row.previous_started_at),
+            ) / 86_400_000
+          : null;
       const cadence =
-        gapDays >= 24 && gapDays <= 38
-          ? "Monthly"
-          : gapDays >= 11 && gapDays <= 17
-            ? "Biweekly"
-            : "Weekly";
+        gapDays === null || !Number.isFinite(gapDays)
+          ? null
+          : gapDays >= 24 && gapDays <= 38
+            ? "Monthly"
+            : gapDays >= 11 && gapDays <= 17
+              ? "Biweekly"
+              : gapDays >= 5 && gapDays <= 9
+                ? "Weekly"
+                : null;
       return {
         seriesId: row.series_id,
         meetingCount: Number(row.meeting_count),

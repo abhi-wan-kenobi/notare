@@ -45,7 +45,10 @@ export const createStateUpdaterSlice = <T extends BasicState & NavigationState>(
   updateTemplatesTabState: (tab, state) =>
     updateTabState(tab, "templates", state, get, set),
   updateSettingsTabState: (tab, state) => {
-    const currentState = tab.type === "settings" ? tab.state : undefined;
+    // Merge over the store's current state, not the caller's snapshot: two
+    // updates in one tick (hub, then section anchor) must both survive.
+    const live = get().tabs.find((t) => isSameTab(t, tab)) ?? tab;
+    const currentState = live.type === "settings" ? live.state : undefined;
     updateTabState(
       tab,
       "settings",
