@@ -226,7 +226,7 @@ vi.mock("./useShortcuts", () => ({
   useClassicMainShortcuts: () => ({ runEscapeShortcut: vi.fn() }),
 }));
 
-vi.mock("~/shared/open-note-dialog", () => ({
+vi.mock("~/shared/command-palette", () => ({
   useOpenNoteDialog: () => ({ open: vi.fn() }),
 }));
 
