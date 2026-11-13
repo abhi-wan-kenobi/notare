@@ -1,38 +1,35 @@
 import { useEffect, useState } from "react";
 
-const MAIN_SHELL_SELECTOR = "[data-testid='main-app-shell']";
+const MAIN_CONTENT_PANEL_SELECTOR = "[data-main-content-panel]";
 
+/**
+ * Horizontal distance from the window's centre to the centre of the main
+ * content panel, so overlays (command palette, status banner) centre over the
+ * content rather than over the window. Measures the content panel by name:
+ * the sidebar is the first `[data-panel-id]` in DOM order, not the content.
+ */
 export function useMainContentCenterOffset() {
   const [contentOffset, setContentOffset] = useState(0);
 
   useEffect(() => {
     const computeOffset = () => {
-      const shell = document.querySelector(MAIN_SHELL_SELECTOR);
-      if (!shell) {
+      const content = document.querySelector(MAIN_CONTENT_PANEL_SELECTOR);
+      if (!content) {
         setContentOffset(0);
         return;
       }
 
-      const panels = document.querySelectorAll("[data-panel-id]");
-      const bodyPanel = panels[0];
-      if (!bodyPanel) {
-        setContentOffset(0);
-        return;
-      }
-
-      const bodyRect = bodyPanel.getBoundingClientRect();
-      const bodyCenter = bodyRect.left + bodyRect.width / 2;
-      const windowCenter = window.innerWidth / 2;
-      setContentOffset(bodyCenter - windowCenter);
+      const rect = content.getBoundingClientRect();
+      setContentOffset(rect.left + rect.width / 2 - window.innerWidth / 2);
     };
 
     computeOffset();
     window.addEventListener("resize", computeOffset);
 
     const resizeObserver = new ResizeObserver(computeOffset);
-    const panels = document.querySelectorAll("[data-panel-id]");
-    for (const panel of panels) {
-      resizeObserver.observe(panel);
+    const content = document.querySelector(MAIN_CONTENT_PANEL_SELECTOR);
+    if (content) {
+      resizeObserver.observe(content);
     }
 
     return () => {

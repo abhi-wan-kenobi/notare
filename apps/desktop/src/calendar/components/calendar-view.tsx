@@ -307,7 +307,8 @@ export function CalendarView() {
         data-tauri-drag-region
         className={cn([
           "flex items-center justify-between",
-          "border-border h-12 border-b py-2 pr-3 pl-3 select-none",
+          // Right padding clears the Ask toggle floating in the window's top-right corner.
+          "border-border h-12 border-b py-2 pr-[112px] pl-3 select-none",
         ])}
       >
         <div className="flex items-center gap-2">

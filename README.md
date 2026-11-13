@@ -11,7 +11,9 @@ choose, so your Obsidian vault (or any notes app) is the database.
 Hold a hotkey anywhere and it's also a system-wide **dictation** tool: speak,
 release, and the text is typed into whatever app has focus.
 
-🌐 [notare.dev](https://notare.dev)
+🌐 [notare.dev](https://notare.dev) · [Download](https://github.com/abhi-wan-kenobi/notare/releases/latest) · [What's new in 0.7](packages/changelog/content/0.7.0.md)
+
+![Notare Home: today's meetings, this week's recordings and open action items](docs/screenshots/home.png)
 
 ## Download
 
@@ -21,7 +23,7 @@ Grab the latest installer from **[GitHub Releases](https://github.com/abhi-wan-k
 |---|---|
 | Windows 10/11 (x64) | `.msi` |
 | Linux (x64) | `.AppImage` or `.deb` |
-| macOS (Apple Silicon) | `.dmg` — unsigned, see note below |
+| macOS (Apple Silicon) | `.dmg` — signed and notarized |
 
 Auto-updates are built in on **Windows (`.msi`)**, **macOS (`.dmg`)**, and the
 **Linux `.AppImage`** — install once and the app keeps itself current. The Linux
@@ -33,37 +35,45 @@ version ships.
 > **Windows SmartScreen:** builds are not (yet) code-signed, so SmartScreen
 > will warn on first run. Click **More info → Run anyway**.
 
-> **macOS Gatekeeper:** builds are unsigned (no Apple Developer certificate
-> yet) and Apple Silicon only. Drag **Notare** to Applications, then strip the
-> quarantine flag before opening — otherwise macOS will claim the app is
-> "damaged" and refuse to launch:
->
-> ```sh
-> xattr -cr /Applications/Notare.app
-> ```
->
-> Then open normally. Intel Macs: build from source.
+> **macOS:** builds are signed with a Developer ID and notarized by Apple, so
+> they open normally. Apple Silicon only — Intel Macs: build from source.
 
 ## Highlights
 
 | | |
 |---|---|
 | 🎙️ **Meeting mode** | Captures system + mic audio locally; live transcription; no bot joins your call |
+| 🏠 **Home** | Today's meetings with *Open notes* / *Prepare*, what you recorded this week, open action items, and notes that still need a summary |
+| 🧭 **Meeting page** | Summary · Transcript · Action items · Recording. Chapters you can click to jump the recording, plus the decisions that were made |
+| 🔁 **Recurring meetings** | Notare recognises a series: action items carried over from earlier occurrences, what changed since last time, and a timeline of every occurrence |
 | ⚡ **GPU transcription** | whisper.cpp with Vulkan (AMD/Intel/NVIDIA) — fast local STT on Windows *and* Linux |
 | ⌨️ **Dictation mode** | Push-to-talk anywhere; text is typed at your cursor, with output cleanup options |
 | 📝 **Notepad-first AI** | Your rough notes enhanced with transcripts — pre-meeting briefs, 25-template gallery, and follow-up email drafts |
-| 💬 **Grounded Chat** | Search across meetings with scope filters, timestamped citation audio playback, and slash recipes |
+| 💬 **Ask Notare** | A side panel (⌘J / Ctrl+J) that searches across meetings with scope filters, clickable timestamp citations, and slash recipes |
+| ⌨️ **Command palette** | ⌘K / Ctrl+K for actions, meetings, and recipes |
 | 🧠 **Flexible AI setup** | Local offline models (Ollama/LM Studio), BYO API keys, official OpenRouter sign-in, subscriptions (Claude/ChatGPT/Gemini), or omp gateway |
 | 📁 **Plain Markdown** | Notes written straight into any folder — point it at your Obsidian vault |
 | 📅 **Calendar & Email** | One-click Google & Outlook multi-account sync; opt-in Gmail follow-up drafts |
 | 🤖 **MCP server** | Built-in streamable HTTP & stdio bridge for Claude Desktop, Cursor, and agents |
 | 🔄 **Device sync (preview)** | Direct peer-to-peer sync with QR pairing and 6-digit code confirmation |
-| 🖥️ **Companion STT server** | Optional Docker server (NVIDIA CUDA + AMD Vulkan) with an OpenAI-compatible `/v1/audio/transcriptions` API and web model admin |
+| 🖥️ **Companion STT server** | Optional Docker server (CPU, Vulkan, NVIDIA CUDA, AMD ROCm images) with an OpenAI-compatible `/v1/audio/transcriptions` API and web model admin |
 | 🔒 **Zero telemetry** | Analytics compiled out at build time; no accounts; nothing leaves your machine unless *you* configure a remote backend |
 | 🪪 **MIT licensed** | Fork-friendly, forever |
+
 ## Screenshots
 
-*TODO — coming with the next release.*
+Captures of the 0.7.1 build on Linux with fictional demo data.
+
+| | |
+|---|---|
+| ![Meeting summary with notes, chapters and decisions](docs/screenshots/meeting-summary.png)<br>**Meeting page** — your notes, the summary at a glance, chapters, decisions | ![Meeting transcript](docs/screenshots/meeting-transcript.png)<br>**Transcript** — speakers and timestamps |
+| ![Recurring series page](docs/screenshots/series.png)<br>**Recurring series** — carried-over action items and every occurrence | ![Action items across meetings](docs/screenshots/action-items.png)<br>**Action items** — everything open, grouped by meeting |
+| ![Ask Notare side panel](docs/screenshots/ask.png)<br>**Ask Notare** — ask across your meetings | ![Command palette](docs/screenshots/palette.png)<br>**Command palette** — ⌘K / Ctrl+K |
+| ![Calendar week view](docs/screenshots/calendar.png)<br>**Calendar** — week view with a mini month | ![Settings, AI & Speech](docs/screenshots/settings.png)<br>**Settings** — four hubs |
+
+Dark theme is one toggle away:
+
+![Notare Home in the dark theme](docs/screenshots/home-dark.png)
 
 ## Principles
 
@@ -81,7 +91,7 @@ version ships.
 Development is planned in the open. See the
 [Notare Roadmap board](https://github.com/users/abhi-wan-kenobi/projects/1)
 for what's up next, or browse the
-[v0.2 / v0.3 milestones](https://github.com/abhi-wan-kenobi/notare/milestones)
+[milestones](https://github.com/abhi-wan-kenobi/notare/milestones)
 and the [issue tracker](https://github.com/abhi-wan-kenobi/notare/issues).
 Feature requests and bug reports are welcome — issues labeled
 [`help wanted`](https://github.com/abhi-wan-kenobi/notare/labels/help%20wanted)

@@ -86,7 +86,11 @@ export function OuterHeader({
       ) : null}
       <div
         data-tauri-drag-region
-        className="relative z-10 ml-auto flex shrink-0 items-center gap-0 pr-1"
+        className={cn([
+          "relative z-10 ml-auto flex shrink-0 items-center gap-0",
+          // The main window floats the Ask toggle in its top-right corner.
+          standaloneWindow ? "pr-1" : "pr-[108px]",
+        ])}
       >
         <HeaderMeetingControl sessionId={sessionId} sessionMode={sessionMode} />
         <OverflowButton

@@ -31,8 +31,9 @@ export function ClassicMainLayout({
   return (
     <SearchEngineProvider>
       <TaskStorageProvider storage={taskStorage}>
-        <OpenNoteDialogProvider>
-          <ShellProvider>
+        {/* ShellProvider stays outside: the palette OpenNoteDialogProvider renders calls useShell(). */}
+        <ShellProvider>
+          <OpenNoteDialogProvider>
             <ToolRegistryProvider registry={toolRegistry}>
               <AITaskProvider store={aiTaskStore}>
                 <NotificationProvider>
@@ -41,8 +42,8 @@ export function ClassicMainLayout({
                 </NotificationProvider>
               </AITaskProvider>
             </ToolRegistryProvider>
-          </ShellProvider>
-        </OpenNoteDialogProvider>
+          </OpenNoteDialogProvider>
+        </ShellProvider>
       </TaskStorageProvider>
     </SearchEngineProvider>
   );

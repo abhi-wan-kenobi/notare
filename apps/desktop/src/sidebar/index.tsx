@@ -173,7 +173,7 @@ function DefaultSidebarContent() {
         <span className="flex-1 truncate text-left">
           <Trans>Search notes and actions</Trans>
         </span>
-        <Kbd>⌘K</Kbd>
+        <Kbd>{isMacosPlatform() ? "⌘K" : "Ctrl+K"}</Kbd>
       </button>
 
       <nav aria-label={t`Primary`} className="flex flex-col gap-0.5">
