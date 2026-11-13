@@ -13,7 +13,8 @@
 #
 
 # --- builder -----------------------------------------------------------
-FROM nvidia/cuda:12.4.1-devel-debian12 AS builder
+# NVIDIA publishes CUDA images for Ubuntu only (there is no debian12 tag).
+FROM nvidia/cuda:12.4.1-devel-ubuntu22.04 AS builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
@@ -28,6 +29,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpipewire-0.3-dev \
     ca-certificates \
     curl \
+    git \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Rust toolchain (1.99.0) matching rust-toolchain.toml
@@ -43,7 +45,7 @@ RUN cargo build --release -p stt-server --features cuda && \
     cp target/release/stt-server /usr/local/bin/stt-server
 
 # --- runtime -------------------------------------------------------------
-FROM nvidia/cuda:12.4.1-runtime-debian12 AS runtime
+FROM nvidia/cuda:12.4.1-runtime-ubuntu22.04 AS runtime
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
