@@ -36,6 +36,15 @@ When using **OpenAI Codex (Subscription)**, requests returned a "model not suppo
 
 ## Calendar and email integration
 
+### Integrations & Sync shows "This section hit a problem"
+
+In 0.7.1, opening this settings hub can show `useSync must be used within a SyncProvider`.
+The calendar account controls were missing their calendar-refresh context outside the Calendar tab.
+This is a rendering error, not evidence that your accounts or notes are damaged.
+
+**Resolution:** Update to 0.7.2 or later. The fix supplies the missing calendar-refresh context.
+It does not enable peer-to-peer device sync or reset account credentials.
+
 ### "Google hasn't verified this app" notice
 
 When connecting Google Calendar or Gmail in official builds:
