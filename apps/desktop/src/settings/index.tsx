@@ -2,6 +2,7 @@ import { Trans } from "@lingui/react/macro";
 import { platform } from "@tauri-apps/plugin-os";
 import { type ReactNode, useEffect, useRef } from "react";
 
+import { SyncProvider } from "~/calendar/components/context";
 import { CalendarSidebarContent } from "~/calendar/components/sidebar";
 import { AccountSettingsView } from "~/settings/account";
 import { LLM } from "~/settings/ai/llm";
@@ -161,7 +162,9 @@ function SettingsView({ tab }: { tab: Extract<Tab, { type: "settings" }> }) {
                   title={<Trans>Calendar providers</Trans>}
                   data-section="calendar"
                 >
-                  <CalendarSidebarContent returnTo="settings" />
+                  <SyncProvider>
+                    <CalendarSidebarContent returnTo="settings" />
+                  </SyncProvider>
                 </SettingsSection>
                 <SettingsSection
                   title={<Trans>Connected services</Trans>}
