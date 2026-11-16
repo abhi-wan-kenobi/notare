@@ -126,6 +126,11 @@ pub const APP_MIGRATION_STEPS: &[hypr_db_migrate::MigrationStep] = &[
         scope: hypr_db_migrate::MigrationScope::Plain,
         sql: include_str!("../migrations/20261105090000_series_backfill.sql"),
     },
+    hypr_db_migrate::MigrationStep {
+        id: "20261117000000_scoped_series",
+        scope: hypr_db_migrate::MigrationScope::Plain,
+        sql: include_str!("../migrations/20261117000000_scoped_series.sql"),
+    },
 ];
 
 pub fn schema() -> hypr_db_migrate::DbSchema {
@@ -1117,6 +1122,6 @@ mod tests {
                 .fetch_one(db.pool())
                 .await
                 .unwrap();
-        assert_eq!(series_id, "series-123");
+        assert_eq!(series_id, r#"calendar-series:["","cal-1","series-123"]"#);
     }
 }

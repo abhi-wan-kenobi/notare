@@ -17,6 +17,7 @@ import { deterministicGenerationSettings } from "~/ai/model-settings";
 import { executeTransaction, useLiveQuery } from "~/db";
 import { enqueueDatabaseWrite } from "~/db/write-queue";
 import { extractPlainText } from "~/search/contexts/engine/utils";
+import { seriesIdForEvent } from "~/services/series/identity";
 import { getSessionEvent } from "~/session/utils";
 import { showTransientToast } from "~/sidebar/toast/transient";
 
@@ -55,6 +56,7 @@ type PastSessionRow = {
   title: string;
   created_at: string;
   event_json: string;
+  series_id?: string;
 };
 
 type PastParticipantRow = {
@@ -228,7 +230,8 @@ function usePastSessionNotesData(enabled: boolean): PastSessionNotesData {
         owner_user_id AS user_id,
         title,
         created_at,
-        event_json
+        event_json,
+        series_id
       FROM sessions
       WHERE deleted_at IS NULL
       ORDER BY created_at, id
@@ -326,8 +329,7 @@ export function buildPastSessionNotes(
     sessionId,
     userId,
   );
-  const currentEvent = getSessionEvent(currentSession);
-  const currentSeriesId = getRecurrenceSeriesId(currentEvent);
+  const currentSeriesId = getRecurrenceSeriesId(currentSession);
   const currentTitleKey = getSessionTitleKey(currentSession);
   if (!currentSeriesId && !currentTitleKey) {
     return { notes: [], missing: [], requests: [] };
@@ -355,7 +357,6 @@ export function buildPastSessionNotes(
       continue;
     }
 
-    const candidateEvent = getSessionEvent(candidateSession);
     const candidateParticipantIds = getSessionParticipantIds(
       data.participants,
       candidateSessionId,
@@ -367,7 +368,7 @@ export function buildPastSessionNotes(
         currentSeriesId,
         currentTitleKey,
         candidateParticipantIds,
-        candidateSeriesId: getRecurrenceSeriesId(candidateEvent),
+        candidateSeriesId: getRecurrenceSeriesId(candidateSession),
         candidateTitleKey: getSessionTitleKey(candidateSession),
       })
     ) {
@@ -736,8 +737,8 @@ function isRelatedPastSession({
   candidateSeriesId: string | null;
   candidateTitleKey: string;
 }) {
-  if (currentSeriesId && candidateSeriesId === currentSeriesId) {
-    return true;
+  if (currentSeriesId && candidateSeriesId) {
+    return candidateSeriesId === currentSeriesId;
   }
 
   if (!currentTitleKey || currentTitleKey !== candidateTitleKey) {
@@ -773,11 +774,10 @@ function getSessionUserId(
   return session.user_id?.trim() || fallbackUserId || "";
 }
 
-function getRecurrenceSeriesId(
-  event: ReturnType<typeof getSessionEvent>,
-): string | null {
-  const seriesId = event?.recurrence_series_id?.trim();
-  return seriesId || null;
+function getRecurrenceSeriesId(session: PastSessionRow): string | null {
+  if (session.series_id) return session.series_id;
+  const event = getSessionEvent(session);
+  return event ? seriesIdForEvent(event) || null : null;
 }
 
 function getSessionTimestamp(session: {

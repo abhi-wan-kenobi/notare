@@ -146,6 +146,7 @@ describe("RawEditor", () => {
           attrs: { level: 1 },
           content: [{ type: "text", text: "Weekly sync" }],
         },
+        { type: "paragraph" },
       ],
     });
   });

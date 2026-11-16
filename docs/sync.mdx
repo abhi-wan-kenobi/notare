@@ -8,7 +8,9 @@ description: "Direct peer-to-peer device sync with QR code pairing and cryptogra
 
   Device sync is included in release builds from 0.6.8 on Linux (x86_64), macOS (Apple Silicon) and Windows (x86_64), but it stays off until you turn it on. Every device you pair must run Notare 0.6.8 or later.
 
-  Loading the packaged sync engine has only been verified on Linux so far. On macOS (Gatekeeper) and Windows it is unverified until someone runs 0.6.8 there — if sync won't turn on, **Settings → Devices** says "Sync engine not loaded on this build".
+  If the engine cannot load, **Settings → Integrations & Sync → Devices**
+  shows its actual load error. macOS and Windows packaged behavior still
+  needs validation on those operating systems.
 </Warning>
 
 Notare's device sync connects your computers directly using peer-to-peer networking. Your notes and meeting data go from machine to machine without being stored on a cloud server or central database. To find each other, devices use the public discovery and relay service run by Number 0 (n0.computer), the maintainers of the iroh networking library. That service only learns where a device can be reached. The data passing through it is end-to-end encrypted.
@@ -19,7 +21,7 @@ Synced data: sessions, notes, transcripts, action items, tags, and the tags on e
 
 ## Turning sync on
 
-1. Open **Settings → Devices (preview)**.
+1. Open **Settings → Integrations & Sync → Devices (preview)**.
 2. Switch on **Enable device sync**.
 3. The first time, Notare asks **"This changes how Notare stores notes so they can sync. Back up first?"**
    - **Open data folder** shows the folder that holds your database (`app.db`). To make a backup, quit Notare, copy the folder somewhere safe, then reopen Notare and turn sync on again.
@@ -37,14 +39,16 @@ Device pairing uses mutual cryptographic authentication with Short Authenticatio
 ### Pairing two devices
 
 1. **On your first device (Offerer):**
-   - Open **Settings → Devices (preview)**.
-   - Click **Pair a device**.
-   - A dialog opens displaying a **QR code**, a countdown timer (5-minute expiration), and a **Copy pairing link** button.
+   - Open **Settings → Integrations & Sync → Devices (preview)**.
+   - Click **Pair a device with QR**.
+   - The dialog displays a **QR code**, its expiration, and **Copy pairing link**.
+     Use **Generate a new code** if the offer expires.
 
 2. **On your second device (Joiner):**
-   - Open **Settings → Devices (preview)**.
-   - Click **Join with a link**.
-   - Paste the pairing link copied from the first device and click **Join**.
+   - Scan the QR code with a reader that can open or copy its `notare://` link.
+     Notare does not include a webcam scanner.
+   - Or copy the complete pairing link from the first device, open **Join with a
+     link**, paste it, and click **Join**.
 
 3. **Verify the 6-digit code (SAS):**
    - Both devices immediately display a prominent **6-digit confirmation code** (for example, `482 195`).

@@ -59,7 +59,7 @@ type UpdateCheckState = {
  * Shared react-query key for the 30-minute update poll. Every
  * `useDesktopUpdateControl` mount observes the SAME query (react-query
  * deduplicates the fetch and the interval across observers), so mounting the
- * hook in both the sidebar and the settings page does NOT double-poll; the
+ * hook in both the main canvas and the settings page does NOT double-poll; the
  * settings "Check for updates" button refetches this key and every mount
  * sees the result.
  */
@@ -365,12 +365,10 @@ export function useDesktopUpdateControl(): DesktopUpdateControl {
 }
 
 /**
- * The sidebar update affordance: a labeled cobalt pill while an update
- * exists ("Update available" / "Downloading… n%" / "Restart to update", with
- * the version), nothing otherwise. The collapsed sidebar keeps its compact
- * badge dot (`LeftSurfaceChromeButton` in `body.tsx`).
+ * A reserved row in the main canvas, below window chrome and outside scrolling
+ * content. Sidebar chrome is too narrow to contain a labeled update action.
  */
-export function SidebarTimelineUpdateButton({
+export function DesktopUpdateBanner({
   update,
 }: {
   update: DesktopUpdateControl;
@@ -384,7 +382,7 @@ export function SidebarTimelineUpdateButton({
   const isDownloading = update.status === "downloading";
   const isReady = update.status === "ready";
   // Action-oriented accessible name; the pill text carries the state.
-  const label = sidebarUpdateLabel(update.status, update.progress);
+  const label = updateActionLabel(update.status, update.progress);
   const pillText =
     update.status === "ready"
       ? t`Restart to update`
@@ -397,37 +395,44 @@ export function SidebarTimelineUpdateButton({
           : t`Update available`;
 
   return (
-    <button
-      type="button"
-      aria-label={label}
-      title={label}
-      data-testid="sidebar-update-pill"
-      data-tauri-drag-region="false"
-      disabled={isDownloading || update.downloadStarting || update.installing}
-      className={cn([
-        "relative flex h-7 min-h-7 shrink-0 items-center gap-1.5 rounded-full py-0 pr-2.5 pl-2",
-        "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm transition-colors",
-        "focus-visible:ring-ring focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-hidden",
-        "disabled:bg-primary disabled:text-primary-foreground disabled:hover:bg-primary disabled:cursor-default disabled:opacity-70",
-      ])}
-      onClick={isReady ? update.installUpdate : update.downloadUpdate}
+    <div
+      data-tauri-drag-region
+      className="relative z-40 flex min-w-0 shrink-0 justify-center px-3 pt-12 pb-2"
     >
-      <span className="relative flex size-4 shrink-0 items-center justify-center">
-        {isDownloading ? (
-          <SidebarCircularProgress progress={update.progress} />
-        ) : (
-          sidebarActionIcon(update.status)
-        )}
-      </span>
-      <span className="text-xs font-medium whitespace-nowrap">{pillText}</span>
-      <span className="text-[10px] whitespace-nowrap opacity-80">
-        v{update.version}
-      </span>
-    </button>
+      <button
+        type="button"
+        aria-label={label}
+        title={label}
+        data-testid="desktop-update-action"
+        data-tauri-drag-region="false"
+        disabled={isDownloading || update.downloadStarting || update.installing}
+        className={cn([
+          "relative flex min-h-7 max-w-full min-w-0 flex-wrap items-center justify-center gap-1.5 rounded-2xl px-2.5 py-1",
+          "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm transition-colors",
+          "focus-visible:ring-ring focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-hidden",
+          "disabled:bg-primary disabled:text-primary-foreground disabled:hover:bg-primary disabled:cursor-default disabled:opacity-70",
+        ])}
+        onClick={isReady ? update.installUpdate : update.downloadUpdate}
+      >
+        <span className="relative flex size-4 shrink-0 items-center justify-center">
+          {isDownloading ? (
+            <UpdateCircularProgress progress={update.progress} />
+          ) : (
+            updateActionIcon(update.status)
+          )}
+        </span>
+        <span className="min-w-0 text-center text-xs font-medium [overflow-wrap:anywhere]">
+          {pillText}
+        </span>
+        <span className="min-w-0 text-[10px] break-all opacity-80">
+          v{update.version}
+        </span>
+      </button>
+    </div>
   );
 }
 
-function SidebarCircularProgress({ progress }: { progress: number | null }) {
+function UpdateCircularProgress({ progress }: { progress: number | null }) {
   const pct = Math.max(0, Math.min(1, progress ?? 0));
   const radius = 7.5;
   const circumference = 2 * Math.PI * radius;
@@ -463,7 +468,7 @@ function SidebarCircularProgress({ progress }: { progress: number | null }) {
   );
 }
 
-function sidebarUpdateLabel(
+function updateActionLabel(
   status: UpdateBannerStatus,
   progress: number | null,
 ): string {
@@ -486,7 +491,7 @@ function sidebarUpdateLabel(
   return "Download update";
 }
 
-function sidebarActionIcon(status: UpdateBannerStatus): ReactNode {
+function updateActionIcon(status: UpdateBannerStatus): ReactNode {
   if (status === "ready") {
     return <RotateCwIcon size={14} aria-hidden="true" />;
   }

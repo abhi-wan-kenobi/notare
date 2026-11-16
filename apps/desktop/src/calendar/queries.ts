@@ -117,6 +117,7 @@ export function useTimelineEventsTable(): TimelineEventsTable {
         event.started_at,
         event.ended_at,
         event.calendar_id,
+        event.provider,
         event.tracking_id_event,
         event.has_recurrence_rules,
         event.recurrence_series_id,

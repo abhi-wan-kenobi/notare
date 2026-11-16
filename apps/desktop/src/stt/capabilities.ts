@@ -179,11 +179,10 @@ export function getTranscriptionLanguages(
 
 /// Expand the Hinglish sentinel into real language codes for the active engine.
 ///
-/// Hinglish (Hindi-English code-mix) has no single ISO code. Voxtral is an LLM
-/// with a promptable Hinglish mode, so it gets `hi,en` (its engine turns that
-/// into romanized code-mix). Every other engine — bundled Whisper (`Quantized`)
-/// or a remote custom Whisper server — has no romanized-Hinglish mode, so we
-/// ask for `en`, Whisper's least-bad code-mix behavior. See issue #40.
+/// Hinglish has no ISO code. Multilingual Whisper must be allowed to detect
+/// Hindi as well as English per chunk; forcing `en` discards that choice and
+/// can turn Hindi speech into missing or unrelated English text. Output may
+/// use Devanagari: romanized Hindi is not a Whisper language mode.
 ///
 /// A no-op when the sentinel isn't present. Result is de-duplicated.
 export function expandHinglish(
@@ -194,9 +193,12 @@ export function expandHinglish(
     return languages;
   }
 
-  const replacement = isVoxtralLocalSttModel(engine.model)
-    ? ["hi", "en"]
-    : ["en"];
+  const multilingualWhisper =
+    isWhisperLocalSttModel(engine.model) && !engine.model?.endsWith("En");
+  const replacement =
+    isVoxtralLocalSttModel(engine.model) || multilingualWhisper
+      ? ["hi", "en"]
+      : ["en"];
 
   const out: string[] = [];
   for (const language of languages) {

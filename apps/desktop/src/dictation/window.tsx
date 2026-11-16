@@ -1,7 +1,5 @@
 import { useLingui } from "@lingui/react/macro";
-import { LogicalPosition, LogicalSize } from "@tauri-apps/api/dpi";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
-import { currentMonitor } from "@tauri-apps/api/window";
 import { useEffect, useRef, useState } from "react";
 
 import {
@@ -10,12 +8,7 @@ import {
 } from "@hypr/plugin-dictation";
 import { cn } from "@hypr/utils";
 
-import {
-  DictationOrb,
-  type DictationOrbVariant,
-  normalizeOrbVariant,
-  orbWindowSizeForVariant,
-} from "./orb";
+import { DictationOrb } from "./orb";
 
 import { useConfigValues } from "~/shared/config";
 
@@ -50,17 +43,9 @@ const DRAG_THRESHOLD_PX = 4;
 export function DictationOrbWindow({ solid = false }: { solid?: boolean }) {
   const { t } = useLingui();
   const state = useDictationState();
-  // High-frequency (~30 Hz) mic amplitude, mirrored into a ref so it never
-  // re-renders the orb. Not read by the visuals yet; a later PR (WS-E) feeds it
-  // to a requestAnimationFrame envelope follower for the orb ring. Subscribing
-  // here is what keeps the `DictationAmplitudeEvent` channel live.
-  const amplitudeRef = useRef(0);
-  useDictationAmplitude(amplitudeRef);
-  const { dictation_orb_variant, dictation_paste_at_cursor } = useConfigValues([
-    "dictation_orb_variant",
+  const { dictation_paste_at_cursor } = useConfigValues([
     "dictation_paste_at_cursor",
   ] as const);
-  const variant = normalizeOrbVariant(dictation_orb_variant);
   const pointerStart = useRef<{ x: number; y: number } | null>(null);
   const draggedRef = useRef(false);
 
@@ -76,50 +61,6 @@ export function DictationOrbWindow({ solid = false }: { solid?: boolean }) {
     document.body.style.background = "transparent";
   }, [solid]);
 
-  // A variant picked while the orb window is hidden (or superseded by a
-  // later pick before it could apply) waits here for the next opportunity to
-  // sync - see the effect below and `requestOrbWindowSize`'s doc comment.
-  const pendingVariantRef = useRef<DictationOrbVariant | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    void requestOrbWindowSize(variant, () => cancelled).then((applied) => {
-      if (!cancelled) {
-        pendingVariantRef.current = applied ? null : variant;
-      }
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [variant]);
-
-  // Flush a resize that was deferred because the window was hidden, the next
-  // time a real dictation-session event proves the window is now shown (the
-  // orb window is only ever shown for an active/enabled dictation session -
-  // see `DictationOrbHost`'s lifecycle effect in `host.tsx`).
-  useEffect(() => {
-    const pending = pendingVariantRef.current;
-    if (!pending) {
-      return;
-    }
-
-    let cancelled = false;
-    void requestOrbWindowSize(pending, () => cancelled).then((applied) => {
-      if (!cancelled && applied) {
-        pendingVariantRef.current = null;
-      }
-    });
-
-    return () => {
-      cancelled = true;
-    };
-    // Only the phase transition matters here (it's the signal that the
-    // window is now shown); `pendingVariantRef` is a ref, not state, so it
-    // is intentionally not a dependency.
-  }, [state.phase]);
-
   const dictating = state.phase === "listening" || state.phase === "processing";
   const batchMode = state.mode === "batch";
   const label = dictating
@@ -134,6 +75,9 @@ export function DictationOrbWindow({ solid = false }: { solid?: boolean }) {
     if (event.button !== 0) {
       return;
     }
+    // Preserve the target's keyboard focus; native panel traits separately
+    // prevent activation of the app itself.
+    event.preventDefault();
     draggedRef.current = false;
     pointerStart.current = { x: event.screenX, y: event.screenY };
   };
@@ -207,118 +151,18 @@ export function DictationOrbWindow({ solid = false }: { solid?: boolean }) {
         <DictationOrb
           phase={state.phase}
           amplitude={state.amplitude}
-          size={50}
-          variant={variant}
-          amplitudeRef={amplitudeRef}
+          size={30}
         />
         {batchMode && dictating ? (
-          // Subtle batch-mode hint: a small cobalt dot marks "collecting, will
-          // paste on stop" (the tooltip/aria label carries the full wording).
           <span
             data-testid="dictation-batch-hint"
             aria-hidden
-            className="bg-primary shadow-glow-accent absolute right-0.5 bottom-0.5 size-1.5 rounded-full"
+            className="bg-foreground absolute right-0.5 bottom-0.5 size-1 rounded-full"
           />
         ) : null}
       </button>
     </div>
   );
-}
-
-/**
- * Gate for `applyOrbWindowSize`: a native `setSize`/`setPosition` on a
- * HIDDEN orb window still round-trips through the single-threaded Tauri/
- * WebView2 event loop that every window (including the Settings window)
- * shares, and on Windows that can stall the compositor mid-repaint of
- * whichever webview is currently painting. Picking an orb style in
- * Settings while the orb is off (or between sessions, before it has been
- * shown) must never trigger that resize - the caller (the effects in
- * `DictationOrbWindow`) stashes the variant in `pendingVariantRef` instead
- * and retries once a real dictation-session event proves the window is
- * shown. Returns whether the size was actually applied (or already
- * matched), so the caller knows whether to keep the variant pending.
- */
-async function requestOrbWindowSize(
-  variant: DictationOrbVariant,
-  isCancelled: () => boolean,
-): Promise<boolean> {
-  try {
-    const window = getCurrentWebviewWindow();
-    if (!(await window.isVisible())) {
-      return false;
-    }
-    if (isCancelled()) {
-      // Superseded by a later variant pick while the visibility check was
-      // in flight - let that effect's own call own the resize.
-      return true;
-    }
-    await applyOrbWindowSize(window, variant, isCancelled);
-    return true;
-  } catch {
-    // Not running inside the orb webview (tests/storybook) or the window API
-    // is unavailable - keep whatever size the window was created with. This
-    // is a terminal failure, not a "try again later" one, so report applied.
-    return true;
-  }
-}
-
-/**
- * The Rust side always creates the orb window at the cobalt chassis size
- * (`ORB_SIZE` in `plugins/dictation/src/orb.rs`); variants that render larger
- * (particles, 1.5x) are resized from here, where the variant setting lives -
- * the same webview-drives-the-window pattern as the floating bar's `update`.
- * The window grows/shrinks around its center so the orb never jumps, and the
- * resulting `Moved` event lets the Rust side persist the adjusted position.
- * The re-centered spot is clamped to the current monitor with the TARGET
- * size (the Rust restore clamp ran at the creation size, so a variant that
- * grows near a screen edge would otherwise end up partly offscreen).
- *
- * Only ever called on a window already confirmed visible
- * (`requestOrbWindowSize`); `isCancelled` lets a later variant pick that
- * arrived while this one was still awaiting IPC round-trips win outright,
- * coalescing a rapid run of picks into a single native resize instead of
- * firing one per click.
- */
-async function applyOrbWindowSize(
-  window: ReturnType<typeof getCurrentWebviewWindow>,
-  variant: DictationOrbVariant,
-  isCancelled: () => boolean,
-) {
-  const target = orbWindowSizeForVariant(variant);
-  const scale = await window.scaleFactor();
-  const inner = (await window.innerSize()).toLogical(scale);
-  if (
-    Math.abs(inner.width - target) < 1 &&
-    Math.abs(inner.height - target) < 1
-  ) {
-    return;
-  }
-
-  const position = (await window.outerPosition()).toLogical(scale);
-  let x = Math.round(position.x + (inner.width - target) / 2);
-  let y = Math.round(position.y + (inner.height - target) / 2);
-
-  const monitor = await currentMonitor().catch(() => null);
-  if (monitor) {
-    const monitorScale = monitor.scaleFactor || 1;
-    const monitorX = monitor.position.x / monitorScale;
-    const monitorY = monitor.position.y / monitorScale;
-    const monitorWidth = monitor.size.width / monitorScale;
-    const monitorHeight = monitor.size.height / monitorScale;
-    x = clamp(x, monitorX, monitorX + monitorWidth - target);
-    y = clamp(y, monitorY, monitorY + monitorHeight - target);
-  }
-
-  if (isCancelled()) {
-    return;
-  }
-
-  await window.setSize(new LogicalSize(target, target));
-  await window.setPosition(new LogicalPosition(Math.round(x), Math.round(y)));
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(Math.max(value, min), Math.max(min, max));
 }
 
 function useDictationState() {
@@ -350,48 +194,4 @@ function useDictationState() {
   }, []);
 
   return state;
-}
-
-/**
- * Subscribe to the high-frequency (~30 Hz) `DictationAmplitudeEvent` channel
- * and mirror the newest sample into `target.current`. Deliberately writes a
- * ref and never calls `setState`: at 30 Hz a state update would re-render the
- * orb on every frame. This is the thin, separate companion to
- * `useDictationState` (10 Hz, phase/mode -> renders). A later PR reads this ref
- * from a requestAnimationFrame envelope follower to drive the orb ring
- * smoothly; for now it only keeps the latest amplitude available at zero render
- * cost. `target` is typed structurally so it accepts a `useRef` object across
- * React versions.
- */
-function useDictationAmplitude(target: { current: number }) {
-  useEffect(() => {
-    const channel = dictationEvents.dictationAmplitudeEvent;
-    if (!channel) {
-      // Partially-mocked plugin (tests/storybook): no 30 Hz stream to mirror,
-      // so the orb visuals fall back to the 10 Hz `amplitude` prop.
-      return;
-    }
-    let cancelled = false;
-    let unlisten: (() => void) | null = null;
-
-    void channel
-      .listen((event) => {
-        if (!cancelled) {
-          target.current = event.payload.amplitude;
-        }
-      })
-      .then((next) => {
-        if (cancelled) {
-          next();
-          return;
-        }
-
-        unlisten = next;
-      });
-
-    return () => {
-      cancelled = true;
-      unlisten?.();
-    };
-  }, [target]);
 }

@@ -156,23 +156,31 @@ mod macos_native_swift {
     }
 }
 
-/// Webview-based floating bar, used on EVERY platform since Track C (macOS
-/// previously rendered the Swift NSPanel in `macos_native_swift` above; that
-/// path is now gated off). A small always-on-top transparent webview window
-/// pointing at `/app/floating` that streams `FloatingBarStateEvent`s; the
-/// React side (`apps/desktop/src/meeting-float/window.tsx`) renders either the
-/// Notare glass bar or the Classic parchment bar based on the
-/// `meeting_bar_theme` setting.
+/// Cross-platform compact waveform control. macOS hosts the shared webview
+/// in a non-activating NSPanel so ordinary clicks never raise the main app.
 mod platform {
     use std::sync::OnceLock;
 
     use tauri::Manager;
+    #[cfg(target_os = "macos")]
+    use tauri_nspanel::tauri_panel;
     use tauri_specta::Event;
 
     use super::FloatingBarState;
     use crate::Error;
 
     pub const WINDOW_LABEL: &str = "floating";
+
+    #[cfg(target_os = "macos")]
+    tauri_panel! {
+        panel!(MeetingPanel {
+            config: {
+                can_become_key_window: false,
+                can_become_main_window: false,
+                is_floating_panel: true,
+            }
+        })
+    }
 
     const BAR_WIDTH: f64 = 380.0;
     const BAR_HEIGHT: f64 = 52.0;
@@ -269,11 +277,89 @@ mod platform {
         };
 
         position_top_center(app, &window);
-        apply_macos_panel_traits(&window);
 
         Ok(window)
     }
 
+    #[cfg(target_os = "macos")]
+    fn build_window(
+        app: &tauri::AppHandle<tauri::Wry>,
+        transparent: bool,
+    ) -> Result<tauri::WebviewWindow<tauri::Wry>, Error> {
+        use tauri::{LogicalPosition, LogicalSize, Position, Size, WebviewUrl};
+        use tauri_nspanel::{CollectionBehavior, PanelBuilder, PanelLevel, StyleMask};
+
+        let url = if transparent {
+            WINDOW_URL
+        } else {
+            SOLID_WINDOW_URL
+        };
+        let handle = app.clone();
+        let title = app
+            .config()
+            .product_name
+            .clone()
+            .unwrap_or_else(|| "Notare".to_string());
+        crate::ext::run_on_main_thread(app, move || {
+            // focusable(false) on NSWindow prevents key focus, NOT app
+            // activation. A real nonactivating NSPanel is essential here.
+            PanelBuilder::<_, MeetingPanel>::new(&handle, WINDOW_LABEL)
+                .url(WebviewUrl::App(url.into()))
+                .title(title)
+                .position(Position::Logical(LogicalPosition::new(0.0, 0.0)))
+                .size(Size::Logical(LogicalSize::new(BAR_WIDTH, BAR_HEIGHT)))
+                .level(PanelLevel::Floating)
+                .has_shadow(false)
+                .collection_behavior(
+                    CollectionBehavior::new()
+                        .full_screen_auxiliary()
+                        .can_join_all_spaces()
+                        .stationary(),
+                )
+                .hides_on_deactivate(false)
+                .works_when_modal(true)
+                .no_activate(true)
+                .with_window(move |window| {
+                    let window = window
+                        .visible(false)
+                        .decorations(false)
+                        .transparent(transparent)
+                        .focused(false)
+                        .focusable(false)
+                        .accept_first_mouse(true)
+                        .content_protected(true)
+                        .skip_taskbar(true)
+                        .resizable(false)
+                        .maximizable(false)
+                        .minimizable(false)
+                        .disable_drag_drop_handler();
+                    if transparent {
+                        window
+                    } else {
+                        window.background_color(SOLID_BACKGROUND)
+                    }
+                })
+                .style_mask(StyleMask::empty().nonactivating_panel())
+                .build()
+                .map_err(|error| {
+                    Error::PanelError(format!("failed to create meeting panel: {error}"))
+                })?;
+            Ok::<(), Error>(())
+        })??;
+
+        let window = app.get_webview_window(WINDOW_LABEL).ok_or_else(|| {
+            Error::PanelError("meeting panel did not register a webview window".to_string())
+        })?;
+        if let Err(error) = window.is_visible() {
+            let _ = window.destroy();
+            return Err(Error::PanelError(format!(
+                "meeting panel did not materialize: {error}"
+            )));
+        }
+        Ok(window)
+    }
+
+    #[cfg(not(target_os = "macos"))]
     fn build_window(
         app: &tauri::AppHandle<tauri::Wry>,
         transparent: bool,
@@ -369,52 +455,6 @@ mod platform {
         Ok(window)
     }
 
-    /// Best-effort macOS-only window tweaks that replicate the native NSPanel
-    /// (`FloatingBarManager.swift`) traits the webview builder cannot express:
-    /// OR `FullScreenAuxiliary | Stationary` into the window's
-    /// `collectionBehavior`. `visible_on_all_workspaces(true)` already set
-    /// `CanJoinAllSpaces`; `FullScreenAuxiliary` lets the bar show over
-    /// full-screen apps and `Stationary` keeps it from drifting with Space
-    /// switches (the native panel used both). No-op off macOS.
-    ///
-    /// VERIFY on macOS CI / the user's Mac (this box is Linux, so the objc2
-    /// path is not compiled here): the bar should stay visible in fullscreen
-    /// apps and across Space switches, and never join a Space.
-    #[cfg(target_os = "macos")]
-    fn apply_macos_panel_traits(window: &tauri::WebviewWindow<tauri::Wry>) {
-        use objc2_app_kit::{NSWindow, NSWindowCollectionBehavior};
-
-        let app = window.app_handle().clone();
-        let win = window.clone();
-        let result = crate::ext::run_on_main_thread(&app, move || {
-            let Ok(ptr) = win.ns_window() else {
-                return;
-            };
-
-            // SAFETY: `ns_window()` returns the underlying NSWindow owned by
-            // the still-alive tauri window; `run_on_main_thread` guarantees
-            // AppKit main-thread access.
-            unsafe {
-                let ns_window = &*(ptr as *mut NSWindow);
-                let mut behavior = ns_window.collectionBehavior();
-                behavior |= NSWindowCollectionBehavior::FullScreenAuxiliary;
-                behavior |= NSWindowCollectionBehavior::Stationary;
-                ns_window.setCollectionBehavior(behavior);
-            }
-        });
-
-        if let Err(error) = result {
-            tracing::warn!(
-                %error,
-                label = WINDOW_LABEL,
-                "failed to apply macOS collectionBehavior bits to the floating bar"
-            );
-        }
-    }
-
-    #[cfg(not(target_os = "macos"))]
-    fn apply_macos_panel_traits(_window: &tauri::WebviewWindow<tauri::Wry>) {}
-
     /// `destroy()` is dispatched through the event loop, so the label can
     /// still be registered for a short while afterwards; wait it out so an
     /// immediate rebuild with the same label does not collide.
@@ -462,16 +502,37 @@ mod platform {
     pub fn show() -> Result<(), Error> {
         let app = app_handle()?;
         let window = get_or_create_window(app)?;
-        window.show().map_err(|error| {
-            tracing::error!(%error, label = WINDOW_LABEL, "failed to show floating bar window");
-            Error::TauriError(error)
-        })?;
+        #[cfg(target_os = "macos")]
+        {
+            use tauri_nspanel::ManagerExt;
+            let handle = app.clone();
+            crate::ext::run_on_main_thread(app, move || {
+                let panel = handle
+                    .get_webview_panel(WINDOW_LABEL)
+                    .map_err(|error| Error::PanelError(format!("{error:?}")))?;
+                panel.show();
+                Ok::<(), Error>(())
+            })??;
+        }
+        #[cfg(not(target_os = "macos"))]
+        window.show().map_err(Error::TauriError)?;
         let _ = window.set_always_on_top(true);
         Ok(())
     }
 
     pub fn hide() -> Result<(), Error> {
         let app = app_handle()?;
+        #[cfg(target_os = "macos")]
+        {
+            use tauri_nspanel::ManagerExt;
+            let handle = app.clone();
+            crate::ext::run_on_main_thread(app, move || {
+                if let Ok(panel) = handle.get_webview_panel(WINDOW_LABEL) {
+                    panel.hide();
+                }
+            })?;
+        }
+        #[cfg(not(target_os = "macos"))]
         if let Some(window) = app.get_webview_window(WINDOW_LABEL) {
             window.hide()?;
         }

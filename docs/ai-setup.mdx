@@ -8,7 +8,35 @@ Notare separates audio transcription from language model intelligence:
 - **Transcription** converts meeting audio into text using local on-device whisper models or a companion STT server.
 - **Intelligence** generates structured meeting summaries, pre-meeting briefs, follow-up emails, and answers questions in chat.
 
-Configure these under **Settings → Transcription** and **Settings → Intelligence**.
+Configure these under **Settings → AI & Speech → Transcription** and **Intelligence**.
+
+## Hindi and Hinglish meetings on a Mac
+
+Use a **multilingual Whisper** checkpoint and select **Hindi** or **Hinglish**
+in **Spoken languages**. Parakeet and Whisper's English-only checkpoints do not
+cover Hindi.
+
+- **Live notes:** Whisper Small is lighter; Large Turbo offers a larger
+  multilingual model with faster decoding than full Large v3.
+- **Final transcription:** **Whisper Large v3 (Multilingual, Q5)** is a new
+  quality-first option (1.08 GB download). It retains the full Large v3 decoder,
+  unlike Turbo's pruned decoder. It uses more memory and decoding time, so keep
+  the recording and choose it for the final pass.
+- **Apple Silicon:** these Whisper models run locally through whisper.cpp with
+  Metal acceleration. No Python server, API key, or cloud subscription is needed.
+- **Hinglish:** Whisper can now consider both Hindi and English for each audio
+  chunk, rather than being forced to English. Hindi output may use Devanagari;
+  Romanized Hindi is not guaranteed.
+
+The model's download size is not its runtime memory requirement. Full Large v3
+can be slow on smaller Macs; prefer Small or Turbo for live capture and keep a
+recording for a more thorough final pass. These are model/runtime options, not
+a guarantee of gap-free code-switched speech. Mac throughput and your meeting
+audio still need a representative check.
+
+Sources: [OpenAI Whisper Large v3](https://huggingface.co/openai/whisper-large-v3),
+[Turbo model card](https://huggingface.co/openai/whisper-large-v3-turbo),
+[whisper.cpp model downloads](https://huggingface.co/ggerganov/whisper.cpp).
 
 ## Intelligence providers
 

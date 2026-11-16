@@ -5,6 +5,8 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 
 import { cn } from "@hypr/utils";
 
+import { SessionChip } from "./session-chip";
+
 import { toTz, useNow, useTimezone } from "~/calendar/hooks";
 import type { CalendarData } from "~/calendar/hooks";
 import { useIgnoredEvents } from "~/calendar/ignored-events";
@@ -44,6 +46,8 @@ export function WeekView({
   const now = useNow();
   const tz = useTimezone();
   const scrollRef = useRef<HTMLDivElement>(null);
+  const positionedRangeRef = useRef<string | null>(null);
+  const rangeKey = `${days[0]?.getTime()}:${days[days.length - 1]?.getTime()}`;
 
   const { firstHour, lastHour } = useMemo(() => {
     let earliest = DEFAULT_FIRST_HOUR;
@@ -83,17 +87,29 @@ export function WeekView({
     });
   }, [days, calendarData]);
 
-  // Scroll to roughly 1 hour before current time on initial mount if today is visible
+  const hasNotes = useMemo(
+    () =>
+      days.some(
+        (day) =>
+          (calendarData.sessionIdsByDate[format(day, "yyyy-MM-dd")]?.length ??
+            0) > 0,
+      ),
+    [days, calendarData],
+  );
+
+  // Position once per navigated range; clock ticks and data refreshes must not
+  // interrupt a user scrolling through another part of the day.
   useEffect(() => {
     const el = scrollRef.current;
-    if (!el) return;
+    if (!el || positionedRangeRef.current === rangeKey) return;
+    positionedRangeRef.current = rangeKey;
     const isTodayInView = days.some((d) => isSameDay(d, now));
     if (isTodayInView) {
       const targetHour = Math.max(firstHour, now.getHours() - 1);
       const scrollPos = (targetHour - firstHour) * HOUR_HEIGHT;
       el.scrollTo?.({ top: scrollPos, behavior: "instant" });
     }
-  }, [days, firstHour, now]);
+  }, [days, firstHour, now, rangeKey]);
 
   return (
     <div
@@ -104,7 +120,7 @@ export function WeekView({
         className="grid min-w-[700px] grid-cols-[56px_repeat(7,minmax(0,1fr))]"
         style={{
           gridTemplateRows: `${
-            hasAllDayEvents ? "auto auto" : "auto"
+            hasAllDayEvents || hasNotes ? "auto auto" : "auto"
           } ${HOUR_HEIGHT * (lastHour - firstHour)}px`,
         }}
       >
@@ -137,38 +153,72 @@ export function WeekView({
           );
         })}
 
-        {/* Optional All-Day Events row */}
-        {hasAllDayEvents && (
-          <>
-            <div className="border-border/60 bg-background text-muted-foreground sticky top-[53px] z-10 flex items-center justify-end border-r border-b pr-2 text-[10px] font-medium tracking-wide uppercase">
-              {t`All day`}
-            </div>
-            {days.map((day) => {
-              const dayKey = format(day, "yyyy-MM-dd");
-              const eventIds = calendarData.eventIdsByDate[dayKey] ?? [];
-              const allDayEvents = eventIds
-                .map((id) => ({ id, event: calendarData.eventsById[id] }))
-                .filter(
-                  (item): item is { id: string; event: TimelineEventRow } =>
-                    !!item.event?.is_all_day,
-                );
-              const isToday = isSameDay(day, now);
-
-              return (
-                <div
-                  key={`allday-${day.toISOString()}`}
-                  className={cn(
-                    "border-border/60 bg-background sticky top-[53px] z-10 space-y-1 border-r border-b p-1",
-                    isToday && "bg-muted/40",
-                  )}
-                >
-                  {allDayEvents.map(({ id, event }) => (
-                    <AllDayEventChip key={id} eventId={id} event={event} />
-                  ))}
+        {/* Keep untimed items visible while browsing the hourly grid. */}
+        {(hasAllDayEvents || hasNotes) && (
+          <div className="bg-background sticky top-[53px] z-10 col-span-full grid grid-cols-[56px_repeat(7,minmax(0,1fr))]">
+            {hasAllDayEvents && (
+              <>
+                <div className="border-border/60 text-muted-foreground flex items-center justify-end border-r border-b pr-2 text-[10px] font-medium tracking-wide uppercase">
+                  {t`All day`}
                 </div>
-              );
-            })}
-          </>
+                {days.map((day) => {
+                  const dayKey = format(day, "yyyy-MM-dd");
+                  const eventIds = calendarData.eventIdsByDate[dayKey] ?? [];
+                  const allDayEvents = eventIds
+                    .map((id) => ({ id, event: calendarData.eventsById[id] }))
+                    .filter(
+                      (item): item is { id: string; event: TimelineEventRow } =>
+                        !!item.event?.is_all_day,
+                    );
+                  const isToday = isSameDay(day, now);
+
+                  return (
+                    <div
+                      key={`allday-${day.toISOString()}`}
+                      className={cn(
+                        "border-border/60 space-y-1 border-r border-b p-1",
+                        isToday && "bg-muted/40",
+                      )}
+                    >
+                      {allDayEvents.map(({ id, event }) => (
+                        <AllDayEventChip key={id} eventId={id} event={event} />
+                      ))}
+                    </div>
+                  );
+                })}
+              </>
+            )}
+
+            {hasNotes && (
+              <>
+                <div className="border-border/60 text-muted-foreground flex items-start justify-end border-r border-b pt-2 pr-2 text-[10px] font-medium tracking-wide uppercase">
+                  {t`Notes`}
+                </div>
+                {days.map((day) => {
+                  const dayKey = format(day, "yyyy-MM-dd");
+                  const sessionIds =
+                    calendarData.sessionIdsByDate[dayKey] ?? [];
+                  return (
+                    <div
+                      key={`notes-${day.toISOString()}`}
+                      className={cn(
+                        "border-border/60 min-w-0 space-y-1 border-r border-b p-1",
+                        isSameDay(day, now) && "bg-muted/30",
+                      )}
+                    >
+                      {sessionIds.map((sessionId) => (
+                        <SessionChip
+                          key={sessionId}
+                          sessionId={sessionId}
+                          session={calendarData.sessionsById[sessionId]}
+                        />
+                      ))}
+                    </div>
+                  );
+                })}
+              </>
+            )}
+          </div>
         )}
 
         {/* Time gutter labels */}

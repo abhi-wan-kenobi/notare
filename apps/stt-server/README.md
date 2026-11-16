@@ -51,7 +51,7 @@ defaults below.
 | `--host` | `NOTARE_STT_HOST` | `0.0.0.0` | Use `127.0.0.1` to restrict to loopback. |
 | `--port` | `NOTARE_STT_PORT` | `8383` | Adopted default port (design doc §12 Q1). |
 | `--model-dir` | `NOTARE_STT_MODEL_DIR` | `./data/models` | Base dir; a model installs at `<model-dir>/stt/<file>`, matching the desktop's `models_base` layout. |
-| `--model` | `NOTARE_STT_MODEL` | `QuantizedSmall` | One of the `WhisperModel` catalog ids: `QuantizedTiny`, `QuantizedTinyEn`, `QuantizedBase`, `QuantizedBaseEn`, `QuantizedSmall`, `QuantizedSmallEn`, `QuantizedLargeTurbo`. |
+| `--model` | `NOTARE_STT_MODEL` | `QuantizedSmall` | One of the `WhisperModel` catalog ids: `QuantizedTiny`, `QuantizedTinyEn`, `QuantizedBase`, `QuantizedBaseEn`, `QuantizedSmall`, `QuantizedSmallEn`, `QuantizedLargeTurbo`, `QuantizedLargeV3` (full multilingual Large v3, Q5). |
 | `--require-gpu` | `NOTARE_STT_REQUIRE_GPU` | `false` | Flag; reserved for Phase 4's GPU offload-verification refusal policy. No-op today — this image only ever serves on CPU. |
 | `--token` | `NOTARE_STT_TOKEN` | unset | Optional shared-secret gate on `/v1/listen` + the four `/api/models/*` mutation routes (`download`/`cancel`/`activate`/`DELETE`). Off by default — see "Security" below. |
 

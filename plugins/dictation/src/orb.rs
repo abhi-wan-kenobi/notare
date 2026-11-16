@@ -49,11 +49,7 @@ tauri_panel! {
     })
 }
 
-/// Logical window size the orb is CREATED at (the cobalt-variant chassis).
-/// The orb webview resizes the window per orb variant once it knows the
-/// `dictation_orb_variant` setting (`syncOrbWindowSize` in
-/// `apps/desktop/src/dictation/window.tsx`), so treat this as the default
-/// size, not an invariant.
+/// Fixed logical window size for the single compact waveform control.
 const ORB_SIZE: f64 = 70.0;
 const BOTTOM_MARGIN: f64 = 32.0;
 
@@ -500,9 +496,7 @@ fn destroy_and_wait_unregistered(
     );
 }
 
-/// Actual logical size of `window`, falling back to the creation size. The
-/// orb webview resizes the window per orb variant (1.5x for particles), so
-/// positioning/clamping math must never assume the 56px creation constant.
+/// Actual logical window size, falling back to the fixed creation size.
 fn window_logical_size(window: &tauri::WebviewWindow<tauri::Wry>) -> (f64, f64) {
     let scale = window.scale_factor().unwrap_or(1.0);
     window
@@ -559,8 +553,7 @@ fn load_saved_position(app: &tauri::AppHandle<tauri::Wry>) -> Option<OrbPosition
 }
 
 /// Clamp `saved` so the orb lands fully inside the monitor its center falls
-/// on, using the window's ACTUAL logical size (the webview may have resized
-/// it per orb variant - 84px for particles, not the 56px creation constant).
+/// on, using the window's actual logical size.
 /// Returns `None` when the center is on no current monitor (unplugged
 /// screen, changed layout) - the caller then uses the default position.
 fn clamp_to_visible_monitor(
@@ -601,8 +594,7 @@ fn clamp_to_visible_monitor(
 
 /// Persist the window position (debounced) whenever the OS moves it - which
 /// includes the user dragging the orb via `startDragging()` - and keep the
-/// caption window glued above the orb on every move/resize (the webview
-/// resizes the orb window per orb variant).
+/// caption window glued above the orb on every move/resize.
 fn watch_moves(window: &tauri::WebviewWindow<tauri::Wry>) {
     let app = window.app_handle().clone();
     let win = window.clone();

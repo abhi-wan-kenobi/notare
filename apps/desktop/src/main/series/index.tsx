@@ -43,10 +43,7 @@ function SeriesView({ seriesId }: { seriesId: string }) {
   const { data: occurrences = [] } = useSeries(seriesId);
   const current = occurrences[0];
   const previous = occurrences[1];
-  const { data: carryOver = [] } = useSeriesCarryOver(
-    seriesId,
-    current?.id ?? "",
-  );
+  const { data: carryOver = [] } = useSeriesCarryOver(seriesId);
   const delta = useSeriesDelta(current, previous);
   const openCurrent = useTabs((state) => state.openCurrent);
 
@@ -164,11 +161,11 @@ function SeriesView({ seriesId }: { seriesId: string }) {
           </button>
         </div>
 
-        {/* Carried-over actions */}
+        {/* Canonical open actions across the series */}
         <section className="mt-8">
           <div className="border-border flex items-center justify-between border-b pb-2">
             <h2 className="text-muted-foreground text-[11px] font-medium tracking-[0.12em] uppercase">
-              <Trans>Carried-over actions</Trans>
+              <Trans>Open action items</Trans>
             </h2>
             <span className="text-muted-foreground text-xs">
               <Trans>{carryOver.length} still open</Trans>

@@ -13,11 +13,11 @@ describe("WaveformOrb", () => {
     cleanup();
   });
 
-  it("renders a round chassis at the requested size", () => {
+  it("renders the compact capsule at the requested height", () => {
     render(<WaveformOrb phase="idle" amplitude={0} size={40} />);
 
     const orb = screen.getByTestId("dictation-waveform-orb");
-    expect(orb.style.width).toBe("40px");
+    expect(orb.style.width).toBe("83px");
     expect(orb.style.height).toBe("40px");
     expect(orb.className).toContain("rounded-full");
   });
@@ -38,7 +38,7 @@ describe("WaveformOrb", () => {
       <WaveformOrb phase="listening" amplitude={0.6} size={40} />,
     );
 
-    expect(queryDancingSticks(container).length).toBeGreaterThan(0);
+    expect(queryDancingSticks(container)).toHaveLength(5);
   });
 
   it("keeps the sticks alive during listening pauses (zero amplitude)", () => {

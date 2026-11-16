@@ -112,6 +112,14 @@ vi.mock("~/main/update-banner", () => ({
     update.status && update.version ? (
       <button type="button" data-testid="sidebar-update-button" />
     ) : null,
+  DesktopUpdateBanner: ({
+    update,
+  }: {
+    update: { status: string | null; version: string | null };
+  }) =>
+    update.status && update.version ? (
+      <button type="button" data-testid="desktop-update-action" />
+    ) : null,
   useDesktopUpdateControl: () => mocks.sidebarUpdateControl,
 }));
 
@@ -308,7 +316,7 @@ describe("ClassicMainBody", () => {
     expect(mocks.toggleLeftSidebar).toHaveBeenCalledTimes(1);
   });
 
-  it("shows the update button in the expanded sidebar control group", () => {
+  it("shows the update action in the main canvas, not the sidebar control group", () => {
     mocks.sidebarUpdateControl.status = "available";
     mocks.sidebarUpdateControl.version = "1.0.34";
 
@@ -317,43 +325,30 @@ describe("ClassicMainBody", () => {
     const sidebarToggle = screen.getByRole("button", { name: "Hide sidebar" });
     const searchButton = screen.getByRole("button", { name: "Search" });
     const newNoteButton = screen.getByRole("button", { name: "New note" });
-    const updateButton = screen.getByTestId("sidebar-update-button");
-    const chrome = sidebarToggle.parentElement?.parentElement;
-    const chromeFrame = chrome?.parentElement;
-    const timelineHeader = document.querySelector<HTMLElement>(
-      "[data-sidebar-timeline-header]",
-    );
+    const updateAction = screen.getByTestId("desktop-update-action");
 
-    expect(updateButton).toBeTruthy();
-    expect(updateButton.parentElement).toBe(sidebarToggle.parentElement);
+    expect(updateAction).toBeTruthy();
+    expect(updateAction.parentElement).not.toBe(sidebarToggle.parentElement);
     expect(searchButton.compareDocumentPosition(newNoteButton)).toBe(
-      Node.DOCUMENT_POSITION_FOLLOWING,
-    );
-    expect(newNoteButton.compareDocumentPosition(updateButton)).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING,
     );
     expect(searchButton.parentElement).toBe(sidebarToggle.parentElement);
     expect(newNoteButton.parentElement).toBe(sidebarToggle.parentElement);
-    expect(chrome?.className).toContain("items-center");
-    expect(chromeFrame).toBe(timelineHeader);
-    expect(chromeFrame?.className).toContain("pr-1");
-    expect(chromeFrame?.className).not.toContain("pr-3");
+    expect(screen.queryByTestId("sidebar-update-button")).toBeNull();
     expect(
       within(sidebarToggle).queryByTestId("collapsed-sidebar-update-badge"),
     ).toBeNull();
   });
 
-  it("shows ready updates in the expanded sidebar control group", () => {
+  it("shows ready updates as the main-canvas update action", () => {
     mocks.sidebarUpdateControl.status = "ready";
     mocks.sidebarUpdateControl.version = "1.0.34";
 
     render(<ClassicMainBody />);
 
-    const sidebarToggle = screen.getByRole("button", { name: "Hide sidebar" });
-    const updateButton = screen.getByTestId("sidebar-update-button");
+    const updateAction = screen.getByTestId("desktop-update-action");
 
-    expect(updateButton).toBeTruthy();
-    expect(updateButton.parentElement).toBe(sidebarToggle.parentElement);
+    expect(updateAction).toBeTruthy();
   });
 
   it("shows an update badge on the collapsed sidebar toggle", () => {

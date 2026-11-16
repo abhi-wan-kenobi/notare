@@ -1,13 +1,7 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useQuery } from "@tanstack/react-query";
 import { homeDir } from "@tauri-apps/api/path";
-import { message } from "@tauri-apps/plugin-dialog";
-import {
-  DownloadIcon,
-  FolderIcon,
-  Trash2Icon,
-  TriangleAlertIcon,
-} from "lucide-react";
+import { FolderIcon, HelpCircleIcon } from "lucide-react";
 import { useState } from "react";
 
 import { commands as openerCommands } from "@hypr/plugin-opener2";
@@ -31,7 +25,17 @@ export function AccountSettingsView() {
   const [resetModalOpen, setResetModalOpen] = useState(false);
 
   const { data: home } = useQuery({ queryKey: ["home-dir"], queryFn: homeDir });
-  const { data: vaultBase } = useQuery({
+  const { data: dataBase, isError: dataPathError } = useQuery({
+    queryKey: ["global-base-path"],
+    queryFn: async () => {
+      const result = await settingsCommands.globalBase();
+      if (result.status === "error") {
+        throw new Error(result.error);
+      }
+      return result.data;
+    },
+  });
+  const { data: vaultBase, isError: vaultPathError } = useQuery({
     queryKey: ["vault-base-path"],
     queryFn: async () => {
       const result = await settingsCommands.vaultBase();
@@ -42,28 +46,19 @@ export function AccountSettingsView() {
     },
   });
 
+  const handleRevealData = () => {
+    if (dataBase) {
+      void openerCommands.openPath(dataBase, null);
+    }
+  };
+
   const handleRevealVault = () => {
     if (vaultBase) {
       void openerCommands.openPath(vaultBase, null);
     }
   };
 
-  const handleExportNotes = () => {
-    // Reveal the notes directory where all Markdown files and attachments are stored
-    if (vaultBase) {
-      void openerCommands.openPath(vaultBase, null);
-    }
-  };
-
-  const handleConfirmReset = async () => {
-    setResetModalOpen(false);
-    await message(
-      t`To complete resetting local data, quit Notare and clear the data directory, or delete the app support folder.`,
-      { kind: "info", title: t`Reset Local Data` },
-    );
-  };
-
-  const formattedVaultPath = vaultBase ? displayPath(vaultBase, home) : null;
+  const formattedDataPath = dataBase ? displayPath(dataBase, home) : null;
 
   return (
     <div className="flex flex-col gap-8">
@@ -82,11 +77,32 @@ export function AccountSettingsView() {
             }
           />
           <SettingsRow
-            title={<Trans>Database &amp; storage</Trans>}
+            title={<Trans>Application data</Trans>}
             description={
-              formattedVaultPath ?? (
-                <Trans>Local SQLite database on this device</Trans>
+              formattedDataPath ?? (
+                <Trans>Local application data on this device</Trans>
               )
+            }
+            trailing={
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRevealData}
+                disabled={!dataBase}
+                className="h-8 text-xs"
+              >
+                <FolderIcon className="mr-1.5 size-3.5" />
+                <Trans>Reveal in folder</Trans>
+              </Button>
+            }
+          />
+          <SettingsRow
+            title={<Trans>Notes folder</Trans>}
+            description={
+              <Trans>
+                Browse locally stored notes and recordings. Use Export in an
+                individual meeting for a document export.
+              </Trans>
             }
             trailing={
               <Button
@@ -97,27 +113,7 @@ export function AccountSettingsView() {
                 className="h-8 text-xs"
               >
                 <FolderIcon className="mr-1.5 size-3.5" />
-                <Trans>Reveal in folder</Trans>
-              </Button>
-            }
-          />
-          <SettingsRow
-            title={<Trans>Export notes</Trans>}
-            description={
-              <Trans>
-                Markdown or JSON · All meetings, summaries, and action items
-              </Trans>
-            }
-            trailing={
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleExportNotes}
-                disabled={!vaultBase}
-                className="h-8 text-xs"
-              >
-                <DownloadIcon className="mr-1.5 size-3.5" />
-                <Trans>Export</Trans>
+                <Trans>Open notes folder</Trans>
               </Button>
             }
           />
@@ -137,11 +133,11 @@ export function AccountSettingsView() {
         </SectionLabel>
         <div className="flex flex-col">
           <SettingsRow
-            title={<Trans>Delete all local data</Trans>}
+            title={<Trans>Manual reset help</Trans>}
             description={
               <Trans>
-                Removes notes, recordings, and saved credentials from this
-                device
+                Learn which local files to back up before a manual reset. No
+                files are deleted by this action.
               </Trans>
             }
             trailing={
@@ -149,10 +145,10 @@ export function AccountSettingsView() {
                 variant="outline"
                 size="sm"
                 onClick={() => setResetModalOpen(true)}
-                className="border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive h-8 text-xs"
+                className="h-8 text-xs"
               >
-                <Trash2Icon className="mr-1.5 size-3.5" />
-                <Trans>Review reset</Trans>
+                <HelpCircleIcon className="mr-1.5 size-3.5" />
+                <Trans>Reset instructions</Trans>
               </Button>
             }
           />
@@ -163,31 +159,77 @@ export function AccountSettingsView() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base">
-              <TriangleAlertIcon className="text-destructive size-4" />
-              <Trans>Delete all local data?</Trans>
+              <HelpCircleIcon className="size-4" />
+              <Trans>Reset instructions</Trans>
             </DialogTitle>
             <DialogDescription className="text-xs">
               <Trans>
-                This action cannot be undone. All notes, transcript recordings,
-                and locally configured API keys will be deleted from this
-                device.
+                This is help only. Notare will not delete any files.
               </Trans>
             </DialogDescription>
           </DialogHeader>
+          <ol className="text-muted-foreground list-decimal space-y-3 pl-5 text-xs">
+            <li>
+              <Trans>
+                Back up your data and notes folders, then quit Notare before
+                changing files.
+              </Trans>
+            </li>
+            <li>
+              <Trans>
+                Removing database files (app.db and its companion files) deletes
+                the meetings, notes, transcripts, summaries, action items, and
+                preferences stored in that database. Markdown files are not a
+                full database backup.
+              </Trans>
+            </li>
+            <li>
+              <Trans>
+                Removing settings.json only removes legacy settings stored in
+                that file, not current database preferences. Remove saved API
+                keys in provider settings if needed; deleting database files
+                does not revoke credentials or clear system keychain entries.
+              </Trans>
+            </li>
+            <li>
+              <Trans>
+                Recordings, attachments, and Markdown files remain in the notes
+                folder unless you remove them yourself. Do not delete an entire
+                shared notes folder or unrelated user files.
+              </Trans>
+            </li>
+          </ol>
+          <dl className="space-y-3 text-xs">
+            <div>
+              <dt className="font-medium">
+                <Trans>Application data directory</Trans>
+              </dt>
+              <dd className="text-muted-foreground mt-1 break-all select-text">
+                {dataBase ??
+                  (dataPathError
+                    ? t`Could not load the data directory.`
+                    : t`Loading data directory…`)}
+              </dd>
+            </div>
+            <div>
+              <dt className="font-medium">
+                <Trans>Notes folder</Trans>
+              </dt>
+              <dd className="text-muted-foreground mt-1 break-all select-text">
+                {vaultBase ??
+                  (vaultPathError
+                    ? t`Could not load the notes folder.`
+                    : t`Loading notes folder…`)}
+              </dd>
+            </div>
+          </dl>
           <DialogFooter className="mt-4 gap-2">
             <Button
               variant="outline"
               size="sm"
               onClick={() => setResetModalOpen(false)}
             >
-              <Trans>Cancel</Trans>
-            </Button>
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={() => void handleConfirmReset()}
-            >
-              <Trans>Confirm reset</Trans>
+              <Trans>Done</Trans>
             </Button>
           </DialogFooter>
         </DialogContent>

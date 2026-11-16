@@ -264,7 +264,7 @@ function SyncSettingsContent({
   const incomingLink = usePendingPairLink((state) => state.link);
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex max-w-full min-w-0 flex-col gap-6 [overflow-wrap:anywhere]">
       <SettingsPageTitle
         title={
           <span className="flex items-center gap-3">
@@ -283,8 +283,9 @@ function SyncSettingsContent({
         <p>
           <Trans>
             Device sync is a preview. It keeps your notes in sync between your
-            own devices directly, without going through a server. Every device
-            you pair must run Notare 0.6.8 or later.
+            own computers using encrypted peer-to-peer connections, without a
+            Notare account. Every computer you pair must run Notare 0.6.8 or
+            later.
           </Trans>
         </p>
         <p>
@@ -357,10 +358,7 @@ function SyncSettingsContent({
         animate={{ opacity: canSync ? 1 : 0.5 }}
         transition={{ duration: 0.2 }}
         aria-disabled={!canSync}
-        className={cn([
-          "flex flex-col gap-6",
-          !canSync && "pointer-events-none",
-        ])}
+        className="flex max-w-full min-w-0 flex-col gap-6"
       >
         {!syncEnabled && (
           <p className="text-muted-foreground text-xs italic">
@@ -371,14 +369,25 @@ function SyncSettingsContent({
           </p>
         )}
 
-        <div className="flex flex-col gap-3 sm:flex-row">
+        <section className="border-border flex min-w-0 flex-col gap-3 rounded-lg border p-4">
+          <h3 className="text-sm font-medium">
+            <Trans>Pair computers with QR or link</Trans>
+          </h3>
+          <p className="text-muted-foreground text-xs">
+            <Trans>
+              Turn on sync on both computers. Show a QR code here and open its
+              pairing link on the other computer, or copy the link and paste it
+              below on that computer. Compare and confirm the code on both
+              screens. Notare doesn't scan QR codes with your webcam.
+            </Trans>
+          </p>
           <PairDeviceSection disabled={!canSync} onPaired={invalidatePeers} />
           <JoinWithLinkSection
             disabled={!canSync}
             acceptIncoming={canSync && !toggleSync.isPending}
             onJoined={invalidatePeers}
           />
-        </div>
+        </section>
 
         <PairedDevicesList
           peers={peersQuery.data ?? []}
@@ -386,12 +395,12 @@ function SyncSettingsContent({
           disabled={!canSync}
         />
 
-        <Accordion type="single" collapsible className="flex flex-col">
-          <AccordionItem value="advanced" className="border-none">
+        <Accordion type="single" collapsible className="flex min-w-0 flex-col">
+          <AccordionItem value="advanced" className="min-w-0 border-none">
             <AccordionTrigger className="text-muted-foreground py-2 text-xs font-medium hover:no-underline">
               <Trans>Advanced: manual fingerprint pairing</Trans>
             </AccordionTrigger>
-            <AccordionContent className="flex flex-col gap-6 pt-2">
+            <AccordionContent className="flex min-w-0 flex-col gap-6 pt-2">
               <ThisDeviceSection
                 fingerprint={thisDeviceQuery.data}
                 isLoading={thisDeviceQuery.isLoading}
@@ -432,7 +441,7 @@ function SyncEnableToggle({
   return (
     <div className="border-border bg-muted/30 flex flex-col gap-3 rounded-lg border p-4">
       <div className="flex items-center justify-between gap-4">
-        <div className="flex-1">
+        <div className="min-w-0 flex-1">
           <h3 id={titleId} className="text-sm font-medium">
             <Trans>Enable device sync</Trans>
           </h3>
@@ -627,15 +636,15 @@ function ThisDeviceSection({
   };
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex min-w-0 flex-col gap-2">
       <h3 className="text-sm font-medium">
         <Trans>This device</Trans>
       </h3>
       <p className="text-muted-foreground text-xs">
         <Trans>Share this fingerprint with another device to pair it.</Trans>
       </p>
-      <div className="flex items-center gap-2">
-        <code className="border-border bg-muted min-w-0 flex-1 truncate rounded-lg border px-3 py-2 font-mono text-xs">
+      <div className="flex min-w-0 items-start gap-2">
+        <code className="border-border bg-muted min-w-0 flex-1 rounded-lg border px-3 py-2 font-mono text-xs break-all whitespace-normal select-text">
           {isLoading
             ? t`Loading…`
             : (fingerprint ?? (error ? errorMessage(error) : ""))}
@@ -644,6 +653,7 @@ function ThisDeviceSection({
           type="button"
           variant="outline"
           size="icon"
+          className="shrink-0"
           disabled={!fingerprint || disabled}
           onClick={() => void handleCopy()}
           aria-label={t`Copy fingerprint`}
@@ -711,7 +721,7 @@ function AddDeviceForm({
   });
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex min-w-0 flex-col gap-2">
       <h3 className="text-sm font-medium">
         <Trans>Add a device</Trans>
       </h3>
@@ -722,7 +732,7 @@ function AddDeviceForm({
         </Trans>
       </p>
       <form
-        className="flex flex-col gap-2"
+        className="flex min-w-0 flex-col gap-2"
         onSubmit={(e) => {
           e.preventDefault();
           e.stopPropagation();
@@ -731,13 +741,13 @@ function AddDeviceForm({
       >
         <form.Field name="fingerprint">
           {(field) => (
-            <div className="flex flex-col gap-1">
+            <div className="flex min-w-0 flex-col gap-1">
               <Input
                 value={field.state.value}
                 onChange={(e) => field.handleChange(e.target.value)}
                 placeholder="abcd-efgh-ijkl-..."
                 aria-label={t`Peer fingerprint`}
-                className="font-mono text-xs"
+                className="min-w-0 font-mono text-xs"
                 disabled={disabled}
               />
               {field.state.meta.errors.length > 0 && (
@@ -755,6 +765,7 @@ function AddDeviceForm({
               onChange={(e) => field.handleChange(e.target.value)}
               placeholder={t`Label (optional), e.g. "Work laptop"`}
               aria-label={t`Device label`}
+              className="min-w-0"
               disabled={disabled}
             />
           )}
@@ -816,10 +827,10 @@ function SasConfirm({
   isPending: boolean;
 }) {
   return (
-    <div className="flex flex-col items-center gap-4 py-2">
+    <div className="flex min-w-0 flex-col items-center gap-4 py-2">
       <ShieldCheckIcon className="text-muted-foreground size-8" />
-      <div className="text-center">
-        <p className="text-sm font-medium">
+      <div className="max-w-full min-w-0 text-center">
+        <p className="text-sm font-medium [overflow-wrap:anywhere]">
           <Trans>Confirm with {deviceName || "the other device"}</Trans>
         </p>
         <p className="text-muted-foreground mt-1 text-xs">
@@ -883,7 +894,12 @@ function PairDeviceSection({
 
   const createOffer = useMutation({
     mutationFn: pairingCreateOffer,
-    onSuccess: (result) => setOffer(result),
+    onSuccess: (result) => {
+      setNow(Date.now());
+      setCopied(false);
+      setOffer(result);
+      confirmMutation.reset();
+    },
   });
 
   const createOfferRef = useRef(createOffer.mutate);
@@ -910,16 +926,18 @@ function PairDeviceSection({
     : 0;
   const expired = offer != null && secondsRemaining <= 0;
 
-  // Poll pairing_status() while the dialog is open and the offer hasn't
-  // expired, watching for a joiner's proof to produce a pending confirmation.
+  // Pending confirmations have their own expiry and can outlive the QR offer.
+  // Keep polling until the dialog closes, including while showing confirmation.
   const statusQuery = useQuery({
-    queryKey: PAIRING_STATUS_QUERY_KEY,
+    queryKey: [...PAIRING_STATUS_QUERY_KEY, offer?.link],
     queryFn: pairingStatus,
-    enabled: open && offer != null && !expired,
+    enabled: open && offer != null,
     refetchInterval: PAIRING_POLL_MS,
   });
 
-  const pending = statusQuery.data?.pending[0];
+  const pending = statusQuery.data?.pending.find(
+    (device) => device.expiresAt > Math.floor(now / 1000),
+  );
 
   const confirmMutation = useMutation({
     mutationFn: ({ deviceId, accept }: { deviceId: string; accept: boolean }) =>
@@ -932,6 +950,19 @@ function PairDeviceSection({
       setOpen(false);
     },
   });
+
+  const handleOpenChange = (next: boolean) => {
+    if (confirmMutation.isPending) {
+      return;
+    }
+    if (next) {
+      setOffer(null);
+      createOffer.reset();
+      confirmMutation.reset();
+      setNow(Date.now());
+    }
+    setOpen(next);
+  };
 
   const handleCopyLink = async () => {
     if (!offer) {
@@ -954,19 +985,19 @@ function PairDeviceSection({
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <Button
         type="button"
         variant="outline"
-        className="flex-1"
+        className="h-auto min-h-9 max-w-full min-w-0 self-start whitespace-normal"
         disabled={disabled}
-        onClick={() => setOpen(true)}
+        onClick={() => handleOpenChange(true)}
       >
         <QrCodeIcon className="size-3.5" />
-        <Trans>Pair a device</Trans>
+        <Trans>Pair a device with QR</Trans>
       </Button>
 
-      <DialogContent className="max-w-xs">
+      <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-sm min-w-0 overflow-y-auto [overflow-wrap:anywhere]">
         <DialogHeader>
           <DialogTitle>
             {pending ? (
@@ -978,10 +1009,14 @@ function PairDeviceSection({
           <DialogDescription>
             {pending ? (
               <Trans>
-                Someone scanned your code. Compare the numbers below.
+                Another computer opened your link. Compare the numbers below.
               </Trans>
             ) : (
-              <Trans>Scan this on the other device, or copy the link.</Trans>
+              <Trans>
+                Open this QR code's link on your other computer, or copy the
+                link into its Devices settings. Keep this window open, then
+                confirm the matching code on both computers.
+              </Trans>
             )}
           </DialogDescription>
         </DialogHeader>
@@ -1006,7 +1041,10 @@ function PairDeviceSection({
           />
         ) : createOffer.isError ? (
           <div className="flex flex-col items-center gap-3 py-4">
-            <p className="text-xs text-red-500">
+            <p
+              role="alert"
+              className="max-w-full text-xs break-all text-red-500"
+            >
               {errorMessage(createOffer.error)}
             </p>
             <Button
@@ -1043,16 +1081,17 @@ function PairDeviceSection({
               // reach the DOM or execute script.
               src={`data:image/svg+xml;utf8,${encodeURIComponent(offer.qrSvg)}`}
               alt={t`Pairing QR code`}
-              className="size-40"
+              className="size-56 max-w-full shrink-0 rounded bg-white p-2"
             />
-            <div className="flex w-full items-center gap-2">
-              <code className="border-border bg-muted min-w-0 flex-1 truncate rounded-lg border px-3 py-2 font-mono text-xs">
+            <div className="flex w-full min-w-0 items-start gap-2">
+              <code className="border-border bg-muted min-w-0 flex-1 rounded-lg border px-3 py-2 font-mono text-xs break-all whitespace-normal select-text">
                 {offer.link}
               </code>
               <Button
                 type="button"
                 variant="outline"
                 size="icon"
+                className="shrink-0"
                 onClick={() => void handleCopyLink()}
                 aria-label={t`Copy link`}
               >
@@ -1067,6 +1106,26 @@ function PairDeviceSection({
               <Trans>Expires in {formatCountdown(secondsRemaining)}</Trans>
             </p>
           </div>
+        )}
+        {statusQuery.isError && (
+          <div className="flex min-w-0 flex-col gap-2">
+            <p role="alert" className="text-xs break-all text-red-500">
+              <Trans>Couldn't check for the other computer:</Trans>{" "}
+              {errorMessage(statusQuery.error)}
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => void statusQuery.refetch()}
+            >
+              <Trans>Check again</Trans>
+            </Button>
+          </div>
+        )}
+        {confirmMutation.isError && (
+          <p role="alert" className="text-xs break-all text-red-500">
+            {errorMessage(confirmMutation.error)}
+          </p>
         )}
       </DialogContent>
     </Dialog>
@@ -1125,7 +1184,7 @@ function JoinWithLinkSection({
   return (
     <>
       <form
-        className="flex flex-1 gap-2"
+        className="flex w-full min-w-0 flex-col gap-2"
         onSubmit={(e) => {
           e.preventDefault();
           if (link.trim().length > 0) {
@@ -1133,17 +1192,23 @@ function JoinWithLinkSection({
           }
         }}
       >
-        <Input
-          value={link}
-          onChange={(e) => setLink(e.target.value)}
-          placeholder={t`Paste a pairing link…`}
-          aria-label={t`Pairing link`}
-          disabled={disabled}
-          className="font-mono text-xs"
-        />
+        <label className="text-xs font-medium">
+          <span className="mb-1 block">
+            <Trans>Join from the other computer's link</Trans>
+          </span>
+          <Input
+            value={link}
+            onChange={(e) => setLink(e.target.value)}
+            placeholder={t`Paste a pairing link…`}
+            aria-label={t`Pairing link`}
+            disabled={disabled}
+            className="min-w-0 font-mono text-xs"
+          />
+        </label>
         <Button
           type="submit"
           variant="outline"
+          className="self-start"
           disabled={
             disabled || link.trim().length === 0 || joinMutation.isPending
           }
@@ -1158,7 +1223,7 @@ function JoinWithLinkSection({
       </form>
 
       {joinMutation.isError && (
-        <p className="text-xs text-red-500">
+        <p role="alert" className="min-w-0 text-xs break-all text-red-500">
           {errorMessage(joinMutation.error)}
         </p>
       )}
@@ -1171,7 +1236,7 @@ function JoinWithLinkSection({
           }
         }}
       >
-        <DialogContent className="max-w-xs">
+        <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-sm min-w-0 overflow-y-auto [overflow-wrap:anywhere]">
           <DialogHeader>
             <DialogTitle>
               <Trans>Confirm pairing</Trans>
@@ -1195,7 +1260,7 @@ function JoinWithLinkSection({
             />
           )}
           {addPeer.error && (
-            <p className="text-xs text-red-500">
+            <p role="alert" className="text-xs break-all text-red-500">
               {errorMessage(addPeer.error)}
             </p>
           )}
@@ -1230,7 +1295,7 @@ function PairedDevicesList({
   });
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex min-w-0 flex-col gap-2">
       <h3 className="text-sm font-medium">
         <Trans>Paired devices</Trans>
       </h3>
@@ -1242,21 +1307,20 @@ function PairedDevicesList({
           <Trans>No devices paired yet.</Trans>
         </p>
       ) : (
-        <ul className="flex flex-col gap-2">
+        <ul className="flex min-w-0 flex-col gap-2">
           {peers.map((peer) => (
             <li
               key={peer.nodeId}
-              className="border-border flex items-center gap-3 rounded-lg border p-3"
+              className="border-border flex min-w-0 flex-wrap items-center gap-3 rounded-lg border p-3"
             >
               <MonitorSmartphoneIcon className="text-muted-foreground size-4 shrink-0" />
               <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                 <p className="truncate text-sm font-medium">
                   {peer.label || t`Unnamed device`}
                 </p>
-                <div className="text-muted-foreground flex min-w-0 items-center gap-1.5 font-mono text-xs">
-                  <span className="truncate">{peer.fingerprint}</span>
-                  <span aria-hidden="true" className="shrink-0">
-                    ·
+                <div className="text-muted-foreground flex min-w-0 flex-col items-start gap-1 font-mono text-xs">
+                  <span className="max-w-full break-all whitespace-normal select-text">
+                    {peer.fingerprint}
                   </span>
                   <span className="shrink-0 font-sans">
                     {peer.lastSeen > 0
@@ -1294,7 +1358,7 @@ function PairedDevicesList({
             <DialogTitle className="text-foreground text-[13px] leading-5 font-semibold tracking-normal">
               <Trans>Remove this device?</Trans>
             </DialogTitle>
-            <DialogDescription className="text-foreground w-full text-center text-[13px] leading-[1.36]">
+            <DialogDescription className="text-foreground w-full text-center text-[13px] leading-[1.36] [overflow-wrap:anywhere]">
               <Trans>
                 "{pendingRemove?.label || t`Unnamed device`}" will no longer be
                 able to sync with this device, and can't re-pair with a saved

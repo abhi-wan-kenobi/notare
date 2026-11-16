@@ -17,6 +17,7 @@ pub static SUPPORTED_MODELS: &[LocalModel] = &[
     LocalModel::Whisper(WhisperModel::QuantizedSmall),
     LocalModel::Whisper(WhisperModel::QuantizedSmallEn),
     LocalModel::Whisper(WhisperModel::QuantizedLargeTurbo),
+    LocalModel::Whisper(WhisperModel::QuantizedLargeV3),
 ];
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -100,7 +101,9 @@ fn whisper_traits(model: &WhisperModel) -> (SttModelTier, SttRecommendedUse) {
         WhisperModel::QuantizedSmall | WhisperModel::QuantizedSmallEn => {
             (SttModelTier::Balanced, SttRecommendedUse::LiveAndFinal)
         }
-        WhisperModel::QuantizedLargeTurbo => (SttModelTier::Best, SttRecommendedUse::Final),
+        WhisperModel::QuantizedLargeTurbo | WhisperModel::QuantizedLargeV3 => {
+            (SttModelTier::Best, SttRecommendedUse::Final)
+        }
     }
 }
 

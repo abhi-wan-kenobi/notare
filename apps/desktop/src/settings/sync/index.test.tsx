@@ -11,6 +11,10 @@ import {
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("@tauri-apps/plugin-clipboard-manager", () => ({
+  writeText: mocks.writeText,
+}));
+
 const mocks = vi.hoisted(() => ({
   syncStatus: vi.fn(),
   syncThisDevice: vi.fn(),
@@ -26,6 +30,7 @@ const mocks = vi.hoisted(() => ({
   execute: vi.fn(),
   openPath: vi.fn(),
   globalBase: vi.fn(),
+  writeText: vi.fn(),
   syncEnabled: undefined as boolean | undefined,
   setSyncEnabled: vi.fn(),
 }));
@@ -239,6 +244,26 @@ describe("SettingsSync", () => {
   });
 
   describe("manual fingerprint pairing (Advanced)", () => {
+    it("copies the complete device fingerprint from the advanced form", async () => {
+      mocks.syncStatus.mockResolvedValue({
+        kind: "live",
+        engineLoaded: true,
+        running: true,
+      });
+      mocks.syncThisDevice.mockResolvedValue(VALID_FINGERPRINT);
+      mocks.syncListPeers.mockResolvedValue([]);
+      mocks.writeText.mockResolvedValue(undefined);
+
+      renderPage();
+      await openAdvanced();
+      await screen.findByText(VALID_FINGERPRINT);
+      fireEvent.click(screen.getByRole("button", { name: "Copy fingerprint" }));
+
+      await waitFor(() =>
+        expect(mocks.writeText).toHaveBeenCalledWith(VALID_FINGERPRINT),
+      );
+    });
+
     it("does not call sync_add_peer for an invalid fingerprint", async () => {
       mocks.syncStatus.mockResolvedValue({
         kind: "live",
@@ -471,6 +496,150 @@ describe("SettingsSync", () => {
       await waitFor(() =>
         expect(screen.getByText("notare://pair#retry")).toBeTruthy(),
       );
+    });
+
+    it("shows confirmation failures without dismissing the matching code", async () => {
+      const expiresAt = Math.floor(Date.now() / 1000) + 600;
+      mocks.pairingCreateOffer.mockResolvedValue({
+        link: "notare://pair#confirm-error",
+        qrSvg: "<svg></svg>",
+        expiresAt,
+      });
+      mocks.pairingStatus.mockResolvedValue({
+        offerActive: true,
+        offerExpiresAt: expiresAt,
+        pending: [
+          {
+            deviceId: OTHER_FINGERPRINT,
+            name: "Work laptop",
+            sas: "482913",
+            expiresAt,
+          },
+        ],
+      });
+      mocks.pairingConfirm.mockRejectedValue(new Error("could not save peer"));
+
+      renderPage();
+      fireEvent.click(
+        await screen.findByRole("button", { name: /Pair a device/ }),
+      );
+      await screen.findByText("482913");
+      fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+
+      expect((await screen.findByRole("alert")).textContent).toContain(
+        "could not save peer",
+      );
+      expect(screen.getByText("482913")).toBeTruthy();
+      expect(
+        screen
+          .getByRole("button", { name: "Confirm" })
+          .hasAttribute("disabled"),
+      ).toBe(false);
+    });
+
+    it("reports a pairing-status failure instead of silently waiting for a scan", async () => {
+      mocks.pairingCreateOffer.mockResolvedValue({
+        link: "notare://pair#status-error",
+        qrSvg: "<svg></svg>",
+        expiresAt: Math.floor(Date.now() / 1000) + 600,
+      });
+      mocks.pairingStatus.mockRejectedValue(new Error("sync agent stopped"));
+
+      renderPage();
+      fireEvent.click(
+        await screen.findByRole("button", { name: /Pair a device/ }),
+      );
+
+      expect((await screen.findByRole("alert")).textContent).toContain(
+        "sync agent stopped",
+      );
+      expect(screen.getByRole("button", { name: "Check again" })).toBeTruthy();
+    });
+
+    it("does not offer confirmation for an expired incoming request", async () => {
+      const now = Math.floor(Date.now() / 1000);
+      mocks.pairingCreateOffer.mockResolvedValue({
+        link: "notare://pair#active",
+        qrSvg: "<svg></svg>",
+        expiresAt: now + 600,
+      });
+      mocks.pairingStatus.mockResolvedValue({
+        offerActive: true,
+        offerExpiresAt: now + 600,
+        pending: [
+          {
+            deviceId: OTHER_FINGERPRINT,
+            name: "Work laptop",
+            sas: "482913",
+            expiresAt: now - 1,
+          },
+        ],
+      });
+
+      renderPage();
+      fireEvent.click(
+        await screen.findByRole("button", { name: /Pair a device/ }),
+      );
+      await screen.findByRole("img", { name: "Pairing QR code" });
+      await waitFor(() => expect(mocks.pairingStatus).toHaveBeenCalled());
+
+      expect(screen.queryByText("482913")).toBeNull();
+      expect(screen.queryByRole("button", { name: "Confirm" })).toBeNull();
+    });
+
+    it("copies the complete long pairing link without shortening it", async () => {
+      const link = `notare://pair#${"a".repeat(800)}`;
+      mocks.pairingCreateOffer.mockResolvedValue({
+        link,
+        qrSvg: "<svg></svg>",
+        expiresAt: Math.floor(Date.now() / 1000) + 600,
+      });
+      mocks.pairingStatus.mockResolvedValue({ pending: [] });
+      mocks.writeText.mockResolvedValue(undefined);
+
+      renderPage();
+      fireEvent.click(
+        await screen.findByRole("button", { name: /Pair a device/ }),
+      );
+      expect(await screen.findByText(link)).toBeTruthy();
+      fireEvent.click(screen.getByRole("button", { name: "Copy link" }));
+
+      await waitFor(() => expect(mocks.writeText).toHaveBeenCalledWith(link));
+    });
+
+    it("replaces an expired QR and link with a newly generated offer", async () => {
+      mocks.pairingCreateOffer
+        .mockResolvedValueOnce({
+          link: "notare://pair#expired",
+          qrSvg: "<svg></svg>",
+          expiresAt: Math.floor(Date.now() / 1000) - 1,
+        })
+        .mockResolvedValueOnce({
+          link: "notare://pair#fresh",
+          qrSvg: "<svg id='fresh'></svg>",
+          expiresAt: Math.floor(Date.now() / 1000) + 600,
+        });
+      mocks.pairingStatus.mockResolvedValue({ pending: [] });
+
+      renderPage();
+      fireEvent.click(
+        await screen.findByRole("button", { name: /Pair a device/ }),
+      );
+      await screen.findByText("This code expired.");
+      expect(screen.queryByRole("img", { name: "Pairing QR code" })).toBeNull();
+      fireEvent.click(
+        screen.getByRole("button", { name: "Generate a new code" }),
+      );
+
+      expect(await screen.findByText("notare://pair#fresh")).toBeTruthy();
+      expect(
+        screen
+          .getByRole("img", { name: "Pairing QR code" })
+          .getAttribute("src"),
+      ).toBe(
+        `data:image/svg+xml;utf8,${encodeURIComponent("<svg id='fresh'></svg>")}`,
+      );
+      expect(mocks.pairingCreateOffer).toHaveBeenCalledTimes(2);
     });
 
     it("shows the SAS confirmation once a joiner's proof lands, and confirming adds the peer", async () => {

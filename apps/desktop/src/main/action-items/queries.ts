@@ -54,7 +54,7 @@ export function useAllActionItems(
       LEFT JOIN sessions cs ON cs.id = ai.carried_from_session_id AND cs.deleted_at IS NULL
       WHERE ai.deleted_at IS NULL
         AND ((? = 'done' AND ai.status = 'done') OR (? != 'done' AND ai.status != 'done'))
-        AND (? != 'mine' OR ai.assignee_human_id = ? OR ai.assignee_human_id IN (SELECT id FROM humans WHERE owner_user_id = ?))
+        AND (? != 'mine' OR ai.assignee_human_id = ?)
         AND (? != 'overdue' OR (ai.due_at != '' AND ai.due_at < ?))
       ORDER BY s.started_at DESC, s.created_at DESC, ai.source_order, ai.created_at
     `
@@ -70,21 +70,13 @@ export function useAllActionItems(
       LEFT JOIN humans h ON h.id = ai.assignee_human_id AND h.deleted_at IS NULL
       WHERE ai.deleted_at IS NULL
         AND ((? = 'done' AND ai.status = 'done') OR (? != 'done' AND ai.status != 'done'))
-        AND (? != 'mine' OR ai.assignee_human_id = ? OR ai.assignee_human_id IN (SELECT id FROM humans WHERE owner_user_id = ?))
+        AND (? != 'mine' OR ai.assignee_human_id = ?)
         AND (? != 'overdue' OR (ai.due_at != '' AND ai.due_at < ?))
       ORDER BY s.started_at DESC, s.created_at DESC, ai.source_order, ai.created_at
     `;
 
   const todayStr = new Date().toISOString().slice(0, 10);
-  const params = [
-    filter,
-    filter,
-    filter,
-    effectiveUserId,
-    effectiveUserId,
-    filter,
-    todayStr,
-  ];
+  const params = [filter, filter, filter, effectiveUserId, filter, todayStr];
 
   const { data = EMPTY, isLoading } = useLiveQuery<
     AllActionItem,

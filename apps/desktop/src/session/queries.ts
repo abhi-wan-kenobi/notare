@@ -7,6 +7,7 @@ import type { EventParticipant, SessionEvent } from "@hypr/store";
 
 import { executeTransaction, liveQueryClient, useLiveQuery } from "~/db";
 import { enqueueDatabaseWrite } from "~/db/write-queue";
+import { seriesIdForEvent } from "~/services/series/identity";
 import { humanIdForEmail, participantId } from "~/shared/ids";
 import { DEFAULT_USER_ID, id } from "~/shared/utils";
 import type { DeletedSessionData } from "~/store/zustand/undo-delete";
@@ -743,7 +744,9 @@ export function updateSession(
 export async function createSession(
   title = "",
   userId = DEFAULT_USER_ID,
-  initial?: Pick<SessionChanges, "event_json" | "raw_md">,
+  initial?: Pick<SessionChanges, "event_json" | "raw_md"> & {
+    series_id?: string;
+  },
 ): Promise<string> {
   const sessionId = id();
   // Deterministic: (session, self-human) always hashes to the same id on
@@ -755,11 +758,19 @@ export async function createSession(
     {
       sql: `
         INSERT INTO sessions (
-          id, owner_user_id, title, event_json, created_at, updated_at,
+          id, owner_user_id, title, event_json, series_id, created_at, updated_at,
           deleted_at
-        ) VALUES (?, ?, ?, ?, ?, ?, NULL)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, NULL)
       `,
-      params: [sessionId, userId, title, initial?.event_json ?? "", now, now],
+      params: [
+        sessionId,
+        userId,
+        title,
+        initial?.event_json ?? "",
+        initial?.series_id ?? "",
+        now,
+        now,
+      ],
     },
     createEmptyNoteStatement(
       sessionId,
@@ -797,6 +808,7 @@ export async function getOrCreateSessionForEventId(
   eventId: string,
   title?: string,
   userId = DEFAULT_USER_ID,
+  initialRawMd = "",
 ): Promise<string> {
   const [event] = await liveQueryClient.execute<EventSqlRow>(
     `
@@ -849,7 +861,17 @@ export async function getOrCreateSessionForEventId(
           SELECT 1
           FROM sessions
           WHERE deleted_at IS NULL
-            AND (event_id = ? OR (? <> '' AND external_event_id = ?))
+            AND (event_id = ? OR (
+              ? <> '' AND external_event_id = ?
+              AND COALESCE(NULLIF(external_provider, ''),
+                NULLIF(CASE WHEN json_valid(event_json)
+                  THEN json_extract(event_json, '$.provider') END, ''),
+                (SELECT provider FROM calendars WHERE id =
+                  CASE WHEN json_valid(event_json)
+                    THEN json_extract(event_json, '$.calendar_id') END), '') = ?
+              AND CASE WHEN json_valid(event_json)
+                THEN json_extract(event_json, '$.calendar_id') END = ?
+            ))
         )
       `,
       params: [
@@ -863,14 +885,16 @@ export async function getOrCreateSessionForEventId(
         event.id,
         event.tracking_id_event,
         event.provider,
-        event.recurrence_series_id,
+        seriesIdForEvent(event),
         JSON.stringify(sessionEvent),
         event.id,
         event.tracking_id_event,
         event.tracking_id_event,
+        event.provider,
+        event.calendar_id,
       ],
     },
-    createEmptyNoteStatement(sessionId, userId, now, true),
+    createEmptyNoteStatement(sessionId, userId, now, true, initialRawMd),
   ];
 
   const seenEmails = new Set<string>();
@@ -1230,7 +1254,17 @@ async function findSessionForEvent(
       SELECT id
       FROM sessions
       WHERE deleted_at IS NULL
-        AND (event_id = ? OR (? <> '' AND external_event_id = ?))
+        AND (event_id = ? OR (
+          ? <> '' AND external_event_id = ?
+          AND COALESCE(NULLIF(external_provider, ''),
+            NULLIF(CASE WHEN json_valid(event_json)
+              THEN json_extract(event_json, '$.provider') END, ''),
+            (SELECT provider FROM calendars WHERE id =
+              CASE WHEN json_valid(event_json)
+                THEN json_extract(event_json, '$.calendar_id') END), '') = ?
+          AND CASE WHEN json_valid(event_json)
+            THEN json_extract(event_json, '$.calendar_id') END = ?
+        ))
       ORDER BY CASE WHEN id = ? THEN 0 ELSE 1 END, created_at, id
       LIMIT 1
     `,
@@ -1238,6 +1272,8 @@ async function findSessionForEvent(
       event.id,
       event.tracking_id_event,
       event.tracking_id_event,
+      event.provider,
+      event.calendar_id,
       preferredId ?? "",
     ],
   );
@@ -1279,10 +1315,13 @@ function parseEventParticipants(value: string | null): EventParticipant[] {
   }
 }
 
-function toSessionEvent(event: EventSqlRow): SessionEvent {
+function toSessionEvent(
+  event: EventSqlRow,
+): SessionEvent & { provider: string } {
   return {
     tracking_id: event.tracking_id_event,
     calendar_id: event.calendar_id,
+    provider: event.provider,
     title: event.title,
     started_at: event.started_at,
     ended_at: event.ended_at,

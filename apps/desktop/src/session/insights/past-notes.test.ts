@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { buildPastSessionNotes, type PastSessionNotesData } from "./past-notes";
 
+import { seriesIdForEvent } from "~/services/series/identity";
 describe("buildPastSessionNotes", () => {
   it("builds descending past notes from recurring and same-title sessions", () => {
     const data = makeData({
@@ -205,6 +206,42 @@ describe("buildPastSessionNotes", () => {
     expect(result.notes).toEqual([]);
     expect(result.missing).toEqual([]);
   });
+
+  it("keeps same-title recurring histories separate when calendars reuse a recurrence id", () => {
+    const identity = {
+      provider: "google",
+      calendar_id: "work",
+      recurrence_series_id: "shared-id",
+    };
+    const data = makeData({
+      sessions: {
+        current: {
+          title: "Weekly sync",
+          created_at: "2026-11-17T09:00:00Z",
+          series_id: seriesIdForEvent(identity),
+        },
+        work: {
+          title: "Weekly sync",
+          created_at: "2026-11-10T09:00:00Z",
+          series_id: seriesIdForEvent(identity),
+        },
+        home: {
+          title: "Weekly sync",
+          created_at: "2026-11-10T09:00:00Z",
+          series_id: seriesIdForEvent({ ...identity, calendar_id: "home" }),
+        },
+      },
+      enhanced_notes: {
+        work: { session_id: "work", content: "Work follow-up", position: 0 },
+        home: { session_id: "home", content: "Home follow-up", position: 0 },
+      },
+    });
+    expect(
+      buildPastSessionNotes(data, "current", "self").notes.map(
+        (note) => note.sessionId,
+      ),
+    ).toEqual(["work"]);
+  });
 });
 
 function makeData(
@@ -220,6 +257,7 @@ function makeData(
           title: String(row.title ?? ""),
           created_at: String(row.created_at ?? ""),
           event_json: String(row.event_json ?? ""),
+          series_id: String(row.series_id ?? ""),
         },
       ]),
     ),

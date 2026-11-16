@@ -19,6 +19,7 @@ export type TimelineEventRow = {
   started_at?: string | null;
   ended_at?: string | null;
   calendar_id?: string | null;
+  provider?: string | null;
   tracking_id_event?: string | null;
   has_recurrence_rules: boolean;
   recurrence_series_id?: string | null;

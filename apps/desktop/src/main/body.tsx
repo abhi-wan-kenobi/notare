@@ -37,7 +37,7 @@ import { ClassicMainSidebar } from "./shell-sidebar";
 import { ClassicMainTabContent } from "./tab-content";
 import {
   type DesktopUpdateControl,
-  SidebarTimelineUpdateButton,
+  DesktopUpdateBanner,
   useDesktopUpdateControl,
 } from "./update-banner";
 import { useClassicMainShortcuts } from "./useShortcuts";
@@ -679,16 +679,17 @@ export function ClassicMainBody() {
         <ResizablePanel
           id="classic-main-content"
           order={2}
-          className="min-h-0 flex-1 overflow-hidden"
+          className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
           style={{
             minWidth: reserveNoteSurfaceMinWidth
               ? NOTE_SURFACE_MIN_WIDTH_PX
               : undefined,
           }}
         >
+          {!isOnboarding && <DesktopUpdateBanner update={update} />}
           <div
             data-main-content-panel
-            className="h-full min-h-0 min-w-0 flex-1 overflow-auto"
+            className="min-h-0 min-w-0 flex-1 overflow-auto"
             onClickCapture={mainAreaTopDrag.onClickCapture}
             onPointerCancel={mainAreaTopDrag.onPointerEnd}
             onPointerDown={mainAreaTopDrag.onPointerDown}
@@ -987,7 +988,6 @@ function SidebarTimelineChrome({
   update: DesktopUpdateControl;
 }) {
   const updateVisible = Boolean(update.status && update.version);
-  const showUpdateButton = sidebarExpanded && updateVisible;
   const collapsedBadge = !sidebarExpanded
     ? hasUpcomingMeeting
       ? "upcomingMeeting"
@@ -1025,9 +1025,6 @@ function SidebarTimelineChrome({
               >
                 <WrenchIcon size={15} />
               </LeftSurfaceChromeButton>
-            ) : null}
-            {showUpdateButton ? (
-              <SidebarTimelineUpdateButton update={update} />
             ) : null}
           </>
         ) : null}
