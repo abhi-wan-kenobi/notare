@@ -161,7 +161,7 @@ export type SttModelType = "soniqo" | "whispercpp" | "argmax" | "parakeetOnnx" |
  */
 export type SttRecommendedUse = "live" | "final" | "liveAndFinal"
 export type VoxtralLlamaModel = "voxtral-mini-3b-2507-q4km"
-export type WhisperModel = "QuantizedTiny" | "QuantizedTinyEn" | "QuantizedBase" | "QuantizedBaseEn" | "QuantizedSmall" | "QuantizedSmallEn" | "QuantizedLargeTurbo"
+export type WhisperModel = "QuantizedTiny" | "QuantizedTinyEn" | "QuantizedBase" | "QuantizedBaseEn" | "QuantizedSmall" | "QuantizedSmallEn" | "QuantizedLargeTurbo" | "QuantizedLargeV3"
 
 /** tauri-specta globals **/
 
