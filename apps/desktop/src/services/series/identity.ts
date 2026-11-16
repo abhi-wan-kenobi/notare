@@ -18,5 +18,5 @@ export function seriesIdForEvent(event: RecurringEventIdentity): string {
 
 export const EVENT_SERIES_ID_SQL = `CASE
   WHEN calendar_id <> '' AND recurrence_series_id <> ''
-  THEN 'calendar-series:' || json_array(provider, calendar_id, recurrence_series_id)
+  THEN 'calendar-series:' || json_array(COALESCE(provider, ''), calendar_id, recurrence_series_id)
   ELSE '' END`;

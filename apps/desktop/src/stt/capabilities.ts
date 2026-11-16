@@ -193,8 +193,16 @@ export function expandHinglish(
     return languages;
   }
 
+  // `apps/stt-server` ("custom" provider) is Whisper under the hood too (see
+  // the diarization comment above), but its model names follow whisper.cpp's
+  // own ggml convention (`large-v3`, `base.en`, …), not our bundled
+  // `Quantized*` enum — check both the English-only suffix a Quantized model
+  // uses and the canonical `.en` suffix custom models use.
+  const isEnglishOnlyWhisper =
+    engine.model?.endsWith("En") || /\.en$/i.test(engine.model ?? "");
   const multilingualWhisper =
-    isWhisperLocalSttModel(engine.model) && !engine.model?.endsWith("En");
+    (isWhisperLocalSttModel(engine.model) || engine.provider === "custom") &&
+    !isEnglishOnlyWhisper;
   const replacement =
     isVoxtralLocalSttModel(engine.model) || multilingualWhisper
       ? ["hi", "en"]

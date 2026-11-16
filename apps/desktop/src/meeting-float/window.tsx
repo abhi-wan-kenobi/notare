@@ -85,6 +85,12 @@ function useFloatingBarState() {
         // Ask the main window to push the current state: this window loads
         // after recording starts, so the initial updates were already sent.
         void windowsEvents.floatingBarReady.emit({});
+      })
+      .catch((error) => {
+        console.error(
+          "[meeting-float] failed to listen for floating bar state",
+          error,
+        );
       });
 
     return () => {
@@ -150,7 +156,11 @@ export function FloatingBarContent({
           solid
             ? undefined
             : {
-                backgroundColor: `hsl(var(--popover) / ${state.opacity})`,
+                backgroundColor: `hsl(var(--popover) / ${
+                  Number.isFinite(state.opacity)
+                    ? Math.min(Math.max(state.opacity, 0), 1)
+                    : 1
+                })`,
               }
         }
       >
@@ -308,7 +318,7 @@ function FloatingBarCaptions({
   solid: boolean;
 }) {
   const { t } = useLingui();
-  const visibleBubbles = bubbles.slice(-VISIBLE_CAPTION_BUBBLES);
+  const visibleBubbles = (bubbles ?? []).slice(-VISIBLE_CAPTION_BUBBLES);
 
   return (
     <div

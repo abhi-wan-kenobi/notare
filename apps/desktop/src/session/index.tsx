@@ -237,7 +237,11 @@ function TabContentNoteInner({
     [sessionId],
   );
   const summaryView =
-    currentView.type === "transcript" ? RAW_VIEW : currentView;
+    currentView.type === "transcript"
+      ? enhancedNoteIds[0]
+        ? { type: "enhanced" as const, id: enhancedNoteIds[0] }
+        : RAW_VIEW
+      : currentView;
   const displayedView =
     detailTab === "transcript" ? TRANSCRIPT_VIEW : summaryView;
 

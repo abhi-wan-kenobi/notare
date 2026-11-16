@@ -242,7 +242,14 @@ mod platform {
             // destroy the ghost and recreate instead of failing until the app
             // restarts.
             match window.is_visible() {
-                Ok(_) => return Ok(window),
+                Ok(_) => {
+                    // The monitor layout can change between hide() and the
+                    // next show(): recompute the top-center position on every
+                    // reuse, not just on first creation, or the bar can come
+                    // back off-screen with no error.
+                    position_top_center(app, &window);
+                    return Ok(window);
+                }
                 Err(error) => {
                     tracing::warn!(
                         %error,
@@ -554,7 +561,9 @@ mod platform {
             _ => true,
         };
         if needs_resize {
-            let _ = window.set_size(tauri::LogicalSize::new(width, height));
+            if let Err(error) = window.set_size(tauri::LogicalSize::new(width, height)) {
+                tracing::warn!(%error, label = WINDOW_LABEL, "failed to resize floating bar");
+            }
         }
 
         crate::events::FloatingBarStateEvent { state }

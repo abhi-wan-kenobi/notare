@@ -160,6 +160,12 @@ function HomeView() {
   const sessionIdByEventId = useMemo(() => {
     const byEventId = new Map<string, string>();
     const byTrackingId = new Map<string, string>();
+    // Scoped by calendar to avoid merging two calendars' identical provider
+    // recurrence ids. Sessions whose stored `event_json` predates that (no
+    // `calendar_id` key) can't build the scoped key; without this fallback
+    // they'd lose their "Open notes" link entirely and "Prepare" would spawn
+    // a duplicate session for an event that already has one.
+    const byLegacyTrackingId = new Map<string, string>();
     for (const link of sessionLinks) {
       if (link.event_id) byEventId.set(link.event_id, link.session_id);
       if (link.external_event_id && link.calendar_id) {
@@ -171,9 +177,11 @@ function HomeView() {
           ]),
           link.session_id,
         );
+      } else if (link.external_event_id) {
+        byLegacyTrackingId.set(link.external_event_id, link.session_id);
       }
     }
-    return { byEventId, byTrackingId };
+    return { byEventId, byTrackingId, byLegacyTrackingId };
   }, [sessionLinks]);
 
   const weekStartsOn = useWeekStartsOn();
@@ -214,13 +222,16 @@ function HomeView() {
           sessionId:
             sessionIdByEventId.byEventId.get(id) ??
             (event.tracking_id_event
-              ? sessionIdByEventId.byTrackingId.get(
+              ? (sessionIdByEventId.byTrackingId.get(
                   JSON.stringify([
                     event.provider ?? "",
                     event.calendar_id,
                     event.tracking_id_event,
                   ]),
-                )
+                ) ??
+                sessionIdByEventId.byLegacyTrackingId.get(
+                  event.tracking_id_event,
+                ))
               : undefined),
           attendees: attendeesByEventId[id] ?? [],
           cadence: getRecurrenceCadence(eventsTable, seriesIdForEvent(event)),

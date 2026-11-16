@@ -342,15 +342,22 @@ function SyncSettingsContent({
 
       <SyncStatusLine status={status} />
 
-      {incomingLink && !syncEnabled && (
+      {incomingLink && !canSync && (
         <p
           role="alert"
           className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300"
         >
-          <Trans>
-            A pairing link was opened, but sync is off. Turn it on above to join
-            with it.
-          </Trans>
+          {syncEnabled ? (
+            <Trans>
+              A pairing link was opened, but sync is still starting up. It will
+              be used once sync finishes loading.
+            </Trans>
+          ) : (
+            <Trans>
+              A pairing link was opened, but sync is off. Turn it on above to
+              join with it.
+            </Trans>
+          )}
         </p>
       )}
 
@@ -736,6 +743,7 @@ function AddDeviceForm({
         onSubmit={(e) => {
           e.preventDefault();
           e.stopPropagation();
+          if (disabled) return;
           void form.handleSubmit();
         }}
       >
@@ -892,9 +900,21 @@ function PairDeviceSection({
     return () => clearTimeout(copyResetRef.current);
   }, []);
 
+  const offerRequestIdRef = useRef(0);
   const createOffer = useMutation({
     mutationFn: pairingCreateOffer,
-    onSuccess: (result) => {
+    onMutate: () => {
+      offerRequestIdRef.current += 1;
+      return { requestId: offerRequestIdRef.current };
+    },
+    onSuccess: (result, _variables, context) => {
+      // A rapid close/reopen (or a manual retry while an earlier request is
+      // still in flight) can leave two createOffer calls racing; only apply
+      // the response for the most recently started request, so a slow
+      // earlier response can't overwrite a newer, correct offer.
+      if (context?.requestId !== offerRequestIdRef.current) {
+        return;
+      }
       setNow(Date.now());
       setCopied(false);
       setOffer(result);
@@ -1187,6 +1207,7 @@ function JoinWithLinkSection({
         className="flex w-full min-w-0 flex-col gap-2"
         onSubmit={(e) => {
           e.preventDefault();
+          if (disabled) return;
           if (link.trim().length > 0) {
             joinMutation.mutate(link.trim());
           }

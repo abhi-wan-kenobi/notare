@@ -466,13 +466,13 @@ export async function prepareSeriesOccurrence(
   // references each original action id, so completion never forks across notes.
   const items = await liveQueryClient.execute<SeriesCarryOver>(
     SERIES_OPEN_ITEMS_SQL +
-      (event
+      (event?.started_at
         ? `
       AND COALESCE(NULLIF(session.started_at, ''), session.created_at) < ?
     `
         : "") +
       " ORDER BY item.created_at, item.id",
-    event ? [seriesId, event.started_at] : [seriesId],
+    event?.started_at ? [seriesId, event.started_at] : [seriesId],
   );
   const carriedBlockLines = ["> ## From last time"];
   if (previous?.enhanced_note) {
