@@ -437,14 +437,14 @@ const EventItem = memo(
       const menu: MenuItemDef[] = [
         {
           id: "ignore",
-          text: recurrenceSeriesId ? t`Delete This Event` : t`Delete Event`,
+          text: recurrenceSeriesId ? t`Hide this event` : t`Hide event`,
           action: handleIgnore,
         },
       ];
       if (recurrenceSeriesId) {
         menu.push({
           id: "ignore-series",
-          text: t`Delete All Recurring Events`,
+          text: t`Hide all recurring events`,
           action: handleIgnoreSeries,
         });
       }

@@ -190,6 +190,17 @@ describe("SettingsSync", () => {
     expect(mocks.syncListPeers).not.toHaveBeenCalled();
   });
 
+  it("shows a failed status read inline instead of throwing out of the section", async () => {
+    mocks.syncStatus.mockRejectedValue(new Error("sync agent unreachable"));
+
+    renderPage();
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("sync agent unreachable");
+    expect(screen.getByText("Devices")).toBeTruthy();
+    expect(screen.queryByLabelText("Loading sync status")).toBeNull();
+  });
+
   it("shows the engine load error and keeps the switch disabled when the engine is not loaded", async () => {
     mocks.syncEnabled = false;
     mocks.syncStatus.mockResolvedValue({

@@ -90,6 +90,33 @@ describe("TabContentActionItems", () => {
     expect(screen.getByText("No action items.")).toBeDefined();
   });
 
+  it("owns vertical scrolling so a long list is reachable instead of clipped", () => {
+    mocks.items = Array.from({ length: 60 }, (_, i) => ({
+      id: `ai-${i}`,
+      text: `Action ${i}`,
+      status: "todo",
+      due_at: "",
+      assignee_human_id: "",
+      owner_name: "",
+      session_id: `sess-${i}`,
+      session_title: `Meeting ${i}`,
+      session_date: "2026-11-04T10:00:00Z",
+      series_id: "",
+    }));
+
+    const { container } = render(<TabContentActionItems />);
+
+    const scrollers = Array.from(
+      container.querySelectorAll<HTMLElement>("div"),
+    ).filter((el) => el.className.includes("overflow-y-auto"));
+    expect(scrollers).toHaveLength(1);
+    const scroller = scrollers[0]!;
+    expect(scroller.className).toContain("h-full");
+    expect(scroller.parentElement?.className).toContain("h-full");
+    expect(scroller.contains(screen.getByText("Action 0"))).toBe(true);
+    expect(scroller.contains(screen.getByText("Action 59"))).toBe(true);
+  });
+
   it("renders action items grouped by meeting with metadata and badges", () => {
     mocks.openCount = 2;
     mocks.items = [

@@ -167,6 +167,44 @@ describe("FloatingBarWindow", () => {
     expect(screen.queryByLabelText("Show captions")).toBeNull();
   });
 
+  // Live transcription can degrade to record-only mid-meeting: the toggle goes
+  // away, so expanded captions must collapse rather than strand stale bubbles.
+  it("collapses expanded captions while the toggle is unavailable, keeping the preference", async () => {
+    render(<FloatingBarWindow />);
+    await act(async () => {});
+
+    const expanded = makeState({
+      liveCaptionMinimized: false,
+      transcriptBubbles: [
+        {
+          id: "b1",
+          speakerLabel: "You",
+          text: "hello there",
+          isSelf: true,
+          isFinal: true,
+          startMs: 0,
+          endMs: 900,
+          overlapsPrevious: false,
+          overlapsNext: false,
+        },
+      ],
+    });
+    await pushState(expanded);
+    expect(screen.getByTestId("floating-bar-captions")).toBeTruthy();
+
+    await pushState({ ...expanded, liveCaptionToggleVisible: false });
+
+    expect(screen.queryByTestId("floating-bar-captions")).toBeNull();
+    expect(screen.queryByText("hello there")).toBeNull();
+    expect(screen.queryByLabelText("Hide captions")).toBeNull();
+    expect(mocks.emitSettingsChange).not.toHaveBeenCalled();
+
+    // The stored preference was never changed, so captions come back expanded.
+    await pushState(expanded);
+    expect(screen.getByTestId("floating-bar-captions")).toBeTruthy();
+    expect(screen.getByLabelText("Hide captions")).toBeTruthy();
+  });
+
   it("renders the shared listening waveform while recording", async () => {
     render(<FloatingBarWindow />);
     await act(async () => {});
@@ -306,5 +344,29 @@ describe("FloatingBarContent recording meter", () => {
 
     rerender(<FloatingBarContent state={makeState({ wordCount: 128 })} />);
     expect(screen.getByTestId("recording-word-count").textContent).toBe("128");
+  });
+
+  it("announces the time and word count as one label, hiding the visual digits", () => {
+    const { rerender } = render(
+      <FloatingBarContent
+        state={makeState({ elapsedSeconds: 75, wordCount: 128 })}
+      />,
+    );
+
+    const meter = screen.getByRole("timer", {
+      name: "Recording time 01:15, word count 128",
+    });
+    for (const child of Array.from(meter.children)) {
+      expect(child.getAttribute("aria-hidden")).toBe("true");
+    }
+
+    rerender(
+      <FloatingBarContent
+        state={makeState({ elapsedSeconds: 75, wordCount: 0 })}
+      />,
+    );
+    expect(
+      screen.getByRole("timer", { name: "Recording time 01:15" }),
+    ).toBeTruthy();
   });
 });

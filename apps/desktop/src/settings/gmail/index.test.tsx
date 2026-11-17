@@ -36,6 +36,20 @@ describe("SettingsGmail", () => {
     vi.clearAllMocks();
   });
 
+  it("shows a status error instead of spinning forever", async () => {
+    calendarCommands.gmailStatus.mockResolvedValue({
+      status: "error",
+      error: "keychain is locked",
+    });
+
+    renderWithClient(<SettingsGmail />);
+
+    await waitFor(() => {
+      expect(screen.getByText("keychain is locked")).toBeDefined();
+    });
+    expect(screen.queryByLabelText("Loading Gmail settings")).toBeNull();
+  });
+
   it("shows unconfigured client banner when has_client is false", async () => {
     calendarCommands.gmailStatus.mockResolvedValue({
       status: "ok",

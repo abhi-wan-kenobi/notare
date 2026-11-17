@@ -5,6 +5,7 @@ import {
   PredefinedMenuItem,
   Submenu,
 } from "@tauri-apps/api/menu";
+import { ask } from "@tauri-apps/plugin-dialog";
 import {
   AlignLeftIcon,
   AudioLinesIcon,
@@ -16,7 +17,7 @@ import {
   SparklesIcon,
   XIcon,
 } from "lucide-react";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { json2md, parseJsonContent } from "@hypr/editor/markdown";
 import { DancingSticks } from "@hypr/ui/components/ui/dancing-sticks";
@@ -556,8 +557,7 @@ function HeaderViewEnhancedActive({
       type="button"
       aria-label={viewTitle}
       aria-current="page"
-      aria-disabled={isGenerating}
-      tabIndex={isGenerating ? -1 : 0}
+      disabled={isGenerating}
       onClick={(event) => event.stopPropagation()}
       onPointerDown={(event) => event.stopPropagation()}
       onContextMenu={showContextMenu}
@@ -592,6 +592,7 @@ function HeaderViewEnhancedActive({
 
   return (
     <TemplatePickerPopover
+      disabled={isGenerating}
       onSelectTemplate={handleSelectTemplate}
       trigger={templateMenuTrigger}
     />
@@ -792,9 +793,27 @@ function HeaderViewTranscriptActive({
       sonnerToast.error("Failed to copy transcript");
     }
   }, [transcriptExportRequest]);
-  const handleDeleteRecording = useCallback(() => {
-    void deleteRecording();
-  }, [deleteRecording]);
+  const handleDeleteRecording = useCallback(async () => {
+    try {
+      const confirmed = await ask(
+        t`Delete this recording? The audio file will be permanently deleted. This can't be undone.`,
+        {
+          title: t`Delete recording`,
+          kind: "warning",
+          okLabel: t`Delete`,
+          cancelLabel: t`Cancel`,
+        },
+      );
+      if (!confirmed) {
+        return;
+      }
+
+      await deleteRecording();
+    } catch (error) {
+      console.error("Failed to delete recording", error);
+      sonnerToast.error(t`Failed to delete recording`);
+    }
+  }, [deleteRecording, t]);
   const handleCopyLiveTranscript = useCallback(
     async (kind: LiveTranscriptCopyKind) => {
       const result = await copyLiveTranscript(kind);
@@ -855,7 +874,9 @@ function HeaderViewTranscriptActive({
       items.push({
         id: `delete-recording-${sessionId}`,
         text: "Delete recording",
-        action: handleDeleteRecording,
+        action: () => {
+          void handleDeleteRecording();
+        },
         disabled: isDeletingRecording,
       });
     }
@@ -973,9 +994,11 @@ function useOpenTemplatesTab() {
 }
 
 function TemplatePickerPopover({
+  disabled = false,
   onSelectTemplate,
   trigger,
 }: {
+  disabled?: boolean;
   onSelectTemplate: (selection: TemplateSelection) => void;
   trigger: React.ReactNode;
 }) {
@@ -1009,16 +1032,37 @@ function TemplatePickerPopover({
     [onSelectTemplate],
   );
 
-  const handleOpenChange = useCallback((nextOpen: boolean) => {
-    setOpen(nextOpen);
-    if (!nextOpen) {
+  const handleOpenChange = useCallback(
+    (nextOpen: boolean) => {
+      if (nextOpen && disabled) {
+        return;
+      }
+
+      setOpen(nextOpen);
+      if (!nextOpen) {
+        setSearch("");
+        resultRefs.current = [];
+      }
+    },
+    [disabled],
+  );
+
+  // Generation can start while the picker is already open; close it so a
+  // template can't be picked (or created) that would then not be applied.
+  useEffect(() => {
+    if (disabled) {
+      setOpen(false);
       setSearch("");
       resultRefs.current = [];
     }
-  }, []);
+  }, [disabled]);
 
   const handleWebTemplateClick = useCallback(
     async (template: WebTemplate) => {
+      if (disabled) {
+        return;
+      }
+
       const templateId = await createTemplate({
         title: template.title,
         description: template.description,
@@ -1036,7 +1080,7 @@ function TemplatePickerPopover({
         title: template.title || "Untitled",
       });
     },
-    [createTemplate, handleUseTemplate],
+    [createTemplate, disabled, handleUseTemplate],
   );
 
   const handleCreateTemplate = useCallback(
@@ -1314,7 +1358,7 @@ function TemplatePickerPopover({
   let resultIndex = 0;
 
   return (
-    <Popover open={open} onOpenChange={handleOpenChange}>
+    <Popover open={open && !disabled} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>{trigger}</PopoverTrigger>
       <PopoverContent variant="app" className="w-80" align="start">
         <div className="flex flex-col gap-1">

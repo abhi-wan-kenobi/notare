@@ -154,19 +154,13 @@ export function useSetAiProvider(type: AiProviderType, providerId: string) {
   const queryClient = useQueryClient();
 
   return useCallback(
-    (changes: Partial<Pick<AiProviderConfig, "base_url" | "api_key">>) => {
-      void setAiProvider(type, providerId, changes)
-        .then(() =>
-          queryClient.invalidateQueries({
-            queryKey: ["ai-provider-api-keys", type],
-          }),
-        )
-        .catch((error) => {
-          console.error(
-            `[settings] failed to update provider ${type}:${providerId}`,
-            error,
-          );
-        });
+    async (
+      changes: Partial<Pick<AiProviderConfig, "base_url" | "api_key">>,
+    ): Promise<void> => {
+      await setAiProvider(type, providerId, changes);
+      await queryClient.invalidateQueries({
+        queryKey: ["ai-provider-api-keys", type],
+      });
     },
     [providerId, queryClient, type],
   );

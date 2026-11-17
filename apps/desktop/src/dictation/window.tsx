@@ -61,14 +61,19 @@ export function DictationOrbWindow({ solid = false }: { solid?: boolean }) {
   }, [solid]);
 
   const dictating = state.phase === "listening" || state.phase === "processing";
+  // After stop the session is only finishing (flush, clean-up, paste): a
+  // second stop is a no-op, so the orb reports progress instead of offering it.
+  const processing = state.phase === "processing";
   const batchMode = state.mode === "batch";
-  const label = dictating
-    ? batchMode
-      ? dictation_paste_at_cursor
-        ? t`Stop dictation and paste the transcript`
-        : t`Stop dictation and copy the transcript`
-      : t`Stop dictation`
-    : t`Start dictation`;
+  const label = processing
+    ? t`Finishing dictation`
+    : dictating
+      ? batchMode
+        ? dictation_paste_at_cursor
+          ? t`Stop dictation and paste the transcript`
+          : t`Stop dictation and copy the transcript`
+        : t`Stop dictation`
+      : t`Start dictation`;
 
   const handlePointerDown = (event: React.PointerEvent) => {
     if (event.button !== 0) {
@@ -107,6 +112,9 @@ export function DictationOrbWindow({ solid = false }: { solid?: boolean }) {
       draggedRef.current = false;
       return;
     }
+    if (processing) {
+      return;
+    }
     void dictationEvents.dictationOrbClicked.emit({});
   };
 
@@ -134,7 +142,9 @@ export function DictationOrbWindow({ solid = false }: { solid?: boolean }) {
         type="button"
         aria-label={label}
         title={label}
-        aria-pressed={dictating}
+        aria-pressed={state.phase === "listening"}
+        aria-busy={processing}
+        aria-disabled={processing}
         data-dictation-mode={state.mode}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
@@ -143,7 +153,8 @@ export function DictationOrbWindow({ solid = false }: { solid?: boolean }) {
         onClick={handleClick}
         onContextMenu={handleContextMenu}
         className={cn([
-          "bg-popover text-popover-foreground border-border relative flex cursor-pointer items-center justify-center rounded-full border p-0.5 shadow-sm",
+          "bg-popover text-popover-foreground border-border relative flex items-center justify-center rounded-full border p-0.5 shadow-sm",
+          processing ? "cursor-progress" : "cursor-pointer",
           "[--accent-glow:var(--primary)] dark:[--accent-glow:inherit]",
           "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-hidden",
         ])}

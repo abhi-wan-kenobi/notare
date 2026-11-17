@@ -127,7 +127,14 @@ export function SettingsSync() {
   });
 
   if (error) {
-    throw error;
+    return (
+      <div className="flex flex-col gap-6">
+        <SettingsPageTitle title={<Trans>Devices</Trans>} />
+        <p role="alert" className="text-xs break-all text-red-500">
+          {t`Couldn't load sync status: ${errorMessage(error)}`}
+        </p>
+      </div>
+    );
   }
 
   if (isLoading || !data) {

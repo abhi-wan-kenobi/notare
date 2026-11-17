@@ -65,6 +65,14 @@ export function SettingsGmail() {
     onError: (err: Error) => setActionError(err.message),
   });
 
+  if (error) {
+    return (
+      <div className="flex flex-col gap-2 p-4 text-red-600">
+        <p>{(error as Error).message}</p>
+      </div>
+    );
+  }
+
   if (isLoading || !status) {
     return (
       <div className="flex min-h-48 items-center justify-center">
@@ -72,14 +80,6 @@ export function SettingsGmail() {
           aria-label={t`Loading Gmail settings`}
           className="text-muted-foreground size-5 animate-spin"
         />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex flex-col gap-2 p-4 text-red-600">
-        <p>{(error as Error).message}</p>
       </div>
     );
   }

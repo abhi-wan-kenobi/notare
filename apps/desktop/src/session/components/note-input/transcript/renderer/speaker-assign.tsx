@@ -10,6 +10,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@hypr/ui/components/ui/popover";
+import { sonnerToast } from "@hypr/ui/components/ui/toast";
 import { cn } from "@hypr/utils";
 
 import { useSessionEventParticipants } from "~/calendar/queries";
@@ -47,25 +48,20 @@ export function SpeakerAssignPopover({
   }, []);
 
   const handleAssign = useCallback(
-    (humanId: string, assignmentMode: AssignmentMode) => {
+    async (humanId: string, assignmentMode: AssignmentMode) => {
       if (segment.words.length === 0) return;
       const anchorWordId = getAssignmentAnchorWordId(segment);
       if (!anchorWordId) return;
-      void assignTranscriptSpeaker({
+      await assignTranscriptSpeaker({
         transcriptId,
         segmentKey: segment.key,
         humanId,
         anchorWordId,
         mode: assignmentMode,
         wordIds: getAssignmentWordIds(segment),
-      })
-        .then(() => {
-          onAssigned?.(humanId);
-          handleOpenChange(false);
-        })
-        .catch((error) => {
-          console.error("[transcript] failed to assign speaker", error);
-        });
+      });
+      onAssigned?.(humanId);
+      handleOpenChange(false);
     },
     [handleOpenChange, onAssigned, transcriptId, segment],
   );
@@ -277,7 +273,7 @@ function ParticipantList({
   onSelect,
 }: {
   sessionId: string | undefined;
-  onSelect: (humanId: string, mode: AssignmentMode) => void;
+  onSelect: (humanId: string, mode: AssignmentMode) => Promise<void>;
 }) {
   const { t } = useLingui();
   const session = useSession(sessionId ?? "");
@@ -422,10 +418,11 @@ function ParticipantList({
       .then(async (humanId) => {
         if (!humanId) return;
         await linkHumanToSession(humanId);
-        onSelect(humanId, applyToAllMatching ? "all" : "segment");
+        await onSelect(humanId, applyToAllMatching ? "all" : "segment");
       })
       .catch((error) => {
-        console.error("[transcript] failed to prepare speaker", error);
+        console.error("[transcript] failed to assign speaker", error);
+        sonnerToast.error(t`Failed to assign speaker`);
       })
       .finally(() => setAssigning(false));
   }, [
@@ -434,6 +431,7 @@ function ParticipantList({
     linkHumanToSession,
     onSelect,
     selectedOption,
+    t,
   ]);
 
   return (

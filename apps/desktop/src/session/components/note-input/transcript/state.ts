@@ -36,7 +36,10 @@ export type TranscriptScreen =
       liveSegments: Segment[];
       currentActive: boolean;
       isFinalizing: boolean;
+      error: string | null;
     };
+
+const NO_LIVE_SEGMENTS: Segment[] = [];
 
 export function useTranscriptScreen({
   sessionId,
@@ -44,9 +47,10 @@ export function useTranscriptScreen({
   sessionId: string;
 }): TranscriptScreen {
   const sessionMode = useListener((state) => state.getSessionMode(sessionId));
-  const batchError = useListener(
-    (state) => state.batch[sessionId]?.error ?? null,
-  );
+  const batchError = useListener((state) => {
+    const batch = state.batch[sessionId];
+    return batch?.terminalReason === "stopped" ? null : (batch?.error ?? null);
+  });
   const batchProgress = useListener((state) => state.batch[sessionId] ?? null);
   const live = useListener((state) => state.live);
   const { audioExists } = useAudioPlayer();
@@ -59,7 +63,7 @@ export function useTranscriptScreen({
   const captureMode = getLiveCaptureUiMode(live);
   const isRecordOnlyMode = sessionMode === "active" && captureMode !== "live";
   const hasVisibleTranscriptState =
-    hasTranscriptWords || liveSegments.length > 0 || !!batchError;
+    hasTranscriptWords || liveSegments.length > 0;
 
   if (sessionMode === "running_batch") {
     return {
@@ -98,12 +102,15 @@ export function useTranscriptScreen({
     liveSegments,
     currentActive,
     isFinalizing: sessionMode === "finalizing",
+    error: batchError,
   };
 }
 
 function useTranscriptContent(sessionId: string) {
   const transcripts = useSessionTranscripts(sessionId);
-  const liveSegments = useListener((state) => state.liveSegments);
+  const liveSegments = useListener((state) =>
+    state.live.sessionId === sessionId ? state.liveSegments : NO_LIVE_SEGMENTS,
+  );
 
   return {
     transcriptIds: transcripts.map((transcript) => transcript.id),

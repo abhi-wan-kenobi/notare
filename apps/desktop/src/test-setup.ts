@@ -11,6 +11,19 @@ HTMLCanvasElement.prototype.getContext = vi.fn(
   () => null,
 ) as unknown as HTMLCanvasElement["getContext"];
 
+// jsdom has no matchMedia; default to "no query matches" (light OS theme).
+// Tests that care stub it with `vi.stubGlobal("matchMedia", …)`.
+globalThis.window.matchMedia ??= ((query: string) => ({
+  matches: false,
+  media: query,
+  onchange: null,
+  addEventListener: () => {},
+  removeEventListener: () => {},
+  addListener: () => {},
+  removeListener: () => {},
+  dispatchEvent: () => false,
+})) as typeof window.matchMedia;
+
 // jsdom's `PointerEvent` extends `Event` (not `MouseEvent`), so it silently
 // drops the coordinate/button fields (`clientX`, `clientY`, `button`, …) from
 // its init dict. Pointer-driven UI - e.g. the main-area window-drag strip in

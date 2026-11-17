@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import { md2json } from "@hypr/editor/markdown";
+import { json2md, md2json } from "@hypr/editor/markdown";
 
 import { EVENT_SERIES_ID_SQL, seriesIdForEvent } from "./identity";
 
@@ -29,8 +29,15 @@ export type SeriesOccurrenceSqlRow = {
   ended_at: string | null;
   created_at: string;
   event_json: string | null;
-  enhanced_note: string | null;
+  enhanced_notes_json: string | null;
   open_item_count: number | null;
+};
+
+type EnhancedDocumentJson = {
+  id: string;
+  body: string;
+  body_format: string;
+  sort_order: number;
 };
 
 export type SeriesCarryOver = {
@@ -80,12 +87,17 @@ export const SERIES_SQL = `
     s.created_at,
     COALESCE(s.event_json, '') AS event_json,
     COALESCE((
-      SELECT group_concat(document.body, char(10))
+      SELECT json_group_array(json_object(
+        'id', document.id,
+        'body', document.body,
+        'body_format', document.body_format,
+        'sort_order', document.sort_order
+      ))
       FROM session_documents AS document
       WHERE document.session_id = s.id
-        AND document.kind = 'enhanced'
+        AND document.kind IN ('summary', 'template_output', 'enhanced_note')
         AND document.deleted_at IS NULL
-    ), '') AS enhanced_note,
+    ), '[]') AS enhanced_notes_json,
     (SELECT COUNT(*) FROM action_items AS item
       WHERE item.session_id = s.id AND item.status <> 'done' AND item.deleted_at IS NULL
     ) AS open_item_count
@@ -116,13 +128,42 @@ export function computeDurationMinutes(
   return Math.round((end - start) / 60000);
 }
 
+// Summaries are stored as ProseMirror JSON (legacy imports as markdown), while
+// the TL;DR, topic and decision parsers read markdown. Mirrors `bodyToMarkdown`
+// in `session/content-queries.ts`.
+function enhancedNotesToMarkdown(json?: string | null): string {
+  let documents: EnhancedDocumentJson[];
+  try {
+    const parsed: unknown = JSON.parse(json || "[]");
+    documents = Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return "";
+  }
+  return documents
+    .sort(
+      (left, right) =>
+        Number(left.sort_order) - Number(right.sort_order) ||
+        left.id.localeCompare(right.id),
+    )
+    .map(({ body, body_format }) => {
+      if (!body || body_format === "markdown") return body;
+      try {
+        return json2md(JSON.parse(body));
+      } catch {
+        return body;
+      }
+    })
+    .filter(Boolean)
+    .join("\n");
+}
+
 export function mapOccurrenceRow(
   row: SeriesOccurrenceSqlRow,
 ): SeriesOccurrence {
   const startedAt = row.started_at ?? "";
   const endedAt = row.ended_at ?? "";
   const createdAt = row.created_at ?? "";
-  const enhancedNote = row.enhanced_note ?? "";
+  const enhancedNote = enhancedNotesToMarkdown(row.enhanced_notes_json);
   return {
     id: row.id,
     title: row.title ?? "",
@@ -184,9 +225,11 @@ export function useSeriesCarryOver(seriesId: string, beforeSessionId?: string) {
   });
 }
 
+// Generated summaries use h1 section headings only (see the enhance prompt),
+// so every heading level counts as a topic.
 export function extractTopics(note?: string | null): string[] {
   if (!note) return [];
-  return [...note.matchAll(/^##+\s+(.+)$/gm)].map((match) => match[1].trim());
+  return [...note.matchAll(/^#+\s+(.+)$/gm)].map((match) => match[1].trim());
 }
 
 export function parseDecisionsFromNote(

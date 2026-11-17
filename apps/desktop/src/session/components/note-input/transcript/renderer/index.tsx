@@ -25,6 +25,14 @@ import type { Segment } from "~/stt/live-segment";
 
 const LIVE_TRANSCRIPT_PLACEHOLDER_ID = "__live-transcript__";
 
+function isInteractiveTarget(target: EventTarget | null) {
+  return (
+    target instanceof Element &&
+    target.closest("button, a, input, textarea, select, [contenteditable]") !==
+      null
+  );
+}
+
 export function TranscriptViewer({
   transcriptIds,
   liveSegments,
@@ -73,6 +81,9 @@ export function TranscriptViewer({
   useHotkeys(
     "space",
     (e) => {
+      if (!audioExists || isInteractiveTarget(e.target)) {
+        return;
+      }
       e.preventDefault();
       if (playerState === "playing") {
         pause();

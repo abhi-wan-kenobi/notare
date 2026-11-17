@@ -442,4 +442,40 @@ describe("TabContentMeetings", () => {
     expect(screen.queryByText("Today")).toBeNull();
     expect(screen.getByText("Yesterday")).toBeDefined();
   });
+
+  it("labels prior-year month groups with the year and hides an inverted duration", () => {
+    mocks.now = new Date("2026-11-17T12:00:00.000Z");
+    const base = {
+      event_json: "",
+      series_id: "",
+      transcript_count: 1,
+      action_count: 0,
+      attendee_count: 0,
+      attendees: "",
+    };
+    mocks.meetings = [
+      {
+        ...base,
+        id: "sess-this-year",
+        title: "This Year March",
+        created_at: "2026-03-10T12:00:00.000Z",
+        started_at: "2026-03-10T12:00:00.000Z",
+        ended_at: "2026-03-10T12:30:00.000Z",
+      },
+      {
+        ...base,
+        id: "sess-skewed",
+        title: "Skewed Clock",
+        created_at: "2024-03-15T12:00:00.000Z",
+        started_at: "2024-03-15T12:00:00.000Z",
+        ended_at: "2024-03-15T11:00:00.000Z",
+      },
+    ];
+
+    render(<TabContentMeetings />);
+
+    expect(screen.getByRole("heading", { name: "March" })).toBeDefined();
+    expect(screen.getByRole("heading", { name: "March 2024" })).toBeDefined();
+    expect(screen.getAllByText(/\d+ min/)).toHaveLength(1);
+  });
 });

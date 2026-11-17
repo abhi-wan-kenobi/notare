@@ -1,3 +1,5 @@
+import { format } from "date-fns";
+
 import { useLiveQuery } from "~/db";
 import { useOwnerUserId } from "~/shared/owner-user";
 
@@ -75,7 +77,8 @@ export function useAllActionItems(
       ORDER BY s.started_at DESC, s.created_at DESC, ai.source_order, ai.created_at
     `;
 
-  const todayStr = new Date().toISOString().slice(0, 10);
+  // Local calendar day, matching the row's overdue styling in index.tsx.
+  const todayStr = format(new Date(), "yyyy-MM-dd");
   const params = [filter, filter, filter, effectiveUserId, filter, todayStr];
 
   const { data = EMPTY, isLoading } = useLiveQuery<

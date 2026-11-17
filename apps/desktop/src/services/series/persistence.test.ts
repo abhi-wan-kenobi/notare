@@ -44,13 +44,17 @@ vi.mock("@hypr/plugin-analytics", () => ({
 }));
 vi.mock("@hypr/plugin-fs-sync", () => ({ commands: {} }));
 
-import { json2md } from "@hypr/editor/markdown";
+import { json2md, md2json } from "@hypr/editor/markdown";
 import { extractTasksFromContent } from "@hypr/editor/tasks";
 
 import { seriesIdForEvent } from "./identity";
 import {
+  extractTopics,
+  mapOccurrenceRow,
+  parseDecisionsFromNote,
   prepareSeriesOccurrence,
   SERIES_SQL,
+  type SeriesOccurrenceSqlRow,
   useSeriesCarryOver,
 } from "./index";
 
@@ -187,6 +191,45 @@ describe("recurring meeting persistence", () => {
     expect(queryAll(state.db, "SELECT id, status FROM action_items")).toEqual([
       { id: "canonical-task", status: "done" },
     ]);
+  });
+
+  it("reads the generated summary for TL;DR, topics, decisions and the next note's recap", async () => {
+    const previousId = await seedPrevious();
+    // The row services/enhancer/storage.ts writes once a summary is generated.
+    state.db
+      .prepare(
+        `INSERT INTO session_documents (
+          id, session_id, kind, title, body_format, body, sort_order
+        ) VALUES ('summary-1', ?, 'summary', 'Summary', 'prosemirror_json', ?, 1)`,
+      )
+      .run(
+        previousId,
+        JSON.stringify(
+          md2json(
+            '# Launch plan\n\n- Ship on Tuesday\n\n# Risks\n\n- Vendor delay\n\n```decisions\n[{"text":"Ship on Tuesday","owner":"Alice"}]\n```',
+          ),
+        ),
+      );
+
+    const [occurrence] = queryAll<SeriesOccurrenceSqlRow>(
+      state.db,
+      SERIES_SQL,
+      [seriesId],
+    ).map(mapOccurrenceRow);
+
+    expect(occurrence.tldr).toBe("Launch plan");
+    expect(extractTopics(occurrence.enhanced_note)).toEqual([
+      "Launch plan",
+      "Risks",
+    ]);
+    expect(parseDecisionsFromNote(occurrence.enhanced_note)).toEqual([
+      { text: "Ship on Tuesday", owner: "Alice" },
+    ]);
+
+    const next = await prepareSeriesOccurrence(seriesId, "work-next");
+    expect(json2md(JSON.parse(body(next)))).toContain(
+      "Last meeting: Launch plan",
+    );
   });
 
   it("backfills linked/embedded events but preserves unlinked manual history and completed tasks", () => {

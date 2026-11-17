@@ -112,7 +112,11 @@ export function FloatingBarContent({
   const { t } = useLingui();
 
   const isError = state.status === "error";
-  const captionsVisible = !state.liveCaptionMinimized;
+  // Without the toggle (live transcription unavailable, e.g. record-only
+  // fallback) the captions could never be hidden again, so treat them as
+  // minimised. The stored preference is left untouched.
+  const captionsVisible =
+    state.liveCaptionToggleVisible && !state.liveCaptionMinimized;
 
   // Map the floating bar status to DictationPhase:
   // - "error" status maps to "error" phase.
@@ -237,18 +241,27 @@ function RecordingMeter({
 }) {
   const { t } = useLingui();
   const elapsed = formatWeightedElapsed(elapsedSeconds);
+  const time = `${elapsed.dim}${elapsed.bold}`;
 
   return (
     <span
       data-testid="recording-meter"
       data-tauri-drag-region
+      role="timer"
+      // One spoken label carrying the digits; the visual text below is hidden
+      // from assistive tech so it is not read twice.
+      aria-label={
+        wordCount > 0
+          ? t`Recording time ${time}, word count ${wordCount}`
+          : t`Recording time ${time}`
+      }
       className="flex shrink-0 items-baseline gap-1.5"
     >
       <span
+        aria-hidden
         // `tabular-nums` is mandatory on timers (§103): proportional digits
         // reflow the whole bar on every tick.
         className="text-popover-foreground/80 text-[13px] tabular-nums"
-        aria-label={t`Recording time`}
       >
         {elapsed.dim}
         <span className="text-popover-foreground font-semibold">
@@ -257,6 +270,7 @@ function RecordingMeter({
       </span>
       {wordCount > 0 ? (
         <span
+          aria-hidden
           data-testid="recording-word-count"
           className="text-popover-foreground/80 text-[11px] tabular-nums"
         >

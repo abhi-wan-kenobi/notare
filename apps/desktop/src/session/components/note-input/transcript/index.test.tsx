@@ -28,7 +28,12 @@ vi.mock("./screens/batch", () => ({
 }));
 
 vi.mock("./screens/empty", () => ({
-  TranscriptEmptyState: () => <div data-testid="empty-state" />,
+  TranscriptEmptyState: ({ error }: { error?: string | null }) => (
+    <div data-testid="empty-state">{error}</div>
+  ),
+  TranscriptErrorBanner: ({ error }: { error: string }) => (
+    <div data-testid="error-banner">{error}</div>
+  ),
 }));
 
 vi.mock("./screens/listening", () => ({
@@ -142,5 +147,36 @@ describe("Transcript", () => {
 
     expect(screen.queryByTestId("listening-state")).toBeNull();
     expect(screen.getByTestId("batch-state")).not.toBeNull();
+  });
+
+  it("shows the error screen when a batch fails without a transcript", () => {
+    listenerState = {
+      ...listenerState,
+      getSessionMode: () => "inactive",
+      batch: { [sessionId]: { error: "decode failed" } },
+    };
+
+    render(<Transcript sessionId={sessionId} scrollRef={createRef()} />);
+
+    expect(screen.getByTestId("empty-state").textContent).toBe("decode failed");
+    expect(screen.queryByTestId("transcript-viewer")).toBeNull();
+  });
+
+  it("keeps the transcript visible and surfaces the error when a batch fails", () => {
+    listenerState = {
+      ...listenerState,
+      getSessionMode: () => "inactive",
+      batch: { [sessionId]: { error: "decode failed" } },
+    };
+    transcripts = [
+      { id: transcriptId, words: [{ id: "word-1", text: " Hello" }] },
+    ];
+
+    render(<Transcript sessionId={sessionId} scrollRef={createRef()} />);
+
+    expect(screen.getByTestId("error-banner").textContent).toBe(
+      "decode failed",
+    );
+    expect(screen.getByTestId("transcript-viewer")).not.toBeNull();
   });
 });

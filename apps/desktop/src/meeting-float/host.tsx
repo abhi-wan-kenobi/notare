@@ -288,6 +288,10 @@ function FloatingMeetingWindowSync({
       meetingData,
     );
     let syncQueued = false;
+    // Single-flight: one show/update/hide sequence talks to the native panel
+    // at a time, so a hide can never be overtaken by an older show.
+    let syncInFlight = false;
+    let syncStale = false;
     let cancelled = false;
     let shownSessionId: string | null = null;
     // Session for which showing/updating the native floating bar failed. We
@@ -325,12 +329,14 @@ function FloatingMeetingWindowSync({
         return;
       }
 
-      if (routeState && unavailableSessionId === routeState.sessionId) {
+      // Snapshot: `routeState` can move on while the IPC below is awaited.
+      const target = routeState;
+      if (target && unavailableSessionId === target.sessionId) {
         return;
       }
 
       const nextShownSessionId = await syncFloatingMeetingWindow(
-        routeState,
+        target,
         shownSessionId,
         shouldContinue,
       );
@@ -340,11 +346,23 @@ function FloatingMeetingWindowSync({
       }
 
       if (nextShownSessionId === "unavailable") {
-        unavailableSessionId = routeState?.sessionId ?? null;
+        unavailableSessionId = target?.sessionId ?? null;
         return;
       }
 
       shownSessionId = nextShownSessionId;
+    };
+
+    const runSync = async () => {
+      syncInFlight = true;
+      try {
+        do {
+          syncStale = false;
+          await sync();
+        } while (syncStale && !cancelled);
+      } finally {
+        syncInFlight = false;
+      }
     };
 
     const scheduleSync = () => {
@@ -359,7 +377,14 @@ function FloatingMeetingWindowSync({
           return;
         }
 
-        void sync();
+        // A sync is already talking to the native panel: let it finish, then
+        // apply the newest state, instead of racing it.
+        if (syncInFlight) {
+          syncStale = true;
+          return;
+        }
+
+        void runSync();
       });
     };
 
@@ -895,7 +920,11 @@ async function showFloatingMeetingWindow(
     liveCaptionWidth: routeState.liveCaptionWidth,
     liveCaptionLineCount: routeState.liveCaptionLineCount,
     liveCaptionPosition: routeState.liveCaptionPosition,
-    liveCaptionMinimized: routeState.liveCaptionMinimized,
+    // Captions cannot be shown (or hidden again) while the toggle is
+    // unavailable, e.g. record-only fallback: collapse the panel without
+    // touching the stored preference.
+    liveCaptionMinimized:
+      routeState.liveCaptionMinimized || !routeState.liveCaptionToggleVisible,
     liveCaptionToggleVisible: routeState.liveCaptionToggleVisible,
     transcriptBubbles: routeState.transcriptBubbles,
   });

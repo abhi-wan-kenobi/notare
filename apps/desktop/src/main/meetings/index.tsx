@@ -1,5 +1,5 @@
 import { Trans, useLingui } from "@lingui/react/macro";
-import { format, isValid, parseISO } from "date-fns";
+import { differenceInCalendarDays, format, isValid, parseISO } from "date-fns";
 import { RepeatIcon, SearchIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -183,12 +183,6 @@ function MeetingsView() {
       }
     >();
 
-    const todayStart = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate(),
-    ).getTime();
-
     for (const meeting of visible) {
       const date = meetingDate(meeting);
       if (!isValid(date)) {
@@ -203,12 +197,7 @@ function MeetingsView() {
         continue;
       }
 
-      const meetingStart = new Date(
-        date.getFullYear(),
-        date.getMonth(),
-        date.getDate(),
-      ).getTime();
-      const dayDelta = Math.floor((todayStart - meetingStart) / 86400000);
+      const dayDelta = differenceInCalendarDays(now, date);
 
       let groupKey: string;
       let labelType: "today" | "yesterday" | "last_week" | "month" | "older";
@@ -252,7 +241,10 @@ function MeetingsView() {
       case "last_week":
         return <Trans>Last week</Trans>;
       case "month":
-        return format(group.date, "MMMM");
+        return format(
+          group.date,
+          group.date.getFullYear() === now.getFullYear() ? "MMMM" : "MMMM yyyy",
+        );
       default:
         return <Trans>Older</Trans>;
     }
@@ -327,16 +319,12 @@ function MeetingsView() {
                 {group.rows.map((meeting) => {
                   const upcoming = isUpcoming(meeting, now);
                   const date = meetingDate(meeting);
+                  const durationMs =
+                    Date.parse(meeting.ended_at) -
+                    Date.parse(meeting.started_at);
                   const duration =
-                    meeting.started_at && meeting.ended_at
-                      ? Math.max(
-                          1,
-                          Math.round(
-                            (Date.parse(meeting.ended_at) -
-                              Date.parse(meeting.started_at)) /
-                              60000,
-                          ),
-                        )
+                    durationMs > 0
+                      ? Math.max(1, Math.round(durationMs / 60000))
                       : null;
 
                   const dateStr = isValid(date) ? formatRowDate(date, now) : "";

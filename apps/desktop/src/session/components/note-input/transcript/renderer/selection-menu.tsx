@@ -155,32 +155,21 @@ function useSelectionListener({
   containerRef,
   show,
   hide,
-  isVisible,
 }: {
   containerRef: React.RefObject<HTMLElement | null>;
   show: (text: string, range: Range) => void;
   hide: () => void;
-  isVisible: boolean;
 }) {
   useEffect(() => {
     const handleSelectionChange = () => {
       const selection = window.getSelection();
-      if (!selection || selection.rangeCount === 0) {
-        if (!isVisible) {
-          hide();
-        }
+      const trimmedText = selection?.toString().trim();
+      if (!selection || selection.rangeCount === 0 || !trimmedText) {
+        hide();
         return;
       }
 
       const range = selection.getRangeAt(0);
-      const trimmedText = selection.toString().trim();
-
-      if (!trimmedText) {
-        if (!isVisible) {
-          hide();
-        }
-        return;
-      }
 
       const container = containerRef.current;
       if (!container || !container.contains(range.commonAncestorContainer)) {
@@ -196,7 +185,7 @@ function useSelectionListener({
     return () => {
       document.removeEventListener("selectionchange", handleSelectionChange);
     };
-  }, [containerRef, hide, show, isVisible]);
+  }, [containerRef, hide, show]);
 }
 
 function useSelectionMenuState({
@@ -233,7 +222,7 @@ function useSelectionMenuState({
     setStoredRange(null);
   }, []);
 
-  useSelectionListener({ containerRef, show, hide, isVisible });
+  useSelectionListener({ containerRef, show, hide });
 
   useEffect(() => {
     if (!isVisible || !containerRef.current) {

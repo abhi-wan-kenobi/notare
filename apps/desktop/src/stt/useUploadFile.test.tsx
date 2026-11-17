@@ -455,14 +455,14 @@ describe("useUploadFile", () => {
         payload: {
           type: "audioImportProgress",
           session_id: "session-1",
-          percentage: 42,
+          percentage: 0.42,
         },
       });
       emit?.({
         payload: {
           type: "audioImportProgress",
           session_id: "other-session",
-          percentage: 99,
+          percentage: 0.99,
         },
       });
       return { status: "ok", data: "/vault/sessions/session-1/audio.mp3" };
@@ -479,7 +479,7 @@ describe("useUploadFile", () => {
     await waitFor(() => {
       expect(runBatchMock).toHaveBeenCalled();
     });
-    expect(updateBatchProgressMock).toHaveBeenCalledWith("session-1", 42);
-    expect(updateBatchProgressMock).not.toHaveBeenCalledWith("session-1", 99);
+    expect(updateBatchProgressMock).toHaveBeenCalledWith("session-1", 0.42);
+    expect(updateBatchProgressMock).not.toHaveBeenCalledWith("session-1", 0.99);
   });
 });

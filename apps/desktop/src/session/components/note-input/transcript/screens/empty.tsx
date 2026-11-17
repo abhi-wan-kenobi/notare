@@ -1,7 +1,25 @@
+import { Trans } from "@lingui/react/macro";
 import { AlertCircleIcon, AudioLinesIcon, SquareIcon } from "lucide-react";
 
 import { Button } from "@hypr/ui/components/ui/button";
 import { Spinner } from "@hypr/ui/components/ui/spinner";
+
+export function TranscriptErrorBanner({ error }: { error: string }) {
+  return (
+    <div
+      role="alert"
+      className="text-muted-foreground flex shrink-0 items-start gap-2 border-b px-3 py-2 text-xs"
+    >
+      <AlertCircleIcon className="mt-0.5 size-3.5 shrink-0 text-red-400" />
+      <p className="min-w-0">
+        <span className="font-medium">
+          <Trans>Batch transcription failed</Trans>
+        </span>{" "}
+        {error}
+      </p>
+    </div>
+  );
+}
 
 export function TranscriptEmptyState({
   isBatching,

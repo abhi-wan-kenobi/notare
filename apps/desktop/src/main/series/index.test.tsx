@@ -1,4 +1,10 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -37,6 +43,8 @@ const mocks = vi.hoisted(() => ({
   openCurrent: vi.fn(),
   prepareSeriesOccurrence: vi.fn(),
   setActionItemStatus: vi.fn(),
+  ownerUserId: "owner-1",
+  toastError: vi.fn(),
 }));
 
 vi.mock("~/shared/main", () => ({
@@ -77,7 +85,30 @@ vi.mock("~/session/components/action-items/queries", () => ({
     mocks.setActionItemStatus(...args),
 }));
 
+vi.mock("~/shared/owner-user", () => ({
+  useOwnerUserId: () => mocks.ownerUserId,
+}));
+
+vi.mock("@hypr/ui/components/ui/toast", () => ({
+  sonnerToast: { error: mocks.toastError },
+}));
+
 import { TabContentSeries } from "./index";
+
+const renderSeries = () =>
+  render(
+    <TabContentSeries
+      tab={
+        {
+          type: "series",
+          active: true,
+          pinned: false,
+          slotId: "main",
+          state: { seriesId: "series-1" },
+        } as never
+      }
+    />,
+  );
 
 describe("TabContentSeries", () => {
   beforeEach(() => {
@@ -144,6 +175,7 @@ describe("TabContentSeries", () => {
 
   afterEach(() => {
     cleanup();
+    vi.restoreAllMocks();
   });
 
   it("renders series header with cadence, attendees, and occurrences count", () => {
@@ -195,8 +227,21 @@ describe("TabContentSeries", () => {
     expect(mocks.setActionItemStatus).toHaveBeenCalledWith(
       "item-1",
       "done",
-      expect.any(String),
+      "owner-1",
     );
+  });
+
+  it("unchecks the action and reports the failure when the status write fails", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    mocks.setActionItemStatus.mockRejectedValueOnce(new Error("db locked"));
+    renderSeries();
+
+    const checkbox = screen.getByRole<HTMLInputElement>("checkbox");
+    fireEvent.click(checkbox);
+    expect(checkbox.checked).toBe(true);
+
+    await waitFor(() => expect(mocks.toastError).toHaveBeenCalledTimes(1));
+    expect(checkbox.checked).toBe(false);
   });
 
   it("renders what changed since last time with decisions, actions, and topics", () => {
@@ -272,5 +317,43 @@ describe("TabContentSeries", () => {
     fireEvent.click(prepareBtn);
 
     expect(mocks.prepareSeriesOccurrence).toHaveBeenCalledWith("series-1");
+  });
+
+  it("reports a failed Prepare next and lets the user retry", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    mocks.prepareSeriesOccurrence.mockRejectedValueOnce(new Error("no event"));
+    renderSeries();
+
+    const prepareBtn = screen.getByRole<HTMLButtonElement>("button", {
+      name: "Prepare next",
+    });
+    fireEvent.click(prepareBtn);
+
+    await waitFor(() => expect(mocks.toastError).toHaveBeenCalledTimes(1));
+    expect(mocks.openCurrent).not.toHaveBeenCalled();
+    await waitFor(() => expect(prepareBtn.disabled).toBe(false));
+  });
+
+  it("prepares the next occurrence once when Prepare next is double clicked", async () => {
+    let resolvePrepare: (sessionId: string) => void = () => {};
+    mocks.prepareSeriesOccurrence.mockReturnValueOnce(
+      new Promise<string>((resolve) => {
+        resolvePrepare = resolve;
+      }),
+    );
+    renderSeries();
+
+    const prepareBtn = screen.getByRole("button", { name: "Prepare next" });
+    fireEvent.click(prepareBtn);
+    fireEvent.click(prepareBtn);
+
+    expect(mocks.prepareSeriesOccurrence).toHaveBeenCalledTimes(1);
+    resolvePrepare("new-session-id");
+    await waitFor(() =>
+      expect(mocks.openCurrent).toHaveBeenCalledWith({
+        type: "sessions",
+        id: "new-session-id",
+      }),
+    );
   });
 });

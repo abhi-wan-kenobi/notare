@@ -22,7 +22,9 @@ const FILTERS: AllActionItemFilter[] = ["open", "mine", "overdue", "done"];
 export function TabContentActionItems() {
   return (
     <StandardContentWrapper noBorder>
-      <ActionItemsView />
+      <div className="relative h-full w-full">
+        <ActionItemsView />
+      </div>
     </StandardContentWrapper>
   );
 }
@@ -151,7 +153,7 @@ function ActionItemsView() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-[800px] px-8 py-9">
+    <div className="mx-auto h-full w-full max-w-[800px] overflow-y-auto px-8 py-9">
       <div className="flex items-baseline gap-2.5">
         <h1 className="page-title">
           <Trans>Action items</Trans>

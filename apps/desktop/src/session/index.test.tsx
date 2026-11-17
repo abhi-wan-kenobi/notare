@@ -28,6 +28,8 @@ const state = vi.hoisted(() => ({
   mode: "inactive" as SessionMode,
   enhancedNoteIds: [] as string[],
   updateSessionTabState: vi.fn(),
+  conn: null as { provider: string } | null,
+  startListening: vi.fn<() => Promise<void>>(),
 }));
 
 vi.mock("~/db", () => ({
@@ -84,6 +86,7 @@ vi.mock("~/stt/contexts", () => ({
   useListener: (selector: (value: unknown) => unknown) =>
     selector({
       getSessionMode: () => state.mode,
+      canStartLiveSession: () => state.mode === "inactive",
       batch: {},
       live: { sessionId: null },
       liveSegments: [],
@@ -91,10 +94,10 @@ vi.mock("~/stt/contexts", () => ({
 }));
 vi.mock("~/stt/pending-upload", () => ({ consumePendingUpload: () => null }));
 vi.mock("~/stt/useStartListening", () => ({
-  useStartListening: () => vi.fn(),
+  useStartListening: () => state.startListening,
 }));
 vi.mock("~/stt/useSTTConnection", () => ({
-  useSTTConnection: () => ({ conn: null }),
+  useSTTConnection: () => ({ conn: state.conn }),
 }));
 vi.mock("~/stt/useUploadFile", () => ({
   AUDIO_EXTENSIONS: ["wav", "mp3"],
@@ -238,6 +241,8 @@ beforeEach(() => {
   state.editorView = null;
   state.enhancedNoteIds = [];
   state.updateSessionTabState.mockReset();
+  state.conn = null;
+  state.startListening.mockReset();
   tab = {
     id: "manual-notes-session",
     type: "sessions",
@@ -455,5 +460,59 @@ describe("manual meeting notes", () => {
     await waitFor(() =>
       expect(notesDocument().body).toContain("Keep the original notes"),
     );
+  });
+});
+
+describe("meeting auto-start", () => {
+  beforeEach(() => {
+    state.conn = { provider: "test" };
+    tab = { ...tab, state: { autoStart: true, view: null } };
+  });
+
+  it("keeps the request when the recorder fails to start, tries once, and retries when the meeting is re-opened", async () => {
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+    state.startListening.mockRejectedValue(new Error("microphone unavailable"));
+
+    const meeting = openMeeting();
+    await waitFor(() =>
+      expect(consoleError).toHaveBeenCalledWith(
+        "[session] failed to auto-start listening",
+        expect.any(Error),
+      ),
+    );
+    meeting.rerender(<MeetingHarness />);
+
+    expect(state.startListening).toHaveBeenCalledTimes(1);
+    expect(state.updateSessionTabState).not.toHaveBeenCalled();
+
+    meeting.unmount();
+    state.startListening.mockImplementation(async () => {
+      state.mode = "active";
+    });
+    const reopened = openMeeting();
+    await waitFor(() => expect(state.startListening).toHaveBeenCalledTimes(2));
+    reopened.rerender(<MeetingHarness />);
+
+    await waitFor(() =>
+      expect(state.updateSessionTabState).toHaveBeenCalledWith(
+        expect.objectContaining({ id: tab.id }),
+        { autoStart: null, view: null },
+      ),
+    );
+    expect(state.startListening).toHaveBeenCalledTimes(2);
+    consoleError.mockRestore();
+  });
+
+  it("keeps the request when the recorder reports it did not start", async () => {
+    state.startListening.mockResolvedValue(undefined);
+
+    const meeting = openMeeting();
+    await waitFor(() => expect(state.startListening).toHaveBeenCalledTimes(1));
+    meeting.rerender(<MeetingHarness />);
+
+    expect(state.startListening).toHaveBeenCalledTimes(1);
+    expect(state.updateSessionTabState).not.toHaveBeenCalled();
   });
 });

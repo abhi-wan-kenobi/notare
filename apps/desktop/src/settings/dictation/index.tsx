@@ -1,5 +1,6 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
+import { ask } from "@tauri-apps/plugin-dialog";
 import { platform } from "@tauri-apps/plugin-os";
 import { AlertCircleIcon, ScrollTextIcon, Trash2Icon } from "lucide-react";
 import { type ReactNode, useId } from "react";
@@ -457,7 +458,7 @@ export function CleanupGroup({
  * rolling count cap and, per `retention`, by age - see
  * `dictation/history.ts`'s `pruneDictationHistoryByAge`).
  */
-function DictationHistorySection({
+export function DictationHistorySection({
   retention,
   onRetentionChange,
 }: {
@@ -478,6 +479,27 @@ function DictationHistorySection({
     sonnerToast.success(t`Copied to clipboard`);
   };
 
+  const handleClearAll = async () => {
+    try {
+      const confirmed = await ask(
+        t`Clear all dictation history? This can't be undone.`,
+        {
+          title: t`Clear dictation history`,
+          kind: "warning",
+          okLabel: t`Clear all`,
+          cancelLabel: t`Cancel`,
+        },
+      );
+      if (!confirmed) {
+        return;
+      }
+      await clearDictationHistory();
+    } catch (error) {
+      console.error("[dictation] failed to clear history", error);
+      sonnerToast.error(t`Couldn't clear dictation history`);
+    }
+  };
+
   return (
     <section>
       <div className="mb-4 flex items-center justify-between gap-4">
@@ -489,7 +511,7 @@ function DictationHistorySection({
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => void clearDictationHistory()}
+              onClick={() => void handleClearAll()}
             >
               <Trans>Clear all</Trans>
             </Button>

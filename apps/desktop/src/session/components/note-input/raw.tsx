@@ -1,3 +1,4 @@
+import { useLingui } from "@lingui/react/macro";
 import type { EditorView } from "prosemirror-view";
 import { forwardRef, useCallback, useMemo, useRef } from "react";
 
@@ -8,6 +9,7 @@ import {
   type NoteEditorRef,
 } from "@hypr/editor/note";
 import { commands as analyticsCommands } from "@hypr/plugin-analytics";
+import { sonnerToast } from "@hypr/ui/components/ui/toast";
 import { cn } from "@hypr/utils";
 
 import { AudioDropTarget } from "./audio-drop-target";
@@ -26,6 +28,8 @@ import {
 } from "~/session/title-content";
 
 const extraNodeViews = { appLink: AppLinkView, session: SessionNodeView };
+// One id so repeated failed saves update a single toast instead of stacking.
+const SAVE_ERROR_TOAST_ID = "raw-note-save-error";
 
 export const RawEditor = forwardRef<
   NoteEditorRef,
@@ -55,6 +59,7 @@ export const RawEditor = forwardRef<
     },
     ref,
   ) => {
+    const { t } = useLingui();
     const updateSession = useUpdateSession(sessionId);
     const { audioDropTargetProps, fileHandlerConfig, isAudioDragActive } =
       useNoteFileHandlerConfig(sessionId);
@@ -69,18 +74,20 @@ export const RawEditor = forwardRef<
         ? { ...content, content: [...blocks, { type: "paragraph" }] }
         : content;
     }, [rawMd, sessionTitle]);
-    const lastSubmittedContentRef = useRef<JSONContent | null>(null);
+    const lastSavedContentRef = useRef<JSONContent | null>(null);
 
     const persistChange = useCallback(
-      (input: JSONContent) => {
+      async (input: JSONContent) => {
         const title = extractFirstLineTitle(input);
-        lastSubmittedContentRef.current = input;
-        return updateSession({
+        await updateSession({
           raw_md: JSON.stringify(input),
           ...(title !== null || hasStoredNoteContent(rawMd)
             ? { title: title ?? "" }
             : {}),
         });
+        // Only a fulfilled write counts as saved. A rejected one leaves the
+        // content dirty, so disposing the view writes it again.
+        lastSavedContentRef.current = input;
       },
       [rawMd, updateSession],
     );
@@ -103,6 +110,10 @@ export const RawEditor = forwardRef<
       (input: JSONContent) => {
         void persistChange(input).catch((error) => {
           console.error("[raw-editor] failed to persist note", error);
+          sonnerToast.error(
+            t`Couldn't save your notes. Your latest changes are not saved yet.`,
+            { id: SAVE_ERROR_TOAST_ID },
+          );
         });
 
         if (!hasTrackedWriteRef.current) {
@@ -113,12 +124,12 @@ export const RawEditor = forwardRef<
           }
         }
       },
-      [persistChange, hasNonEmptyText],
+      [persistChange, hasNonEmptyText, t],
     );
 
     const handleViewReady = useCallback(
       (view: EditorView) => {
-        lastSubmittedContentRef.current = view.state.doc.toJSON();
+        lastSavedContentRef.current = view.state.doc.toJSON();
         onViewReady?.(view);
       },
       [onViewReady],
@@ -130,7 +141,7 @@ export const RawEditor = forwardRef<
         // switching views or closing a meeting cancels its pending callback.
         if (
           JSON.stringify(content) !==
-          JSON.stringify(lastSubmittedContentRef.current)
+          JSON.stringify(lastSavedContentRef.current)
         ) {
           handleChange(content);
         }

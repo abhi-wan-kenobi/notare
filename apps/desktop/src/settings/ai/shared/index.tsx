@@ -184,7 +184,7 @@ export function NonHyprProviderCard({
   );
 
   const [saveStatus, setSaveStatus] = useState<
-    "idle" | "verifying" | "saved" | "error"
+    "idle" | "saving" | "saved" | "error"
   >("idle");
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
@@ -193,8 +193,8 @@ export function NonHyprProviderCard({
   const showBaseUrl = requiredFields.includes("base_url");
 
   const form = useForm({
-    onSubmit: ({ value }) => {
-      setProvider(value);
+    onSubmit: async ({ value }) => {
+      await setProvider(value);
       void analyticsCommands.event({
         event: "ai_provider_configured",
         provider: value.type,
@@ -215,21 +215,36 @@ export function NonHyprProviderCard({
     validators: { onChange: aiProviderSchema },
   });
 
-  const handleVerifyAndSave = async () => {
-    setSaveStatus("verifying");
+  const handleSave = async () => {
+    setSaveStatus("saving");
     setStatusMessage(null);
     try {
       await form.handleSubmit();
-      setSaveStatus("saved");
-      setStatusMessage(t`Ready · Saved`);
-      setTimeout(() => {
-        setSaveStatus("idle");
-        setStatusMessage(null);
-      }, 3000);
     } catch (err) {
+      console.error(
+        `[settings] failed to save provider ${providerType}:${config.id}`,
+        err,
+      );
       setSaveStatus("error");
       setStatusMessage(err instanceof Error ? err.message : t`Failed to save`);
+      return;
     }
+
+    // `handleSubmit` resolves without calling `onSubmit` when validation
+    // fails, so a resolved promise alone does not mean anything was saved.
+    if (!form.state.isSubmitSuccessful) {
+      setSaveStatus("error");
+      setStatusMessage(
+        firstFieldError(form.state.fieldMeta) ??
+          t`Fix the highlighted fields before saving`,
+      );
+      return;
+    }
+
+    setSaveStatus("saved");
+    setTimeout(() => {
+      setSaveStatus("idle");
+    }, 3000);
   };
 
   return (
@@ -374,10 +389,10 @@ export function NonHyprProviderCard({
           {/* Solid Pill Action Bar with inline status */}
           <div className="border-border/60 flex items-center justify-between border-t pt-3">
             <div className="flex items-center gap-2 text-xs">
-              {saveStatus === "verifying" && (
+              {saveStatus === "saving" && (
                 <span className="text-muted-foreground flex items-center gap-1.5">
                   <Loader2Icon className="size-3.5 animate-spin" />
-                  <Trans>Verifying…</Trans>
+                  <Trans>Saving…</Trans>
                 </span>
               )}
               {saveStatus === "saved" && (
@@ -405,13 +420,11 @@ export function NonHyprProviderCard({
             <div className="flex items-center gap-3">
               <Button
                 type="button"
-                onClick={() => void handleVerifyAndSave()}
-                disabled={
-                  saveStatus === "verifying" || locked || config.disabled
-                }
+                onClick={() => void handleSave()}
+                disabled={saveStatus === "saving" || locked || config.disabled}
                 className="bg-primary text-primary-foreground hover:bg-primary/90 h-8 rounded-full px-4 text-xs font-medium shadow-xs"
               >
-                <Trans>Verify &amp; Save</Trans>
+                <Trans>Save</Trans>
               </Button>
             </div>
           </div>
@@ -511,11 +524,32 @@ export function StyledStreamdown({
   );
 }
 
+function firstFieldError(
+  fieldMeta: Record<string, { errors: unknown[] } | undefined>,
+): string | null {
+  for (const meta of Object.values(fieldMeta)) {
+    for (const error of meta?.errors ?? []) {
+      if (typeof error === "string") {
+        return error;
+      }
+      if (
+        error &&
+        typeof error === "object" &&
+        "message" in error &&
+        typeof error.message === "string"
+      ) {
+        return error.message;
+      }
+    }
+  }
+  return null;
+}
+
 function useProvider(providerType: ProviderType, id: string) {
   const providerRow = useAiProvider(providerType, id);
   const setProvider = useSetAiProvider(providerType, id) as (
     row: Partial<AIProvider>,
-  ) => void;
+  ) => Promise<void>;
 
   const { data } = aiProviderSchema.safeParse(providerRow);
   return [data, setProvider] as const;

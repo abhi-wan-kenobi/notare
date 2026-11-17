@@ -34,7 +34,14 @@ export function SettingsWebhook() {
   });
 
   if (error) {
-    throw error;
+    return (
+      <div className="flex flex-col gap-6">
+        <SettingsPageTitle title={<Trans>Webhooks</Trans>} />
+        <p role="alert" className="text-xs break-all text-red-500">
+          <Trans>Couldn't load webhook settings: {error.message}</Trans>
+        </p>
+      </div>
+    );
   }
 
   if (isLoading || !data) {
@@ -72,6 +79,13 @@ function WebhookSettingsContent({ settings }: { settings: WebhookSettings }) {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: SETTINGS_QUERY_KEY });
+    },
+    // The fields are set optimistically; put back what is actually stored.
+    onError: () => {
+      setEndpointUrl(settings.endpoint_url ?? "");
+      setEnabled(settings.enabled ?? false);
+      setActionItems(settings.events?.action_items_updated ?? false);
+      setSessionEnhanced(settings.events?.session_enhanced ?? false);
     },
   });
 
@@ -167,6 +181,12 @@ function WebhookSettingsContent({ settings }: { settings: WebhookSettings }) {
         />
       </div>
 
+      {persist.error && (
+        <p role="alert" className="text-xs break-all text-red-500">
+          {t`Couldn't save webhook settings: ${persist.error.message}`}
+        </p>
+      )}
+
       {/* Secret */}
       <div className="flex flex-col gap-2">
         <h3 className="text-sm font-medium">
@@ -196,7 +216,10 @@ function WebhookSettingsContent({ settings }: { settings: WebhookSettings }) {
             type="button"
             variant="outline"
             disabled={secretInput.trim().length === 0 || saveSecret.isPending}
-            onClick={() => saveSecret.mutate(secretInput.trim())}
+            onClick={() => {
+              clearSecret.reset();
+              saveSecret.mutate(secretInput.trim());
+            }}
           >
             {hasSecret ? <Trans>Rotate</Trans> : <Trans>Save</Trans>}
           </Button>
@@ -205,12 +228,25 @@ function WebhookSettingsContent({ settings }: { settings: WebhookSettings }) {
               type="button"
               variant="ghost"
               disabled={clearSecret.isPending}
-              onClick={() => clearSecret.mutate()}
+              onClick={() => {
+                saveSecret.reset();
+                clearSecret.mutate();
+              }}
             >
               <Trans>Clear</Trans>
             </Button>
           )}
         </div>
+        {saveSecret.error && (
+          <p role="alert" className="text-xs break-all text-red-500">
+            {t`Couldn't save the signing secret: ${saveSecret.error.message}`}
+          </p>
+        )}
+        {clearSecret.error && (
+          <p role="alert" className="text-xs break-all text-red-500">
+            {t`Couldn't clear the signing secret: ${clearSecret.error.message}`}
+          </p>
+        )}
       </div>
 
       {/* Per-event opt-in */}
@@ -280,6 +316,11 @@ function WebhookSettingsContent({ settings }: { settings: WebhookSettings }) {
             )}
           </Button>
         </div>
+        {test.error && (
+          <p role="alert" className="text-xs break-all text-red-500">
+            {t`Couldn't send the test event: ${test.error.message}`}
+          </p>
+        )}
         <DeliveryLog />
       </div>
     </div>

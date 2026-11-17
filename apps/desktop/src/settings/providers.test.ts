@@ -1,3 +1,6 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { renderHook } from "@testing-library/react";
+import { createElement, type ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -38,6 +41,7 @@ import {
   migratePlaintextAiProviderApiKeys,
   parseAiProviders,
   setAiProvider,
+  useSetAiProvider,
 } from "./providers";
 
 describe("SQLite AI providers", () => {
@@ -339,5 +343,46 @@ describe("SQLite AI providers", () => {
     )!;
     expect(String(legacyUpdate.params[0])).not.toContain("llm-key");
     expect(String(legacyUpdate.params[0])).not.toContain("stt-key");
+  });
+});
+
+describe("useSetAiProvider", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.execute.mockResolvedValue([]);
+    mocks.executeTransaction.mockResolvedValue([1]);
+    mocks.getSecret.mockResolvedValue({ status: "ok", data: null });
+    mocks.setSecret.mockResolvedValue({ status: "ok", data: null });
+    mocks.deleteSecret.mockResolvedValue({ status: "ok", data: null });
+  });
+
+  function renderSetProvider() {
+    const client = new QueryClient();
+    return renderHook(() => useSetAiProvider("llm", "openai"), {
+      wrapper: ({ children }: { children: ReactNode }) =>
+        createElement(QueryClientProvider, { client }, children),
+    }).result.current;
+  }
+
+  it("resolves once the provider is stored", async () => {
+    const setProvider = renderSetProvider();
+
+    await expect(
+      setProvider({ base_url: "https://api.openai.com/v1", api_key: "key" }),
+    ).resolves.toBeUndefined();
+    expect(mocks.executeTransaction).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects when the keychain write fails so callers can report it", async () => {
+    mocks.setSecret.mockResolvedValue({
+      status: "error",
+      error: "keychain is locked",
+    } as never);
+    const setProvider = renderSetProvider();
+
+    await expect(
+      setProvider({ base_url: "https://api.openai.com/v1", api_key: "key" }),
+    ).rejects.toThrow("keychain is locked");
+    expect(mocks.executeTransaction).not.toHaveBeenCalled();
   });
 });

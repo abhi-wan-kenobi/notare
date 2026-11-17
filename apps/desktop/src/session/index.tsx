@@ -91,6 +91,7 @@ function AutoStartListening({
 }: {
   tab: Extract<Tab, { type: "sessions" }>;
 }) {
+  const sessionMode = useListener((state) => state.getSessionMode(tab.id));
   const canStartLiveSession = useListener((state) =>
     state.canStartLiveSession(tab.id),
   );
@@ -100,6 +101,15 @@ function AutoStartListening({
   const hasAttemptedAutoStart = useRef(false);
 
   useEffect(() => {
+    if (sessionMode === "active") {
+      // Only a running recorder fulfils the request. A failed start keeps
+      // `autoStart` set, so re-opening the meeting tries again.
+      updateSessionTabState(tab, { ...tab.state, autoStart: null });
+      return;
+    }
+
+    // One attempt per open meeting: a start that keeps failing must not loop
+    // as the listener state settles.
     if (hasAttemptedAutoStart.current) {
       return;
     }
@@ -113,11 +123,13 @@ function AutoStartListening({
     }
 
     hasAttemptedAutoStart.current = true;
-    startListening();
-    updateSessionTabState(tab, { ...tab.state, autoStart: null });
+    startListening().catch((error) => {
+      console.error("[session] failed to auto-start listening", error);
+    });
   }, [
     tab,
     tab.state,
+    sessionMode,
     canStartLiveSession,
     conn,
     startListening,

@@ -5,7 +5,7 @@ import { Spinner } from "@hypr/ui/components/ui/spinner";
 
 import { TranscriptViewer } from "./renderer";
 import { BatchState } from "./screens/batch";
-import { TranscriptEmptyState } from "./screens/empty";
+import { TranscriptEmptyState, TranscriptErrorBanner } from "./screens/empty";
 import { TranscriptListeningState } from "./screens/listening";
 import { useTranscriptScreen } from "./state";
 
@@ -59,6 +59,7 @@ export function Transcript({
       {screen.kind === "ready" && (
         <>
           {screen.isFinalizing ? <FinalizingTranscriptBanner /> : null}
+          {screen.error ? <TranscriptErrorBanner error={screen.error} /> : null}
           <TranscriptViewer
             transcriptIds={screen.transcriptIds}
             liveSegments={screen.liveSegments}

@@ -1,5 +1,6 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { CheckIcon, CopyIcon, RefreshCwIcon } from "lucide-react";
 import { useState } from "react";
 
@@ -9,14 +10,26 @@ import {
   type McpServerSettingsInput,
 } from "@hypr/plugin-mcp-server";
 import { Button } from "@hypr/ui/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@hypr/ui/components/ui/dialog";
 import { Input } from "@hypr/ui/components/ui/input";
 import { Switch } from "@hypr/ui/components/ui/switch";
+import { sonnerToast } from "@hypr/ui/components/ui/toast";
 import { cn } from "@hypr/utils";
 
 import { SettingsPageTitle } from "~/settings/page-title";
 
 const MCP_SETTINGS_QUERY_KEY = ["settings", "mcp-server"] as const;
 const MCP_STATUS_QUERY_KEY = ["settings", "mcp-server", "status"] as const;
+
+const MIN_PORT = 1024;
+const MAX_PORT = 65535;
 
 function unwrap<T>(
   result: { status: "ok"; data: T } | { status: "error"; error: string },
@@ -44,7 +57,16 @@ export function SettingsMcp() {
   });
 
   if (error) {
-    throw error;
+    return (
+      <div className="flex flex-col gap-6">
+        <SettingsPageTitle
+          title={<Trans>Model Context Protocol (MCP)</Trans>}
+        />
+        <p role="alert" className="text-xs break-all text-red-500">
+          <Trans>Couldn't load MCP settings: {error.message}</Trans>
+        </p>
+      </div>
+    );
   }
 
   if (isLoading || !settings) {
@@ -83,6 +105,8 @@ function McpSettingsContent({
   const [tokenCopied, setTokenCopied] = useState(false);
   const [claudeCopied, setClaudeCopied] = useState(false);
   const [cursorCopied, setCursorCopied] = useState(false);
+  const [portOutOfRange, setPortOutOfRange] = useState(false);
+  const [confirmingRegenerate, setConfirmingRegenerate] = useState(false);
 
   const saveMutation = useMutation({
     mutationFn: async (next: McpServerSettingsInput) => {
@@ -92,6 +116,11 @@ function McpSettingsContent({
       void queryClient.invalidateQueries({ queryKey: MCP_SETTINGS_QUERY_KEY });
       void queryClient.invalidateQueries({ queryKey: MCP_STATUS_QUERY_KEY });
     },
+    // The switch and port are set optimistically; put back what is stored.
+    onError: () => {
+      setEnabled(settings.enabled);
+      setPort(settings.port);
+    },
   });
 
   const regenerateMutation = useMutation({
@@ -99,6 +128,7 @@ function McpSettingsContent({
       unwrap(await mcpCommands.regenerateToken());
     },
     onSuccess: () => {
+      setConfirmingRegenerate(false);
       void queryClient.invalidateQueries({ queryKey: MCP_SETTINGS_QUERY_KEY });
     },
   });
@@ -109,13 +139,37 @@ function McpSettingsContent({
   };
 
   const handlePortBlur = () => {
-    if (port !== settings.port) {
-      saveMutation.mutate({ enabled: enabled ?? false, port: port ?? 8787 });
+    if (port === settings.port) {
+      return;
     }
+    if (
+      port === undefined ||
+      !Number.isInteger(port) ||
+      port < MIN_PORT ||
+      port > MAX_PORT
+    ) {
+      setPort(settings.port);
+      setPortOutOfRange(true);
+      return;
+    }
+    saveMutation.mutate({ enabled: enabled ?? false, port });
   };
 
-  const copyToClipboard = (text: string, setCopied: (v: boolean) => void) => {
-    void navigator.clipboard.writeText(text);
+  const copyToClipboard = async (
+    text: string,
+    setCopied: (v: boolean) => void,
+  ) => {
+    try {
+      await writeText(text);
+    } catch {
+      // Fall back to the browser clipboard when the plugin is unavailable.
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch {
+        sonnerToast.error(t`Couldn't copy to clipboard`);
+        return;
+      }
+    }
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -201,10 +255,13 @@ function McpSettingsContent({
         <div className="flex max-w-xs items-center gap-2">
           <Input
             type="number"
-            min={1024}
-            max={65535}
+            min={MIN_PORT}
+            max={MAX_PORT}
             value={port}
-            onChange={(e) => setPort(Number(e.target.value))}
+            onChange={(e) => {
+              setPortOutOfRange(false);
+              setPort(Number(e.target.value));
+            }}
             onBlur={handlePortBlur}
             disabled={saveMutation.isPending}
             className="w-32"
@@ -213,6 +270,16 @@ function McpSettingsContent({
             <Trans>(default: 8787)</Trans>
           </span>
         </div>
+        {portOutOfRange && (
+          <p role="alert" className="text-xs text-red-500">
+            {t`The port must be a number from ${MIN_PORT} to ${MAX_PORT}.`}
+          </p>
+        )}
+        {saveMutation.error && (
+          <p role="alert" className="text-xs break-all text-red-500">
+            {t`Couldn't save MCP settings: ${saveMutation.error.message}`}
+          </p>
+        )}
       </div>
 
       {/* Bearer Token */}
@@ -238,7 +305,7 @@ function McpSettingsContent({
             variant="outline"
             size="sm"
             onClick={() =>
-              copyToClipboard(settings.bearer_token, setTokenCopied)
+              void copyToClipboard(settings.bearer_token, setTokenCopied)
             }
           >
             {tokenCopied ? (
@@ -252,7 +319,10 @@ function McpSettingsContent({
             variant="ghost"
             size="sm"
             disabled={regenerateMutation.isPending}
-            onClick={() => regenerateMutation.mutate()}
+            onClick={() => {
+              regenerateMutation.reset();
+              setConfirmingRegenerate(true);
+            }}
           >
             <RefreshCwIcon
               className={cn([
@@ -280,7 +350,9 @@ function McpSettingsContent({
             <Button
               variant="outline"
               size="sm"
-              onClick={() => copyToClipboard(claudeConfig, setClaudeCopied)}
+              onClick={() =>
+                void copyToClipboard(claudeConfig, setClaudeCopied)
+              }
             >
               {claudeCopied ? (
                 <CheckIcon className="h-3 w-3 text-green-500" />
@@ -306,7 +378,9 @@ function McpSettingsContent({
             <Button
               variant="outline"
               size="sm"
-              onClick={() => copyToClipboard(cursorHttpConfig, setCursorCopied)}
+              onClick={() =>
+                void copyToClipboard(cursorHttpConfig, setCursorCopied)
+              }
             >
               {cursorCopied ? (
                 <CheckIcon className="h-3 w-3 text-green-500" />
@@ -323,6 +397,52 @@ function McpSettingsContent({
           </pre>
         </div>
       </div>
+
+      <Dialog
+        open={confirmingRegenerate}
+        onOpenChange={(open) => {
+          if (!open && !regenerateMutation.isPending) {
+            setConfirmingRegenerate(false);
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              <Trans>Regenerate the bearer token?</Trans>
+            </DialogTitle>
+            <DialogDescription>
+              <Trans>
+                Every client set up with the current token will stop connecting
+                until you give it the new one.
+              </Trans>
+            </DialogDescription>
+          </DialogHeader>
+          {regenerateMutation.error && (
+            <p role="alert" className="text-xs break-all text-red-500">
+              {regenerateMutation.error.message}
+            </p>
+          )}
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setConfirmingRegenerate(false)}
+              disabled={regenerateMutation.isPending}
+            >
+              <Trans>Cancel</Trans>
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => regenerateMutation.mutate()}
+              disabled={regenerateMutation.isPending}
+            >
+              {regenerateMutation.isPending
+                ? t`Regenerating...`
+                : t`Regenerate`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -29,14 +29,20 @@ const {
   assignTranscriptSpeakerMock,
   addSessionParticipantMock,
   createHumanMock,
+  toastErrorMock,
   useHumansMock,
   useSessionParticipantsMock,
 } = vi.hoisted(() => ({
   assignTranscriptSpeakerMock: vi.fn(),
   addSessionParticipantMock: vi.fn(),
   createHumanMock: vi.fn(),
+  toastErrorMock: vi.fn(),
   useHumansMock: vi.fn(),
   useSessionParticipantsMock: vi.fn(),
+}));
+
+vi.mock("@hypr/ui/components/ui/toast", () => ({
+  sonnerToast: { error: toastErrorMock },
 }));
 
 vi.mock("@hypr/ui/components/ui/popover", async () => {
@@ -270,6 +276,70 @@ describe("SpeakerAssignPopover", () => {
         }),
       );
     });
+  });
+
+  it("keeps Confirm disabled until the assignment is saved and reports a failure", async () => {
+    let rejectAssignment: (error: Error) => void = () => {};
+    assignTranscriptSpeakerMock.mockReturnValue(
+      new Promise<void>((_, reject) => {
+        rejectAssignment = reject;
+      }),
+    );
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    render(
+      createElement(SpeakerAssignPopover, {
+        segment: {
+          id: "segment-1",
+          key: {
+            channel: "RemoteParty",
+            speaker_index: 2,
+            speaker_human_id: null,
+          },
+          start_ms: 0,
+          end_ms: 100,
+          text: "hello",
+          words: [
+            {
+              id: "word-1",
+              text: "hello",
+              start_ms: 0,
+              end_ms: 100,
+              channel: "RemoteParty",
+              is_final: true,
+            },
+          ],
+        } as Segment,
+        transcriptId: "transcript-1",
+        color: "red",
+        label: "Speaker 2",
+      }),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Speaker 2" }));
+    fireEvent.click(screen.getByRole("button", { name: "Alice" }));
+    const confirm = screen.getByRole<HTMLButtonElement>("button", {
+      name: "Confirm",
+    });
+    fireEvent.click(confirm);
+
+    await waitFor(() => {
+      expect(assignTranscriptSpeakerMock).toHaveBeenCalledTimes(1);
+    });
+    await Promise.resolve();
+    expect(confirm.disabled).toBe(true);
+    fireEvent.click(confirm);
+    expect(assignTranscriptSpeakerMock).toHaveBeenCalledTimes(1);
+
+    rejectAssignment(new Error("database is locked"));
+
+    await waitFor(() => {
+      expect(toastErrorMock).toHaveBeenCalledWith("Failed to assign speaker");
+    });
+    await waitFor(() => {
+      expect(confirm.disabled).toBe(false);
+    });
+    expect(screen.getByRole("button", { name: "Alice" })).not.toBeNull();
   });
 });
 

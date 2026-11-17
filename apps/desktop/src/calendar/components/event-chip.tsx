@@ -1,4 +1,5 @@
 import { useLingui } from "@lingui/react/macro";
+import { ask } from "@tauri-apps/plugin-dialog";
 import { format } from "date-fns";
 import { RepeatIcon } from "lucide-react";
 import { useCallback, useMemo } from "react";
@@ -61,14 +62,30 @@ export function EventChip({
       return;
     }
 
-    ignoreSeries(recurrenceSeriesId);
-  }, [recurrenceSeriesId, ignoreSeries]);
+    void ask(
+      t`Hide every event in this recurring series? They stay in your calendar and are only hidden in Notare.`,
+      {
+        title: t`Hide recurring events`,
+        kind: "warning",
+        okLabel: t`Hide`,
+        cancelLabel: t`Cancel`,
+      },
+    )
+      .then((confirmed) => {
+        if (confirmed) {
+          ignoreSeries(recurrenceSeriesId);
+        }
+      })
+      .catch((error) => {
+        console.error("[calendar] failed to confirm hiding series", error);
+      });
+  }, [recurrenceSeriesId, ignoreSeries, t]);
 
   const contextMenu = useMemo<MenuItemDef[]>(() => {
     const menu: MenuItemDef[] = [
       {
         id: "ignore",
-        text: recurrenceSeriesId ? "Delete This Event" : "Delete Event",
+        text: recurrenceSeriesId ? t`Hide this event` : t`Hide event`,
         action: handleIgnore,
       },
     ];
@@ -76,13 +93,13 @@ export function EventChip({
     if (recurrenceSeriesId) {
       menu.push({
         id: "ignore-series",
-        text: "Delete All Recurring Events",
+        text: t`Hide all recurring events`,
         action: handleIgnoreSeries,
       });
     }
 
     return menu;
-  }, [recurrenceSeriesId, handleIgnore, handleIgnoreSeries]);
+  }, [recurrenceSeriesId, handleIgnore, handleIgnoreSeries, t]);
   const showContextMenu = useNativeContextMenu(contextMenu);
 
   if (!event || !title) {

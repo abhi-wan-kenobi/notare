@@ -1,8 +1,9 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Channel } from "@tauri-apps/api/core";
+import { ask } from "@tauri-apps/plugin-dialog";
 import { Check, DownloadIcon, Loader2, Trash2, XIcon } from "lucide-react";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   commands as localLlmCommands,
@@ -20,6 +21,7 @@ import {
   SelectValue,
 } from "@hypr/ui/components/ui/select";
 import { Switch } from "@hypr/ui/components/ui/switch";
+import { sonnerToast } from "@hypr/ui/components/ui/toast";
 import { cn } from "@hypr/utils";
 
 import { useLlmSettings } from "./context";
@@ -374,7 +376,7 @@ function formatBytes(bytes: number): string {
   return `${(bytes / 1_000_000).toFixed(0)} MB`;
 }
 
-function LocalModelManager({
+export function LocalModelManager({
   selectedModelId,
   onSelectModel,
   onModelDownloaded,
@@ -383,6 +385,7 @@ function LocalModelManager({
   onSelectModel: (model: string) => void;
   onModelDownloaded: () => void;
 }) {
+  const { t } = useLingui();
   const queryClient = useQueryClient();
 
   const supportedQuery = useQuery({
@@ -418,12 +421,46 @@ function LocalModelManager({
 
   const localLlmMetal = useConfigValue("local_llm_metal");
   const setLocalLlmMetal = useSetSettingValue("local_llm_metal");
+
+  // The channel currently driving each model's row. A failure reported by any
+  // other channel (a download the user cancelled, or one started by an
+  // instance that has since unmounted) is not an error to surface.
+  const activeChannels = useRef(new Map<GgufLlmModel, Channel<number>>());
+  useEffect(() => {
+    const channels = activeChannels.current;
+    return () => channels.clear();
+  }, []);
+
   const handleDownload = useCallback(
-    async (model: GgufLlmModel) => {
+    async (model: GgufLlmModel, name: string) => {
+      const channel = new Channel<number>();
+      const fail = (error: unknown) => {
+        if (activeChannels.current.get(model) !== channel) {
+          return;
+        }
+        activeChannels.current.delete(model);
+        console.error(`[local-llm] failed to download ${model}`, error);
+        setDownloading((prev) => {
+          const next = new Map(prev);
+          next.delete(model);
+          return next;
+        });
+        sonnerToast.error(t`Couldn't download ${name}`);
+      };
+
+      activeChannels.current.set(model, channel);
       setDownloading((prev) => new Map(prev).set(model, 0));
       try {
-        const channel = new Channel<number>();
         channel.onmessage = (progress) => {
+          if (activeChannels.current.get(model) !== channel) {
+            return;
+          }
+          // `downloadModel` resolves once the download has started; a
+          // negative progress is how the running download reports failure.
+          if (progress < 0) {
+            fail(new Error("download failed"));
+            return;
+          }
           setDownloading((prev) => new Map(prev).set(model, progress));
         };
         const result = await localLlmCommands.downloadModel(model, channel);
@@ -434,6 +471,8 @@ function LocalModelManager({
           queryKey: ["local-llm", "downloaded-models"],
         });
         onModelDownloaded();
+      } catch (error) {
+        fail(error);
       } finally {
         setDownloading((prev) => {
           const next = new Map(prev);
@@ -442,10 +481,11 @@ function LocalModelManager({
         });
       }
     },
-    [queryClient, onModelDownloaded],
+    [queryClient, onModelDownloaded, t],
   );
 
   const handleCancel = useCallback(async (model: GgufLlmModel) => {
+    activeChannels.current.delete(model);
     await localLlmCommands.cancelDownload(model);
     setDownloading((prev) => {
       const next = new Map(prev);
@@ -455,8 +495,29 @@ function LocalModelManager({
   }, []);
 
   const handleDelete = useCallback(
-    async (model: GgufLlmModel) => {
-      await localLlmCommands.deleteModel(model);
+    async (model: GgufLlmModel, name: string) => {
+      try {
+        const confirmed = await ask(
+          t`Delete ${name}? You'll need to download it again to use it.`,
+          {
+            title: t`Delete model`,
+            kind: "warning",
+            okLabel: t`Delete`,
+            cancelLabel: t`Cancel`,
+          },
+        );
+        if (!confirmed) {
+          return;
+        }
+        const result = await localLlmCommands.deleteModel(model);
+        if (result.status !== "ok") {
+          throw new Error(result.error);
+        }
+      } catch (error) {
+        console.error(`[local-llm] failed to delete ${model}`, error);
+        sonnerToast.error(t`Couldn't delete ${name}`);
+        return;
+      }
       queryClient.invalidateQueries({
         queryKey: ["local-llm", "downloaded-models"],
       });
@@ -465,7 +526,7 @@ function LocalModelManager({
       }
       onModelDownloaded();
     },
-    [queryClient, onModelDownloaded, selectedModelId, onSelectModel],
+    [queryClient, onModelDownloaded, selectedModelId, onSelectModel, t],
   );
 
   if (supportedQuery.isLoading) {
@@ -559,7 +620,7 @@ function LocalModelManager({
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => handleDelete(model.key)}
+                    onClick={() => void handleDelete(model.key, model.name)}
                   >
                     <Trash2 className="size-3.5" />
                     <Trans>Delete</Trans>
@@ -568,7 +629,7 @@ function LocalModelManager({
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => handleDownload(model.key)}
+                    onClick={() => void handleDownload(model.key, model.name)}
                   >
                     <DownloadIcon className="size-3.5" />
                     <Trans>Download</Trans>

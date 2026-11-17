@@ -222,16 +222,14 @@ function SidebarEventRow({
       },
       {
         id: "ignore",
-        text: event.recurrence_series_id
-          ? t`Delete This Event`
-          : t`Delete Event`,
+        text: event.recurrence_series_id ? t`Hide this event` : t`Hide event`,
         action: handleIgnore,
       },
     ];
     if (event.recurrence_series_id) {
       items.push({
         id: "ignore-series",
-        text: t`Delete Entire Series`,
+        text: t`Hide all recurring events`,
         action: handleIgnoreSeries,
       });
     }
