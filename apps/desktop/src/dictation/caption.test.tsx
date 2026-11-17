@@ -111,6 +111,19 @@ describe("DictationCaptionWindow", () => {
     expect(screen.getByTestId("dictation-caption-solid")).not.toBeNull();
   });
 
+  it("preserves the document theme while mounting", async () => {
+    render(<DictationCaptionWindow />);
+    await act(async () => {});
+    expect(document.documentElement.classList.contains("dark")).toBe(false);
+
+    cleanup();
+    document.documentElement.classList.add("dark");
+
+    render(<DictationCaptionWindow />);
+    await act(async () => {});
+    expect(document.documentElement.classList.contains("dark")).toBe(true);
+  });
+
   it("shows streamed words and the OS window", async () => {
     render(<DictationCaptionWindow />);
     await act(async () => {});

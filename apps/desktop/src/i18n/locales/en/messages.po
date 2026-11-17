@@ -3169,10 +3169,6 @@ msgstr "Reconnect required"
 msgid "Record"
 msgstr "Record"
 
-#: src/main/meetings/index.tsx
-msgid "Recorded"
-msgstr "Recorded"
-
 #: src/session/meeting-detail.tsx
 msgid "Recording"
 msgstr "Recording"
@@ -4210,6 +4206,10 @@ msgstr "Topic no longer active"
 #: src/settings/general/app-settings.tsx
 msgid "Transcribe in real time during a meeting. Turn this off to transcribe only after you stop — lighter for long meetings, and audio is always recorded either way. Applies to new sessions only."
 msgstr "Transcribe in real time during a meeting. Turn this off to transcribe only after you stop — lighter for long meetings, and audio is always recorded either way. Applies to new sessions only."
+
+#: src/main/meetings/index.tsx
+msgid "Transcribed"
+msgstr "Transcribed"
 
 #: src/settings/ai/stt/shared.tsx
 msgid "Transcribes English only."

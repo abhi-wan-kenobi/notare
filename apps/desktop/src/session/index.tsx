@@ -236,12 +236,11 @@ function TabContentNoteInner({
     (ms: number) => seekSessionTo(sessionId, ms),
     [sessionId],
   );
-  const summaryView =
-    currentView.type === "transcript"
-      ? enhancedNoteIds[0]
-        ? { type: "enhanced" as const, id: enhancedNoteIds[0] }
-        : RAW_VIEW
-      : currentView;
+  // Meeting Summary has one information hierarchy: editable notes first,
+  // followed by the generated At a glance/chapters/decisions below. Enhanced
+  // note variants remain available in standalone note surfaces; rendering
+  // them here would recreate a second tab layer under the Summary tab.
+  const summaryView = RAW_VIEW;
   const displayedView =
     detailTab === "transcript" ? TRANSCRIPT_VIEW : summaryView;
 

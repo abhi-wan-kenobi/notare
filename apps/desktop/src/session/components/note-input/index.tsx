@@ -271,7 +271,7 @@ const NoteInputContent = forwardRef<
 
     return (
       <div className={cn("-mx-2 flex flex-col", !embedded && "h-full")}>
-        {!hideHeader && (
+        {!hideHeader && !embedded && (
           <div className="relative px-2">
             <Header
               sessionId={sessionId}

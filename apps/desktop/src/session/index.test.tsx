@@ -427,20 +427,33 @@ describe("manual meeting notes", () => {
     );
   });
 
-  it("opens editable notes by default while keeping generated summaries accessible", async () => {
+  it("keeps editable notes and the generated summary in one Summary surface", async () => {
     state.enhancedNoteIds = ["summary-1"];
+    state.db
+      .prepare(
+        `INSERT INTO session_documents
+          (id, session_id, kind, title, body_format, body, created_by, updated_by, created_at, updated_at)
+         VALUES (?, ?, 'summary', 'AI summary', 'markdown', ?, 'user-1', 'user-1',
+           '2026-11-17T00:00:00Z', '2026-11-17T00:00:00Z')`,
+      )
+      .run(
+        "summary-1",
+        tab.id,
+        "Generated meeting summary\n\n- Launch date is confirmed.",
+      );
+
     openMeeting();
+
     expect(screen.getByRole("textbox")).not.toBeNull();
+    expect(screen.queryByRole("button", { name: "AI summary" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Memos" })).toBeNull();
+    expect(screen.getByText("At a glance")).not.toBeNull();
+    expect(screen.getByText("Generated meeting summary")).not.toBeNull();
+    expect(screen.getByText("Launch date is confirmed.")).not.toBeNull();
+
     await typeNotes("Keep the original notes");
-    fireEvent.click(screen.getByRole("button", { name: "AI summary" }));
-    expect(await screen.findByText("Generated meeting summary")).not.toBeNull();
     await waitFor(() =>
       expect(notesDocument().body).toContain("Keep the original notes"),
-    );
-    fireEvent.click(screen.getByRole("button", { name: "Memos" }));
-    expect(await screen.findByRole("textbox")).not.toBeNull();
-    expect(screen.getByRole("textbox").textContent).toContain(
-      "Keep the original notes",
     );
   });
 });

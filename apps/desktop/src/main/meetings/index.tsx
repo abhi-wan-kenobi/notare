@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { cn } from "@hypr/utils";
 
+import { useNow } from "~/calendar/hooks";
 import { useLiveQuery } from "~/db";
 import { StandardContentWrapper } from "~/shared/main";
 import { useTabs } from "~/store/zustand/tabs";
@@ -51,9 +52,15 @@ function meetingDate(meeting: MeetingRow): Date {
   return new Date(Number.NaN);
 }
 
-function isUpcoming(meeting: MeetingRow): boolean {
+function isUpcoming(meeting: MeetingRow, now: Date): boolean {
   const date = meetingDate(meeting);
-  return isValid(date) && date.getTime() > Date.now();
+  return isValid(date) && date.getTime() > now.getTime();
+}
+
+function formatRowDate(date: Date, now: Date): string {
+  return date.getFullYear() === now.getFullYear()
+    ? format(date, "EEE, MMM d")
+    : format(date, "EEE, MMM d, yyyy");
 }
 
 export function TabContentMeetings() {
@@ -86,6 +93,7 @@ function MeetingsView() {
   const [filter, setFilter] = useState<Filter>(tabFilter ?? "all");
   const [search, setSearch] = useState("");
   const openCurrent = useTabs((state) => state.openCurrent);
+  const now = useNow();
 
   useEffect(() => {
     if (tabFilter && tabFilter !== filter) {
@@ -144,7 +152,7 @@ function MeetingsView() {
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase();
     return meetings.filter((meeting) => {
-      const upcoming = isUpcoming(meeting);
+      const upcoming = isUpcoming(meeting, now);
       const recorded = meeting.transcript_count > 0;
       const series = Boolean(meeting.series_id);
 
@@ -162,7 +170,7 @@ function MeetingsView() {
         `${meeting.title} ${meeting.attendees ?? ""}`.toLowerCase();
       return searchable.includes(q);
     });
-  }, [meetings, filter, search]);
+  }, [meetings, filter, search, now]);
 
   const groups = useMemo(() => {
     const result = new Map<
@@ -175,7 +183,6 @@ function MeetingsView() {
       }
     >();
 
-    const now = new Date();
     const todayStart = new Date(
       now.getFullYear(),
       now.getMonth(),
@@ -231,7 +238,7 @@ function MeetingsView() {
     }
 
     return [...result.values()];
-  }, [visible]);
+  }, [visible, now]);
 
   const renderGroupLabel = (group: {
     labelType: "today" | "yesterday" | "last_week" | "month" | "older";
@@ -252,178 +259,168 @@ function MeetingsView() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-[850px] px-8 pt-9 pb-14">
-      <h1 className="page-title">
-        <Trans>Meetings</Trans>
-      </h1>
-      <p className="text-muted-foreground mt-1 text-sm">
-        <Trans>Your conversations, notes, and what comes next.</Trans>
-      </p>
+    <div className="relative h-full w-full">
+      <div className="mx-auto flex h-full w-full max-w-[850px] flex-col overflow-y-auto px-8 pt-9 pb-14">
+        <h1 className="page-title">
+          <Trans>Meetings</Trans>
+        </h1>
+        <p className="text-muted-foreground mt-1 text-sm">
+          <Trans>Your conversations, notes, and what comes next.</Trans>
+        </p>
 
-      <div className="my-6 flex flex-wrap items-center gap-3.5">
-        <div
-          className="border-border/50 bg-muted/60 flex items-center gap-1 rounded-[9px] border p-0.5"
-          role="group"
-          aria-label={t`Filter meetings`}
-        >
-          {FILTERS.map((value) => (
-            <button
-              key={value}
-              type="button"
-              aria-pressed={filter === value}
-              onClick={() => handleFilterChange(value)}
-              className={cn(
-                "h-[30px] rounded-[6px] px-3 text-xs font-medium capitalize transition-colors",
-                filter === value
-                  ? "bg-card text-foreground shadow-xs"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {value === "all" ? (
-                <Trans>All</Trans>
-              ) : value === "recorded" ? (
-                <Trans>Recorded</Trans>
-              ) : value === "upcoming" ? (
-                <Trans>Upcoming</Trans>
-              ) : (
-                <Trans>Series</Trans>
-              )}
-            </button>
-          ))}
+        <div className="my-6 flex flex-wrap items-center gap-3.5">
+          <div
+            className="border-border/50 bg-muted/60 flex items-center gap-1 rounded-[9px] border p-0.5"
+            role="group"
+            aria-label={t`Filter meetings`}
+          >
+            {FILTERS.map((value) => (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={filter === value}
+                onClick={() => handleFilterChange(value)}
+                className={cn(
+                  "h-[30px] rounded-[6px] px-3 text-xs font-medium capitalize transition-colors",
+                  filter === value
+                    ? "bg-card text-foreground shadow-xs"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {value === "all" ? (
+                  <Trans>All</Trans>
+                ) : value === "recorded" ? (
+                  <Trans>Transcribed</Trans>
+                ) : value === "upcoming" ? (
+                  <Trans>Upcoming</Trans>
+                ) : (
+                  <Trans>Series</Trans>
+                )}
+              </button>
+            ))}
+          </div>
+
+          <label className="border-border bg-card text-muted-foreground focus-within:ring-ring flex h-9 min-w-[225px] flex-1 cursor-text items-center gap-2 rounded-lg border px-2.5 text-xs focus-within:ring-1">
+            <SearchIcon size={14} className="text-muted-foreground shrink-0" />
+            <input
+              type="search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder={t`Search meetings`}
+              aria-label={t`Search meetings`}
+              className="text-foreground placeholder:text-muted-foreground w-full border-0 bg-transparent text-xs outline-none"
+            />
+          </label>
         </div>
 
-        <label className="border-border bg-card text-muted-foreground focus-within:ring-ring flex h-9 min-w-[225px] flex-1 cursor-text items-center gap-2 rounded-lg border px-2.5 text-xs focus-within:ring-1">
-          <SearchIcon size={14} className="text-muted-foreground shrink-0" />
-          <input
-            type="search"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder={t`Search meetings`}
-            aria-label={t`Search meetings`}
-            className="text-foreground placeholder:text-muted-foreground w-full border-0 bg-transparent text-xs outline-none"
-          />
-        </label>
-      </div>
+        {groups.length === 0 ? (
+          <p className="text-muted-foreground mt-6 text-sm">
+            <Trans>No meetings found.</Trans>
+          </p>
+        ) : (
+          groups.map((group) => (
+            <section key={group.key} className="mt-6">
+              <h2 className="text-muted-foreground mb-1.5 font-serif text-[15px] font-medium">
+                {renderGroupLabel(group)}
+              </h2>
+              <div>
+                {group.rows.map((meeting) => {
+                  const upcoming = isUpcoming(meeting, now);
+                  const date = meetingDate(meeting);
+                  const duration =
+                    meeting.started_at && meeting.ended_at
+                      ? Math.max(
+                          1,
+                          Math.round(
+                            (Date.parse(meeting.ended_at) -
+                              Date.parse(meeting.started_at)) /
+                              60000,
+                          ),
+                        )
+                      : null;
 
-      {groups.length === 0 ? (
-        <p className="text-muted-foreground mt-6 text-sm">
-          <Trans>No meetings found.</Trans>
-        </p>
-      ) : (
-        groups.map((group) => (
-          <section key={group.key} className="mt-6">
-            <h2 className="text-muted-foreground mb-1.5 font-serif text-[15px] font-medium">
-              {renderGroupLabel(group)}
-            </h2>
-            <div>
-              {group.rows.map((meeting) => {
-                const upcoming = isUpcoming(meeting);
-                const date = meetingDate(meeting);
-                const duration =
-                  meeting.started_at && meeting.ended_at
-                    ? Math.max(
-                        1,
-                        Math.round(
-                          (Date.parse(meeting.ended_at) -
-                            Date.parse(meeting.started_at)) /
-                            60000,
-                        ),
-                      )
-                    : null;
+                  const dateStr = isValid(date) ? formatRowDate(date, now) : "";
+                  const timeStr = isValid(date) ? format(date, "h:mm a") : "";
+                  const metaParts: string[] = [];
+                  if (dateStr) metaParts.push(dateStr);
+                  if (timeStr) metaParts.push(timeStr);
+                  if (duration) metaParts.push(`${duration} min`);
+                  if (meeting.attendees) {
+                    const attendeeList = meeting.attendees.split(", ");
+                    const preview = attendeeList.slice(0, 3).join(", ");
+                    metaParts.push(preview);
+                  }
+                  const meetingMeta = metaParts.join(" · ");
 
-                const timeStr = isValid(date) ? format(date, "h:mm a") : "";
-                const metaParts: string[] = [];
-                if (timeStr) metaParts.push(timeStr);
-                if (duration) metaParts.push(`${duration} min`);
-                if (meeting.attendees) {
-                  const attendeeList = meeting.attendees.split(", ");
-                  const preview = attendeeList.slice(0, 3).join(", ");
-                  metaParts.push(preview);
-                }
-                const meetingMeta = metaParts.join(" · ");
+                  const attendeeCount = meeting.attendee_count;
+                  const attendeeFacts =
+                    attendeeCount > 0
+                      ? attendeeCount === 1
+                        ? t`${attendeeCount} attendee`
+                        : t`${attendeeCount} attendees`
+                      : "";
 
-                const attendeeCount = meeting.attendee_count;
-                const attendeeFacts =
-                  attendeeCount > 0
-                    ? attendeeCount === 1
-                      ? t`${attendeeCount} attendee`
-                      : t`${attendeeCount} attendees`
-                    : "";
+                  const statusText = upcoming ? (
+                    <Trans>Upcoming</Trans>
+                  ) : meeting.transcript_count > 0 ? (
+                    <Trans>Transcribed</Trans>
+                  ) : (
+                    <Trans>Notes only</Trans>
+                  );
 
-                const statusText = upcoming ? (
-                  <Trans>Upcoming</Trans>
-                ) : meeting.transcript_count > 0 ? (
-                  <Trans>Recorded</Trans>
-                ) : (
-                  <Trans>Notes only</Trans>
-                );
-
-                return (
-                  <div
-                    key={meeting.id}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() =>
-                      openCurrent({ type: "sessions", id: meeting.id })
-                    }
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        openCurrent({ type: "sessions", id: meeting.id });
+                  return (
+                    <button
+                      key={meeting.id}
+                      type="button"
+                      onClick={() =>
+                        openCurrent({ type: "sessions", id: meeting.id })
                       }
-                    }}
-                    className="group border-border/40 hover:bg-accent/30 grid min-h-[54px] cursor-pointer grid-cols-[minmax(230px,1.4fr)_minmax(260px,1.3fr)_110px_32px] items-center gap-3.5 rounded-xs border-t px-1 py-2 text-left transition-colors max-lg:grid-cols-[minmax(180px,1fr)_minmax(180px,1fr)_95px] max-md:grid-cols-[minmax(130px,1fr)_auto]"
-                  >
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5 truncate">
-                        <span className="text-foreground truncate text-[13px] font-medium">
-                          {meeting.title || <Trans>Untitled</Trans>}
-                        </span>
-                        {meeting.series_id ? (
-                          <RepeatIcon
-                            size={13}
-                            className="text-muted-foreground inline-block shrink-0"
-                            aria-label={t`Recurring`}
-                          />
+                      className="group border-border/40 hover:bg-accent/30 grid min-h-[54px] w-full cursor-pointer grid-cols-[minmax(230px,1.4fr)_minmax(260px,1.3fr)_110px_32px] items-center gap-3.5 rounded-xs border-t px-1 py-2 text-left transition-colors max-lg:grid-cols-[minmax(180px,1fr)_minmax(180px,1fr)_95px] max-md:grid-cols-[minmax(130px,1fr)_auto]"
+                    >
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 truncate">
+                          <span className="text-foreground truncate text-[13px] font-medium">
+                            {meeting.title || <Trans>Untitled</Trans>}
+                          </span>
+                          {meeting.series_id ? (
+                            <RepeatIcon
+                              size={13}
+                              className="text-muted-foreground inline-block shrink-0"
+                              aria-label={t`Recurring`}
+                            />
+                          ) : null}
+                        </div>
+                        <div className="text-muted-foreground mt-0.5 truncate text-[11px]">
+                          {meetingMeta}
+                        </div>
+                      </div>
+
+                      <div className="text-muted-foreground truncate text-[11px] max-md:hidden">
+                        {attendeeFacts}
+                      </div>
+
+                      <div className="text-muted-foreground justify-self-end text-right text-[11px] whitespace-nowrap">
+                        <span>{statusText}</span>
+                        {meeting.action_count > 0 ? (
+                          <span className="text-muted-foreground ml-2 text-[10px]">
+                            <Trans>{meeting.action_count} open</Trans>
+                          </span>
                         ) : null}
                       </div>
-                      <div className="text-muted-foreground mt-0.5 truncate text-[11px]">
-                        {meetingMeta}
-                      </div>
-                    </div>
 
-                    <div className="text-muted-foreground truncate text-[11px] max-md:hidden">
-                      {attendeeFacts}
-                    </div>
-
-                    <div className="text-muted-foreground justify-self-end text-right text-[11px] whitespace-nowrap">
-                      <span>{statusText}</span>
-                      {meeting.action_count > 0 ? (
-                        <span className="text-muted-foreground ml-2 text-[10px]">
-                          <Trans>{meeting.action_count} open</Trans>
+                      <div className="justify-self-end max-lg:hidden">
+                        <span className="border-border text-foreground flex h-[27px] shrink-0 items-center justify-center rounded-full border px-2.5 text-[11px] font-medium opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+                          <Trans>Open</Trans>
                         </span>
-                      ) : null}
-                    </div>
-
-                    <div className="justify-self-end max-lg:hidden">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openCurrent({ type: "sessions", id: meeting.id });
-                        }}
-                        className="border-border text-foreground hover:bg-accent/50 flex h-[27px] shrink-0 cursor-pointer items-center justify-center rounded-full border px-2.5 text-[11px] font-medium opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
-                      >
-                        <Trans>Open</Trans>
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        ))
-      )}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+          ))
+        )}
+      </div>
     </div>
   );
 }

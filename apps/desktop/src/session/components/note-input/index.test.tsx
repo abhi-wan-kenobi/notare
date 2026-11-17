@@ -34,7 +34,7 @@ vi.mock("./header", () => ({
     handleTabChange: (view: EditorView) => void;
     isTranscribing?: boolean;
   }) => (
-    <div>
+    <div data-testid="note-header">
       <div data-testid="current-tab">{formatEditorView(currentTab)}</div>
       <div data-testid="is-transcribing">{String(isTranscribing)}</div>
       {editorTabs.map((editorTab) => (
@@ -113,9 +113,11 @@ function formatEditorView(view: EditorView) {
 function renderNoteInput({
   currentTab = { type: "raw" },
   handleTabChange = vi.fn(),
+  embedded = false,
 }: {
   currentTab?: EditorView;
   handleTabChange?: (view: EditorView) => void;
+  embedded?: boolean;
 } = {}) {
   return {
     handleTabChange,
@@ -134,6 +136,7 @@ function renderNoteInput({
         editorTabs={hoisted.editorTabs}
         currentTab={currentTab}
         handleTabChange={handleTabChange}
+        embedded={embedded}
       />,
     ),
   };
@@ -161,6 +164,29 @@ describe("NoteInput tab selection", () => {
 
     expect(handleTabChange).toHaveBeenCalledWith({ type: "transcript" });
     expect(screen.getByTestId("current-tab").textContent).toBe("raw");
+  });
+
+  it("keeps embedded Meeting Summary raw and editable without an inner view switcher", () => {
+    hoisted.editorTabs = [
+      { type: "enhanced", id: "summary-1" },
+      { type: "raw" },
+      { type: "transcript" },
+    ];
+    renderNoteInput({ embedded: true });
+
+    expect(screen.queryByTestId("note-header")).toBeNull();
+    expect(screen.getByTestId("raw-editor")).not.toBeNull();
+    expect(
+      screen.getByText(
+        "Start typing your meeting notes. Changes are saved automatically.",
+      ),
+    ).not.toBeNull();
+  });
+
+  it("keeps the full note navigation outside MeetingDetail", () => {
+    renderNoteInput();
+
+    expect(screen.getByTestId("note-header")).not.toBeNull();
   });
 
   it("switches to the next note view with Command+Option+Right", () => {

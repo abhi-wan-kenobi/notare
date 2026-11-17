@@ -126,6 +126,19 @@ describe("DictationOrbWindow", () => {
     expect(screen.getByTestId("dictation-window-solid")).not.toBeNull();
   });
 
+  it("preserves the document theme while mounting", async () => {
+    render(<DictationOrbWindow />);
+    await act(async () => {});
+    expect(document.documentElement.classList.contains("dark")).toBe(false);
+
+    cleanup();
+    document.documentElement.classList.add("dark");
+
+    render(<DictationOrbWindow />);
+    await act(async () => {});
+    expect(document.documentElement.classList.contains("dark")).toBe(true);
+  });
+
   it("tracks phase and amplitude from state events", async () => {
     render(<DictationOrbWindow />);
     await pushState({ phase: "listening", amplitude: 0.8, mode: "type" });

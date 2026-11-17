@@ -3169,10 +3169,6 @@ msgstr ""
 msgid "Record"
 msgstr ""
 
-#: src/main/meetings/index.tsx
-msgid "Recorded"
-msgstr ""
-
 #: src/session/meeting-detail.tsx
 msgid "Recording"
 msgstr ""
@@ -4209,6 +4205,10 @@ msgstr ""
 
 #: src/settings/general/app-settings.tsx
 msgid "Transcribe in real time during a meeting. Turn this off to transcribe only after you stop — lighter for long meetings, and audio is always recorded either way. Applies to new sessions only."
+msgstr ""
+
+#: src/main/meetings/index.tsx
+msgid "Transcribed"
 msgstr ""
 
 #: src/settings/ai/stt/shared.tsx
