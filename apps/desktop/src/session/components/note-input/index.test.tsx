@@ -183,6 +183,25 @@ describe("NoteInput tab selection", () => {
     ).not.toBeNull();
   });
 
+  it("ignores the adjacent-view hotkey in embedded Meeting Summary", () => {
+    hoisted.editorTabs = [
+      { type: "enhanced", id: "summary-1" },
+      { type: "raw" },
+      { type: "transcript" },
+    ];
+    const { handleTabChange } = renderNoteInput({ embedded: true });
+
+    hoisted.hotkeys
+      .find((hotkey) => hotkey.keys === "mod+alt+left")
+      ?.callback();
+    hoisted.hotkeys
+      .find((hotkey) => hotkey.keys === "mod+alt+right")
+      ?.callback();
+
+    expect(handleTabChange).not.toHaveBeenCalled();
+    expect(hoisted.onBeforeTabChange).not.toHaveBeenCalled();
+  });
+
   it("keeps the full note navigation outside MeetingDetail", () => {
     renderNoteInput();
 
