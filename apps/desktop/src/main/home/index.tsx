@@ -16,6 +16,8 @@ import {
   useTimelineEventsTable,
 } from "~/calendar/queries";
 import { useLiveQuery } from "~/db";
+import { prepareSeriesOccurrence } from "~/services/series";
+import { seriesIdForEvent } from "~/services/series/identity";
 import {
   getOrCreateSessionForEventId,
   useSessionSummaries,
@@ -33,6 +35,8 @@ type SessionLink = {
   session_id: string;
   event_id: string;
   external_event_id: string;
+  external_provider?: string;
+  calendar_id?: string;
   series_id?: string;
 };
 
@@ -104,7 +108,9 @@ function HomeView() {
     SessionLink[]
   >({
     sql: `
-      SELECT id AS session_id, event_id, external_event_id, series_id
+      SELECT id AS session_id, event_id, external_event_id, external_provider, series_id,
+        CASE WHEN json_valid(event_json)
+          THEN json_extract(event_json, '$.calendar_id') END AS calendar_id
       FROM sessions
       WHERE deleted_at IS NULL
         AND ((event_id IS NOT NULL AND event_id != '')
@@ -154,13 +160,28 @@ function HomeView() {
   const sessionIdByEventId = useMemo(() => {
     const byEventId = new Map<string, string>();
     const byTrackingId = new Map<string, string>();
+    // Scoped by calendar to avoid merging two calendars' identical provider
+    // recurrence ids. Sessions whose stored `event_json` predates that (no
+    // `calendar_id` key) can't build the scoped key; without this fallback
+    // they'd lose their "Open notes" link entirely and "Prepare" would spawn
+    // a duplicate session for an event that already has one.
+    const byLegacyTrackingId = new Map<string, string>();
     for (const link of sessionLinks) {
       if (link.event_id) byEventId.set(link.event_id, link.session_id);
-      if (link.external_event_id) {
-        byTrackingId.set(link.external_event_id, link.session_id);
+      if (link.external_event_id && link.calendar_id) {
+        byTrackingId.set(
+          JSON.stringify([
+            link.external_provider ?? "",
+            link.calendar_id,
+            link.external_event_id,
+          ]),
+          link.session_id,
+        );
+      } else if (link.external_event_id) {
+        byLegacyTrackingId.set(link.external_event_id, link.session_id);
       }
     }
-    return { byEventId, byTrackingId };
+    return { byEventId, byTrackingId, byLegacyTrackingId };
   }, [sessionLinks]);
 
   const weekStartsOn = useWeekStartsOn();
@@ -191,7 +212,7 @@ function HomeView() {
           startedAt: event.started_at as string,
           endedAt: event.ended_at || undefined,
           isRecurring: Boolean(event.recurrence_series_id),
-          seriesId: (event.recurrence_series_id as string) || undefined,
+          seriesId: seriesIdForEvent(event) || undefined,
           dayLabel:
             dayKey === todayKey
               ? "today"
@@ -201,15 +222,19 @@ function HomeView() {
           sessionId:
             sessionIdByEventId.byEventId.get(id) ??
             (event.tracking_id_event
-              ? sessionIdByEventId.byTrackingId.get(
-                  event.tracking_id_event as string,
-                )
+              ? (sessionIdByEventId.byTrackingId.get(
+                  JSON.stringify([
+                    event.provider ?? "",
+                    event.calendar_id,
+                    event.tracking_id_event,
+                  ]),
+                ) ??
+                sessionIdByEventId.byLegacyTrackingId.get(
+                  event.tracking_id_event,
+                ))
               : undefined),
           attendees: attendeesByEventId[id] ?? [],
-          cadence: getRecurrenceCadence(
-            eventsTable,
-            event.recurrence_series_id,
-          ),
+          cadence: getRecurrenceCadence(eventsTable, seriesIdForEvent(event)),
         };
       });
   }, [
@@ -254,10 +279,12 @@ function HomeView() {
   const prepareEvent = async (
     eventId: string,
     title: string,
-    _seriesId?: string,
+    seriesId?: string,
   ) => {
     try {
-      const sessionId = await getOrCreateSessionForEventId(eventId, title);
+      const sessionId = seriesId
+        ? await prepareSeriesOccurrence(seriesId, eventId)
+        : await getOrCreateSessionForEventId(eventId, title);
       openSession(sessionId);
     } catch (error) {
       console.error("[home] failed to prepare event", error);
@@ -472,7 +499,7 @@ function getRecurrenceCadence(
   const dates = Object.values(eventsTable)
     .filter(
       (event) =>
-        event.recurrence_series_id === seriesId && event.started_at != null,
+        seriesIdForEvent(event) === seriesId && event.started_at != null,
     )
     .map((event) => new Date(event.started_at as string).getTime())
     .filter(Number.isFinite)

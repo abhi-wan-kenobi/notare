@@ -58,14 +58,23 @@ export const RawEditor = forwardRef<
     const updateSession = useUpdateSession(sessionId);
     const { audioDropTargetProps, fileHandlerConfig, isAudioDragActive } =
       useNoteFileHandlerConfig(sessionId);
-    const initialContent = useMemo<JSONContent>(
-      () => ensureFirstLineTitle(parseJsonContent(rawMd), sessionTitle),
-      [rawMd, sessionTitle],
-    );
+    const initialContent = useMemo<JSONContent>(() => {
+      const content = ensureFirstLineTitle(
+        parseJsonContent(rawMd),
+        sessionTitle,
+      );
+      const blocks = content.content ?? [];
+      // A titled, empty meeting still needs a body to click into and type.
+      return blocks.length === 1 && blocks[0].type === "heading"
+        ? { ...content, content: [...blocks, { type: "paragraph" }] }
+        : content;
+    }, [rawMd, sessionTitle]);
+    const lastSubmittedContentRef = useRef<JSONContent | null>(null);
 
     const persistChange = useCallback(
       (input: JSONContent) => {
         const title = extractFirstLineTitle(input);
+        lastSubmittedContentRef.current = input;
         return updateSession({
           raw_md: JSON.stringify(input),
           ...(title !== null || hasStoredNoteContent(rawMd)
@@ -107,6 +116,29 @@ export const RawEditor = forwardRef<
       [persistChange, hasNonEmptyText],
     );
 
+    const handleViewReady = useCallback(
+      (view: EditorView) => {
+        lastSubmittedContentRef.current = view.state.doc.toJSON();
+        onViewReady?.(view);
+      },
+      [onViewReady],
+    );
+    const handleViewDisposed = useCallback(
+      (view: EditorView) => {
+        const content = view.state.doc.toJSON() as JSONContent;
+        // The shared editor debounces changes. Save any final keystrokes before
+        // switching views or closing a meeting cancels its pending callback.
+        if (
+          JSON.stringify(content) !==
+          JSON.stringify(lastSubmittedContentRef.current)
+        ) {
+          handleChange(content);
+        }
+        onViewDisposed?.(view);
+      },
+      [handleChange, onViewDisposed],
+    );
+
     const mentionConfig = useMentionConfig();
 
     return (
@@ -130,8 +162,8 @@ export const RawEditor = forwardRef<
           }
           extraNodeViews={extraNodeViews}
           showFormatToolbar={showFormatToolbar}
-          onViewReady={onViewReady}
-          onViewDisposed={onViewDisposed}
+          onViewReady={handleViewReady}
+          onViewDisposed={handleViewDisposed}
         />
       </AudioDropTarget>
     );

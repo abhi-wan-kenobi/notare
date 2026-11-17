@@ -15,27 +15,11 @@ const mocks = vi.hoisted(() => ({
   emitClicked: vi.fn(async () => undefined),
   emitHideRequested: vi.fn(async () => undefined),
   startDragging: vi.fn(async () => undefined),
-  scaleFactor: vi.fn(async () => 1),
-  // Rust creates the orb window at the cobalt size (70 logical px).
-  innerSize: vi.fn(async () => ({
-    toLogical: () => ({ width: 70, height: 70 }),
-  })),
-  outerPosition: vi.fn(async () => ({
-    toLogical: () => ({ x: 200, y: 300 }),
-  })),
+  show: vi.fn(),
+  setFocus: vi.fn(),
+  showMain: vi.fn(),
   setSize: vi.fn(async () => undefined),
   setPosition: vi.fn(async () => undefined),
-  // Orb window visibility (Settings→Dictation "half-page" repro, #Windows):
-  // a variant pick must never resize the orb window while it's hidden -
-  // default true so the existing size-sync tests below (which don't care
-  // about visibility) keep exercising the resize path unchanged.
-  orbWindowVisible: true,
-  isVisible: vi.fn(async () => mocks.orbWindowVisible),
-  monitor: null as null | {
-    position: { x: number; y: number };
-    size: { width: number; height: number };
-    scaleFactor: number;
-  },
   config: {
     dictation_orb_variant: "cobalt",
     dictation_paste_at_cursor: true,
@@ -63,17 +47,15 @@ vi.mock("@hypr/plugin-dictation", () => ({
 vi.mock("@tauri-apps/api/webviewWindow", () => ({
   getCurrentWebviewWindow: () => ({
     startDragging: mocks.startDragging,
-    scaleFactor: mocks.scaleFactor,
-    innerSize: mocks.innerSize,
-    outerPosition: mocks.outerPosition,
+    show: mocks.show,
+    setFocus: mocks.setFocus,
     setSize: mocks.setSize,
     setPosition: mocks.setPosition,
-    isVisible: mocks.isVisible,
   }),
 }));
 
-vi.mock("@tauri-apps/api/window", () => ({
-  currentMonitor: vi.fn(async () => mocks.monitor),
+vi.mock("@hypr/plugin-windows", () => ({
+  commands: { windowShow: mocks.showMain },
 }));
 
 import { DictationOrbWindow } from "./window";
@@ -106,8 +88,6 @@ describe("DictationOrbWindow", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.stateHandlers.length = 0;
-    mocks.monitor = null;
-    mocks.orbWindowVisible = true;
     document.documentElement.classList.remove("dark");
     document.documentElement.style.background = "";
     document.body.style.background = "";
@@ -251,146 +231,50 @@ describe("DictationOrbWindow", () => {
     }
   });
 
-  it("renders the particle orb variant when configured", async () => {
-    mocks.config.dictation_orb_variant = "particles";
-    try {
+  it.each(["cobalt", "particles", "classic", "cobalt-halo", "unknown"])(
+    "ignores the saved legacy %s shape without resizing any window",
+    async (saved) => {
+      mocks.config.dictation_orb_variant = saved;
       render(<DictationOrbWindow />);
       await act(async () => {});
 
-      expect(screen.getByTestId("dictation-orb").dataset.dictationVariant).toBe(
-        "particles",
-      );
-      expect(screen.getByTestId("dictation-particle-orb")).not.toBeNull();
-    } finally {
-      mocks.config.dictation_orb_variant = "cobalt";
-    }
-  });
-
-  it("renders the Pulse waveform variant when configured", async () => {
-    mocks.config.dictation_orb_variant = "waveform";
-    try {
-      render(<DictationOrbWindow />);
-      await act(async () => {});
-
-      expect(screen.getByTestId("dictation-orb").dataset.dictationVariant).toBe(
-        "waveform",
-      );
-      expect(screen.getByTestId("dictation-waveform-orb")).not.toBeNull();
-    } finally {
-      mocks.config.dictation_orb_variant = "cobalt";
-    }
-  });
-
-  it("keeps the created window size for the cobalt variant", async () => {
-    render(<DictationOrbWindow />);
-    await act(async () => {});
-
-    // Already 56x56 - no resize round-trip.
-    expect(mocks.setSize).not.toHaveBeenCalled();
-    expect(mocks.setPosition).not.toHaveBeenCalled();
-  });
-
-  it("grows the window around its center for the particles variant", async () => {
-    mocks.config.dictation_orb_variant = "particles";
-    try {
-      render(<DictationOrbWindow />);
-      await act(async () => {});
-
-      // 70 -> 105 logical px (1.5x), re-centered on the old spot.
-      expect(mocks.setSize).toHaveBeenCalledTimes(1);
-      expect(mocks.setSize).toHaveBeenCalledWith(
-        expect.objectContaining({ width: 105, height: 105 }),
-      );
-      expect(mocks.setPosition).toHaveBeenCalledWith(
-        expect.objectContaining({ x: 183, y: 283 }),
-      );
-    } finally {
-      mocks.config.dictation_orb_variant = "cobalt";
-    }
-  });
-
-  it("clamps the grown window to the monitor near a screen edge", async () => {
-    mocks.config.dictation_orb_variant = "particles";
-    mocks.monitor = {
-      position: { x: 0, y: 0 },
-      size: { width: 1920, height: 1080 },
-      scaleFactor: 1,
-    };
-    // Orb parked in the bottom-right corner: growing 70 -> 105 around the
-    // center would push it past both edges without the clamp.
-    mocks.outerPosition.mockImplementation(async () => ({
-      toLogical: () => ({ x: 1880, y: 1040 }),
-    }));
-    try {
-      render(<DictationOrbWindow />);
-      await act(async () => {});
-
-      expect(mocks.setSize).toHaveBeenCalledWith(
-        expect.objectContaining({ width: 105, height: 105 }),
-      );
-      expect(mocks.setPosition).toHaveBeenCalledWith(
-        expect.objectContaining({ x: 1815, y: 975 }),
-      );
-    } finally {
-      mocks.config.dictation_orb_variant = "cobalt";
-    }
-  });
-
-  it("does not resize the orb window for a variant picked while it is hidden", async () => {
-    // Settings→Dictation "half-page" repro (Windows/WebView2): a native
-    // setSize/setPosition on the orb window - even one that is hidden -
-    // shares the single-threaded window event loop with every other
-    // webview, including Settings. A variant pick that lands while the orb
-    // is off/hidden must never reach the native call.
-    mocks.orbWindowVisible = false;
-    mocks.config.dictation_orb_variant = "particles";
-    try {
-      render(<DictationOrbWindow />);
-      await act(async () => {});
-
+      const waveform = screen.getByTestId("dictation-waveform-orb");
+      expect(waveform.style.width).toBe("62px");
+      expect(waveform.style.height).toBe("30px");
+      expect(screen.queryByTestId("dictation-particle-orb")).toBeNull();
       expect(mocks.setSize).not.toHaveBeenCalled();
       expect(mocks.setPosition).not.toHaveBeenCalled();
-    } finally {
-      mocks.config.dictation_orb_variant = "cobalt";
-    }
-  });
+    },
+  );
 
-  it("applies a deferred resize once a dictation-session event proves the window is shown", async () => {
-    mocks.orbWindowVisible = false;
-    mocks.config.dictation_orb_variant = "particles";
-    try {
-      render(<DictationOrbWindow />);
-      await act(async () => {});
-      expect(mocks.setSize).not.toHaveBeenCalled();
+  it("toggles without requesting native show/focus or moving DOM focus", async () => {
+    render(
+      <>
+        <input aria-label="Dictation target" />
+        <DictationOrbWindow />
+      </>,
+    );
+    await act(async () => {});
+    const target = screen.getByRole("textbox");
+    target.focus();
+    const button = screen.getByRole("button", { name: "Start dictation" });
+    const down = new MouseEvent("pointerdown", {
+      button: 0,
+      bubbles: true,
+      cancelable: true,
+      screenX: 50,
+      screenY: 50,
+    });
+    fireEvent(button, down);
+    firePointer(button, "pointerup");
+    fireEvent.click(button);
 
-      // The orb window is only ever shown for an enabled/active dictation
-      // session, so a state event is the signal that it's now on screen.
-      mocks.orbWindowVisible = true;
-      await pushState({ phase: "listening", amplitude: 0.4, mode: "type" });
-
-      expect(mocks.setSize).toHaveBeenCalledTimes(1);
-      expect(mocks.setSize).toHaveBeenCalledWith(
-        expect.objectContaining({ width: 105, height: 105 }),
-      );
-    } finally {
-      mocks.config.dictation_orb_variant = "cobalt";
-    }
-  });
-
-  it("does not re-resize on a session event once nothing is pending", async () => {
-    mocks.config.dictation_orb_variant = "particles";
-    try {
-      render(<DictationOrbWindow />);
-      await act(async () => {});
-      expect(mocks.setSize).toHaveBeenCalledTimes(1);
-
-      // The window was already visible, so the initial pick applied
-      // immediately - a later session event must not resize it again.
-      await pushState({ phase: "listening", amplitude: 0.4, mode: "type" });
-      expect(mocks.setSize).toHaveBeenCalledTimes(1);
-    } finally {
-      mocks.config.dictation_orb_variant = "cobalt";
-    }
+    expect(down.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(target);
+    expect(mocks.emitClicked).toHaveBeenCalledTimes(1);
+    expect(mocks.show).not.toHaveBeenCalled();
+    expect(mocks.setFocus).not.toHaveBeenCalled();
+    expect(mocks.showMain).not.toHaveBeenCalled();
   });
 
   it("starts a window drag once the pointer travels past the threshold", async () => {
@@ -418,6 +302,9 @@ describe("DictationOrbWindow", () => {
     // A click that trails the drag gesture must NOT toggle dictation.
     fireEvent.click(button);
     expect(mocks.emitClicked).not.toHaveBeenCalled();
+    expect(mocks.show).not.toHaveBeenCalled();
+    expect(mocks.setFocus).not.toHaveBeenCalled();
+    expect(mocks.showMain).not.toHaveBeenCalled();
 
     // The next plain click toggles again.
     firePointer(button, "pointerdown", {

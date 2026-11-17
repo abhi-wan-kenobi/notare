@@ -19,15 +19,6 @@ export const SETTING_DEFINITIONS = {
     path: ["general", "floating_bar_enabled"],
     default: true as boolean,
   },
-  // Look of the meeting floating bar (cross-platform): "notare" (the default
-  // glass orb bar, docs/DESIGN-DIRECTION.md §3b) or "classic" (the compact
-  // parchment/olive pill ported from the earlier native macOS NSPanel,
-  // FloatingBarView.swift). Mirrors `dictation_orb_variant`'s conventions.
-  meeting_bar_theme: {
-    type: "string",
-    path: ["general", "meeting_bar_theme"],
-    default: "notare" as string,
-  },
   dictation_enabled: {
     type: "boolean",
     path: ["general", "dictation_enabled"],
@@ -122,15 +113,6 @@ export const SETTING_DEFINITIONS = {
     type: "string",
     path: ["general", "dictation_translation_target"],
     default: "en" as string,
-  },
-  // Orb look: "cobalt-halo" (default; twin cobalt rings in a canvas bloom),
-  // "cobalt" (the mini meeting orb), "particles" (voice-reactive particle
-  // sphere), "waveform" ("Pulse", the dancing-sticks waveform), etc. Keep in
-  // sync with `DEFAULT_ORB_VARIANT` in `dictation/orb.tsx`.
-  dictation_orb_variant: {
-    type: "string",
-    path: ["general", "dictation_orb_variant"],
-    default: "cobalt" as string,
   },
   floating_bar_opacity: {
     type: "number",

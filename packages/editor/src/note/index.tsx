@@ -748,12 +748,21 @@ export const NoteEditor = forwardRef<NoteEditorRef, NoteEditorProps>(
           if (enforceTitleHeading) {
             doc = normalizeTitleHeadingDoc(doc);
           }
-          const state = EditorState.create({
-            doc,
-            plugins: view.state.plugins,
-          });
+          // `view.updateState()` mutates the raw EditorView directly, but
+          // @handlewithcare/react-prosemirror renders `<ProseMirrorDoc>` from
+          // its own React state (kept in sync via `dispatchTransaction`), not
+          // from `view.state`. Bypassing `dispatch` leaves the DOM stale even
+          // though `view.state` reports the new content. Replace the whole
+          // document through a real transaction so React re-renders it.
+          // `async` skips the library's own flushSync wrapper: this runs
+          // from an effect, and flushing synchronously there warns that
+          // React is already rendering.
+          const tr = view.state.tr
+            .replaceWith(0, view.state.doc.content.size, doc.content)
+            .setMeta("addToHistory", false)
+            .setMeta("async", true);
           onUpdate.cancel();
-          view.updateState(state);
+          view.dispatch(tr);
           previousContentRef.current = reconciledInitialContent;
         } catch {
           // invalid content

@@ -339,16 +339,34 @@ describe("expandHinglish", () => {
     ).toEqual(["hi", "en"]);
   });
 
-  test("Whisper (bundled or remote custom server) gets en", () => {
+  test("multilingual Whisper keeps both Hindi and English available", () => {
     expect(
       expandHinglish(["hinglish"], { model: "QuantizedLargeTurbo" }),
-    ).toEqual(["en"]);
+    ).toEqual(["hi", "en"]);
     expect(
       expandHinglish(["hinglish"], {
         provider: "custom",
-        model: "QuantizedTiny",
+        model: "QuantizedLargeV3",
       }),
+    ).toEqual(["hi", "en"]);
+  });
+
+  test("English-only checkpoints do not advertise Hindi decoding", () => {
+    expect(expandHinglish(["hinglish"], { model: "QuantizedSmallEn" })).toEqual(
+      ["en"],
+    );
+    expect(
+      expandHinglish(["hinglish"], { provider: "custom", model: "base.en" }),
     ).toEqual(["en"]);
+  });
+
+  test("a custom Whisper server (apps/stt-server) keeps Hindi available", () => {
+    expect(
+      expandHinglish(["hinglish"], {
+        provider: "custom",
+        model: "large-v3",
+      }),
+    ).toEqual(["hi", "en"]);
   });
 
   test("merges with other selected languages and de-dupes", () => {

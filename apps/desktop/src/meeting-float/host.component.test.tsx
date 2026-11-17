@@ -1,4 +1,4 @@
-import { cleanup, render, waitFor } from "@testing-library/react";
+import { act, cleanup, render, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -18,6 +18,8 @@ const mocks = vi.hoisted(() => ({
   liveCaptionHide: vi.fn(async () => ({ status: "ok", data: null })),
   windowShow: vi.fn(async () => ({ status: "ok", data: null })),
   listen: vi.fn(async () => vi.fn()),
+  stopHandler: null as (() => void) | null,
+  openHandler: null as (() => Promise<void>) | null,
   setSettingValue: vi.fn(async () => undefined),
   setSettingValues: vi.fn(),
   subscribeMeetingFloatData: vi.fn(async () => vi.fn(async () => undefined)),
@@ -45,10 +47,20 @@ vi.mock("@hypr/plugin-windows", () => ({
     windowShow: mocks.windowShow,
   },
   events: {
-    floatingBarOpenMain: { listen: mocks.listen },
+    floatingBarOpenMain: {
+      listen: async (handler: () => Promise<void>) => {
+        mocks.openHandler = handler;
+        return mocks.listen();
+      },
+    },
     floatingBarReady: { listen: mocks.listen },
     floatingBarSettingsChange: { listen: mocks.listen },
-    floatingBarStop: { listen: mocks.listen },
+    floatingBarStop: {
+      listen: async (handler: () => void) => {
+        mocks.stopHandler = handler;
+        return mocks.listen();
+      },
+    },
   },
 }));
 
@@ -84,6 +96,8 @@ import { FloatingMeetingWindowHost } from "./host";
 describe("FloatingMeetingWindowHost", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.stopHandler = null;
+    mocks.openHandler = null;
     mocks.settings.current = {
       floating_bar_opacity: 0.78,
       live_caption_opacity: 0.3,
@@ -121,5 +135,23 @@ describe("FloatingMeetingWindowHost", () => {
     });
     expect(mocks.floatingBarShow).toHaveBeenCalledOnce();
     expect(mocks.floatingBarHide).not.toHaveBeenCalled();
+  });
+
+  it("only the explicit Open app event raises the main window", async () => {
+    render(<FloatingMeetingWindowHost />);
+    await waitFor(() => expect(mocks.stopHandler).not.toBeNull());
+    expect(mocks.windowShow).not.toHaveBeenCalled();
+
+    await act(async () => {
+      mocks.stopHandler?.();
+    });
+    expect(mocks.listenerState.stop).toHaveBeenCalledOnce();
+    expect(mocks.windowShow).not.toHaveBeenCalled();
+
+    await act(async () => {
+      await mocks.openHandler?.();
+    });
+    expect(mocks.windowShow).toHaveBeenCalledOnce();
+    expect(mocks.windowShow).toHaveBeenCalledWith({ type: "main" });
   });
 });

@@ -178,21 +178,9 @@ msgstr "90 days"
 msgid "A clear view of the day."
 msgstr "A clear view of the day."
 
-#: src/dictation/orb.tsx
-msgid "A dark glass sphere lit by a hot caustic band."
-msgstr "A dark glass sphere lit by a hot caustic band."
-
 #: src/settings/index.tsx
 msgid "A few thoughtful controls for your workspace on this device."
 msgstr "A few thoughtful controls for your workspace on this device."
-
-#: src/dictation/orb.tsx
-msgid "A friendly blob that listens through its face."
-msgstr "A friendly blob that listens through its face."
-
-#: src/dictation/orb.tsx
-msgid "A neon rim ringed with voice-reactive beads."
-msgstr "A neon rim ringed with voice-reactive beads."
 
 #: src/settings/sync/index.tsx
 msgid "A pairing link was opened, but device sync isn't available in this build, so it can't be used here."
@@ -202,29 +190,17 @@ msgstr "A pairing link was opened, but device sync isn't available in this build
 msgid "A pairing link was opened, but sync is off. Turn it on above to join with it."
 msgstr "A pairing link was opened, but sync is off. Turn it on above to join with it."
 
-#: src/dictation/orb.tsx
-msgid "A quiet graphite disc with a single state dot."
-msgstr "A quiet graphite disc with a single state dot."
+#: src/settings/sync/index.tsx
+msgid "A pairing link was opened, but sync is still starting up. It will be used once sync finishes loading."
+msgstr "A pairing link was opened, but sync is still starting up. It will be used once sync finishes loading."
 
 #: src/settings/webhook/index.tsx
 msgid "A secret is stored in your OS keychain. Enter a new value to rotate it."
 msgstr "A secret is stored in your OS keychain. Enter a new value to rotate it."
 
-#: src/dictation/orb.tsx
-msgid "A thin cobalt ring that pulses as you speak."
-msgstr "A thin cobalt ring that pulses as you speak."
-
 #: src/templates/template-sidebar.tsx
 msgid "A to Z"
 msgstr "A to Z"
-
-#: src/dictation/orb.tsx
-msgid "A voice-reactive particle sphere."
-msgstr "A voice-reactive particle sphere."
-
-#: src/dictation/orb.tsx
-msgid "A waveform of bars that dance as you speak."
-msgstr "A waveform of bars that dance as you speak."
 
 #: src/settings/personalization/dictionary-settings.tsx
 msgid "Aa"
@@ -431,6 +407,10 @@ msgstr "Analyzing structure..."
 msgid "Animals & Nature"
 msgstr "Animals & Nature"
 
+#: src/settings/sync/index.tsx
+msgid "Another computer opened your link. Compare the numbers below."
+msgstr "Another computer opened your link. Compare the numbers below."
+
 #: src/settings/ai/shared/index.tsx
 msgid "API Key"
 msgstr "API Key"
@@ -446,6 +426,14 @@ msgstr "Appearance"
 #: src/settings/index.tsx
 msgid "Appearance & preferences"
 msgstr "Appearance & preferences"
+
+#: src/settings/account/index.tsx
+msgid "Application data"
+msgstr "Application data"
+
+#: src/settings/account/index.tsx
+msgid "Application data directory"
+msgstr "Application data directory"
 
 #: src/calendar/components/google/content.tsx
 msgid "Application type: <0>Desktop app</0> — not “Web application”."
@@ -500,10 +488,6 @@ msgstr "Audio"
 msgid "Audio file retention"
 msgstr "Audio file retention"
 
-#: src/dictation/orb.tsx
-msgid "Aurora"
-msgstr "Aurora"
-
 #: src/instruction/index.tsx
 msgid "Authorize access in your browser, then return to Notare."
 msgstr "Authorize access in your browser, then return to Notare."
@@ -542,6 +526,10 @@ msgstr "Back"
 msgid "Back up before turning on sync?"
 msgstr "Back up before turning on sync?"
 
+#: src/settings/account/index.tsx
+msgid "Back up your data and notes folders, then quit Notare before changing files."
+msgstr "Back up your data and notes folders, then quit Notare before changing files."
+
 #: src/settings/ai/stt/shared.tsx
 msgid "Balanced"
 msgstr "Balanced"
@@ -574,9 +562,9 @@ msgstr "Bearer Token"
 msgid "Best quality"
 msgstr "Best quality"
 
-#: src/dictation/orb.tsx
-msgid "Bloom"
-msgstr "Bloom"
+#: src/settings/account/index.tsx
+msgid "Browse locally stored notes and recordings. Use Export in an individual meeting for a document export."
+msgstr "Browse locally stored notes and recordings. Use Export in an individual meeting for a document export."
 
 #: src/instruction/index.tsx
 msgid "Browser handoff not working? Paste the callback link instead"
@@ -612,7 +600,6 @@ msgstr "Can transcribe while the meeting is happening."
 
 #: src/onboarding/transcription.tsx
 #: src/session/components/outer-header/overflow/schedule-followup.tsx
-#: src/settings/account/index.tsx
 #: src/settings/ai/llm/disclosure-modal.tsx
 #: src/settings/ai/llm/openrouter-sign-in.tsx
 #: src/settings/ai/llm/select.tsx
@@ -635,10 +622,6 @@ msgstr "Cancel date edit"
 #: src/main/action-items/index.tsx
 msgid "Carried over"
 msgstr "Carried over"
-
-#: src/main/series/index.tsx
-msgid "Carried-over actions"
-msgstr "Carried-over actions"
 
 #: src/settings/personalization/dictionary-settings.tsx
 msgid "Case-sensitive"
@@ -673,6 +656,10 @@ msgstr "Chat model"
 msgid "Chat scope"
 msgstr "Chat scope"
 
+#: src/settings/sync/index.tsx
+msgid "Check again"
+msgstr "Check again"
+
 #: src/settings/general/app-settings.tsx
 msgid "Check for updates"
 msgstr "Check for updates"
@@ -701,6 +688,10 @@ msgstr "Choose a file format and what to include."
 msgid "Choose custom color"
 msgstr "Choose custom color"
 
+#: src/settings/ai/stt/index.tsx
+msgid "Choose Hindi or Hinglish in Spoken languages, and use a multilingual Whisper model. Parakeet and English-only models do not cover Hindi."
+msgstr "Choose Hindi or Hinglish in Spoken languages, and use a multilingual Whisper model. Parakeet and English-only models do not cover Hindi."
+
 #: src/settings/general/theme.tsx
 msgid "Choose light, dark, or match your system setting."
 msgstr "Choose light, dark, or match your system setting."
@@ -716,10 +707,6 @@ msgstr "Choose storage location"
 #: src/templates/template-icon-picker.tsx
 msgid "Choose template icon"
 msgstr "Choose template icon"
-
-#: src/settings/general/app-settings.tsx
-msgid "Classic"
-msgstr "Classic"
 
 #: src/settings/mcp/index.tsx
 msgid "Claude Desktop (stdio bridge: notare-mcp)"
@@ -796,18 +783,6 @@ msgstr "Closed"
 msgid "Cloud providers won't appear here until you pick one as the default model above - an override can't reach the cloud on its own."
 msgstr "Cloud providers won't appear here until you pick one as the default model above - an override can't reach the cloud on its own."
 
-#: src/dictation/orb.tsx
-msgid "Cobalt"
-msgstr "Cobalt"
-
-#: src/dictation/orb.tsx
-msgid "Cobalt Halo"
-msgstr "Cobalt Halo"
-
-#: src/meeting-float/window.tsx
-msgid "Collapse live transcript"
-msgstr "Collapse live transcript"
-
 #: src/settings/dictation/index.tsx
 msgid "Collect and deliver when you stop"
 msgstr "Collect and deliver when you stop"
@@ -879,10 +854,6 @@ msgstr "Confirm"
 #: src/settings/sync/index.tsx
 msgid "Confirm pairing"
 msgstr "Confirm pairing"
-
-#: src/settings/account/index.tsx
-msgid "Confirm reset"
-msgstr "Confirm reset"
 
 #. placeholder {0}: deviceName || "the other device"
 #: src/settings/sync/index.tsx
@@ -1002,9 +973,21 @@ msgstr "Corrupt"
 msgid "Could not connect."
 msgstr "Could not connect."
 
+#: src/settings/account/index.tsx
+msgid "Could not load the data directory."
+msgstr "Could not load the data directory."
+
+#: src/settings/account/index.tsx
+msgid "Could not load the notes folder."
+msgstr "Could not load the notes folder."
+
 #: src/onboarding/account/after-login.tsx
 msgid "Could not start trial"
 msgstr "Could not start trial"
+
+#: src/settings/sync/index.tsx
+msgid "Couldn't check for the other computer:"
+msgstr "Couldn't check for the other computer:"
 
 #: src/settings/sync/index.tsx
 msgid "Couldn't copy to clipboard"
@@ -1108,10 +1091,6 @@ msgstr "Dark"
 msgid "Data controls"
 msgstr "Data controls"
 
-#: src/settings/account/index.tsx
-msgid "Database & storage"
-msgstr "Database & storage"
-
 #: src/session/components/outer-header/overflow/schedule-followup.tsx
 msgid "Date & time"
 msgstr "Date & time"
@@ -1140,14 +1119,6 @@ msgstr "Decisions"
 #: src/templates/template-form.tsx
 msgid "Delete"
 msgstr "Delete"
-
-#: src/settings/account/index.tsx
-msgid "Delete all local data"
-msgstr "Delete all local data"
-
-#: src/settings/account/index.tsx
-msgid "Delete all local data?"
-msgstr "Delete all local data?"
 
 #: src/sidebar/timeline/item.tsx
 msgid "Delete All Recurring Events"
@@ -1241,8 +1212,8 @@ msgid "Device paired"
 msgstr "Device paired"
 
 #: src/settings/sync/index.tsx
-msgid "Device sync is a preview. It keeps your notes in sync between your own devices directly, without going through a server. Every device you pair must run Notare 0.6.8 or later."
-msgstr "Device sync is a preview. It keeps your notes in sync between your own devices directly, without going through a server. Every device you pair must run Notare 0.6.8 or later."
+msgid "Device sync is a preview. It keeps your notes in sync between your own computers using encrypted peer-to-peer connections, without a Notare account. Every computer you pair must run Notare 0.6.8 or later."
+msgstr "Device sync is a preview. It keeps your notes in sync between your own computers using encrypted peer-to-peer connections, without a Notare account. Every computer you pair must run Notare 0.6.8 or later."
 
 #: src/settings/sync/index.tsx
 msgid "Device sync isn't available in this build"
@@ -1321,6 +1292,7 @@ msgid "Don't show notifications when Do-Not-Disturb is enabled on your system"
 msgstr "Don't show notifications when Do-Not-Disturb is enabled on your system"
 
 #: src/main/action-items/index.tsx
+#: src/settings/account/index.tsx
 msgid "Done"
 msgstr "Done"
 
@@ -1444,10 +1416,6 @@ msgstr "Eligible for free trial"
 msgid "Email"
 msgstr "Email"
 
-#: src/dictation/orb.tsx
-msgid "Ember"
-msgstr "Ember"
-
 #: src/templates/template-icon-picker.tsx
 msgid "Emojis"
 msgstr "Emojis"
@@ -1555,10 +1523,6 @@ msgstr "Example: Start with a two-sentence overview, then list decisions and act
 msgid "Exclude apps from detection"
 msgstr "Exclude apps from detection"
 
-#: src/meeting-float/window.tsx
-msgid "Expand live transcript"
-msgstr "Expand live transcript"
-
 #. placeholder {0}: formatCountdown(secondsRemaining)
 #: src/settings/sync/index.tsx
 msgid "Expires in {0}"
@@ -1566,7 +1530,6 @@ msgstr "Expires in {0}"
 
 #: src/session/components/outer-header/overflow/export-modal.tsx
 #: src/session/components/outer-header/overflow/index.tsx
-#: src/settings/account/index.tsx
 #: src/settings/personalization/dictionary-settings.tsx
 msgid "Export"
 msgstr "Export"
@@ -1574,10 +1537,6 @@ msgstr "Export"
 #: src/settings/personalization/dictionary-settings.tsx
 msgid "Export failed: {exportError}"
 msgstr "Export failed: {exportError}"
-
-#: src/settings/account/index.tsx
-msgid "Export notes"
-msgstr "Export notes"
 
 #: src/session/components/outer-header/overflow/export-modal.tsx
 msgid "Exporting..."
@@ -1684,10 +1643,6 @@ msgstr "Fix punctuation and remove fillers and false starts with your configured
 msgid "Flags"
 msgstr "Flags"
 
-#: src/settings/general/app-settings.tsx
-msgid "Floating bar look"
-msgstr "Floating bar look"
-
 #: src/session/components/outer-header/overflow/followup.tsx
 msgid "Follow-up email"
 msgstr "Follow-up email"
@@ -1703,6 +1658,10 @@ msgstr "Food & Drink"
 #: src/settings/general/notification.tsx
 msgid "For enabled notifications"
 msgstr "For enabled notifications"
+
+#: src/settings/ai/stt/index.tsx
+msgid "For live notes, try Whisper Small or Large Turbo. For a quality-first final pass, download Whisper Large v3 (Multilingual, Q5), about 1 GB. It runs locally with Metal on Apple Silicon, but uses more memory and takes longer than Turbo. Keep the recording for the final pass."
+msgstr "For live notes, try Whisper Small or Large Turbo. For a quality-first final pass, download Whisper Large v3 (Multilingual, Q5), about 1 GB. It runs locally with Metal on Apple Silicon, but uses more memory and takes longer than Turbo. Keep the recording for the final pass."
 
 #: src/settings/general/storage/index.tsx
 msgid "Forever"
@@ -1813,10 +1772,6 @@ msgstr "Good accuracy at a moderate speed."
 msgid "Grant access"
 msgstr "Grant access"
 
-#: src/dictation/orb.tsx
-msgid "Halo"
-msgstr "Halo"
-
 #: src/calendar/components/apple/permission.tsx
 msgid "Having trouble?"
 msgstr "Having trouble?"
@@ -1861,6 +1816,14 @@ msgstr "High confidence"
 #: src/settings/ai/stt/shared.tsx
 msgid "Highest accuracy; needs the most compute."
 msgstr "Highest accuracy; needs the most compute."
+
+#: src/settings/ai/stt/index.tsx
+msgid "Hindi and Hinglish on Mac"
+msgstr "Hindi and Hinglish on Mac"
+
+#: src/settings/ai/stt/index.tsx
+msgid "Hinglish lets Whisper detect Hindi and English per audio chunk. Hindi text may be written in Devanagari; Romanized Hindi is not guaranteed."
+msgstr "Hinglish lets Whisper detect Hindi and English per audio chunk. Hindi text may be written in Devanagari; Romanized Hindi is not guaranteed."
 
 #: src/settings/dictation/index.tsx
 msgid "History"
@@ -1992,6 +1955,10 @@ msgstr "Join"
 msgid "Join & record"
 msgstr "Join & record"
 
+#: src/settings/sync/index.tsx
+msgid "Join from the other computer's link"
+msgstr "Join from the other computer's link"
+
 #: src/session/components/outer-header/index.tsx
 msgid "Join meeting and record"
 msgstr "Join meeting and record"
@@ -2074,6 +2041,10 @@ msgstr "Latest transcript chunk copied"
 msgid "Learn how to fix this"
 msgstr "Learn how to fix this"
 
+#: src/settings/account/index.tsx
+msgid "Learn which local files to back up before a manual reset. No files are deleted by this action."
+msgstr "Learn which local files to back up before a manual reset. No files are deleted by this action."
+
 #: src/settings/general/storage/legacy-cleanup.tsx
 msgid "Legacy JSON and Markdown files were removed"
 msgstr "Legacy JSON and Markdown files were removed"
@@ -2136,6 +2107,10 @@ msgstr "Loading available models…"
 msgid "Loading calendars..."
 msgstr "Loading calendars..."
 
+#: src/settings/account/index.tsx
+msgid "Loading data directory…"
+msgstr "Loading data directory…"
+
 #: src/settings/gmail/index.tsx
 msgid "Loading Gmail settings"
 msgstr "Loading Gmail settings"
@@ -2148,6 +2123,10 @@ msgstr "Loading MCP settings..."
 #: src/settings/ai/stt/select.tsx
 msgid "Loading models..."
 msgstr "Loading models..."
+
+#: src/settings/account/index.tsx
+msgid "Loading notes folder…"
+msgstr "Loading notes folder…"
 
 #: src/settings/recipes/index.tsx
 msgid "Loading recipes..."
@@ -2167,6 +2146,10 @@ msgstr "Loading..."
 msgid "Loading…"
 msgstr "Loading…"
 
+#: src/settings/account/index.tsx
+msgid "Local application data on this device"
+msgstr "Local application data on this device"
+
 #: src/settings/index.tsx
 msgid "Local integrations"
 msgstr "Local integrations"
@@ -2178,10 +2161,6 @@ msgstr "Local models"
 #: src/settings/account/index.tsx
 msgid "Local profile"
 msgstr "Local profile"
-
-#: src/settings/account/index.tsx
-msgid "Local SQLite database on this device"
-msgstr "Local SQLite database on this device"
 
 #: src/settings/index.tsx
 msgid "Local system"
@@ -2223,13 +2202,13 @@ msgstr "Manage calendars"
 msgid "Manual"
 msgstr "Manual"
 
+#: src/settings/account/index.tsx
+msgid "Manual reset help"
+msgstr "Manual reset help"
+
 #: src/settings/personalization/dictionary-settings.tsx
 msgid "Mappings fix recurring misrecognitions in your dictated text — \"far eye\" always becomes \"FarEye\". Flat terms just bias the recognizer toward names or jargon while you speak, without rewriting anything."
 msgstr "Mappings fix recurring misrecognitions in your dictated text — \"far eye\" always becomes \"FarEye\". Flat terms just bias the recognizer toward names or jargon while you speak, without rewriting anything."
-
-#: src/settings/account/index.tsx
-msgid "Markdown or JSON · All meetings, summaries, and action items"
-msgstr "Markdown or JSON · All meetings, summaries, and action items"
 
 #: src/settings/webhook/index.tsx
 msgid "Master switch for outbound delivery."
@@ -2353,10 +2332,6 @@ msgstr "Mon"
 #: src/settings/general/week-start.tsx
 msgid "Monday"
 msgstr "Monday"
-
-#: src/dictation/orb.tsx
-msgid "Mono"
-msgstr "Mono"
 
 #: src/main/home/index.tsx
 #: src/session/meeting-detail.tsx
@@ -2656,10 +2631,6 @@ msgstr "Not installed"
 msgid "Not set"
 msgstr "Not set"
 
-#: src/settings/general/app-settings.tsx
-msgid "Notare"
-msgstr "Notare"
-
 #: src/onboarding/permissions.tsx
 msgid "Notare can hear others"
 msgstr "Notare can hear others"
@@ -2688,7 +2659,9 @@ msgstr "Notare will sync your calendar to get meeting reminders"
 msgid "Note breadcrumb"
 msgstr "Note breadcrumb"
 
+#: src/calendar/components/week-view.tsx
 #: src/contacts/details.tsx
+#: src/session/meeting-detail.tsx
 msgid "Notes"
 msgstr "Notes"
 
@@ -2704,6 +2677,7 @@ msgstr "Notes (summaries) model"
 msgid "Notes copied"
 msgstr "Notes copied"
 
+#: src/settings/account/index.tsx
 #: src/settings/general/storage/notes-location.tsx
 msgid "Notes folder"
 msgstr "Notes folder"
@@ -2823,6 +2797,10 @@ msgstr "Open"
 msgid "Open {0} settings"
 msgstr "Open {0} settings"
 
+#: src/main/series/index.tsx
+msgid "Open action items"
+msgstr "Open action items"
+
 #: src/shared/command-palette/index.tsx
 msgid "Open Action items"
 msgstr "Open Action items"
@@ -2886,6 +2864,10 @@ msgstr "Open note"
 msgid "Open notes"
 msgstr "Open notes"
 
+#: src/settings/account/index.tsx
+msgid "Open notes folder"
+msgstr "Open notes folder"
+
 #: src/task/resource-view.tsx
 msgid "Open on GitHub"
 msgstr "Open on GitHub"
@@ -2903,6 +2885,10 @@ msgstr "Open settings"
 msgid "Open Settings"
 msgstr "Open Settings"
 
+#: src/settings/sync/index.tsx
+msgid "Open this QR code's link on your other computer, or copy the link into its Devices settings. Keep this window open, then confirm the matching code on both computers."
+msgstr "Open this QR code's link on your other computer, or copy the link into its Devices settings. Keep this window open, then confirm the matching code on both computers."
+
 #: src/calendar/components/apple/permission.tsx
 #: src/settings/todo/provider-content.tsx
 msgid "or"
@@ -2911,10 +2897,6 @@ msgstr "or"
 #: src/settings/ai/llm/openrouter-sign-in.tsx
 msgid "Or enter an API key manually below."
 msgstr "Or enter an API key manually below."
-
-#: src/settings/dictation/index.tsx
-msgid "Orb style"
-msgstr "Orb style"
 
 #: src/chat/components/scope-selector.tsx
 #: src/contacts/details.tsx
@@ -2950,6 +2932,14 @@ msgid "Pair a device"
 msgstr "Pair a device"
 
 #: src/settings/sync/index.tsx
+msgid "Pair a device with QR"
+msgstr "Pair a device with QR"
+
+#: src/settings/sync/index.tsx
+msgid "Pair computers with QR or link"
+msgstr "Pair computers with QR or link"
+
+#: src/settings/sync/index.tsx
 msgid "Paired devices"
 msgstr "Paired devices"
 
@@ -2965,10 +2955,6 @@ msgstr "Pairing QR code"
 #: src/session/components/outer-header/overflow/export-modal.tsx
 msgid "Participants"
 msgstr "Participants"
-
-#: src/dictation/orb.tsx
-msgid "Particles"
-msgstr "Particles"
 
 #: src/settings/sync/index.tsx
 msgid "Paste a pairing link…"
@@ -3059,10 +3045,6 @@ msgstr "Pinned"
 msgid "Pinned snippets are always kept, no matter this setting."
 msgstr "Pinned snippets are always kept, no matter this setting."
 
-#: src/dictation/orb.tsx
-msgid "Pip"
-msgstr "Pip"
-
 #: src/settings/ai/llm/briefs.tsx
 msgid "Pre-Meeting Briefs"
 msgstr "Pre-Meeting Briefs"
@@ -3135,10 +3117,6 @@ msgstr "Prompt template"
 msgid "Prompt templates for chat workflows and analysis."
 msgstr "Prompt templates for chat workflows and analysis."
 
-#: src/dictation/orb.tsx
-msgid "Pulse"
-msgstr "Pulse"
-
 #: src/snippets/entry-row.tsx
 msgid "Raw transcript"
 msgstr "Raw transcript"
@@ -3202,6 +3180,10 @@ msgstr "Recording"
 #: src/meeting-float/window.tsx
 msgid "Recording time"
 msgstr "Recording time"
+
+#: src/settings/account/index.tsx
+msgid "Recordings, attachments, and Markdown files remain in the notes folder unless you remove them yourself. Do not delete an entire shared notes folder or unrelated user files."
+msgstr "Recordings, attachments, and Markdown files remain in the notes folder unless you remove them yourself. Do not delete an entire shared notes folder or unrelated user files."
 
 #: src/main/action-items/index.tsx
 #: src/main/meetings/index.tsx
@@ -3281,8 +3263,12 @@ msgid "Remove this device?"
 msgstr "Remove this device?"
 
 #: src/settings/account/index.tsx
-msgid "Removes notes, recordings, and saved credentials from this device"
-msgstr "Removes notes, recordings, and saved credentials from this device"
+msgid "Removing database files (app.db and its companion files) deletes the meetings, notes, transcripts, summaries, action items, and preferences stored in that database. Markdown files are not a full database backup."
+msgstr "Removing database files (app.db and its companion files) deletes the meetings, notes, transcripts, summaries, action items, and preferences stored in that database. Markdown files are not a full database backup."
+
+#: src/settings/account/index.tsx
+msgid "Removing settings.json only removes legacy settings stored in that file, not current database preferences. Remove saved API keys in provider settings if needed; deleting database files does not revoke credentials or clear system keychain entries."
+msgstr "Removing settings.json only removes legacy settings stored in that file, not current database preferences. Remove saved API keys in provider settings if needed; deleting database files does not revoke credentials or clear system keychain entries."
 
 #: src/settings/sync/index.tsx
 msgid "Removing..."
@@ -3351,8 +3337,8 @@ msgid "Reset"
 msgstr "Reset"
 
 #: src/settings/account/index.tsx
-msgid "Reset Local Data"
-msgstr "Reset Local Data"
+msgid "Reset instructions"
+msgstr "Reset instructions"
 
 #: src/settings/personalization/index.tsx
 msgid "Reset to default"
@@ -3409,14 +3395,6 @@ msgstr "Reuses the live model for batch transcription."
 msgid "Reveal in folder"
 msgstr "Reveal in folder"
 
-#: src/settings/account/index.tsx
-msgid "Review reset"
-msgstr "Review reset"
-
-#: src/dictation/orb.tsx
-msgid "Ring"
-msgstr "Ring"
-
 #: src/settings/webhook/index.tsx
 msgid "Rotate"
 msgstr "Rotate"
@@ -3457,10 +3435,6 @@ msgstr "Save date"
 #: src/settings/ai/shared/index.tsx
 msgid "Saved"
 msgstr "Saved"
-
-#: src/settings/sync/index.tsx
-msgid "Scan this on the other device, or copy the link."
-msgstr "Scan this on the other device, or copy the link."
 
 #: src/session/components/outer-header/overflow/schedule-followup.tsx
 msgid "Schedule"
@@ -3825,10 +3799,6 @@ msgstr "Signing in with your browser…"
 msgid "Signing secret"
 msgstr "Signing secret"
 
-#: src/dictation/orb.tsx
-msgid "Silk"
-msgstr "Silk"
-
 #: src/session/meeting-detail.tsx
 msgid "since"
 msgstr "since"
@@ -3853,21 +3823,9 @@ msgstr "Smileys & People"
 msgid "Snippets"
 msgstr "Snippets"
 
-#: src/dictation/orb.tsx
-msgid "Soft drifting color that brightens with your voice."
-msgstr "Soft drifting color that brightens with your voice."
-
-#: src/dictation/orb.tsx
-msgid "Soft lavender striations turning over a sphere."
-msgstr "Soft lavender striations turning over a sphere."
-
 #: src/contacts/details.tsx
 msgid "Software Engineer"
 msgstr "Software Engineer"
-
-#: src/settings/sync/index.tsx
-msgid "Someone scanned your code. Compare the numbers below."
-msgstr "Someone scanned your code. Compare the numbers below."
 
 #: src/snippets/index.tsx
 msgid "Something went wrong loading your dictation history. Try again in a moment."
@@ -3914,6 +3872,10 @@ msgstr "Start recording"
 msgid "Start the gateway with <0>omp auth-gateway serve --bind=127.0.0.1:4000</0>"
 msgstr "Start the gateway with <0>omp auth-gateway serve --bind=127.0.0.1:4000</0>"
 
+#: src/session/components/note-input/index.tsx
+msgid "Start typing your meeting notes. Changes are saved automatically."
+msgstr "Start typing your meeting notes. Changes are saved automatically."
+
 #: src/settings/general/app-settings.tsx
 msgid "Start when meeting begins"
 msgstr "Start when meeting begins"
@@ -3930,7 +3892,6 @@ msgstr "Starting sync…"
 msgid "Starting your trial..."
 msgstr "Starting your trial..."
 
-#: src/meeting-float/window.tsx
 #: src/session/components/outer-header/index.tsx
 msgid "Stop"
 msgstr "Stop"
@@ -4109,21 +4070,9 @@ msgstr "That key cannot be part of a global shortcut."
 msgid "The app will restart after onboarding to apply your storage changes"
 msgstr "The app will restart after onboarding to apply your storage changes"
 
-#: src/settings/general/app-settings.tsx
-msgid "The compact parchment bar with a dancing waveform."
-msgstr "The compact parchment bar with a dancing waveform."
-
-#: src/settings/general/app-settings.tsx
-msgid "The default glass bar with the live orb and captions."
-msgstr "The default glass bar with the live orb and captions."
-
 #: src/settings/general/spoken-languages.tsx
 msgid "The main language is always included for transcription"
 msgstr "The main language is always included for transcription"
-
-#: src/dictation/orb.tsx
-msgid "The minimal glowing orb."
-msgstr "The minimal glowing orb."
 
 #: src/settings/general/storage/notes-location.tsx
 msgid "The new folder already contained files, so your notes were copied there. The originals were left at the old location."
@@ -4144,10 +4093,6 @@ msgstr "These instructions take priority over the selected template when they co
 #: src/chat/components/message/loading.tsx
 msgid "Thinking..."
 msgstr "Thinking..."
-
-#: src/settings/account/index.tsx
-msgid "This action cannot be undone. All notes, transcript recordings, and locally configured API keys will be deleted from this device."
-msgstr "This action cannot be undone. All notes, transcript recordings, and locally configured API keys will be deleted from this device."
 
 #: src/settings/sync/index.tsx
 msgid "This changes how Notare stores notes so they can sync. Back up first?"
@@ -4180,6 +4125,10 @@ msgstr "This device"
 #: src/settings/ai/llm/disclosure-modal.tsx
 msgid "This feature signs you in using OAuth client credentials intended for the vendor's own command-line tools (such as Claude Code, Codex, or Gemini CLI)."
 msgstr "This feature signs you in using OAuth client credentials intended for the vendor's own command-line tools (such as Claude Code, Codex, or Gemini CLI)."
+
+#: src/settings/account/index.tsx
+msgid "This is help only. Notare will not delete any files."
+msgstr "This is help only. Notare will not delete any files."
 
 #: src/chat/components/scope-selector.tsx
 msgid "This meeting"
@@ -4223,10 +4172,6 @@ msgstr "Tip: The Notare team loves our users!"
 #: src/settings/recipes/index.tsx
 msgid "Title"
 msgstr "Title"
-
-#: src/settings/account/index.tsx
-msgid "To complete resetting local data, quit Notare and clear the data directory, or delete the app support folder."
-msgstr "To complete resetting local data, quit Notare and clear the data directory, or delete the app support folder."
 
 #: src/main/home/index.tsx
 #: src/main/meetings/index.tsx
@@ -4330,9 +4275,9 @@ msgstr "Try again"
 msgid "Tue"
 msgstr "Tue"
 
-#: src/dictation/orb.tsx
-msgid "Twin cobalt rings inside a soft glowing halo."
-msgstr "Twin cobalt rings inside a soft glowing halo."
+#: src/settings/sync/index.tsx
+msgid "Turn on sync on both computers. Show a QR code here and open its pairing link on the other computer, or copy the link and paste it below on that computer. Compare and confirm the code on both screens. Notare doesn't scan QR codes with your webcam."
+msgstr "Turn on sync on both computers. Show a QR code here and open its pairing link on the other computer, or copy the link and paste it below on that computer. Compare and confirm the code on both screens. Notare doesn't scan QR codes with your webcam."
 
 #: src/settings/dictation/index.tsx
 msgid "Type as you speak"
@@ -4531,10 +4476,6 @@ msgstr "Waiting for {0}… finish sign-in in your browser if prompted"
 #: src/settings/ai/llm/openrouter-sign-in.tsx
 msgid "Waiting for OpenRouter in your browser…"
 msgstr "Waiting for OpenRouter in your browser…"
-
-#: src/dictation/orb.tsx
-msgid "Warm petals that bloom and breathe with your voice."
-msgstr "Warm petals that bloom and breathe with your voice."
 
 #: src/settings/webhook/index.tsx
 msgid "Webhooks"

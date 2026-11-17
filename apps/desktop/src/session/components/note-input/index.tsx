@@ -1,3 +1,4 @@
+import { Trans } from "@lingui/react/macro";
 import {
   forwardRef,
   type UIEventHandler,
@@ -44,6 +45,7 @@ type NoteInputProps = {
   currentTab?: TabEditorView;
   handleTabChange?: (view: TabEditorView) => void;
   hideHeader?: boolean;
+  embedded?: boolean;
   sessionMode?: SessionMode;
 };
 
@@ -138,6 +140,7 @@ const NoteInputContent = forwardRef<
       currentTab,
       commitTabChange,
       hideHeader = false,
+      embedded = false,
       sessionMode,
     },
     ref,
@@ -267,7 +270,7 @@ const NoteInputContent = forwardRef<
     };
 
     return (
-      <div className="-mx-2 flex h-full flex-col">
+      <div className={cn("-mx-2 flex flex-col", !embedded && "h-full")}>
         {!hideHeader && (
           <div className="relative px-2">
             <Header
@@ -279,6 +282,13 @@ const NoteInputContent = forwardRef<
             />
           </div>
         )}
+        {embedded && renderedCurrentTab.type === "raw" && (
+          <p className="text-muted-foreground px-3 pt-2 text-xs">
+            <Trans>
+              Start typing your meeting notes. Changes are saved automatically.
+            </Trans>
+          </p>
+        )}
 
         {showSearchBar && isEditableTab && (
           <div className="px-3 pt-1">
@@ -286,17 +296,20 @@ const NoteInputContent = forwardRef<
           </div>
         )}
 
-        <div className="relative flex-1 overflow-hidden">
+        <div className={cn("relative flex-1", !embedded && "overflow-hidden")}>
           <div
             ref={scrollRef}
             onClick={handleContainerClick}
             onScroll={onScroll}
             className={cn([
-              "h-full px-3",
+              "px-3",
+              embedded ? "min-h-48" : "h-full",
               "pt-2",
-              renderedCurrentTab.type === "transcript"
-                ? "overflow-hidden pb-0"
-                : "overflow-auto pb-6",
+              embedded
+                ? "pb-6"
+                : renderedCurrentTab.type === "transcript"
+                  ? "overflow-hidden pb-0"
+                  : "overflow-auto pb-6",
             ])}
           >
             {renderedCurrentTab.type === "enhanced" && (

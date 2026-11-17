@@ -26,6 +26,8 @@ pub enum WhisperModel {
     QuantizedSmallEn,
     #[serde(rename = "QuantizedLargeTurbo")]
     QuantizedLargeTurbo,
+    #[serde(rename = "QuantizedLargeV3")]
+    QuantizedLargeV3,
 }
 
 impl WhisperModel {
@@ -38,6 +40,7 @@ impl WhisperModel {
             WhisperModel::QuantizedSmall => "ggml-small-q8_0.bin",
             WhisperModel::QuantizedSmallEn => "ggml-small.en-q8_0.bin",
             WhisperModel::QuantizedLargeTurbo => "ggml-large-v3-turbo-q8_0.bin",
+            WhisperModel::QuantizedLargeV3 => "ggml-large-v3-q5_0.bin",
         }
     }
 
@@ -50,6 +53,7 @@ impl WhisperModel {
             WhisperModel::QuantizedSmall => "Whisper Small (Multilingual)",
             WhisperModel::QuantizedSmallEn => "Whisper Small (English)",
             WhisperModel::QuantizedLargeTurbo => "Whisper Large Turbo (Multilingual)",
+            WhisperModel::QuantizedLargeV3 => "Whisper Large v3 (Multilingual, Q5)",
         }
     }
 
@@ -79,6 +83,9 @@ impl WhisperModel {
                 // (size 874188075, CRC32 3055274469) on 2026-07-15.
                 "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo-q8_0.bin"
             }
+            WhisperModel::QuantizedLargeV3 => {
+                "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-q5_0.bin"
+            }
         }
     }
 
@@ -100,6 +107,7 @@ impl WhisperModel {
             WhisperModel::QuantizedSmall => 264464607,
             WhisperModel::QuantizedSmallEn => 264477561,
             WhisperModel::QuantizedLargeTurbo => 874188075,
+            WhisperModel::QuantizedLargeV3 => 1081140203,
         }
     }
 
@@ -112,6 +120,7 @@ impl WhisperModel {
             WhisperModel::QuantizedSmall => 3764849512,
             WhisperModel::QuantizedSmallEn => 3958576310,
             WhisperModel::QuantizedLargeTurbo => 3055274469,
+            WhisperModel::QuantizedLargeV3 => 1126889768,
         }
     }
 
@@ -123,7 +132,8 @@ impl WhisperModel {
             WhisperModel::QuantizedTiny
             | WhisperModel::QuantizedBase
             | WhisperModel::QuantizedSmall
-            | WhisperModel::QuantizedLargeTurbo => hypr_language::whisper_multilingual(),
+            | WhisperModel::QuantizedLargeTurbo
+            | WhisperModel::QuantizedLargeV3 => hypr_language::whisper_multilingual(),
         }
     }
 
@@ -155,6 +165,7 @@ mod tests {
         WhisperModel::QuantizedSmall,
         WhisperModel::QuantizedSmallEn,
         WhisperModel::QuantizedLargeTurbo,
+        WhisperModel::QuantizedLargeV3,
     ];
 
     #[test]

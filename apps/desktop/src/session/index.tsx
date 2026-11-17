@@ -41,6 +41,9 @@ import { useStartListening } from "~/stt/useStartListening";
 import { useSTTConnection } from "~/stt/useSTTConnection";
 import { useUploadFile } from "~/stt/useUploadFile";
 
+const RAW_VIEW = { type: "raw" } as const;
+const TRANSCRIPT_VIEW = { type: "transcript" } as const;
+
 export function TabContentNote({
   standaloneWindow = false,
   tab,
@@ -183,23 +186,25 @@ function TabContentNoteInner({
   const currentView = React.useMemo(
     () =>
       computeCurrentNoteTab(
-        tab.state.view ?? null,
+        tab.state.view ?? RAW_VIEW,
         isLiveSessionActive,
         enhancedNoteIds,
         canShowTranscript,
       ),
     [tab.state.view, isLiveSessionActive, enhancedNoteIds, canShowTranscript],
   );
-  const transcriptView =
-    editorTabs.find((view) => view.type === "transcript") ?? currentView;
   const handleTabChange = React.useCallback(
     (view: typeof currentView) => {
       noteInputRef.current?.prepareForTabChange();
+      setDetailTab(view.type === "transcript" ? "transcript" : "summary");
       updateSessionTabState(tab, { ...tab.state, view });
     },
     [tab, updateSessionTabState],
   );
-  const rawNotes = session ? bodyToMarkdown(session.raw_md) : "";
+  const handleDetailTabChange = React.useCallback((view: MeetingDetailTab) => {
+    noteInputRef.current?.prepareForTabChange();
+    setDetailTab(view);
+  }, []);
   const enhancedMarkdown = enhancedNotes[0]
     ? bodyToMarkdown(enhancedNotes[0].content)
     : "";
@@ -231,8 +236,14 @@ function TabContentNoteInner({
     (ms: number) => seekSessionTo(sessionId, ms),
     [sessionId],
   );
+  const summaryView =
+    currentView.type === "transcript"
+      ? enhancedNoteIds[0]
+        ? { type: "enhanced" as const, id: enhancedNoteIds[0] }
+        : RAW_VIEW
+      : currentView;
   const displayedView =
-    detailTab === "transcript" ? transcriptView : currentView;
+    detailTab === "transcript" ? TRANSCRIPT_VIEW : summaryView;
 
   return (
     <SessionSurface
@@ -266,23 +277,23 @@ function TabContentNoteInner({
             session={session}
             event={event}
             participants={participants}
-            rawNotes={rawNotes}
             enhancedMarkdown={enhancedMarkdown}
             activeTab={detailTab}
-            onTabChange={setDetailTab}
+            onTabChange={handleDetailTabChange}
             onSeek={seek}
           >
-            {detailTab === "transcript" ? (
+            {detailTab === "summary" || detailTab === "transcript" ? (
               <NoteInput
                 ref={noteInputRef}
                 tab={tab}
                 rawMd={session.raw_md}
                 sessionTitle={session.title}
                 editorTabs={editorTabs}
-                currentTab={transcriptView}
+                currentTab={displayedView}
                 handleTabChange={handleTabChange}
                 sessionMode={sessionMode}
-                hideHeader
+                hideHeader={detailTab === "transcript"}
+                embedded={detailTab === "summary"}
               />
             ) : detailTab === "action-items" ? (
               <div className="mx-auto h-full w-full max-w-[760px] overflow-y-auto px-6 pb-24">

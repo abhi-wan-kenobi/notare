@@ -36,6 +36,9 @@ function DockRecordSegment({ sessionId }: { sessionId?: string }) {
     liveSessionId: state.live.sessionId,
   }));
   const stop = useListener((state) => state.stop);
+  const sessionMode = useListener((state) =>
+    sessionId ? state.getSessionMode(sessionId) : "inactive",
+  );
   const { isLocalModel, local } = useSTTConnection();
   const liveReady = isLocalModel && local.data?.status === "ready";
 
@@ -51,6 +54,9 @@ function DockRecordSegment({ sessionId }: { sessionId?: string }) {
       stop();
       return;
     }
+    if (sessionMode === "running_batch" || !liveReady) {
+      return;
+    }
     if (sessionId) {
       void startListeningThisSession();
     } else {
@@ -58,7 +64,9 @@ function DockRecordSegment({ sessionId }: { sessionId?: string }) {
     }
   }, [
     isThisDockRecording,
+    liveReady,
     sessionId,
+    sessionMode,
     startListeningThisSession,
     startNewNoteAndListen,
     stop,
@@ -68,7 +76,9 @@ function DockRecordSegment({ sessionId }: { sessionId?: string }) {
     <button
       type="button"
       onClick={handleClick}
-      disabled={!isThisDockRecording && !liveReady}
+      disabled={
+        !isThisDockRecording && (sessionMode === "running_batch" || !liveReady)
+      }
       aria-label={isThisDockRecording ? t`Stop recording` : t`Start recording`}
       className={cn([
         "border-border/70 text-muted-foreground flex h-full shrink-0 items-center gap-2 border-r px-3.5 text-xs whitespace-nowrap",

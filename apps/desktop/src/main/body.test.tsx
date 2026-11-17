@@ -24,6 +24,7 @@ const mocks = vi.hoisted(() => ({
     setExpanded: vi.fn(),
     toggleExpanded: vi.fn(),
   },
+  inspectorOpen: false,
   onPanelCollapse: null as null | (() => void),
   onPanelLayout: null as null | ((sizes: number[]) => void),
   onResizeDragging: null as null | ((isDragging: boolean) => void),
@@ -162,7 +163,7 @@ vi.mock("@hypr/ui/components/ui/resizable", () => ({
 
 vi.mock("~/contexts/shell", () => ({
   useShell: () => ({
-    inspector: { open: false, toggle: vi.fn() },
+    inspector: { open: mocks.inspectorOpen, toggle: vi.fn() },
     leftsidebar: mocks.leftsidebar,
   }),
 }));
@@ -218,7 +219,8 @@ vi.mock("./tab-content", () => ({
 }));
 
 vi.mock("./update-banner", () => ({
-  SidebarTimelineUpdateButton: () => <button type="button">Update</button>,
+  DesktopUpdateBanner: () =>
+    mocks.updateControl.status ? <button type="button">Update</button> : null,
   useDesktopUpdateControl: () => mocks.updateControl,
 }));
 
@@ -272,6 +274,7 @@ describe("ClassicMainBody", () => {
       type: "empty",
     };
     mocks.leftsidebar.expanded = true;
+    mocks.inspectorOpen = false;
     mocks.leftsidebar.setExpanded.mockClear();
     mocks.leftsidebar.toggleExpanded.mockClear();
     mocks.onPanelCollapse = null;
@@ -616,17 +619,34 @@ describe("ClassicMainBody", () => {
     expect(mocks.tabContentRenderCount).toBe(initialRenderCount);
   });
 
-  it("keeps the update button in the fixed sidebar control group", () => {
-    mocks.updateControl.status = "available";
-    mocks.updateControl.version = "1.0.34";
+  it.each([false, true])(
+    "keeps the update action outside clipped sidebar chrome at 800px (inspector open: %s)",
+    (inspectorOpen) => {
+      Object.defineProperty(window, "innerWidth", {
+        configurable: true,
+        value: 800,
+      });
+      mocks.inspectorOpen = inspectorOpen;
+      mocks.updateControl.status = "ready";
+      mocks.updateControl.version = "1.0.34";
 
-    render(<ClassicMainBody />);
+      const { container, rerender } = render(<ClassicMainBody />);
+      const mainPanel = container.querySelector(
+        "[data-panel-id='classic-main-content']",
+      );
+      const scrollPanel = container.querySelector("[data-main-content-panel]");
+      const updateButton = screen.getByRole("button", { name: "Update" });
+      expect(mainPanel?.contains(updateButton)).toBe(true);
+      expect(scrollPanel?.contains(updateButton)).toBe(false);
+      expect(updateButton.closest("[data-sidebar-timeline-header]")).toBeNull();
 
-    const searchButton = screen.getByRole("button", { name: "Search" });
-    const updateButton = screen.getByRole("button", { name: "Update" });
-
-    expect(updateButton.parentElement).toBe(searchButton.parentElement);
-  });
+      mocks.leftsidebar.expanded = false;
+      rerender(<ClassicMainBody />);
+      expect(
+        mainPanel?.contains(screen.getByRole("button", { name: "Update" })),
+      ).toBe(true);
+    },
+  );
 
   it("keeps near-equal sidebar size commits in sync with drag-time CSS variables", () => {
     render(<ClassicMainBody />);

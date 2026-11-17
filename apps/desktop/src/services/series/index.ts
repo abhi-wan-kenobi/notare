@@ -2,9 +2,11 @@ import { useMemo } from "react";
 
 import { md2json } from "@hypr/editor/markdown";
 
+import { EVENT_SERIES_ID_SQL, seriesIdForEvent } from "./identity";
+
 import { liveQueryClient, useLiveQuery } from "~/db";
-import { createSession } from "~/session/queries";
-import { DEFAULT_USER_ID, id } from "~/shared/utils";
+import { createSession, getOrCreateSessionForEventId } from "~/session/queries";
+import { DEFAULT_USER_ID } from "~/shared/utils";
 
 export type SeriesOccurrence = {
   id: string;
@@ -145,60 +147,39 @@ export function useSeries(seriesId: string) {
   });
 }
 
+// These are the original task rows, not copies owned by later occurrences.
+// Completing one here completes the same task shown in its source session.
+export const SERIES_OPEN_ITEMS_SQL = `
+  SELECT item.id, item.session_id, item.text, item.assignee_human_id,
+    item.due_at, item.carried_from_session_id,
+    session.title AS source_title,
+    COALESCE(NULLIF(session.started_at, ''), session.created_at) AS source_started_at,
+    COALESCE(NULLIF(h.name, ''), item.owner_speaker_id, '') AS assignee_name
+  FROM action_items AS item
+  JOIN sessions AS session ON session.id = item.session_id
+  LEFT JOIN humans AS h ON h.id = item.assignee_human_id
+  WHERE session.series_id = ? AND session.deleted_at IS NULL
+    AND item.status <> 'done' AND item.deleted_at IS NULL
+`;
+
 export function useSeriesCarryOver(seriesId: string, beforeSessionId?: string) {
-  const sql = beforeSessionId
-    ? `
-      SELECT item.id, item.session_id, item.text, item.assignee_human_id,
-        item.due_at, item.carried_from_session_id,
-        session.title AS source_title,
-        COALESCE(NULLIF(session.started_at, ''), session.created_at) AS source_started_at,
-        COALESCE(NULLIF(h.name, ''), item.owner_speaker_id, '') AS assignee_name
-      FROM action_items AS item
-      JOIN sessions AS session ON session.id = item.session_id
-      LEFT JOIN humans AS h ON h.id = item.assignee_human_id
-      WHERE session.series_id = ? AND session.deleted_at IS NULL
-        AND item.status <> 'done' AND item.deleted_at IS NULL
-        AND session.id <> ?
-        AND COALESCE(NULLIF(session.started_at, ''), session.created_at) < (
-          SELECT COALESCE(NULLIF(started_at, ''), created_at)
-          FROM sessions WHERE id = ? AND deleted_at IS NULL
-        )
-      ORDER BY COALESCE(NULLIF(session.started_at, ''), session.created_at) DESC,
-        item.created_at ASC
+  const sql =
+    SERIES_OPEN_ITEMS_SQL +
+    (beforeSessionId
+      ? `
+    AND COALESCE(NULLIF(session.started_at, ''), session.created_at) < (
+      SELECT COALESCE(NULLIF(started_at, ''), created_at)
+      FROM sessions WHERE id = ? AND deleted_at IS NULL
+    )
+  `
+      : "") +
     `
-    : `
-      SELECT item.id, item.session_id, item.text, item.assignee_human_id,
-        item.due_at, item.carried_from_session_id,
-        session.title AS source_title,
-        COALESCE(NULLIF(session.started_at, ''), session.created_at) AS source_started_at,
-        COALESCE(NULLIF(h.name, ''), item.owner_speaker_id, '') AS assignee_name
-      FROM action_items AS item
-      JOIN sessions AS session ON session.id = item.session_id
-      LEFT JOIN humans AS h ON h.id = item.assignee_human_id
-      WHERE session.series_id = ? AND session.deleted_at IS NULL
-        AND item.status <> 'done' AND item.deleted_at IS NULL
-        AND session.id <> (
-          SELECT id FROM sessions
-          WHERE series_id = ? AND deleted_at IS NULL
-          ORDER BY COALESCE(NULLIF(started_at, ''), created_at) DESC LIMIT 1
-        )
-        AND COALESCE(NULLIF(session.started_at, ''), session.created_at) < (
-          SELECT COALESCE(NULLIF(started_at, ''), created_at)
-          FROM sessions
-          WHERE series_id = ? AND deleted_at IS NULL
-          ORDER BY COALESCE(NULLIF(started_at, ''), created_at) DESC LIMIT 1
-        )
-      ORDER BY COALESCE(NULLIF(session.started_at, ''), session.created_at) DESC,
-        item.created_at ASC
-    `;
-
-  const params = beforeSessionId
-    ? [seriesId, beforeSessionId, beforeSessionId]
-    : [seriesId, seriesId, seriesId];
-
+    ORDER BY COALESCE(NULLIF(session.started_at, ''), session.created_at) DESC,
+      item.created_at ASC, item.id
+  `;
   return useLiveQuery<SeriesCarryOver, SeriesCarryOver[]>({
     sql,
-    params,
+    params: beforeSessionId ? [seriesId, beforeSessionId] : [seriesId],
     enabled: Boolean(seriesId),
   });
 }
@@ -450,142 +431,81 @@ export async function prepareSeriesOccurrence(
     SERIES_SQL,
     [seriesId],
   );
-  const previousRow = rows[0];
-  const previous = previousRow ? mapOccurrenceRow(previousRow) : undefined;
-
+  const latest = rows[0] ? mapOccurrenceRow(rows[0]) : undefined;
+  const eventColumns = `id, tracking_id_event, calendar_id, title, started_at,
+    ended_at, location, meeting_link, description, recurrence_series_id,
+    has_recurrence_rules, is_all_day, provider, participants_json`;
   let event: SeriesEvent | undefined;
   if (eventId) {
     [event] = await liveQueryClient.execute<SeriesEvent>(
-      `SELECT id, tracking_id_event, calendar_id, title, started_at, ended_at,
-        location, meeting_link, description, recurrence_series_id,
-        has_recurrence_rules, is_all_day, provider, participants_json
-       FROM events WHERE id = ? AND deleted_at IS NULL LIMIT 1`,
+      `SELECT ${eventColumns} FROM events
+       WHERE id = ? AND deleted_at IS NULL LIMIT 1`,
       [eventId],
     );
-  } else if (previous) {
-    const refTime = previous.started_at || previous.created_at;
-    [event] = await liveQueryClient.execute<SeriesEvent>(
-      `SELECT id, tracking_id_event, calendar_id, title, started_at, ended_at,
-        location, meeting_link, description, recurrence_series_id,
-        has_recurrence_rules, is_all_day, provider, participants_json
-       FROM events WHERE recurrence_series_id = ? AND deleted_at IS NULL
-         AND started_at > ? ORDER BY started_at ASC LIMIT 1`,
-      [seriesId, refTime],
-    );
+    if (!event || seriesIdForEvent(event) !== seriesId) {
+      throw new Error(`Event ${eventId} does not belong to series ${seriesId}`);
+    }
   } else {
     [event] = await liveQueryClient.execute<SeriesEvent>(
-      `SELECT id, tracking_id_event, calendar_id, title, started_at, ended_at,
-        location, meeting_link, description, recurrence_series_id,
-        has_recurrence_rules, is_all_day, provider, participants_json
-       FROM events WHERE recurrence_series_id = ? AND deleted_at IS NULL
-       ORDER BY started_at ASC LIMIT 1`,
-      [seriesId],
+      `SELECT ${eventColumns} FROM events
+       WHERE (${EVENT_SERIES_ID_SQL}) = ? AND deleted_at IS NULL
+         ${latest ? "AND started_at > ?" : ""}
+       ORDER BY started_at ASC, id LIMIT 1`,
+      latest ? [seriesId, latest.started_at || latest.created_at] : [seriesId],
     );
   }
 
-  // If a session already exists for this event, open that session
-  if (event) {
-    const existingSessions = await liveQueryClient.execute<{ id: string }>(
-      `SELECT id FROM sessions WHERE event_id = ? AND deleted_at IS NULL LIMIT 1`,
-      [event.id],
-    );
-    if (existingSessions[0]?.id) {
-      return existingSessions[0].id;
-    }
-  }
-
+  const previous = event
+    ? rows.map(mapOccurrenceRow).find((row) => row.date < event.started_at)
+    : latest;
   if (!previous && !event) {
     throw new Error(`No occurrence or event found for series ${seriesId}`);
   }
 
-  // Fetch open action items from previous session
-  const items = previous
-    ? await liveQueryClient.execute<{
-        id: string;
-        text: string;
-        assignee_human_id: string;
-        due_at: string;
-        workspace_id: string;
-      }>(
-        `SELECT item.id, item.text, item.assignee_human_id, item.due_at, item.workspace_id
-         FROM action_items AS item
-         WHERE item.session_id = ? AND item.status <> 'done' AND item.deleted_at IS NULL
-         ORDER BY item.created_at ASC`,
-        [previous.id],
-      )
-    : [];
-
-  // Build the "From last time" blockquote
+  // Carry over provenance only. The Series view owns the live checklist and
+  // references each original action id, so completion never forks across notes.
+  const items = await liveQueryClient.execute<SeriesCarryOver>(
+    SERIES_OPEN_ITEMS_SQL +
+      (event?.started_at
+        ? `
+      AND COALESCE(NULLIF(session.started_at, ''), session.created_at) < ?
+    `
+        : "") +
+      " ORDER BY item.created_at, item.id",
+    event?.started_at ? [seriesId, event.started_at] : [seriesId],
+  );
   const carriedBlockLines = ["> ## From last time"];
   if (previous?.enhanced_note) {
     const tldr = extractTldr(previous.enhanced_note);
-    if (tldr) {
-      carriedBlockLines.push(`> Last meeting: ${tldr}`);
-    }
+    if (tldr) carriedBlockLines.push(`> Last meeting: ${tldr}`);
   }
-  if (items.length > 0) {
-    for (const item of items) {
-      carriedBlockLines.push(`> - [ ] ${item.text}`);
-    }
-  } else if (!previous?.enhanced_note) {
+  for (const item of items) {
+    // Escape source text so it cannot turn provenance into task/list syntax.
+    const text = item.text
+      .replace(/\s+/g, " ")
+      .replace(/[\\`*_[\]<>]/g, "\\$&");
+    carriedBlockLines.push(`> - ${text}`);
+  }
+  if (items.length === 0 && !previous?.enhanced_note) {
     carriedBlockLines.push("> No open items carried over.");
   }
-  const initialMd = carriedBlockLines.join("\n") + "\n\n";
-
-  const title = event?.title || previous?.title || "Recurring meeting";
-  const eventJson = event
-    ? JSON.stringify(event)
-    : (previous?.event_json ?? "");
-
-  const sessionId = await createSession(title, DEFAULT_USER_ID, {
-    event_json: eventJson,
-    raw_md: JSON.stringify(md2json(initialMd)),
-  });
-
-  await liveQueryClient.execute(
-    `UPDATE sessions SET
-       series_id = ?,
-       event_id = ?,
-       external_event_id = ?,
-       external_provider = ?,
-       started_at = ?,
-       ended_at = ?
-     WHERE id = ?`,
-    [
-      seriesId,
-      event?.id ?? "",
-      event?.tracking_id_event ?? "",
-      event?.provider ?? "",
-      event?.started_at ?? "",
-      event?.ended_at ?? "",
-      sessionId,
-    ],
+  const initialRawMd = JSON.stringify(
+    md2json(carriedBlockLines.join("\n") + "\n\n"),
   );
+  const title = event?.title || previous?.title || "Recurring meeting";
 
-  if (previous) {
-    for (const [index, item] of items.entries()) {
-      await liveQueryClient.execute(
-        `INSERT INTO action_items (
-          id, workspace_id, session_id, source_type, source_id, source_order,
-          assignee_human_id, status, text, due_at, created_by, updated_by,
-          carried_from_session_id
-        ) VALUES (?, ?, ?, 'session', ?, ?, ?, 'todo', ?, ?, ?, ?, ?)`,
-        [
-          id(),
-          item.workspace_id ?? "",
-          sessionId,
-          sessionId,
-          index,
-          item.assignee_human_id ?? "",
-          item.text,
-          item.due_at ?? "",
-          DEFAULT_USER_ID,
-          DEFAULT_USER_ID,
-          previous.id,
-        ],
-      );
-    }
+  // Initialization is in the same transaction as the conditional event-session
+  // insert. A losing concurrent request never updates an existing note body.
+  if (event) {
+    return getOrCreateSessionForEventId(
+      event.id,
+      title,
+      DEFAULT_USER_ID,
+      initialRawMd,
+    );
   }
-
-  return sessionId;
+  return createSession(title, DEFAULT_USER_ID, {
+    series_id: seriesId,
+    raw_md: initialRawMd,
+  });
 }

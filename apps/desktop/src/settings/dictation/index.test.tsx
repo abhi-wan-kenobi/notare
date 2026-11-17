@@ -7,13 +7,11 @@ import {
   DictationHistoryList,
   MacosAccessibilityHint,
   normalizeActivationMode,
-  OrbVariantGroup,
   OutputModeGroup,
   WarmMicRow,
 } from "./index";
 
 import type { DictationHistoryEntry } from "~/dictation/history";
-import { ORB_VARIANT_ORDER } from "~/dictation/orb";
 
 describe("OutputModeGroup", () => {
   afterEach(() => {
@@ -93,90 +91,6 @@ describe("ActivationModeGroup", () => {
         /Hold the dictation shortcut to talk; release to stop and deliver\./,
       ),
     ).toBeTruthy();
-  });
-});
-
-describe("OrbVariantGroup", () => {
-  afterEach(() => {
-    cleanup();
-  });
-
-  it("renders one preview card per registry variant in a radiogroup", () => {
-    render(<OrbVariantGroup value="cobalt" onChange={vi.fn()} />);
-
-    expect(screen.getByRole("radiogroup")).toBeTruthy();
-    for (const variant of ORB_VARIANT_ORDER) {
-      expect(screen.getByTestId(`orb-preview-card-${variant}`)).toBeTruthy();
-    }
-    expect(screen.getAllByRole("radio")).toHaveLength(ORB_VARIANT_ORDER.length);
-  });
-
-  it("switches between the cobalt, particle and Pulse orbs", () => {
-    const onChange = vi.fn();
-    render(<OrbVariantGroup value="cobalt" onChange={onChange} />);
-
-    expect(
-      (
-        screen.getByRole("radio", {
-          name: /^Cobalt The minimal/,
-        }) as HTMLInputElement
-      ).checked,
-    ).toBe(true);
-
-    fireEvent.click(screen.getByRole("radio", { name: /Particles/ }));
-    expect(onChange).toHaveBeenCalledWith("particles");
-
-    fireEvent.click(screen.getByRole("radio", { name: /Pulse/ }));
-    expect(onChange).toHaveBeenCalledWith("waveform");
-  });
-
-  it("previews every variant live, particles proportionally bigger", () => {
-    render(<OrbVariantGroup value="cobalt" onChange={vi.fn()} />);
-
-    expect(screen.getByTestId("recording-orb")).not.toBeNull();
-    expect(screen.getByTestId("dictation-waveform-orb")).not.toBeNull();
-    expect(screen.getByTestId("dictation-ring-orb")).not.toBeNull();
-    expect(screen.getByTestId("dictation-aurora-orb")).not.toBeNull();
-    expect(screen.getByTestId("dictation-mono-orb")).not.toBeNull();
-    expect(screen.getByTestId("dictation-bloom-orb")).not.toBeNull();
-    expect(screen.getByTestId("dictation-halo-orb")).not.toBeNull();
-    expect(screen.getByTestId("dictation-ember-orb")).not.toBeNull();
-    expect(screen.getByTestId("dictation-silk-orb")).not.toBeNull();
-    expect(screen.getByTestId("dictation-pip-orb")).not.toBeNull();
-
-    // The particle preview reflects the 1.5x scale (64 -> 96px).
-    const particleCanvas = screen.getByTestId("dictation-particle-orb");
-    expect(particleCanvas.style.width).toBe("96px");
-    expect(particleCanvas.style.height).toBe("96px");
-  });
-
-  it("runs the selected card live and the rest idle", () => {
-    render(<OrbVariantGroup value="waveform" onChange={vi.fn()} />);
-
-    const selected = screen.getByTestId("orb-preview-card-waveform");
-    expect(selected.dataset.selected).toBe("true");
-    expect(
-      selected.querySelector('[data-dictation-phase="listening"]'),
-    ).not.toBeNull();
-
-    const idle = screen.getByTestId("orb-preview-card-cobalt");
-    expect(idle.dataset.selected).toBeUndefined();
-    expect(idle.querySelector('[data-dictation-phase="idle"]')).not.toBeNull();
-  });
-
-  it("wakes a card to listening on hover", () => {
-    render(<OrbVariantGroup value="cobalt" onChange={vi.fn()} />);
-
-    const card = screen.getByTestId("orb-preview-card-mono");
-    expect(card.querySelector('[data-dictation-phase="idle"]')).not.toBeNull();
-
-    fireEvent.mouseEnter(card);
-    expect(
-      card.querySelector('[data-dictation-phase="listening"]'),
-    ).not.toBeNull();
-
-    fireEvent.mouseLeave(card);
-    expect(card.querySelector('[data-dictation-phase="idle"]')).not.toBeNull();
   });
 });
 

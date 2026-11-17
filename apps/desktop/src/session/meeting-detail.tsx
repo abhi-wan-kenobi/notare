@@ -27,7 +27,6 @@ export function MeetingDetail({
   session,
   event,
   participants,
-  rawNotes,
   enhancedMarkdown,
   activeTab,
   onTabChange,
@@ -37,7 +36,6 @@ export function MeetingDetail({
   session: SessionRecord;
   event: SessionEvent | null;
   participants: SessionParticipantRecord[];
-  rawNotes: string;
   enhancedMarkdown: string;
   activeTab: MeetingDetailTab;
   onTabChange: (tab: MeetingDetailTab) => void;
@@ -202,11 +200,15 @@ export function MeetingDetail({
 
       {activeTab === "summary" ? (
         <main className="mx-auto min-h-0 w-full max-w-[760px] flex-1 overflow-y-auto px-6 pb-24">
-          {rawNotes.trim() ? (
-            <section className="text-foreground mb-5 text-sm leading-6 font-medium whitespace-pre-wrap">
-              {rawNotes.trim()}
-            </section>
-          ) : null}
+          <section
+            aria-label="Meeting notes"
+            className="border-border/60 mb-5 border-b pb-5"
+          >
+            <h2 className="text-muted-foreground mb-3 text-[10px] font-semibold tracking-[0.1em] uppercase">
+              <Trans>Notes</Trans>
+            </h2>
+            {children}
+          </section>
 
           {atAGlance ? (
             <section className="border-border/60 mb-5 border-b pb-5">
@@ -277,8 +279,6 @@ export function MeetingDetail({
               </div>
             </section>
           ) : null}
-
-          {children}
         </main>
       ) : (
         <div className="min-h-0 flex-1">{children}</div>

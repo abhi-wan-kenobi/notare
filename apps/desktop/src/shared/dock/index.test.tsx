@@ -7,6 +7,11 @@ const mocks = vi.hoisted(() => ({
     seconds: 0,
     sessionId: null as string | null,
   },
+  sessionMode: "inactive" as
+    | "inactive"
+    | "active"
+    | "finalizing"
+    | "running_batch",
   stop: vi.fn(),
   sttConnection: { isLocalModel: true, local: { data: { status: "ready" } } },
   startListeningThisSession: vi.fn(),
@@ -19,8 +24,14 @@ vi.mock("~/stt/contexts", () => ({
     selector: (state: {
       live: typeof mocks.live;
       stop: typeof mocks.stop;
+      getSessionMode: (sessionId: string) => typeof mocks.sessionMode;
     }) => unknown,
-  ) => selector({ live: mocks.live, stop: mocks.stop }),
+  ) =>
+    selector({
+      live: mocks.live,
+      stop: mocks.stop,
+      getSessionMode: () => mocks.sessionMode,
+    }),
 }));
 
 vi.mock("~/stt/useSTTConnection", () => ({
@@ -48,6 +59,7 @@ describe("Dock", () => {
     mocks.live.status = "inactive";
     mocks.live.seconds = 0;
     mocks.live.sessionId = null;
+    mocks.sessionMode = "inactive";
     mocks.stop.mockClear();
     mocks.sttConnection.isLocalModel = true;
     mocks.sttConnection.local = { data: { status: "ready" } };
@@ -80,6 +92,50 @@ describe("Dock", () => {
     expect(mocks.startNewNoteAndListen).not.toHaveBeenCalled();
   });
 
+  it("does not start recording while this session is running batch transcription", () => {
+    mocks.sessionMode = "running_batch";
+
+    render(<Dock sessionId="session-1" />);
+
+    const button = screen.getByRole<HTMLButtonElement>("button", {
+      name: "Start recording",
+    });
+    expect(button.disabled).toBe(true);
+    fireEvent.click(button);
+
+    expect(mocks.startListeningThisSession).not.toHaveBeenCalled();
+    expect(mocks.startNewNoteAndListen).not.toHaveBeenCalled();
+    expect(mocks.stop).not.toHaveBeenCalled();
+  });
+
+  it("can create a new recording from home while an existing session runs batch transcription", () => {
+    mocks.sessionMode = "running_batch";
+
+    render(<Dock />);
+    fireEvent.click(screen.getByRole("button", { name: "Start recording" }));
+
+    expect(mocks.startNewNoteAndListen).toHaveBeenCalledOnce();
+  });
+
+  it.each(["active", "finalizing"] as const)(
+    "keeps Stop available for the %s session when the local model is unavailable",
+    (status) => {
+      mocks.live.status = status;
+      mocks.live.sessionId = "session-1";
+      mocks.sttConnection.isLocalModel = false;
+
+      render(<Dock sessionId="session-1" />);
+
+      const button = screen.getByRole<HTMLButtonElement>("button", {
+        name: "Stop recording",
+      });
+      expect(button.disabled).toBe(false);
+      fireEvent.click(button);
+      expect(mocks.stop).toHaveBeenCalledOnce();
+      expect(mocks.startListeningThisSession).not.toHaveBeenCalled();
+    },
+  );
+
   it("shows the elapsed time and stops recording for the active session", () => {
     mocks.live.status = "active";
     mocks.live.seconds = 125;
@@ -103,17 +159,21 @@ describe("Dock", () => {
     expect(screen.getByText("Ready")).toBeTruthy();
   });
 
-  it("disables the record button when no local model is ready", () => {
-    mocks.sttConnection.isLocalModel = false;
+  it.each([undefined, "session-1"])(
+    "does not start recording without a local model (session: %s)",
+    (sessionId) => {
+      mocks.sttConnection.isLocalModel = false;
+      render(<Dock sessionId={sessionId} />);
 
-    render(<Dock />);
-
-    expect(
-      screen.getByRole<HTMLButtonElement>("button", {
+      const button = screen.getByRole<HTMLButtonElement>("button", {
         name: "Start recording",
-      }).disabled,
-    ).toBe(true);
-  });
+      });
+      expect(button.disabled).toBe(true);
+      fireEvent.click(button);
+      expect(mocks.startNewNoteAndListen).not.toHaveBeenCalled();
+      expect(mocks.startListeningThisSession).not.toHaveBeenCalled();
+    },
+  );
 
   it("opens the inspector with the typed prompt and clears the input", () => {
     render(<Dock />);
