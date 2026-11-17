@@ -9,7 +9,13 @@ description = ""
 
 [features]
 default = []
-whisper-cpp = ["dep:hypr-transcribe-whisper-local", "dep:hypr-whisper-local"]
+# `hypr_transcribe_core::PrewarmHandle`/`TranscribeService` are used
+# unconditionally in `server/internal.rs`, not just by parakeet/voxtral:
+# any build enabling only this engine (e.g. macOS's `metal`-only feature
+# set) needs the dep too, or it fails with an unresolved-crate error that
+# never shows up on Linux/Windows because they always enable
+# parakeet-onnx/voxtral-llama alongside it.
+whisper-cpp = ["dep:hypr-transcribe-whisper-local", "dep:hypr-whisper-local", "dep:hypr-transcribe-core"]
 parakeet-onnx = ["dep:hypr-parakeet-onnx", "dep:hypr-transcribe-core"]
 # CUDA-only (Phase A decision, issue #16): no `vulkan` passthrough here —
 # llama.cpp's mtmd (multimodal/audio) path heap-corrupts on RDNA2 Vulkan
