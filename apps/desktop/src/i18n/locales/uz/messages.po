@@ -1211,21 +1211,6 @@ msgstr ""
 msgid "Delete {name}? You'll need to download it again to use it."
 msgstr ""
 
-#: src/sidebar/timeline/item.tsx
-#~ msgid "Delete All Recurring Events"
-#~ msgstr ""
-
-#: src/calendar/components/week-view.tsx
-#: src/sidebar/calendar.tsx
-#~ msgid "Delete Entire Series"
-#~ msgstr ""
-
-#: src/calendar/components/week-view.tsx
-#: src/sidebar/calendar.tsx
-#: src/sidebar/timeline/item.tsx
-#~ msgid "Delete Event"
-#~ msgstr ""
-
 #: src/trash/index.tsx
 msgid "Delete forever"
 msgstr ""
@@ -1255,12 +1240,6 @@ msgstr ""
 #: src/sidebar/timeline/index.tsx
 msgid "Delete Selected ({sessionCount})"
 msgstr ""
-
-#: src/calendar/components/week-view.tsx
-#: src/sidebar/calendar.tsx
-#: src/sidebar/timeline/item.tsx
-#~ msgid "Delete This Event"
-#~ msgstr ""
 
 #: src/trash/index.tsx
 msgid "Delete this note forever?"
@@ -3280,10 +3259,6 @@ msgstr ""
 msgid "Ready"
 msgstr ""
 
-#: src/settings/ai/shared/index.tsx
-#~ msgid "Ready · Saved"
-#~ msgstr ""
-
 #: src/onboarding/index.tsx
 msgid "Ready to go"
 msgstr ""
@@ -3322,10 +3297,6 @@ msgstr ""
 #: src/session/meeting-detail.tsx
 msgid "Recording"
 msgstr ""
-
-#: src/meeting-float/window.tsx
-#~ msgid "Recording time"
-#~ msgstr ""
 
 #: src/meeting-float/window.tsx
 msgid "Recording time {time}"
@@ -4608,17 +4579,9 @@ msgstr ""
 msgid "Verification failed. Check the code and try again."
 msgstr ""
 
-#: src/settings/ai/shared/index.tsx
-#~ msgid "Verify & Save"
-#~ msgstr ""
-
 #: src/settings/general/storage/legacy-cleanup.tsx
 msgid "Verifying the SQLite migration status"
 msgstr ""
-
-#: src/settings/ai/shared/index.tsx
-#~ msgid "Verifying…"
-#~ msgstr ""
 
 #. placeholder {0}: update.version ?? ""
 #: src/settings/general/app-settings.tsx

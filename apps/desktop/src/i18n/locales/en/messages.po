@@ -1211,21 +1211,6 @@ msgstr "Delete"
 msgid "Delete {name}? You'll need to download it again to use it."
 msgstr "Delete {name}? You'll need to download it again to use it."
 
-#: src/sidebar/timeline/item.tsx
-#~ msgid "Delete All Recurring Events"
-#~ msgstr "Delete All Recurring Events"
-
-#: src/calendar/components/week-view.tsx
-#: src/sidebar/calendar.tsx
-#~ msgid "Delete Entire Series"
-#~ msgstr "Delete Entire Series"
-
-#: src/calendar/components/week-view.tsx
-#: src/sidebar/calendar.tsx
-#: src/sidebar/timeline/item.tsx
-#~ msgid "Delete Event"
-#~ msgstr "Delete Event"
-
 #: src/trash/index.tsx
 msgid "Delete forever"
 msgstr "Delete forever"
@@ -1255,12 +1240,6 @@ msgstr "Delete recording"
 #: src/sidebar/timeline/index.tsx
 msgid "Delete Selected ({sessionCount})"
 msgstr "Delete Selected ({sessionCount})"
-
-#: src/calendar/components/week-view.tsx
-#: src/sidebar/calendar.tsx
-#: src/sidebar/timeline/item.tsx
-#~ msgid "Delete This Event"
-#~ msgstr "Delete This Event"
 
 #: src/trash/index.tsx
 msgid "Delete this note forever?"
@@ -3280,10 +3259,6 @@ msgstr "Re-transcribe with"
 msgid "Ready"
 msgstr "Ready"
 
-#: src/settings/ai/shared/index.tsx
-#~ msgid "Ready · Saved"
-#~ msgstr "Ready · Saved"
-
 #: src/onboarding/index.tsx
 msgid "Ready to go"
 msgstr "Ready to go"
@@ -3322,10 +3297,6 @@ msgstr "Record"
 #: src/session/meeting-detail.tsx
 msgid "Recording"
 msgstr "Recording"
-
-#: src/meeting-float/window.tsx
-#~ msgid "Recording time"
-#~ msgstr "Recording time"
 
 #: src/meeting-float/window.tsx
 msgid "Recording time {time}"
@@ -4608,17 +4579,9 @@ msgstr "Used for the accurate pass after a recording ends, imported files, and r
 msgid "Verification failed. Check the code and try again."
 msgstr "Verification failed. Check the code and try again."
 
-#: src/settings/ai/shared/index.tsx
-#~ msgid "Verify & Save"
-#~ msgstr "Verify & Save"
-
 #: src/settings/general/storage/legacy-cleanup.tsx
 msgid "Verifying the SQLite migration status"
 msgstr "Verifying the SQLite migration status"
-
-#: src/settings/ai/shared/index.tsx
-#~ msgid "Verifying…"
-#~ msgstr "Verifying…"
 
 #. placeholder {0}: update.version ?? ""
 #: src/settings/general/app-settings.tsx
