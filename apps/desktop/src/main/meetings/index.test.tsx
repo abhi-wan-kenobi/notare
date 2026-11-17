@@ -80,7 +80,7 @@ describe("TabContentMeetings", () => {
   });
 
   it("renders meetings grouped by period with meta, recurrence, and status", () => {
-    const today = new Date().toISOString();
+    const today = mocks.now.toISOString();
     mocks.meetings = [
       {
         id: "sess-today",
@@ -181,7 +181,7 @@ describe("TabContentMeetings", () => {
   });
 
   it("filters meetings using the search input", () => {
-    const today = new Date().toISOString();
+    const today = mocks.now.toISOString();
     mocks.meetings = [
       {
         id: "sess-1",
@@ -226,7 +226,7 @@ describe("TabContentMeetings", () => {
   });
 
   it("navigates to session when the row is clicked, with a single native row action", () => {
-    const today = new Date().toISOString();
+    const today = mocks.now.toISOString();
     mocks.meetings = [
       {
         id: "sess-click",
@@ -258,7 +258,7 @@ describe("TabContentMeetings", () => {
   });
 
   it("picks up initial filter from tab state", () => {
-    const today = new Date().toISOString();
+    const today = mocks.now.toISOString();
     mocks.currentTab = {
       type: "meetings",
       state: { filter: "series" },
