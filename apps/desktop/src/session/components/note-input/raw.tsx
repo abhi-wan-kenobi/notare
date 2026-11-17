@@ -88,6 +88,7 @@ export const RawEditor = forwardRef<
         // Only a fulfilled write counts as saved. A rejected one leaves the
         // content dirty, so disposing the view writes it again.
         lastSavedContentRef.current = input;
+        sonnerToast.dismiss(SAVE_ERROR_TOAST_ID);
       },
       [rawMd, updateSession],
     );

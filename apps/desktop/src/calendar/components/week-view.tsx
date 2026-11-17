@@ -10,6 +10,7 @@ import { SessionChip } from "./session-chip";
 import { toTz, useNow, useTimezone } from "~/calendar/hooks";
 import type { CalendarData } from "~/calendar/hooks";
 import { useIgnoredEvents } from "~/calendar/ignored-events";
+import { useHideRecurringSeries } from "~/calendar/use-hide-series";
 import { getOrCreateSessionForEventId } from "~/session/queries";
 import {
   type MenuItemDef,
@@ -436,7 +437,8 @@ function computeTimedEventLayouts({
 function WeekEventBlock({ layout }: { layout: TimedEventLayout }) {
   const { t } = useLingui();
   const openCurrent = useTabs((state) => state.openCurrent);
-  const { ignoreEvent, ignoreSeries } = useIgnoredEvents();
+  const { ignoreEvent } = useIgnoredEvents();
+  const hideSeries = useHideRecurringSeries();
   const { eventId, event, start, end, top, height, left, width } = layout;
 
   const title = event.title || t`Untitled`;
@@ -462,11 +464,10 @@ function WeekEventBlock({ layout }: { layout: TimedEventLayout }) {
     }
   }, [event.tracking_id_event, ignoreEvent]);
 
-  const handleIgnoreSeries = useCallback(() => {
-    if (event.recurrence_series_id) {
-      ignoreSeries(event.recurrence_series_id);
-    }
-  }, [event.recurrence_series_id, ignoreSeries]);
+  const handleIgnoreSeries = useCallback(
+    () => hideSeries(event.recurrence_series_id),
+    [event.recurrence_series_id, hideSeries],
+  );
 
   const contextMenu = useMemo<MenuItemDef[]>(() => {
     const items: MenuItemDef[] = [

@@ -23,6 +23,7 @@ import {
 } from "./utils";
 
 import { useIgnoredEvents } from "~/calendar/ignored-events";
+import { useHideRecurringSeries } from "~/calendar/use-hide-series";
 import { writeSessionContextDragData } from "~/chat/context/session-drag";
 import { useDeleteSession } from "~/session/hooks/useDeleteSession";
 import { useIsSessionEnhancing } from "~/session/hooks/useEnhancedNotes";
@@ -352,13 +353,9 @@ const EventItem = memo(
     const title = item.data.title || t`Untitled`;
     const recurrenceSeriesId = item.data.recurrence_series_id;
 
-    const {
-      isIgnored,
-      ignoreEvent,
-      unignoreEvent,
-      ignoreSeries,
-      unignoreSeries,
-    } = useIgnoredEvents();
+    const { isIgnored, ignoreEvent, unignoreEvent, unignoreSeries } =
+      useIgnoredEvents();
+    const hideSeries = useHideRecurringSeries();
 
     const ignored = isIgnored(trackingIdEvent, recurrenceSeriesId);
 
@@ -409,10 +406,10 @@ const EventItem = memo(
       unignoreSeries(recurrenceSeriesId);
     }, [recurrenceSeriesId, unignoreSeries]);
 
-    const handleIgnoreSeries = useCallback(() => {
-      if (!recurrenceSeriesId) return;
-      ignoreSeries(recurrenceSeriesId);
-    }, [recurrenceSeriesId, ignoreSeries]);
+    const handleIgnoreSeries = useCallback(
+      () => hideSeries(recurrenceSeriesId),
+      [recurrenceSeriesId, hideSeries],
+    );
 
     const contextMenu = useMemo(() => {
       if (ignored) {

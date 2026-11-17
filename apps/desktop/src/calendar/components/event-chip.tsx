@@ -1,5 +1,4 @@
 import { useLingui } from "@lingui/react/macro";
-import { ask } from "@tauri-apps/plugin-dialog";
 import { format } from "date-fns";
 import { RepeatIcon } from "lucide-react";
 import { useCallback, useMemo } from "react";
@@ -15,6 +14,7 @@ import { cn } from "@hypr/utils";
 
 import { toTz, useTimezone } from "~/calendar/hooks";
 import { useIgnoredEvents } from "~/calendar/ignored-events";
+import { useHideRecurringSeries } from "~/calendar/use-hide-series";
 import { BriefCard } from "~/services/briefs";
 import { EventDisplay } from "~/session/components/outer-header/metadata";
 import { getOrCreateSessionForEventId } from "~/session/queries";
@@ -38,7 +38,8 @@ export function EventChip({
 }) {
   const { t } = useLingui();
   const tz = useTimezone();
-  const { ignoreEvent, ignoreSeries } = useIgnoredEvents();
+  const { ignoreEvent } = useIgnoredEvents();
+  const hideSeries = useHideRecurringSeries();
   const title = event?.title ?? undefined;
   const trackingId = event?.tracking_id_event ?? undefined;
   const recurrenceSeriesId = event?.recurrence_series_id ?? undefined;
@@ -57,29 +58,10 @@ export function EventChip({
     ignoreEvent(trackingId);
   }, [trackingId, ignoreEvent]);
 
-  const handleIgnoreSeries = useCallback(() => {
-    if (!recurrenceSeriesId) {
-      return;
-    }
-
-    void ask(
-      t`Hide every event in this recurring series? They stay in your calendar and are only hidden in Notare.`,
-      {
-        title: t`Hide recurring events`,
-        kind: "warning",
-        okLabel: t`Hide`,
-        cancelLabel: t`Cancel`,
-      },
-    )
-      .then((confirmed) => {
-        if (confirmed) {
-          ignoreSeries(recurrenceSeriesId);
-        }
-      })
-      .catch((error) => {
-        console.error("[calendar] failed to confirm hiding series", error);
-      });
-  }, [recurrenceSeriesId, ignoreSeries, t]);
+  const handleIgnoreSeries = useCallback(
+    () => hideSeries(recurrenceSeriesId),
+    [recurrenceSeriesId, hideSeries],
+  );
 
   const contextMenu = useMemo<MenuItemDef[]>(() => {
     const menu: MenuItemDef[] = [

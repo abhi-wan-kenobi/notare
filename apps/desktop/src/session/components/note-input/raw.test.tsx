@@ -54,7 +54,7 @@ vi.mock("@hypr/plugin-analytics", () => ({
 }));
 
 vi.mock("@hypr/ui/components/ui/toast", () => ({
-  sonnerToast: { error: hoisted.toastError },
+  sonnerToast: { error: hoisted.toastError, dismiss: vi.fn() },
 }));
 
 vi.mock("~/editor-bridge/app-link-view", () => ({

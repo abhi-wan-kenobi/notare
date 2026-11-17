@@ -358,7 +358,12 @@ function FloatingMeetingWindowSync({
       try {
         do {
           syncStale = false;
-          await sync();
+          try {
+            await sync();
+          } catch (error) {
+            // Keep looping: a newer state (e.g. a hide) may still be queued.
+            console.error("[meeting-float] failed to sync floating bar", error);
+          }
         } while (syncStale && !cancelled);
       } finally {
         syncInFlight = false;

@@ -486,12 +486,17 @@ export function LocalModelManager({
 
   const handleCancel = useCallback(async (model: GgufLlmModel) => {
     activeChannels.current.delete(model);
-    await localLlmCommands.cancelDownload(model);
-    setDownloading((prev) => {
-      const next = new Map(prev);
-      next.delete(model);
-      return next;
-    });
+    try {
+      await localLlmCommands.cancelDownload(model);
+    } catch (error) {
+      console.error(`[local-llm] failed to cancel ${model}`, error);
+    } finally {
+      setDownloading((prev) => {
+        const next = new Map(prev);
+        next.delete(model);
+        return next;
+      });
+    }
   }, []);
 
   const handleDelete = useCallback(

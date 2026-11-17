@@ -3,6 +3,7 @@ import { format, isValid, parseISO } from "date-fns";
 import { RepeatIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 
+import { sonnerToast } from "@hypr/ui/components/ui/toast";
 import { cn } from "@hypr/utils";
 
 import {
@@ -57,6 +58,7 @@ function ActionItemsView() {
       ownerUserId,
     ).catch((error: unknown) => {
       console.error("Failed to update action item status", error);
+      sonnerToast.error(t`Couldn't update the action item. Try again.`);
     });
   };
 

@@ -602,7 +602,7 @@ msgstr "Calendar providers"
 msgid "Can transcribe while the meeting is happening."
 msgstr "Can transcribe while the meeting is happening."
 
-#: src/calendar/components/event-chip.tsx
+#: src/calendar/use-hide-series.ts
 #: src/onboarding/transcription.tsx
 #: src/session/components/note-input/header.tsx
 #: src/session/components/outer-header/overflow/schedule-followup.tsx
@@ -1117,6 +1117,7 @@ msgstr "Couldn't stop sync cleanly, so it's been turned back on: {0}"
 msgid "Couldn't update pin"
 msgstr "Couldn't update pin"
 
+#: src/main/action-items/index.tsx
 #: src/main/series/index.tsx
 msgid "Couldn't update the action item. Try again."
 msgstr "Couldn't update the action item. Try again."
@@ -1884,7 +1885,7 @@ msgstr "Help Notare listen to you"
 msgid "Hidden providers: {names}"
 msgstr "Hidden providers: {names}"
 
-#: src/calendar/components/event-chip.tsx
+#: src/calendar/use-hide-series.ts
 msgid "Hide"
 msgstr "Hide"
 
@@ -1915,11 +1916,11 @@ msgstr "Hide Deleted Events"
 msgid "Hide event"
 msgstr "Hide event"
 
-#: src/calendar/components/event-chip.tsx
+#: src/calendar/use-hide-series.ts
 msgid "Hide every event in this recurring series? They stay in your calendar and are only hidden in Notare."
 msgstr "Hide every event in this recurring series? They stay in your calendar and are only hidden in Notare."
 
-#: src/calendar/components/event-chip.tsx
+#: src/calendar/use-hide-series.ts
 msgid "Hide recurring events"
 msgstr "Hide recurring events"
 
