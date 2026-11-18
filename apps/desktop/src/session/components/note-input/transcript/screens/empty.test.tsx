@@ -31,4 +31,12 @@ describe("TranscriptEmptyState", () => {
       screen.queryByRole("button", { name: "Stop transcription" }),
     ).toBeNull();
   });
+
+  it("renders fractional batch progress as a percentage", () => {
+    render(
+      <TranscriptEmptyState isBatching phase="importing" percentage={0.42} />,
+    );
+
+    expect(screen.getByText("42%")).not.toBeNull();
+  });
 });

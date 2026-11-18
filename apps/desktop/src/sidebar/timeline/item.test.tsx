@@ -403,7 +403,7 @@ describe("TimelineItemComponent", () => {
     expect(menu?.map((item) => item.id).filter(Boolean)).toEqual(["ignore"]);
     expect(menu?.find((item) => item.id === "ignore")).toMatchObject({
       id: "ignore",
-      text: "Delete Event",
+      text: "Hide event",
     });
   });
 

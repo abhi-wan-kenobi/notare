@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   meetings: [] as MeetingMockRow[],
   openCurrent: vi.fn(),
   setState: vi.fn(),
+  now: new Date() as Date,
   currentTab: {
     type: "meetings",
     state: undefined as { filter?: string } | undefined,
@@ -49,6 +50,10 @@ vi.mock("~/store/zustand/tabs", () => ({
   ),
 }));
 
+vi.mock("~/calendar/hooks", () => ({
+  useNow: () => mocks.now,
+}));
+
 import { TabContentMeetings } from "./index";
 
 describe("TabContentMeetings", () => {
@@ -57,6 +62,7 @@ describe("TabContentMeetings", () => {
     mocks.openCurrent.mockClear();
     mocks.setState.mockClear();
     mocks.currentTab = { type: "meetings", state: undefined };
+    mocks.now = new Date();
     mocks.tabs = [mocks.currentTab];
   });
 
@@ -74,7 +80,7 @@ describe("TabContentMeetings", () => {
   });
 
   it("renders meetings grouped by period with meta, recurrence, and status", () => {
-    const today = new Date().toISOString();
+    const today = mocks.now.toISOString();
     mocks.meetings = [
       {
         id: "sess-today",
@@ -111,7 +117,7 @@ describe("TabContentMeetings", () => {
     expect(screen.getByText("Design Critique")).toBeDefined();
     expect(screen.getByText(/Alice, Bob, David/)).toBeDefined();
     expect(screen.getByText("4 attendees")).toBeDefined();
-    expect(screen.getAllByText("Recorded").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText("Transcribed").length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText("3 open")).toBeDefined();
     expect(screen.getByText("Notes only")).toBeDefined();
     expect(screen.getAllByLabelText("Recurring").length).toBeGreaterThan(0);
@@ -175,7 +181,7 @@ describe("TabContentMeetings", () => {
   });
 
   it("filters meetings using the search input", () => {
-    const today = new Date().toISOString();
+    const today = mocks.now.toISOString();
     mocks.meetings = [
       {
         id: "sess-1",
@@ -219,8 +225,8 @@ describe("TabContentMeetings", () => {
     expect(screen.getByText("Sprint Retrospective")).toBeDefined();
   });
 
-  it("navigates to session when row or open button is clicked", () => {
-    const today = new Date().toISOString();
+  it("navigates to session when the row is clicked, with a single native row action", () => {
+    const today = mocks.now.toISOString();
     mocks.meetings = [
       {
         id: "sess-click",
@@ -239,9 +245,12 @@ describe("TabContentMeetings", () => {
 
     render(<TabContentMeetings />);
 
-    const openBtn = screen.getByRole("button", { name: "Open" });
-    fireEvent.click(openBtn);
+    expect(screen.queryByRole("button", { name: "Open" })).toBeNull();
 
+    const row = screen.getByRole("button", { name: /Clickable Meeting/ });
+    fireEvent.click(row);
+
+    expect(mocks.openCurrent).toHaveBeenCalledTimes(1);
     expect(mocks.openCurrent).toHaveBeenCalledWith({
       type: "sessions",
       id: "sess-click",
@@ -249,7 +258,7 @@ describe("TabContentMeetings", () => {
   });
 
   it("picks up initial filter from tab state", () => {
-    const today = new Date().toISOString();
+    const today = mocks.now.toISOString();
     mocks.currentTab = {
       type: "meetings",
       state: { filter: "series" },
@@ -289,5 +298,184 @@ describe("TabContentMeetings", () => {
 
     expect(screen.getByText("Series Only")).toBeDefined();
     expect(screen.queryByText("One-off")).toBeNull();
+  });
+
+  it("owns vertical scrolling for an overflowing meetings list without nesting scrollers", () => {
+    const base = new Date("2026-11-17T12:00:00.000Z").getTime();
+    mocks.meetings = Array.from({ length: 30 }, (_, i) => {
+      const iso = new Date(base - i * 86400000 * 40).toISOString();
+      return {
+        id: `sess-${i}`,
+        title: `Meeting ${i}`,
+        created_at: iso,
+        started_at: iso,
+        ended_at: iso,
+        event_json: "",
+        series_id: "",
+        transcript_count: 1,
+        action_count: 0,
+        attendee_count: 1,
+        attendees: "Alice",
+      };
+    });
+
+    const { container } = render(<TabContentMeetings />);
+
+    const scrollers = Array.from(
+      container.querySelectorAll<HTMLElement>("div"),
+    ).filter((el) => el.className.includes("overflow-y-auto"));
+    expect(scrollers).toHaveLength(1);
+    const scroller = scrollers[0]!;
+
+    const firstRow = screen.getByRole("button", { name: /Meeting 0\b/ });
+    const lastRow = screen.getByRole("button", { name: /Meeting 29\b/ });
+    expect(scroller.contains(firstRow)).toBe(true);
+    expect(scroller.contains(lastRow)).toBe(true);
+
+    Object.defineProperty(scroller, "scrollHeight", {
+      configurable: true,
+      value: 4000,
+    });
+    Object.defineProperty(scroller, "clientHeight", {
+      configurable: true,
+      value: 400,
+    });
+    scroller.scrollTop = 250;
+    fireEvent.scroll(scroller);
+    expect(scroller.scrollTop).toBe(250);
+  });
+
+  it("shows a localized weekday/date on each row, with the year only for a prior-year meeting", () => {
+    mocks.now = new Date("2026-11-17T12:00:00.000Z");
+    mocks.meetings = [
+      {
+        id: "sess-current-year",
+        title: "Current Year Sync",
+        created_at: "2026-11-10T12:00:00.000Z",
+        started_at: "2026-11-10T12:00:00.000Z",
+        ended_at: "2026-11-10T12:30:00.000Z",
+        event_json: "",
+        series_id: "",
+        transcript_count: 1,
+        action_count: 0,
+        attendee_count: 1,
+        attendees: "Alice",
+      },
+      {
+        id: "sess-prior-year",
+        title: "Prior Year Kickoff",
+        created_at: "2024-03-05T12:00:00.000Z",
+        started_at: "2024-03-05T12:00:00.000Z",
+        ended_at: "2024-03-05T12:30:00.000Z",
+        event_json: "",
+        series_id: "",
+        transcript_count: 1,
+        action_count: 0,
+        attendee_count: 1,
+        attendees: "Bob",
+      },
+    ];
+
+    render(<TabContentMeetings />);
+
+    expect(screen.getByText(/Tue, Nov 10/)).toBeDefined();
+    expect(screen.queryByText(/Tue, Nov 10, 2026/)).toBeNull();
+    expect(screen.getByText(/Tue, Mar 5, 2024/)).toBeDefined();
+  });
+
+  it("re-evaluates upcoming status as the clock advances past meeting start", () => {
+    const meetingStart = "2026-11-17T15:00:00.000Z";
+    mocks.now = new Date("2026-11-17T14:00:00.000Z");
+    mocks.meetings = [
+      {
+        id: "sess-boundary",
+        title: "Boundary Meeting",
+        created_at: meetingStart,
+        started_at: meetingStart,
+        ended_at: "",
+        event_json: "",
+        series_id: "",
+        transcript_count: 3,
+        action_count: 0,
+        attendee_count: 1,
+        attendees: "Alice",
+      },
+    ];
+
+    const { rerender } = render(<TabContentMeetings />);
+    expect(screen.getAllByText("Upcoming")).toHaveLength(2);
+    expect(screen.getAllByText("Transcribed")).toHaveLength(1);
+
+    mocks.now = new Date("2026-11-17T16:00:00.000Z");
+    rerender(<TabContentMeetings />);
+
+    expect(screen.getAllByText("Upcoming")).toHaveLength(1);
+    expect(screen.getAllByText("Transcribed")).toHaveLength(2);
+  });
+
+  it("re-groups a meeting from Today to Yesterday as the clock crosses local midnight", () => {
+    const meetingLocal = new Date(2026, 10, 16, 23, 30, 0);
+    mocks.now = new Date(2026, 10, 16, 23, 45, 0);
+    mocks.meetings = [
+      {
+        id: "sess-midnight",
+        title: "Late Night Standup",
+        created_at: meetingLocal.toISOString(),
+        started_at: meetingLocal.toISOString(),
+        ended_at: meetingLocal.toISOString(),
+        event_json: "",
+        series_id: "",
+        transcript_count: 1,
+        action_count: 0,
+        attendee_count: 1,
+        attendees: "Alice",
+      },
+    ];
+
+    const { rerender } = render(<TabContentMeetings />);
+    expect(screen.getByText("Today")).toBeDefined();
+    expect(screen.queryByText("Yesterday")).toBeNull();
+
+    mocks.now = new Date(2026, 10, 17, 0, 15, 0);
+    rerender(<TabContentMeetings />);
+
+    expect(screen.queryByText("Today")).toBeNull();
+    expect(screen.getByText("Yesterday")).toBeDefined();
+  });
+
+  it("labels prior-year month groups with the year and hides an inverted duration", () => {
+    mocks.now = new Date("2026-11-17T12:00:00.000Z");
+    const base = {
+      event_json: "",
+      series_id: "",
+      transcript_count: 1,
+      action_count: 0,
+      attendee_count: 0,
+      attendees: "",
+    };
+    mocks.meetings = [
+      {
+        ...base,
+        id: "sess-this-year",
+        title: "This Year March",
+        created_at: "2026-03-10T12:00:00.000Z",
+        started_at: "2026-03-10T12:00:00.000Z",
+        ended_at: "2026-03-10T12:30:00.000Z",
+      },
+      {
+        ...base,
+        id: "sess-skewed",
+        title: "Skewed Clock",
+        created_at: "2024-03-15T12:00:00.000Z",
+        started_at: "2024-03-15T12:00:00.000Z",
+        ended_at: "2024-03-15T11:00:00.000Z",
+      },
+    ];
+
+    render(<TabContentMeetings />);
+
+    expect(screen.getByRole("heading", { name: "March" })).toBeDefined();
+    expect(screen.getByRole("heading", { name: "March 2024" })).toBeDefined();
+    expect(screen.getAllByText(/\d+ min/)).toHaveLength(1);
   });
 });

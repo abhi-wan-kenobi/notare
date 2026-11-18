@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 
+import { sonnerToast } from "@hypr/ui/components/ui/toast";
 import { cn } from "@hypr/utils";
 
 import {
@@ -22,7 +23,7 @@ import {
 import { setActionItemStatus } from "~/session/components/action-items/queries";
 import { Dock } from "~/shared/dock";
 import { StandardContentWrapper } from "~/shared/main";
-import { DEFAULT_USER_ID } from "~/shared/utils";
+import { useOwnerUserId } from "~/shared/owner-user";
 import { type Tab, useTabs } from "~/store/zustand/tabs";
 
 export function TabContentSeries({
@@ -46,6 +47,7 @@ function SeriesView({ seriesId }: { seriesId: string }) {
   const { data: carryOver = [] } = useSeriesCarryOver(seriesId);
   const delta = useSeriesDelta(current, previous);
   const openCurrent = useTabs((state) => state.openCurrent);
+  const ownerUserId = useOwnerUserId();
 
   const [completedActionIds, setCompletedActionIds] = useState<Set<string>>(
     () => new Set(),
@@ -65,36 +67,41 @@ function SeriesView({ seriesId }: { seriesId: string }) {
       openSession(nextSessionId);
     } catch (error) {
       console.error("[series] failed to prepare next occurrence", error);
+      sonnerToast.error(t`Couldn't prepare the meeting note. Try again.`);
     } finally {
       setIsPreparing(false);
     }
-  }, [isPreparing, openSession, seriesId]);
+  }, [isPreparing, openSession, seriesId, t]);
 
   const handleToggleAction = useCallback(
     async (actionId: string) => {
-      const isDone = completedActionIds.has(actionId);
-      const nextDone = !isDone;
-      setCompletedActionIds((prev) => {
-        const next = new Set(prev);
-        if (nextDone) {
-          next.add(actionId);
-        } else {
-          next.delete(actionId);
-        }
-        return next;
-      });
+      if (!ownerUserId) return;
+      const nextDone = !completedActionIds.has(actionId);
+      const setDone = (done: boolean) =>
+        setCompletedActionIds((prev) => {
+          const next = new Set(prev);
+          if (done) {
+            next.add(actionId);
+          } else {
+            next.delete(actionId);
+          }
+          return next;
+        });
+      setDone(nextDone);
 
       try {
         await setActionItemStatus(
           actionId,
           nextDone ? "done" : "todo",
-          DEFAULT_USER_ID,
+          ownerUserId,
         );
       } catch (error) {
         console.error("[series] failed to toggle action item", error);
+        setDone(!nextDone);
+        sonnerToast.error(t`Couldn't update the action item. Try again.`);
       }
     },
-    [completedActionIds],
+    [completedActionIds, ownerUserId, t],
   );
 
   const title = current?.title || t`Recurring series`;

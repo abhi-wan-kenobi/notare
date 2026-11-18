@@ -41,7 +41,10 @@ import {
   applyDocumentTheme,
   writeStoredThemePreference,
 } from "~/shared/theme/apply";
-import type { ThemePreference } from "~/shared/theme/resolve";
+import {
+  resolveIsDarkMode,
+  type ThemePreference,
+} from "~/shared/theme/resolve";
 import { useNewNote, useNewNoteAndListen } from "~/shared/useNewNote";
 import { openSurfaceTab } from "~/sidebar/surface-navigation";
 import { type SettingsTab, useTabs } from "~/store/zustand/tabs";
@@ -234,14 +237,20 @@ export function OpenNoteDialog({
       run(() => openNew({ type: "settings", state: { tab } })),
     [openNew, run],
   );
+  // "system" follows the OS, so toggle away from what is actually on screen.
+  const isDark = resolveIsDarkMode(
+    theme,
+    window.matchMedia("(prefers-color-scheme: dark)").matches,
+  );
   const toggleTheme = useCallback(() => {
-    const next: ThemePreference = theme === "dark" ? "light" : "dark";
+    const next: ThemePreference = isDark ? "light" : "dark";
     writeStoredThemePreference(next);
     applyDocumentTheme(next);
     setTheme(next);
-  }, [setTheme, theme]);
-  const toggleThemeLabel =
-    theme === "dark" ? t`Switch to light theme` : t`Switch to dark theme`;
+  }, [isDark, setTheme]);
+  const toggleThemeLabel = isDark
+    ? t`Switch to light theme`
+    : t`Switch to dark theme`;
   const shortcut = useMemo(() => {
     try {
       return platform() === "macos" ? "⌘" : "Ctrl+";
@@ -327,25 +336,21 @@ export function OpenNoteDialog({
                 />
                 <PaletteItem
                   value={t`Open Home`}
-                  shortcut={`${shortcut}1`}
                   icon={<HomeIcon />}
                   onSelect={() => run(() => openSurfaceTab("home"))}
                 />
                 <PaletteItem
                   value={t`Open Meetings`}
-                  shortcut={`${shortcut}2`}
                   icon={<NotebookTextIcon />}
                   onSelect={() => run(() => openSurfaceTab("meetings"))}
                 />
                 <PaletteItem
                   value={t`Open Calendar`}
-                  shortcut={`${shortcut}3`}
                   icon={<CalendarDaysIcon />}
                   onSelect={() => run(() => openSurfaceTab("calendar"))}
                 />
                 <PaletteItem
                   value={t`Open Action items`}
-                  shortcut={`${shortcut}4`}
                   icon={<ListChecksIcon />}
                   onSelect={() => run(() => openSurfaceTab("action-items"))}
                 />
@@ -358,7 +363,7 @@ export function OpenNoteDialog({
                 <PaletteItem
                   value={t`Toggle theme`}
                   label={toggleThemeLabel}
-                  icon={theme === "dark" ? <SunIcon /> : <MoonIcon />}
+                  icon={isDark ? <SunIcon /> : <MoonIcon />}
                   onSelect={() => run(toggleTheme)}
                 />
                 {settingsHubs.map(({ label, tab }) => (
@@ -371,8 +376,13 @@ export function OpenNoteDialog({
                     onSelect={() => openSettings(tab)}
                   />
                 ))}
+                {/* cmdk hides items whose value does not match the query, so
+                    the value carries the query to keep this handoff reachable.
+                    Quoted because cmdk trims values and a trailing space in
+                    the query would otherwise stop matching. */}
                 <PaletteItem
-                  value={t`Search everything`}
+                  value={`${t`Search everything`} "${query}"`}
+                  label={t`Search everything`}
                   icon={<SearchIcon />}
                   onSelect={() =>
                     run(() =>

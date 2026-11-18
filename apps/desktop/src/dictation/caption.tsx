@@ -46,9 +46,8 @@ export function DictationCaptionWindow({ solid = false }: { solid?: boolean }) {
   const fadeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    // Same chrome treatment as the orb window: dark token set, transparent
-    // page unless the OS forced the solid fallback.
-    document.documentElement.classList.add("dark");
+    // The app-level theme provider owns the token set. This window only
+    // makes its page transparent when the OS supports transparent webviews.
 
     if (solid) {
       return;
@@ -164,21 +163,20 @@ export function DictationCaptionWindow({ solid = false }: { solid?: boolean }) {
       }
       // Belt and braces: the Rust side already makes the window
       // click-through; pointer-events none keeps the DOM inert too.
-      className="pointer-events-none flex h-screen w-screen items-end justify-center overflow-hidden pb-1"
+      className="pointer-events-none flex h-screen w-screen items-end justify-center overflow-hidden px-1 pb-1"
     >
       <div
         data-testid="dictation-caption-bubble"
         aria-hidden={!visible || !text}
         className={cn([
-          "max-w-full rounded-lg px-3 py-1.5",
-          "bg-background/90 border-border border",
+          "bg-popover text-popover-foreground border-border max-w-full rounded-lg border px-3 py-1.5 shadow-md",
           "transition-opacity duration-200 ease-out motion-reduce:transition-none",
           visible && text ? "opacity-100" : "opacity-0",
         ])}
       >
         <p
           data-testid="dictation-caption-text"
-          className="text-foreground line-clamp-2 text-center text-xs leading-snug"
+          className="text-popover-foreground line-clamp-2 text-center text-xs leading-snug"
         >
           {text}
         </p>

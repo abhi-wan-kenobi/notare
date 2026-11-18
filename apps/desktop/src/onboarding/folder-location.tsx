@@ -87,6 +87,7 @@ export function FolderLocationSection({
 
   const isPending =
     changeMutation.isPending || useObsidianVaultMutation.isPending;
+  const error = changeMutation.error ?? useObsidianVaultMutation.error;
 
   const handleChange = async () => {
     const selected = await selectFolder({
@@ -97,6 +98,7 @@ export function FolderLocationSection({
     });
 
     if (selected) {
+      useObsidianVaultMutation.reset();
       changeMutation.mutate(selected);
     }
   };
@@ -136,12 +138,16 @@ export function FolderLocationSection({
           {t`Confirm`}
         </button>
       </div>
+      {error && <p className="text-xs text-red-500">{error.message}</p>}
 
       <ObsidianVaultList
         vaults={detectedVaults}
         home={home}
         disabled={isPending}
-        onSelect={(path) => useObsidianVaultMutation.mutate(path)}
+        onSelect={(path) => {
+          changeMutation.reset();
+          useObsidianVaultMutation.mutate(path);
+        }}
       />
     </div>
   );

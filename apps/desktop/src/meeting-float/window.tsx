@@ -112,7 +112,11 @@ export function FloatingBarContent({
   const { t } = useLingui();
 
   const isError = state.status === "error";
-  const captionsVisible = !state.liveCaptionMinimized;
+  // Without the toggle (live transcription unavailable, e.g. record-only
+  // fallback) the captions could never be hidden again, so treat them as
+  // minimised. The stored preference is left untouched.
+  const captionsVisible =
+    state.liveCaptionToggleVisible && !state.liveCaptionMinimized;
 
   // Map the floating bar status to DictationPhase:
   // - "error" status maps to "error" phase.
@@ -140,17 +144,18 @@ export function FloatingBarContent({
     <div
       data-testid={solid ? "floating-bar-solid" : "floating-bar-glass"}
       className={cn([
-        "text-foreground flex h-screen w-screen flex-col overflow-hidden",
-        solid && "bg-background border-border rounded-xl border",
+        "text-popover-foreground flex h-screen w-screen flex-col overflow-hidden",
+        "[--accent-glow:var(--primary)] dark:[--accent-glow:inherit]",
+        solid && "bg-popover border-border rounded-xl border",
       ])}
     >
       <div
         data-tauri-drag-region
         className={cn([
-          "group/bar mx-auto mt-1 flex h-[40px] shrink-0 items-center gap-1.5 px-1.5",
+          "group/bar mx-auto mt-1 flex h-[40px] w-full shrink-0 items-center gap-1 px-1",
           solid
             ? "border-border/80 border-b"
-            : "border-border/70 rounded-full border backdrop-blur-xl",
+            : "bg-popover border-border/70 rounded-full border shadow-md backdrop-blur-xl",
         ])}
         style={
           solid
@@ -173,14 +178,14 @@ export function FloatingBarContent({
           className="group/orb relative shrink-0 rounded-full focus-visible:ring-2 focus-visible:outline-hidden"
         >
           <DictationOrb phase={phase} amplitude={state.amplitude} size={30} />
-          <span className="bg-background/90 absolute inset-0 hidden items-center justify-center rounded-full group-hover/orb:flex">
+          <span className="bg-popover/95 text-popover-foreground absolute inset-0 hidden items-center justify-center rounded-full group-hover/orb:flex">
             <SquareIcon aria-hidden className="size-3 fill-current" />
           </span>
         </button>
         {!isError && (
           <span
             aria-hidden
-            className="bg-foreground/60 animate-orb-pulse size-1.5 shrink-0 rounded-full motion-reduce:animate-none"
+            className="bg-popover-foreground/60 animate-orb-pulse size-1.5 shrink-0 rounded-full motion-reduce:animate-none"
           />
         )}
         <RecordingMeter
@@ -189,17 +194,11 @@ export function FloatingBarContent({
         />
         <span
           data-tauri-drag-region
-          className="max-w-[120px] min-w-0 truncate text-xs font-medium"
+          className="min-w-0 flex-1 truncate text-xs font-medium"
         >
           {state.title}
         </span>
-        <div
-          className={cn([
-            "flex shrink-0 items-center gap-0.5",
-            "opacity-60 transition-opacity duration-(--motion-duration-state)",
-            "group-hover/bar:opacity-100 focus-within:opacity-100",
-          ])}
-        >
+        <div className="flex shrink-0 items-center gap-0.5">
           {state.liveCaptionToggleVisible ? (
             <FloatingBarButton
               label={captionsVisible ? t`Hide captions` : t`Show captions`}
@@ -242,26 +241,38 @@ function RecordingMeter({
 }) {
   const { t } = useLingui();
   const elapsed = formatWeightedElapsed(elapsedSeconds);
+  const time = `${elapsed.dim}${elapsed.bold}`;
 
   return (
     <span
       data-testid="recording-meter"
       data-tauri-drag-region
+      role="timer"
+      // One spoken label carrying the digits; the visual text below is hidden
+      // from assistive tech so it is not read twice.
+      aria-label={
+        wordCount > 0
+          ? t`Recording time ${time}, word count ${wordCount}`
+          : t`Recording time ${time}`
+      }
       className="flex shrink-0 items-baseline gap-1.5"
     >
       <span
+        aria-hidden
         // `tabular-nums` is mandatory on timers (§103): proportional digits
         // reflow the whole bar on every tick.
-        className="text-muted-foreground text-[13px] tabular-nums"
-        aria-label={t`Recording time`}
+        className="text-popover-foreground/80 text-[13px] tabular-nums"
       >
         {elapsed.dim}
-        <span className="text-foreground font-semibold">{elapsed.bold}</span>
+        <span className="text-popover-foreground font-semibold">
+          {elapsed.bold}
+        </span>
       </span>
       {wordCount > 0 ? (
         <span
+          aria-hidden
           data-testid="recording-word-count"
-          className="text-muted-foreground/70 text-[11px] tabular-nums"
+          className="text-popover-foreground/80 text-[11px] tabular-nums"
         >
           {wordCount}
         </span>
@@ -291,9 +302,9 @@ function FloatingBarButton({
       className={cn([
         "flex size-7 shrink-0 items-center justify-center rounded-full",
         "transition-colors duration-(--motion-duration-state)",
-        "text-muted-foreground hover:bg-accent hover:text-foreground",
+        "text-popover-foreground/80 hover:bg-accent hover:text-accent-foreground",
         "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-hidden",
-        active && "bg-accent text-foreground",
+        active && "bg-accent text-accent-foreground",
       ])}
     >
       {children}
@@ -304,8 +315,8 @@ function FloatingBarButton({
 const VISIBLE_CAPTION_BUBBLES = 3;
 
 /**
- * Expandable caption bubble: last lines of the live transcript on a raised
- * glass surface. The newest line carries a cobalt live edge (glow =
+ * Expandable caption bubble: last lines of the live transcript on a raised,
+ * opaque surface. The newest line carries a cobalt live edge (glow =
  * information); older lines commit to muted text (§3a two-tone mechanics).
  */
 function FloatingBarCaptions({
@@ -324,14 +335,11 @@ function FloatingBarCaptions({
     <div
       data-testid="floating-bar-captions"
       className={cn([
-        "flex min-h-0 flex-1 flex-col justify-end overflow-hidden px-3 pt-1 pb-1.5",
+        "text-popover-foreground flex min-h-0 flex-1 flex-col justify-end overflow-hidden px-3 pt-1 pb-1.5",
         solid
           ? "border-border/80 border-t"
-          : "border-border/70 mt-1 rounded-[10px] border backdrop-blur-xl",
+          : "bg-popover border-border/70 mt-1 rounded-[10px] border shadow-md",
       ])}
-      style={
-        solid ? undefined : { backgroundColor: "hsl(var(--popover) / 0.92)" }
-      }
     >
       {visibleBubbles.length === 0 ? (
         <p className="text-muted-foreground animate-orb-pulse text-xs motion-reduce:animate-none">

@@ -550,6 +550,10 @@ msgstr "Basic"
 msgid "Batch & final-pass model"
 msgstr "Batch & final-pass model"
 
+#: src/session/components/note-input/transcript/screens/empty.tsx
+msgid "Batch transcription failed"
+msgstr "Batch transcription failed"
+
 #: src/settings/ai/stt/select.tsx
 msgid "Batch transcription uses the live model. Pick a provider above to run the final pass on a different model."
 msgstr "Batch transcription uses the live model. Pick a provider above to run the final pass on a different model."
@@ -598,14 +602,18 @@ msgstr "Calendar providers"
 msgid "Can transcribe while the meeting is happening."
 msgstr "Can transcribe while the meeting is happening."
 
+#: src/calendar/use-hide-series.ts
 #: src/onboarding/transcription.tsx
+#: src/session/components/note-input/header.tsx
 #: src/session/components/outer-header/overflow/schedule-followup.tsx
 #: src/settings/ai/llm/disclosure-modal.tsx
 #: src/settings/ai/llm/openrouter-sign-in.tsx
 #: src/settings/ai/llm/select.tsx
 #: src/settings/ai/llm/subscription-card.tsx
+#: src/settings/dictation/index.tsx
 #: src/settings/general/storage/legacy-cleanup.tsx
 #: src/settings/general/storage/notes-location.tsx
+#: src/settings/mcp/index.tsx
 #: src/settings/personalization/dictionary-settings.tsx
 #: src/settings/recipes/index.tsx
 #: src/settings/sync/index.tsx
@@ -743,6 +751,14 @@ msgstr "Clear"
 #: src/settings/dictation/index.tsx
 msgid "Clear all"
 msgstr "Clear all"
+
+#: src/settings/dictation/index.tsx
+msgid "Clear all dictation history? This can't be undone."
+msgstr "Clear all dictation history? This can't be undone."
+
+#: src/settings/dictation/index.tsx
+msgid "Clear dictation history"
+msgstr "Clear dictation history"
 
 #: src/contacts/shared.tsx
 #: src/templates/template-sidebar.tsx
@@ -989,13 +1005,31 @@ msgstr "Could not start trial"
 msgid "Couldn't check for the other computer:"
 msgstr "Couldn't check for the other computer:"
 
+#: src/settings/dictation/index.tsx
+msgid "Couldn't clear dictation history"
+msgstr "Couldn't clear dictation history"
+
+#. placeholder {0}: clearSecret.error.message
+#: src/settings/webhook/index.tsx
+msgid "Couldn't clear the signing secret: {0}"
+msgstr "Couldn't clear the signing secret: {0}"
+
+#: src/settings/mcp/index.tsx
 #: src/settings/sync/index.tsx
 msgid "Couldn't copy to clipboard"
 msgstr "Couldn't copy to clipboard"
 
+#: src/settings/ai/llm/select.tsx
+msgid "Couldn't delete {name}"
+msgstr "Couldn't delete {name}"
+
 #: src/snippets/index.tsx
 msgid "Couldn't delete snippet"
 msgstr "Couldn't delete snippet"
+
+#: src/settings/ai/llm/select.tsx
+msgid "Couldn't download {name}"
+msgstr "Couldn't download {name}"
 
 #: src/snippets/index.tsx
 msgid "Couldn't insert text"
@@ -1005,13 +1039,61 @@ msgstr "Couldn't insert text"
 msgid "Couldn't load history"
 msgstr "Couldn't load history"
 
+#. placeholder {0}: error.message
+#: src/settings/mcp/index.tsx
+msgid "Couldn't load MCP settings: {0}"
+msgstr "Couldn't load MCP settings: {0}"
+
+#. placeholder {0}: errorMessage(error)
+#: src/settings/sync/index.tsx
+msgid "Couldn't load sync status: {0}"
+msgstr "Couldn't load sync status: {0}"
+
+#. placeholder {0}: error.message
+#: src/settings/webhook/index.tsx
+msgid "Couldn't load webhook settings: {0}"
+msgstr "Couldn't load webhook settings: {0}"
+
+#: src/onboarding/final.tsx
+msgid "Couldn't open Notare. Please try again."
+msgstr "Couldn't open Notare. Please try again."
+
 #: src/dictation/host.tsx
 msgid "Couldn't paste the last dictation. Try again."
 msgstr "Couldn't paste the last dictation. Try again."
 
+#: src/main/home/index.tsx
+#: src/main/series/index.tsx
+msgid "Couldn't prepare the meeting note. Try again."
+msgstr "Couldn't prepare the meeting note. Try again."
+
+#. placeholder {0}: saveMutation.error.message
+#: src/settings/mcp/index.tsx
+msgid "Couldn't save MCP settings: {0}"
+msgstr "Couldn't save MCP settings: {0}"
+
 #: src/snippets/index.tsx
 msgid "Couldn't save snippet"
 msgstr "Couldn't save snippet"
+
+#. placeholder {0}: saveSecret.error.message
+#: src/settings/webhook/index.tsx
+msgid "Couldn't save the signing secret: {0}"
+msgstr "Couldn't save the signing secret: {0}"
+
+#. placeholder {0}: persist.error.message
+#: src/settings/webhook/index.tsx
+msgid "Couldn't save webhook settings: {0}"
+msgstr "Couldn't save webhook settings: {0}"
+
+#: src/session/components/note-input/raw.tsx
+msgid "Couldn't save your notes. Your latest changes are not saved yet."
+msgstr "Couldn't save your notes. Your latest changes are not saved yet."
+
+#. placeholder {0}: test.error.message
+#: src/settings/webhook/index.tsx
+msgid "Couldn't send the test event: {0}"
+msgstr "Couldn't send the test event: {0}"
 
 #: src/dictation/host.tsx
 msgid "Couldn't start dictation — the transcription engine is busy. If a recording is still transcribing, try again once it finishes."
@@ -1034,6 +1116,11 @@ msgstr "Couldn't stop sync cleanly, so it's been turned back on: {0}"
 #: src/snippets/index.tsx
 msgid "Couldn't update pin"
 msgstr "Couldn't update pin"
+
+#: src/main/action-items/index.tsx
+#: src/main/series/index.tsx
+msgid "Couldn't update the action item. Try again."
+msgstr "Couldn't update the action item. Try again."
 
 #: src/snippets/index.tsx
 msgid "Couldn't update the dictionary. Try again."
@@ -1111,6 +1198,7 @@ msgstr "Decision made"
 msgid "Decisions"
 msgstr "Decisions"
 
+#: src/session/components/note-input/header.tsx
 #: src/session/components/outer-header/overflow/delete.tsx
 #: src/settings/ai/llm/select.tsx
 #: src/settings/recipes/index.tsx
@@ -1120,20 +1208,9 @@ msgstr "Decisions"
 msgid "Delete"
 msgstr "Delete"
 
-#: src/sidebar/timeline/item.tsx
-msgid "Delete All Recurring Events"
-msgstr "Delete All Recurring Events"
-
-#: src/calendar/components/week-view.tsx
-#: src/sidebar/calendar.tsx
-msgid "Delete Entire Series"
-msgstr "Delete Entire Series"
-
-#: src/calendar/components/week-view.tsx
-#: src/sidebar/calendar.tsx
-#: src/sidebar/timeline/item.tsx
-msgid "Delete Event"
-msgstr "Delete Event"
+#: src/settings/ai/llm/select.tsx
+msgid "Delete {name}? You'll need to download it again to use it."
+msgstr "Delete {name}? You'll need to download it again to use it."
 
 #: src/trash/index.tsx
 msgid "Delete forever"
@@ -1143,6 +1220,7 @@ msgstr "Delete forever"
 msgid "Delete history entry"
 msgstr "Delete history entry"
 
+#: src/settings/ai/llm/select.tsx
 #: src/settings/ai/stt/select.tsx
 msgid "Delete model"
 msgstr "Delete model"
@@ -1155,6 +1233,7 @@ msgstr "Delete Note"
 msgid "Delete recipe"
 msgstr "Delete recipe"
 
+#: src/session/components/note-input/header.tsx
 #: src/session/components/outer-header/overflow/delete.tsx
 msgid "Delete recording"
 msgstr "Delete recording"
@@ -1163,15 +1242,13 @@ msgstr "Delete recording"
 msgid "Delete Selected ({sessionCount})"
 msgstr "Delete Selected ({sessionCount})"
 
-#: src/calendar/components/week-view.tsx
-#: src/sidebar/calendar.tsx
-#: src/sidebar/timeline/item.tsx
-msgid "Delete This Event"
-msgstr "Delete This Event"
-
 #: src/trash/index.tsx
 msgid "Delete this note forever?"
 msgstr "Delete this note forever?"
+
+#: src/session/components/note-input/header.tsx
+msgid "Delete this recording? The audio file will be permanently deleted. This can't be undone."
+msgstr "Delete this recording? The audio file will be permanently deleted. This can't be undone."
 
 #. placeholder {0}: format(deletedDate, "PPP p")
 #: src/trash/index.tsx
@@ -1506,6 +1583,10 @@ msgstr "events"
 msgid "Events to send"
 msgstr "Events to send"
 
+#: src/settings/mcp/index.tsx
+msgid "Every client set up with the current token will stop connecting until you give it the new one."
+msgstr "Every client set up with the current token will stop connecting until you give it the new one."
+
 #: src/main/home/index.tsx
 #: src/session/meeting-detail.tsx
 msgid "Every two weeks"
@@ -1553,6 +1634,14 @@ msgstr "Extract action items"
 #: src/session/components/action-items/index.tsx
 msgid "Extraction failed. Please try again."
 msgstr "Extraction failed. Please try again."
+
+#: src/session/components/note-input/transcript/renderer/speaker-assign.tsx
+msgid "Failed to assign speaker"
+msgstr "Failed to assign speaker"
+
+#: src/session/components/note-input/header.tsx
+msgid "Failed to delete recording"
+msgstr "Failed to delete recording"
 
 #: src/calendar/components/ics/content.tsx
 msgid "Failed to load imported calendar files"
@@ -1623,6 +1712,10 @@ msgstr "Finish the current dictation before pasting the last one."
 msgid "Finished dictations show up here so you can find, reuse and pin them later."
 msgstr "Finished dictations show up here so you can find, reuse and pin them later."
 
+#: src/dictation/window.tsx
+msgid "Finishing dictation"
+msgstr "Finishing dictation"
+
 #: src/settings/webhook/index.tsx
 msgid "Fires when a note's action items change."
 msgstr "Fires when a note's action items change."
@@ -1638,6 +1731,10 @@ msgstr "First day of the week in the calendar view"
 #: src/settings/dictation/index.tsx
 msgid "Fix punctuation and remove fillers and false starts with your configured AI model. Falls back to basic cleanup when no model is available."
 msgstr "Fix punctuation and remove fillers and false starts with your configured AI model. Falls back to basic cleanup when no model is available."
+
+#: src/settings/ai/shared/index.tsx
+msgid "Fix the highlighted fields before saving"
+msgstr "Fix the highlighted fields before saving"
 
 #: src/templates/template-icon-picker.tsx
 msgid "Flags"
@@ -1788,10 +1885,21 @@ msgstr "Help Notare listen to you"
 msgid "Hidden providers: {names}"
 msgstr "Hidden providers: {names}"
 
+#: src/calendar/use-hide-series.ts
+msgid "Hide"
+msgstr "Hide"
+
 #. placeholder {0}: provider.displayName
 #: src/calendar/components/sidebar.tsx
 msgid "Hide {0}"
 msgstr "Hide {0}"
+
+#: src/calendar/components/event-chip.tsx
+#: src/calendar/components/week-view.tsx
+#: src/sidebar/calendar.tsx
+#: src/sidebar/timeline/item.tsx
+msgid "Hide all recurring events"
+msgstr "Hide all recurring events"
 
 #: src/meeting-float/window.tsx
 msgid "Hide captions"
@@ -1801,9 +1909,31 @@ msgstr "Hide captions"
 msgid "Hide Deleted Events"
 msgstr "Hide Deleted Events"
 
+#: src/calendar/components/event-chip.tsx
+#: src/calendar/components/week-view.tsx
+#: src/sidebar/calendar.tsx
+#: src/sidebar/timeline/item.tsx
+msgid "Hide event"
+msgstr "Hide event"
+
+#: src/calendar/use-hide-series.ts
+msgid "Hide every event in this recurring series? They stay in your calendar and are only hidden in Notare."
+msgstr "Hide every event in this recurring series? They stay in your calendar and are only hidden in Notare."
+
+#: src/calendar/use-hide-series.ts
+msgid "Hide recurring events"
+msgstr "Hide recurring events"
+
 #: src/calendar/components/outlook/content.tsx
 msgid "Hide setup steps"
 msgstr "Hide setup steps"
+
+#: src/calendar/components/event-chip.tsx
+#: src/calendar/components/week-view.tsx
+#: src/sidebar/calendar.tsx
+#: src/sidebar/timeline/item.tsx
+msgid "Hide this event"
+msgstr "Hide this event"
 
 #: src/session/components/action-items/index.tsx
 msgid "High"
@@ -3130,10 +3260,6 @@ msgstr "Re-transcribe with"
 msgid "Ready"
 msgstr "Ready"
 
-#: src/settings/ai/shared/index.tsx
-msgid "Ready · Saved"
-msgstr "Ready · Saved"
-
 #: src/onboarding/index.tsx
 msgid "Ready to go"
 msgstr "Ready to go"
@@ -3169,17 +3295,17 @@ msgstr "Reconnect required"
 msgid "Record"
 msgstr "Record"
 
-#: src/main/meetings/index.tsx
-msgid "Recorded"
-msgstr "Recorded"
-
 #: src/session/meeting-detail.tsx
 msgid "Recording"
 msgstr "Recording"
 
 #: src/meeting-float/window.tsx
-msgid "Recording time"
-msgstr "Recording time"
+msgid "Recording time {time}"
+msgstr "Recording time {time}"
+
+#: src/meeting-float/window.tsx
+msgid "Recording time {time}, word count {wordCount}"
+msgstr "Recording time {time}, word count {wordCount}"
 
 #: src/settings/account/index.tsx
 msgid "Recordings, attachments, and Markdown files remain in the notes folder unless you remove them yourself. Do not delete an entire shared notes folder or unrelated user files."
@@ -3225,6 +3351,14 @@ msgstr "Regenerate"
 #: src/chat/components/message/normal.tsx
 msgid "Regenerate message"
 msgstr "Regenerate message"
+
+#: src/settings/mcp/index.tsx
+msgid "Regenerate the bearer token?"
+msgstr "Regenerate the bearer token?"
+
+#: src/settings/mcp/index.tsx
+msgid "Regenerating..."
+msgstr "Regenerating..."
 
 #: src/settings/sync/index.tsx
 msgid "Reject"
@@ -3420,6 +3554,7 @@ msgstr "Same as live model"
 msgid "Sat"
 msgstr "Sat"
 
+#: src/settings/ai/shared/index.tsx
 #: src/settings/personalization/dictionary-settings.tsx
 #: src/settings/personalization/index.tsx
 #: src/settings/recipes/index.tsx
@@ -3435,6 +3570,10 @@ msgstr "Save date"
 #: src/settings/ai/shared/index.tsx
 msgid "Saved"
 msgstr "Saved"
+
+#: src/settings/ai/shared/index.tsx
+msgid "Saving…"
+msgstr "Saving…"
 
 #: src/session/components/outer-header/overflow/schedule-followup.tsx
 msgid "Schedule"
@@ -4078,6 +4217,10 @@ msgstr "The main language is always included for transcription"
 msgid "The new folder already contained files, so your notes were copied there. The originals were left at the old location."
 msgstr "The new folder already contained files, so your notes were copied there. The originals were left at the old location."
 
+#: src/settings/mcp/index.tsx
+msgid "The port must be a number from {MIN_PORT} to {MAX_PORT}."
+msgstr "The port must be a number from {MIN_PORT} to {MAX_PORT}."
+
 #: src/settings/sync/index.tsx
 msgid "The sync engine couldn't load, so sync can't be turned on."
 msgstr "The sync engine couldn't load, so sync can't be turned on."
@@ -4210,6 +4353,10 @@ msgstr "Topic no longer active"
 #: src/settings/general/app-settings.tsx
 msgid "Transcribe in real time during a meeting. Turn this off to transcribe only after you stop — lighter for long meetings, and audio is always recorded either way. Applies to new sessions only."
 msgstr "Transcribe in real time during a meeting. Turn this off to transcribe only after you stop — lighter for long meetings, and audio is always recorded either way. Applies to new sessions only."
+
+#: src/main/meetings/index.tsx
+msgid "Transcribed"
+msgstr "Transcribed"
 
 #: src/settings/ai/stt/shared.tsx
 msgid "Transcribes English only."
@@ -4433,17 +4580,9 @@ msgstr "Used for the accurate pass after a recording ends, imported files, and r
 msgid "Verification failed. Check the code and try again."
 msgstr "Verification failed. Check the code and try again."
 
-#: src/settings/ai/shared/index.tsx
-msgid "Verify & Save"
-msgstr "Verify & Save"
-
 #: src/settings/general/storage/legacy-cleanup.tsx
 msgid "Verifying the SQLite migration status"
 msgstr "Verifying the SQLite migration status"
-
-#: src/settings/ai/shared/index.tsx
-msgid "Verifying…"
-msgstr "Verifying…"
 
 #. placeholder {0}: update.version ?? ""
 #: src/settings/general/app-settings.tsx

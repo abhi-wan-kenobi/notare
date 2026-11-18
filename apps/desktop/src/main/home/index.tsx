@@ -8,7 +8,9 @@ import {
   startOfWeek,
 } from "date-fns";
 import { RepeatIcon } from "lucide-react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+
+import { sonnerToast } from "@hypr/ui/components/ui/toast";
 
 import { toTz, useNow, useTimezone, useWeekStartsOn } from "~/calendar/hooks";
 import {
@@ -275,12 +277,15 @@ function HomeView() {
 
   const openSession = (sessionId: string) =>
     openCurrent({ type: "sessions", id: sessionId });
+  const [isPreparing, setIsPreparing] = useState(false);
 
   const prepareEvent = async (
     eventId: string,
     title: string,
     seriesId?: string,
   ) => {
+    if (isPreparing) return;
+    setIsPreparing(true);
     try {
       const sessionId = seriesId
         ? await prepareSeriesOccurrence(seriesId, eventId)
@@ -288,6 +293,9 @@ function HomeView() {
       openSession(sessionId);
     } catch (error) {
       console.error("[home] failed to prepare event", error);
+      sonnerToast.error(t`Couldn't prepare the meeting note. Try again.`);
+    } finally {
+      setIsPreparing(false);
     }
   };
 
@@ -424,7 +432,8 @@ function HomeView() {
                                 event.seriesId,
                               )
                             }
-                            className="border-border text-foreground hover:bg-accent/50 shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors"
+                            disabled={isPreparing}
+                            className="border-border text-foreground hover:bg-accent/50 shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-50"
                           >
                             <Trans>Prepare</Trans>
                           </button>

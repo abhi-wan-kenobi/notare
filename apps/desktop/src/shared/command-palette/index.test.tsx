@@ -10,6 +10,8 @@ const mocks = vi.hoisted(() => ({
   startRecording: vi.fn(),
   setTheme: vi.fn(),
   openSurfaceTab: vi.fn(),
+  theme: "dark" as "light" | "dark" | "system",
+  prefersDark: false,
   sessions: [] as {
     id: string;
     title: string;
@@ -60,7 +62,7 @@ vi.mock("~/contexts/shell", () => ({
 vi.mock("~/session/queries", () => ({
   useSessionSummaries: () => mocks.sessions,
 }));
-vi.mock("~/shared/config", () => ({ useConfigValue: () => "dark" }));
+vi.mock("~/shared/config", () => ({ useConfigValue: () => mocks.theme }));
 vi.mock("~/shared/main/content-offset", () => ({
   useMainContentCenterOffset: () => 0,
 }));
@@ -98,11 +100,14 @@ describe("command palette", () => {
         disconnect() {}
       },
     );
+    vi.stubGlobal("matchMedia", () => ({ matches: mocks.prefersDark }));
     Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
       configurable: true,
       value: vi.fn(),
     });
     vi.clearAllMocks();
+    mocks.theme = "dark";
+    mocks.prefersDark = false;
     mocks.sessions = [
       {
         id: "recent-session",
@@ -168,6 +173,54 @@ describe("command palette", () => {
 
     fireEvent.click(screen.getByText("Open Action items"));
     expect(mocks.openSurfaceTab).toHaveBeenCalledWith("action-items");
+  });
+
+  it("does not advertise unregistered surface shortcuts", () => {
+    renderPalette();
+
+    for (const digit of ["1", "2", "3", "4"]) {
+      expect(screen.queryByText(`⌘${digit}`)).toBeNull();
+    }
+  });
+
+  it.each(["zzqx no such note", "zzqx "])(
+    "keeps full-text search reachable for the unmatched query %j",
+    (query) => {
+      renderPalette();
+      fireEvent.change(
+        screen.getByPlaceholderText("Search notes, pages, and actions…"),
+        { target: { value: query } },
+      );
+
+      expect(screen.queryByText("Open Home")).toBeNull();
+      fireEvent.click(screen.getByText("Search everything"));
+
+      expect(mocks.openNew).toHaveBeenCalledWith({
+        type: "search",
+        query: query.trim(),
+      });
+    },
+  );
+
+  it("offers the light theme when the system preference resolves to dark", () => {
+    mocks.theme = "system";
+    mocks.prefersDark = true;
+    renderPalette();
+
+    expect(screen.queryByText("Switch to dark theme")).toBeNull();
+    fireEvent.click(screen.getByText("Switch to light theme"));
+
+    expect(mocks.setTheme).toHaveBeenCalledWith("light");
+  });
+
+  it("offers the dark theme when the system preference resolves to light", () => {
+    mocks.theme = "system";
+    mocks.prefersDark = false;
+    renderPalette();
+
+    fireEvent.click(screen.getByText("Switch to dark theme"));
+
+    expect(mocks.setTheme).toHaveBeenCalledWith("dark");
   });
 
   it("toggles inspector and theme", () => {

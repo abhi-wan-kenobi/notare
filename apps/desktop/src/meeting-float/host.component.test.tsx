@@ -154,4 +154,69 @@ describe("FloatingMeetingWindowHost", () => {
     expect(mocks.windowShow).toHaveBeenCalledOnce();
     expect(mocks.windowShow).toHaveBeenCalledWith({ type: "main" });
   });
+
+  it("finishes an in-flight show before applying the hide that follows it", async () => {
+    let finishShow = () => {};
+    mocks.floatingBarShow.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finishShow = () => resolve({ status: "ok", data: null });
+        }),
+    );
+    render(<FloatingMeetingWindowHost />);
+    await waitFor(() => expect(mocks.floatingBarShow).toHaveBeenCalledOnce());
+
+    // Recording stops while the native show is still pending.
+    const stopped = {
+      ...mocks.listenerState,
+      live: { ...mocks.listenerState.live, status: "inactive" },
+    };
+    const listeners = (
+      mocks.subscribeListener.mock.calls as unknown as Array<
+        [(state: unknown, previous: unknown) => void]
+      >
+    ).map(([listener]) => listener);
+    await act(async () => {
+      listeners.forEach((listener) => listener(stopped, mocks.listenerState));
+    });
+    expect(mocks.floatingBarHide).not.toHaveBeenCalled();
+
+    await act(async () => {
+      finishShow();
+    });
+    await waitFor(() => expect(mocks.floatingBarHide).toHaveBeenCalled());
+
+    // The hide is the last word to the native panel: nothing from the stale
+    // recording state is sent after it.
+    expect(
+      Math.max(...mocks.floatingBarHide.mock.invocationCallOrder),
+    ).toBeGreaterThan(
+      Math.max(
+        ...mocks.floatingBarShow.mock.invocationCallOrder,
+        ...mocks.floatingBarUpdate.mock.invocationCallOrder,
+      ),
+    );
+  });
+
+  it("sends a collapsed caption area while live transcription is unavailable", async () => {
+    mocks.settings.current = {
+      ...mocks.settings.current,
+      live_caption_minimized: false,
+    };
+    mocks.listenerState.live.liveTranscriptionActive = false;
+    try {
+      render(<FloatingMeetingWindowHost />);
+
+      await waitFor(() => {
+        expect(mocks.floatingBarUpdate).toHaveBeenLastCalledWith(
+          expect.objectContaining({
+            liveCaptionMinimized: true,
+            liveCaptionToggleVisible: false,
+          }),
+        );
+      });
+    } finally {
+      mocks.listenerState.live.liveTranscriptionActive = true;
+    }
+  });
 });

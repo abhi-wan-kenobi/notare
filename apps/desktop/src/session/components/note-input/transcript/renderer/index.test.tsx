@@ -1,5 +1,6 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { createRef } from "react";
+import { useHotkeys } from "react-hotkeys-hook";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TranscriptViewer } from "./index";
@@ -7,6 +8,8 @@ import { TranscriptViewer } from "./index";
 const mocks = vi.hoisted(() => ({
   scrollToBottom: vi.fn(),
   scrollToTop: vi.fn(),
+  start: vi.fn(),
+  audioExists: true,
   scrollDetection: {
     isAtTop: true,
     isAtBottom: true,
@@ -24,9 +27,9 @@ vi.mock("~/audio-player", () => ({
     state: "stopped",
     pause: vi.fn(),
     resume: vi.fn(),
-    start: vi.fn(),
+    start: mocks.start,
     seek: vi.fn(),
-    audioExists: true,
+    audioExists: mocks.audioExists,
   }),
 }));
 
@@ -237,6 +240,62 @@ describe("TranscriptViewer", () => {
     expect(button.style.bottom).toBe("");
     expect(screen.queryByRole("button", { name: "Go to bottom" })).toBeNull();
     expect(mocks.scrollToTop).toHaveBeenCalledTimes(1);
+  });
+
+  describe("space hotkey", () => {
+    function pressSpace(target: EventTarget) {
+      const handler = vi.mocked(useHotkeys).mock.lastCall?.[1];
+      const event = { target, preventDefault: vi.fn() };
+      handler?.(event as unknown as KeyboardEvent, {} as never);
+      return event;
+    }
+
+    function renderViewer() {
+      render(
+        <TranscriptViewer
+          transcriptIds={["transcript-1"]}
+          liveSegments={[]}
+          currentActive={false}
+          scrollRef={createRef()}
+        />,
+      );
+    }
+
+    beforeEach(() => {
+      mocks.start.mockReset();
+      mocks.audioExists = true;
+    });
+
+    it("starts playback when pressed outside interactive elements", () => {
+      renderViewer();
+
+      const event = pressSpace(document.body);
+
+      expect(event.preventDefault).toHaveBeenCalledTimes(1);
+      expect(mocks.start).toHaveBeenCalledTimes(1);
+    });
+
+    it("leaves native activation alone when a button is focused", () => {
+      renderViewer();
+      const button = document.createElement("button");
+      document.body.appendChild(button);
+
+      const event = pressSpace(button);
+      button.remove();
+
+      expect(event.preventDefault).not.toHaveBeenCalled();
+      expect(mocks.start).not.toHaveBeenCalled();
+    });
+
+    it("does nothing when there is no audio to play", () => {
+      mocks.audioExists = false;
+      renderViewer();
+
+      const event = pressSpace(document.body);
+
+      expect(event.preventDefault).not.toHaveBeenCalled();
+      expect(mocks.start).not.toHaveBeenCalled();
+    });
   });
 
   it("renders the bottom chip near the bottom without translucent styling", () => {

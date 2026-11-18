@@ -28,6 +28,8 @@ const state = vi.hoisted(() => ({
   mode: "inactive" as SessionMode,
   enhancedNoteIds: [] as string[],
   updateSessionTabState: vi.fn(),
+  conn: null as { provider: string } | null,
+  startListening: vi.fn<() => Promise<void>>(),
 }));
 
 vi.mock("~/db", () => ({
@@ -84,6 +86,7 @@ vi.mock("~/stt/contexts", () => ({
   useListener: (selector: (value: unknown) => unknown) =>
     selector({
       getSessionMode: () => state.mode,
+      canStartLiveSession: () => state.mode === "inactive",
       batch: {},
       live: { sessionId: null },
       liveSegments: [],
@@ -91,10 +94,10 @@ vi.mock("~/stt/contexts", () => ({
 }));
 vi.mock("~/stt/pending-upload", () => ({ consumePendingUpload: () => null }));
 vi.mock("~/stt/useStartListening", () => ({
-  useStartListening: () => vi.fn(),
+  useStartListening: () => state.startListening,
 }));
 vi.mock("~/stt/useSTTConnection", () => ({
-  useSTTConnection: () => ({ conn: null }),
+  useSTTConnection: () => ({ conn: state.conn }),
 }));
 vi.mock("~/stt/useUploadFile", () => ({
   AUDIO_EXTENSIONS: ["wav", "mp3"],
@@ -238,6 +241,8 @@ beforeEach(() => {
   state.editorView = null;
   state.enhancedNoteIds = [];
   state.updateSessionTabState.mockReset();
+  state.conn = null;
+  state.startListening.mockReset();
   tab = {
     id: "manual-notes-session",
     type: "sessions",
@@ -427,20 +432,87 @@ describe("manual meeting notes", () => {
     );
   });
 
-  it("opens editable notes by default while keeping generated summaries accessible", async () => {
+  it("keeps editable notes and the generated summary in one Summary surface", async () => {
     state.enhancedNoteIds = ["summary-1"];
+    state.db
+      .prepare(
+        `INSERT INTO session_documents
+          (id, session_id, kind, title, body_format, body, created_by, updated_by, created_at, updated_at)
+         VALUES (?, ?, 'summary', 'AI summary', 'markdown', ?, 'user-1', 'user-1',
+           '2026-11-17T00:00:00Z', '2026-11-17T00:00:00Z')`,
+      )
+      .run(
+        "summary-1",
+        tab.id,
+        "Generated meeting summary\n\n- Launch date is confirmed.",
+      );
+
     openMeeting();
+
     expect(screen.getByRole("textbox")).not.toBeNull();
+    expect(screen.queryByRole("button", { name: "AI summary" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Memos" })).toBeNull();
+    expect(screen.getByText("At a glance")).not.toBeNull();
+    expect(screen.getByText("Generated meeting summary")).not.toBeNull();
+    expect(screen.getByText("Launch date is confirmed.")).not.toBeNull();
+
     await typeNotes("Keep the original notes");
-    fireEvent.click(screen.getByRole("button", { name: "AI summary" }));
-    expect(await screen.findByText("Generated meeting summary")).not.toBeNull();
     await waitFor(() =>
       expect(notesDocument().body).toContain("Keep the original notes"),
     );
-    fireEvent.click(screen.getByRole("button", { name: "Memos" }));
-    expect(await screen.findByRole("textbox")).not.toBeNull();
-    expect(screen.getByRole("textbox").textContent).toContain(
-      "Keep the original notes",
+  });
+});
+
+describe("meeting auto-start", () => {
+  beforeEach(() => {
+    state.conn = { provider: "test" };
+    tab = { ...tab, state: { autoStart: true, view: null } };
+  });
+
+  it("keeps the request when the recorder fails to start, tries once, and retries when the meeting is re-opened", async () => {
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+    state.startListening.mockRejectedValue(new Error("microphone unavailable"));
+
+    const meeting = openMeeting();
+    await waitFor(() =>
+      expect(consoleError).toHaveBeenCalledWith(
+        "[session] failed to auto-start listening",
+        expect.any(Error),
+      ),
     );
+    meeting.rerender(<MeetingHarness />);
+
+    expect(state.startListening).toHaveBeenCalledTimes(1);
+    expect(state.updateSessionTabState).not.toHaveBeenCalled();
+
+    meeting.unmount();
+    state.startListening.mockImplementation(async () => {
+      state.mode = "active";
+    });
+    const reopened = openMeeting();
+    await waitFor(() => expect(state.startListening).toHaveBeenCalledTimes(2));
+    reopened.rerender(<MeetingHarness />);
+
+    await waitFor(() =>
+      expect(state.updateSessionTabState).toHaveBeenCalledWith(
+        expect.objectContaining({ id: tab.id }),
+        { autoStart: null, view: null },
+      ),
+    );
+    expect(state.startListening).toHaveBeenCalledTimes(2);
+    consoleError.mockRestore();
+  });
+
+  it("keeps the request when the recorder reports it did not start", async () => {
+    state.startListening.mockResolvedValue(undefined);
+
+    const meeting = openMeeting();
+    await waitFor(() => expect(state.startListening).toHaveBeenCalledTimes(1));
+    meeting.rerender(<MeetingHarness />);
+
+    expect(state.startListening).toHaveBeenCalledTimes(1);
+    expect(state.updateSessionTabState).not.toHaveBeenCalled();
   });
 });

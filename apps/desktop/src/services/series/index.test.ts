@@ -1,6 +1,8 @@
 import { renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
+import { md2json } from "@hypr/editor/markdown";
+
 import {
   computeDurationMinutes,
   extractTldr,
@@ -89,9 +91,9 @@ describe("extractTldr", () => {
   });
 });
 describe("extractTopics", () => {
-  it("extracts all H2 and higher markdown headings", () => {
+  it("extracts markdown headings of every level, including the h1 sections summaries use", () => {
     const markdown =
-      "# Title\n## Topic One\n### Subtopic\n## Topic Two\nRegular text";
+      "# Topic One\n### Subtopic\n## Topic Two\nRegular text\n#hashtag";
     expect(extractTopics(markdown)).toEqual([
       "Topic One",
       "Subtopic",
@@ -160,7 +162,22 @@ describe("mapOccurrenceRow", () => {
       ended_at: "2026-11-05T14:30:00.000Z",
       created_at: "2026-11-05T13:50:00.000Z",
       event_json: "{}",
-      enhanced_note: "## Summary\nAll deliverables on track.",
+      enhanced_notes_json: JSON.stringify([
+        {
+          id: "template",
+          body: "# Risks\nVendor delay.",
+          body_format: "markdown",
+          sort_order: 2,
+        },
+        {
+          id: "summary",
+          body: JSON.stringify(
+            md2json("# Summary\n\nAll deliverables on track."),
+          ),
+          body_format: "prosemirror_json",
+          sort_order: 1,
+        },
+      ]),
       open_item_count: 3,
     };
 
@@ -170,6 +187,26 @@ describe("mapOccurrenceRow", () => {
     expect(occurrence.date).toBe("2026-11-05T14:00:00.000Z");
     expect(occurrence.duration_minutes).toBe(30);
     expect(occurrence.tldr).toBe("Summary");
+    expect(extractTopics(occurrence.enhanced_note)).toEqual([
+      "Summary",
+      "Risks",
+    ]);
     expect(occurrence.open_item_count).toBe(3);
+  });
+
+  it("treats a session without summary documents as having no enhanced note", () => {
+    const occurrence = mapOccurrenceRow({
+      id: "sess-1",
+      title: "Weekly Sync",
+      started_at: null,
+      ended_at: null,
+      created_at: "2026-11-05T13:50:00.000Z",
+      event_json: null,
+      enhanced_notes_json: "[]",
+      open_item_count: 0,
+    });
+
+    expect(occurrence.enhanced_note).toBe("");
+    expect(occurrence.tldr).toBe("");
   });
 });

@@ -28,6 +28,7 @@ const mocks = vi.hoisted(() => ({
   openCurrent: vi.fn(),
   openNew: vi.fn(),
   getOrCreateEventSession: vi.fn(async () => "prepared-session"),
+  toastError: vi.fn(),
 }));
 
 vi.mock("~/shared/main", () => ({
@@ -62,6 +63,10 @@ vi.mock("~/session/queries", () => ({
 
 vi.mock("~/sidebar/surface-navigation", () => ({
   openSurfaceTab: vi.fn(),
+}));
+
+vi.mock("@hypr/ui/components/ui/toast", () => ({
+  sonnerToast: { error: mocks.toastError },
 }));
 
 vi.mock("~/db", () => ({
@@ -104,11 +109,13 @@ describe("TabContentHome", () => {
     mocks.sessionsNeedingSummaryCount = 0;
     vi.mocked(openSurfaceTab).mockClear();
     mocks.getOrCreateEventSession.mockClear();
+    mocks.toastError.mockClear();
   });
 
   afterEach(() => {
     cleanup();
     vi.useRealTimers();
+    vi.restoreAllMocks();
   });
 
   const renderHome = () =>
@@ -326,6 +333,56 @@ describe("TabContentHome", () => {
         "No note yet",
       ),
     );
+    await waitFor(() =>
+      expect(mocks.openCurrent).toHaveBeenCalledWith({
+        type: "sessions",
+        id: "prepared-session",
+      }),
+    );
+  });
+
+  it("reports a failed Prepare and lets the user retry", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    mocks.eventsTable = {
+      unlinked: {
+        title: "No note yet",
+        started_at: new Date(Date.now() + 120_000).toISOString(),
+      },
+    };
+    mocks.getOrCreateEventSession.mockRejectedValueOnce(new Error("db locked"));
+
+    renderHome();
+    const prepare = screen.getByRole<HTMLButtonElement>("button", {
+      name: "Prepare",
+    });
+    fireEvent.click(prepare);
+
+    await waitFor(() => expect(mocks.toastError).toHaveBeenCalledTimes(1));
+    expect(mocks.openCurrent).not.toHaveBeenCalled();
+    await waitFor(() => expect(prepare.disabled).toBe(false));
+  });
+
+  it("prepares an event once when Prepare is double clicked", async () => {
+    mocks.eventsTable = {
+      unlinked: {
+        title: "No note yet",
+        started_at: new Date(Date.now() + 120_000).toISOString(),
+      },
+    };
+    let resolvePrepare: (sessionId: string) => void = () => {};
+    mocks.getOrCreateEventSession.mockReturnValueOnce(
+      new Promise<string>((resolve) => {
+        resolvePrepare = resolve;
+      }),
+    );
+
+    renderHome();
+    const prepare = screen.getByRole("button", { name: "Prepare" });
+    fireEvent.click(prepare);
+    fireEvent.click(prepare);
+
+    expect(mocks.getOrCreateEventSession).toHaveBeenCalledTimes(1);
+    resolvePrepare("prepared-session");
     await waitFor(() =>
       expect(mocks.openCurrent).toHaveBeenCalledWith({
         type: "sessions",

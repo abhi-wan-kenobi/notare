@@ -1,10 +1,17 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   ActivationModeGroup,
   CleanupGroup,
   DictationHistoryList,
+  DictationHistorySection,
   MacosAccessibilityHint,
   normalizeActivationMode,
   OutputModeGroup,
@@ -12,6 +19,29 @@ import {
 } from "./index";
 
 import type { DictationHistoryEntry } from "~/dictation/history";
+
+const mocks = vi.hoisted(() => ({
+  ask: vi.fn(),
+  toastError: vi.fn(),
+  clearDictationHistory: vi.fn(),
+  history: [] as DictationHistoryEntry[],
+}));
+
+vi.mock("@tauri-apps/plugin-dialog", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@tauri-apps/plugin-dialog")>()),
+  ask: mocks.ask,
+}));
+
+vi.mock("@hypr/ui/components/ui/toast", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@hypr/ui/components/ui/toast")>()),
+  sonnerToast: { error: mocks.toastError, success: vi.fn() },
+}));
+
+vi.mock("~/dictation/history", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("~/dictation/history")>()),
+  useDictationHistory: () => mocks.history,
+  clearDictationHistory: mocks.clearDictationHistory,
+}));
 
 describe("OutputModeGroup", () => {
   afterEach(() => {
@@ -174,6 +204,68 @@ describe("DictationHistoryList", () => {
     );
 
     expect(screen.getAllByText(/ago$/)).toHaveLength(2);
+  });
+});
+
+describe("DictationHistorySection clear all", () => {
+  beforeEach(() => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    mocks.history = [
+      {
+        id: "one",
+        text: "First dictation",
+        rawText: null,
+        source: "dictation",
+        model: null,
+        durationMs: null,
+        pinned: false,
+        status: "delivered",
+        createdAt: new Date().toISOString(),
+      },
+    ];
+  });
+  afterEach(() => {
+    cleanup();
+    vi.clearAllMocks();
+    vi.restoreAllMocks();
+    mocks.history = [];
+  });
+
+  const clickClearAll = () => {
+    render(
+      <DictationHistorySection retention="" onRetentionChange={vi.fn()} />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Clear all" }));
+  };
+
+  it("keeps the history when the confirmation is declined", async () => {
+    mocks.ask.mockResolvedValue(false);
+
+    clickClearAll();
+
+    await waitFor(() => expect(mocks.ask).toHaveBeenCalledTimes(1));
+    expect(mocks.clearDictationHistory).not.toHaveBeenCalled();
+  });
+
+  it("clears the history once confirmed", async () => {
+    mocks.ask.mockResolvedValue(true);
+    mocks.clearDictationHistory.mockResolvedValue(undefined);
+
+    clickClearAll();
+
+    await waitFor(() =>
+      expect(mocks.clearDictationHistory).toHaveBeenCalledTimes(1),
+    );
+    expect(mocks.toastError).not.toHaveBeenCalled();
+  });
+
+  it("reports a failed clear", async () => {
+    mocks.ask.mockResolvedValue(true);
+    mocks.clearDictationHistory.mockRejectedValue(new Error("db is locked"));
+
+    clickClearAll();
+
+    await waitFor(() => expect(mocks.toastError).toHaveBeenCalledTimes(1));
   });
 });
 

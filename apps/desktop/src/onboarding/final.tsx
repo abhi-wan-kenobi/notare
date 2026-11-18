@@ -1,9 +1,11 @@
 import { Icon } from "@iconify-icon/react";
-import { Trans } from "@lingui/react/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
+import { useState } from "react";
 
 import { commands as analyticsCommands } from "@hypr/plugin-analytics";
 import { commands as openerCommands } from "@hypr/plugin-opener2";
 import { commands as sfxCommands } from "@hypr/plugin-sfx";
+import { sonnerToast } from "@hypr/ui/components/ui/toast";
 
 import { OnboardingButton } from "./shared";
 import {
@@ -57,10 +59,26 @@ export function FinalSection({
 }: {
   onContinue: (sessionId: string) => void;
 }) {
+  const { t } = useLingui();
+  const [pending, setPending] = useState(false);
+
+  const handleClick = async () => {
+    setPending(true);
+    try {
+      await finishOnboarding(onContinue);
+    } catch (error) {
+      console.error("[onboarding] failed to finish", error);
+      sonnerToast.error(t`Couldn't open Notare. Please try again.`);
+    } finally {
+      setPending(false);
+    }
+  };
+
   return (
     <OnboardingButton
-      className="px-6 py-2 text-sm"
-      onClick={() => void finishOnboarding(onContinue)}
+      className="px-6 py-2 text-sm disabled:opacity-50"
+      disabled={pending}
+      onClick={() => void handleClick()}
     >
       <Trans>Open Notare</Trans>
     </OnboardingButton>
@@ -75,9 +93,17 @@ export async function finishOnboarding(
   await new Promise((resolve) => setTimeout(resolve, 100));
   await commands.setOnboardingNeeded(false).catch(console.error);
   await new Promise((resolve) => setTimeout(resolve, 100));
-  await analyticsCommands.event({ event: "onboarding_completed" });
+  await analyticsCommands
+    .event({ event: "onboarding_completed" })
+    .catch(console.error);
   setPendingWelcomeSession(welcomeSessionId);
-  if (await flushAutomaticRelaunch()) {
+  // A failed relaunch must not strand the user on this screen; the relaunch
+  // stays pending and the app is usable in the meantime.
+  const relaunching = await flushAutomaticRelaunch().catch((error) => {
+    console.error("[onboarding] automatic relaunch failed", error);
+    return false;
+  });
+  if (relaunching) {
     return;
   }
   setPendingWelcomeSession(null);

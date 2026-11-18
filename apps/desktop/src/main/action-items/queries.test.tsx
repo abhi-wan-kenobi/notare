@@ -6,6 +6,9 @@ import { useAllActionItems } from "./queries";
 
 import { createMigratedDb, queryAll } from "~/calendar/test-sqlite";
 
+// Ahead of UTC, so the local calendar day rolls over before the UTC one.
+process.env.TZ = "Asia/Kolkata";
+
 let db: DatabaseSync;
 
 vi.mock("~/shared/owner-user", () => ({ useOwnerUserId: () => "self" }));
@@ -38,7 +41,10 @@ describe("action item ownership", () => {
         ('finished', 'meeting', 'self', 'Finished action', 'done');
     `);
   });
-  afterEach(() => db.close());
+  afterEach(() => {
+    vi.useRealTimers();
+    db.close();
+  });
 
   it("Mine excludes other attendees even when their contacts belong to me", () => {
     const { result } = renderHook(() => useAllActionItems("mine"));
@@ -51,6 +57,23 @@ describe("action item ownership", () => {
       "bobs",
       "mine",
       "unassigned",
+    ]);
+  });
+
+  it("Overdue rolls over at local midnight, not UTC midnight", () => {
+    // 01:30 on Nov 18 in Asia/Kolkata while UTC is still on Nov 17.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-11-17T20:00:00.000Z"));
+    db.exec(`
+      INSERT INTO action_items(id, session_id, text, status, due_at) VALUES
+        ('due-yesterday', 'meeting', 'Due yesterday', 'todo', '2026-11-17'),
+        ('due-today', 'meeting', 'Due today', 'todo', '2026-11-18');
+    `);
+
+    const { result } = renderHook(() => useAllActionItems("overdue"));
+
+    expect(result.current.items.map((item) => item.id)).toEqual([
+      "due-yesterday",
     ]);
   });
 });

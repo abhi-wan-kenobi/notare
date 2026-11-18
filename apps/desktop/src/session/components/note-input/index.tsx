@@ -198,7 +198,7 @@ const NoteInputContent = forwardRef<
 
     const handleAdjacentViewShortcut = useCallback(
       (direction: "previous" | "next") => {
-        if (editorTabs.length <= 1) {
+        if (embedded || editorTabs.length <= 1) {
           return;
         }
 
@@ -218,7 +218,7 @@ const NoteInputContent = forwardRef<
           handleTabChange(nextView);
         }
       },
-      [editorTabs, handleTabChange, renderedCurrentTab],
+      [editorTabs, embedded, handleTabChange, renderedCurrentTab],
     );
 
     useHotkeys(
@@ -271,7 +271,7 @@ const NoteInputContent = forwardRef<
 
     return (
       <div className={cn("-mx-2 flex flex-col", !embedded && "h-full")}>
-        {!hideHeader && (
+        {!hideHeader && !embedded && (
           <div className="relative px-2">
             <Header
               sessionId={sessionId}

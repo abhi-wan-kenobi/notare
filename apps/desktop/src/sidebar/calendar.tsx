@@ -28,6 +28,7 @@ import {
 } from "~/calendar/hooks";
 import { useIgnoredEvents } from "~/calendar/ignored-events";
 import { useCalendarSelection } from "~/calendar/selection";
+import { useHideRecurringSeries } from "~/calendar/use-hide-series";
 import { getOrCreateSessionForEventId } from "~/session/queries";
 import {
   type MenuItemDef,
@@ -188,7 +189,8 @@ function SidebarEventRow({
 }) {
   const { t } = useLingui();
   const openCurrent = useTabs((state) => state.openCurrent);
-  const { ignoreEvent, ignoreSeries } = useIgnoredEvents();
+  const { ignoreEvent } = useIgnoredEvents();
+  const hideSeries = useHideRecurringSeries();
 
   const handleOpen = useCallback(() => {
     void getOrCreateSessionForEventId(id, event?.title || "Untitled")
@@ -206,11 +208,10 @@ function SidebarEventRow({
     }
   }, [event?.tracking_id_event, ignoreEvent]);
 
-  const handleIgnoreSeries = useCallback(() => {
-    if (event?.recurrence_series_id) {
-      ignoreSeries(event.recurrence_series_id);
-    }
-  }, [event?.recurrence_series_id, ignoreSeries]);
+  const handleIgnoreSeries = useCallback(
+    () => hideSeries(event?.recurrence_series_id),
+    [event?.recurrence_series_id, hideSeries],
+  );
 
   const contextMenu = useMemo<MenuItemDef[]>(() => {
     if (!event) return [];
@@ -222,16 +223,14 @@ function SidebarEventRow({
       },
       {
         id: "ignore",
-        text: event.recurrence_series_id
-          ? t`Delete This Event`
-          : t`Delete Event`,
+        text: event.recurrence_series_id ? t`Hide this event` : t`Hide event`,
         action: handleIgnore,
       },
     ];
     if (event.recurrence_series_id) {
       items.push({
         id: "ignore-series",
-        text: t`Delete Entire Series`,
+        text: t`Hide all recurring events`,
         action: handleIgnoreSeries,
       });
     }

@@ -36,9 +36,9 @@ const DRAG_THRESHOLD_PX = 4;
  * session toggle. The window is non-focusable so the click never steals
  * keyboard focus from the app receiving the dictated text.
  *
- * `solid` mirrors the floating bar's fallback: when the OS refused a
- * transparent window, the Rust side loads `/app/dictation?solid=1` and this
- * renders on an opaque rounded surface instead of a bare orb.
+ * The waveform always sits on an explicit token-backed capsule so it remains
+ * visible over arbitrary desktop content. `solid` mirrors the floating bar's
+ * fallback and fills the rest of the tiny window when transparency fails.
  */
 export function DictationOrbWindow({ solid = false }: { solid?: boolean }) {
   const { t } = useLingui();
@@ -50,8 +50,7 @@ export function DictationOrbWindow({ solid = false }: { solid?: boolean }) {
   const draggedRef = useRef(false);
 
   useEffect(() => {
-    // The orb is designed on the graphite (dark) token set.
-    document.documentElement.classList.add("dark");
+    // The app-level theme provider owns the token set for this webview.
 
     if (solid) {
       return;
@@ -62,14 +61,19 @@ export function DictationOrbWindow({ solid = false }: { solid?: boolean }) {
   }, [solid]);
 
   const dictating = state.phase === "listening" || state.phase === "processing";
+  // After stop the session is only finishing (flush, clean-up, paste): a
+  // second stop is a no-op, so the orb reports progress instead of offering it.
+  const processing = state.phase === "processing";
   const batchMode = state.mode === "batch";
-  const label = dictating
-    ? batchMode
-      ? dictation_paste_at_cursor
-        ? t`Stop dictation and paste the transcript`
-        : t`Stop dictation and copy the transcript`
-      : t`Stop dictation`
-    : t`Start dictation`;
+  const label = processing
+    ? t`Finishing dictation`
+    : dictating
+      ? batchMode
+        ? dictation_paste_at_cursor
+          ? t`Stop dictation and paste the transcript`
+          : t`Stop dictation and copy the transcript`
+        : t`Stop dictation`
+      : t`Start dictation`;
 
   const handlePointerDown = (event: React.PointerEvent) => {
     if (event.button !== 0) {
@@ -108,6 +112,9 @@ export function DictationOrbWindow({ solid = false }: { solid?: boolean }) {
       draggedRef.current = false;
       return;
     }
+    if (processing) {
+      return;
+    }
     void dictationEvents.dictationOrbClicked.emit({});
   };
 
@@ -127,15 +134,17 @@ export function DictationOrbWindow({ solid = false }: { solid?: boolean }) {
     <div
       data-testid={solid ? "dictation-window-solid" : "dictation-window-glass"}
       className={cn([
-        "flex h-screen w-screen items-center justify-center overflow-hidden",
-        solid && "bg-background border-border rounded-xl border",
+        "text-popover-foreground flex h-screen w-screen items-center justify-center overflow-hidden",
+        solid && "bg-popover border-border rounded-xl border",
       ])}
     >
       <button
         type="button"
         aria-label={label}
         title={label}
-        aria-pressed={dictating}
+        aria-pressed={state.phase === "listening"}
+        aria-busy={processing}
+        aria-disabled={processing}
         data-dictation-mode={state.mode}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
@@ -144,7 +153,9 @@ export function DictationOrbWindow({ solid = false }: { solid?: boolean }) {
         onClick={handleClick}
         onContextMenu={handleContextMenu}
         className={cn([
-          "relative flex cursor-pointer items-center justify-center rounded-full",
+          "bg-popover text-popover-foreground border-border relative flex items-center justify-center rounded-full border p-0.5 shadow-sm",
+          processing ? "cursor-progress" : "cursor-pointer",
+          "[--accent-glow:var(--primary)] dark:[--accent-glow:inherit]",
           "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-hidden",
         ])}
       >
@@ -157,7 +168,7 @@ export function DictationOrbWindow({ solid = false }: { solid?: boolean }) {
           <span
             data-testid="dictation-batch-hint"
             aria-hidden
-            className="bg-foreground absolute right-0.5 bottom-0.5 size-1 rounded-full"
+            className="bg-popover-foreground absolute right-0.5 bottom-0.5 size-1 rounded-full"
           />
         ) : null}
       </button>

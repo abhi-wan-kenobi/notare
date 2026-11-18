@@ -8,6 +8,8 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { sonnerToast } from "@hypr/ui/components/ui/toast";
+
 import type { EditorView } from "~/store/zustand/tabs/schema";
 
 type CapturedMenuItem =
@@ -56,6 +58,7 @@ const hoisted = vi.hoisted(() => ({
   stopTranscription: vi.fn(),
   requestMainListenerControl: vi.fn(),
   deleteRecording: vi.fn(),
+  ask: vi.fn(),
   activeTemplateTitle: "Customer Call",
   audioExists: true,
   hasTranscript: true,
@@ -254,6 +257,10 @@ vi.mock("@tauri-apps/api/menu", () => ({
   },
 }));
 
+vi.mock("@tauri-apps/plugin-dialog", () => ({
+  ask: hoisted.ask,
+}));
+
 vi.mock("~/session/components/note-input/transcript/export-data", () => ({
   buildTranscriptExportSegments: () =>
     Promise.resolve(hoisted.transcriptSegments),
@@ -376,6 +383,7 @@ describe("Header", () => {
     hoisted.stopTranscription.mockReset();
     hoisted.requestMainListenerControl.mockReset();
     hoisted.deleteRecording.mockReset();
+    hoisted.ask.mockReset();
     hoisted.activeTemplateTitle = "Customer Call";
     hoisted.audioExists = true;
     hoisted.hasTranscript = true;
@@ -691,6 +699,74 @@ describe("Header", () => {
     expect(menu.map((item) => item.text ?? "separator")).toEqual(["Copy"]);
   });
 
+  it("asks for confirmation before deleting the recording", async () => {
+    hoisted.ask.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+    hoisted.deleteRecording.mockResolvedValue(undefined);
+    const editorTabs: EditorView[] = [
+      { type: "enhanced", id: "note-1" },
+      { type: "raw" },
+      { type: "transcript" },
+    ];
+
+    render(
+      <Header
+        sessionId="session-1"
+        editorTabs={editorTabs}
+        currentTab={{ type: "transcript" }}
+        handleTabChange={vi.fn()}
+      />,
+    );
+
+    const menu = await openTranscriptContextMenu();
+    const deleteItem = menu.find(
+      (item) => item.id === "delete-recording-session-1",
+    );
+
+    // Declined first, confirmed second: only the confirmed run may delete.
+    deleteItem?.action?.();
+    deleteItem?.action?.();
+
+    expect(hoisted.ask).toHaveBeenCalledTimes(2);
+    expect(hoisted.ask.mock.calls[0]?.[1]).toMatchObject({ kind: "warning" });
+    expect(hoisted.deleteRecording).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect(hoisted.deleteRecording).toHaveBeenCalledTimes(1),
+    );
+  });
+
+  it("reports a failed recording deletion", async () => {
+    hoisted.ask.mockResolvedValue(true);
+    hoisted.deleteRecording.mockRejectedValue(new Error("disk error"));
+    const toastError = vi.spyOn(sonnerToast, "error").mockReturnValue("");
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+    const editorTabs: EditorView[] = [
+      { type: "enhanced", id: "note-1" },
+      { type: "raw" },
+      { type: "transcript" },
+    ];
+
+    render(
+      <Header
+        sessionId="session-1"
+        editorTabs={editorTabs}
+        currentTab={{ type: "transcript" }}
+        handleTabChange={vi.fn()}
+      />,
+    );
+
+    const menu = await openTranscriptContextMenu();
+    menu.find((item) => item.id === "delete-recording-session-1")?.action?.();
+
+    await waitFor(() =>
+      expect(toastError).toHaveBeenCalledWith("Failed to delete recording"),
+    );
+
+    toastError.mockRestore();
+    consoleError.mockRestore();
+  });
+
   it("replaces the current enhanced note when changing templates", async () => {
     hoisted.userTemplates = [
       {
@@ -794,6 +870,65 @@ describe("Header", () => {
     expect(
       screen.getByRole("button", { name: "Customer Call" }).textContent,
     ).toBe("Customer Call");
+  });
+
+  it("keeps the template picker closed while a summary is generating", () => {
+    hoisted.isGenerating = true;
+    const editorTabs: EditorView[] = [
+      { type: "enhanced", id: "note-1" },
+      { type: "raw" },
+    ];
+
+    render(
+      <Header
+        sessionId="session-1"
+        editorTabs={editorTabs}
+        currentTab={{ type: "enhanced", id: "note-1" }}
+        handleTabChange={vi.fn()}
+      />,
+    );
+
+    const trigger = screen.getByRole<HTMLButtonElement>("button", {
+      name: "Customer Call",
+    });
+    expect(trigger.disabled).toBe(true);
+
+    fireEvent.click(trigger);
+
+    expect(screen.queryByPlaceholderText("Search templates...")).toBeNull();
+  });
+
+  it("closes the open template picker when generation starts", async () => {
+    const editorTabs: EditorView[] = [
+      { type: "enhanced", id: "note-1" },
+      { type: "raw" },
+    ];
+
+    const view = render(
+      <Header
+        sessionId="session-1"
+        editorTabs={editorTabs}
+        currentTab={{ type: "enhanced", id: "note-1" }}
+        handleTabChange={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Customer Call" }));
+    expect(screen.getByPlaceholderText("Search templates...")).not.toBeNull();
+
+    hoisted.isGenerating = true;
+    view.rerender(
+      <Header
+        sessionId="session-1"
+        editorTabs={editorTabs}
+        currentTab={{ type: "enhanced", id: "note-1" }}
+        handleTabChange={vi.fn()}
+      />,
+    );
+
+    await waitFor(() =>
+      expect(screen.queryByPlaceholderText("Search templates...")).toBeNull(),
+    );
   });
 
   it("shows a spinner in the transcript tab while transcribing", () => {

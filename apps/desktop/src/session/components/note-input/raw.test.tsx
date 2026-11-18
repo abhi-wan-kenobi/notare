@@ -14,6 +14,7 @@ const hoisted = vi.hoisted(() => ({
   rawMd: JSON.stringify({ type: "doc", content: [] }),
   sessionTitle: "Weekly sync",
   persistChange: vi.fn(() => Promise.resolve()),
+  toastError: vi.fn(),
   fileUpload: vi.fn(),
   processAudioFile: vi.fn(),
   showWindow: vi.fn(),
@@ -50,6 +51,10 @@ vi.mock("@hypr/plugin-analytics", () => ({
   commands: {
     event: vi.fn(),
   },
+}));
+
+vi.mock("@hypr/ui/components/ui/toast", () => ({
+  sonnerToast: { error: hoisted.toastError, dismiss: vi.fn() },
 }));
 
 vi.mock("~/editor-bridge/app-link-view", () => ({
@@ -121,6 +126,7 @@ describe("RawEditor", () => {
     hoisted.rawMd = JSON.stringify({ type: "doc", content: [] });
     hoisted.sessionTitle = "Weekly sync";
     hoisted.persistChange = vi.fn(() => Promise.resolve());
+    hoisted.toastError.mockReset();
     hoisted.fileUpload = vi.fn();
     hoisted.processAudioFile = vi.fn();
     hoisted.showWindow.mockReset();
@@ -300,6 +306,54 @@ describe("RawEditor", () => {
     expect(hoisted.processAudioFile).toHaveBeenCalledWith(file, {
       allowUnknownAudio: true,
     });
+  });
+
+  it("keeps a rejected note save dirty so closing the editor retries it, and tells the user", async () => {
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+    hoisted.persistChange = vi
+      .fn<() => Promise<void>>()
+      .mockRejectedValueOnce(new Error("disk full"))
+      .mockResolvedValue(undefined);
+    render(<RawEditor sessionId="session-1" />);
+
+    const props = hoisted.noteEditorProps[hoisted.noteEditorProps.length - 1];
+    const editor = props as {
+      handleChange: (content: unknown) => void;
+      onViewReady: (view: unknown) => void;
+      onViewDisposed: (view: unknown) => void;
+    };
+    const edited = {
+      type: "doc",
+      content: [
+        { type: "paragraph", content: [{ type: "text", text: "Last edit" }] },
+      ],
+    };
+    const viewShowing = (doc: unknown) => ({
+      state: { doc: { toJSON: () => doc } },
+    });
+
+    editor.onViewReady(viewShowing(props?.initialContent));
+    editor.handleChange(edited);
+
+    await waitFor(() => expect(hoisted.toastError).toHaveBeenCalledTimes(1));
+    expect(hoisted.persistChange).toHaveBeenCalledTimes(1);
+
+    editor.onViewDisposed(viewShowing(edited));
+
+    expect(hoisted.persistChange).toHaveBeenCalledTimes(2);
+    expect(hoisted.persistChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ raw_md: JSON.stringify(edited) }),
+    );
+
+    // The retry fulfilled, so the content is saved and is not written again.
+    await hoisted.persistChange.mock.results[1]?.value;
+    editor.onViewDisposed(viewShowing(edited));
+
+    expect(hoisted.persistChange).toHaveBeenCalledTimes(2);
+    expect(hoisted.toastError).toHaveBeenCalledTimes(1);
+    consoleError.mockRestore();
   });
 });
 

@@ -126,6 +126,19 @@ describe("DictationOrbWindow", () => {
     expect(screen.getByTestId("dictation-window-solid")).not.toBeNull();
   });
 
+  it("preserves the document theme while mounting", async () => {
+    render(<DictationOrbWindow />);
+    await act(async () => {});
+    expect(document.documentElement.classList.contains("dark")).toBe(false);
+
+    cleanup();
+    document.documentElement.classList.add("dark");
+
+    render(<DictationOrbWindow />);
+    await act(async () => {});
+    expect(document.documentElement.classList.contains("dark")).toBe(true);
+  });
+
   it("tracks phase and amplitude from state events", async () => {
     render(<DictationOrbWindow />);
     await pushState({ phase: "listening", amplitude: 0.8, mode: "type" });
@@ -139,7 +152,7 @@ describe("DictationOrbWindow", () => {
     await pushState({ phase: "processing", amplitude: 0, mode: "type" });
     expect(orb.dataset.dictationPhase).toBe("processing");
     expect(
-      screen.getByRole("button", { name: "Stop dictation" }),
+      screen.getByRole("button", { name: "Finishing dictation" }),
     ).not.toBeNull();
 
     await pushState({ phase: "idle", amplitude: 0, mode: "type" });
@@ -174,7 +187,10 @@ describe("DictationOrbWindow", () => {
       await pushState({ phase, amplitude: 0.4, mode: "type" });
 
       fireEvent.contextMenu(
-        screen.getByRole("button", { name: "Stop dictation" }),
+        screen.getByRole("button", {
+          name:
+            phase === "processing" ? "Finishing dictation" : "Stop dictation",
+        }),
       );
 
       expect(mocks.emitHideRequested).not.toHaveBeenCalled();
@@ -187,6 +203,29 @@ describe("DictationOrbWindow", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Start dictation" }));
 
+    expect(mocks.emitClicked).toHaveBeenCalledTimes(1);
+  });
+
+  // A second stop during post-stop processing is a no-op on the Rust side, so
+  // the orb must not present itself as a pressed, clickable "Stop" control.
+  it("reports progress instead of offering a stop while finishing", async () => {
+    render(<DictationOrbWindow />);
+    await pushState({ phase: "listening", amplitude: 0.4, mode: "batch" });
+    await pushState({ phase: "processing", amplitude: 0, mode: "batch" });
+
+    const button = screen.getByRole("button", { name: "Finishing dictation" });
+    expect(button.getAttribute("aria-busy")).toBe("true");
+    expect(button.getAttribute("aria-disabled")).toBe("true");
+    expect(button.getAttribute("aria-pressed")).toBe("false");
+
+    fireEvent.click(button);
+    expect(mocks.emitClicked).not.toHaveBeenCalled();
+
+    await pushState({ phase: "idle", amplitude: 0, mode: "batch" });
+    expect(button.getAttribute("aria-busy")).toBe("false");
+    expect(button.getAttribute("aria-disabled")).toBe("false");
+
+    fireEvent.click(screen.getByRole("button", { name: "Start dictation" }));
     expect(mocks.emitClicked).toHaveBeenCalledTimes(1);
   });
 

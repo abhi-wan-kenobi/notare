@@ -14,6 +14,7 @@ import { cn } from "@hypr/utils";
 
 import { toTz, useTimezone } from "~/calendar/hooks";
 import { useIgnoredEvents } from "~/calendar/ignored-events";
+import { useHideRecurringSeries } from "~/calendar/use-hide-series";
 import { BriefCard } from "~/services/briefs";
 import { EventDisplay } from "~/session/components/outer-header/metadata";
 import { getOrCreateSessionForEventId } from "~/session/queries";
@@ -37,7 +38,8 @@ export function EventChip({
 }) {
   const { t } = useLingui();
   const tz = useTimezone();
-  const { ignoreEvent, ignoreSeries } = useIgnoredEvents();
+  const { ignoreEvent } = useIgnoredEvents();
+  const hideSeries = useHideRecurringSeries();
   const title = event?.title ?? undefined;
   const trackingId = event?.tracking_id_event ?? undefined;
   const recurrenceSeriesId = event?.recurrence_series_id ?? undefined;
@@ -56,19 +58,16 @@ export function EventChip({
     ignoreEvent(trackingId);
   }, [trackingId, ignoreEvent]);
 
-  const handleIgnoreSeries = useCallback(() => {
-    if (!recurrenceSeriesId) {
-      return;
-    }
-
-    ignoreSeries(recurrenceSeriesId);
-  }, [recurrenceSeriesId, ignoreSeries]);
+  const handleIgnoreSeries = useCallback(
+    () => hideSeries(recurrenceSeriesId),
+    [recurrenceSeriesId, hideSeries],
+  );
 
   const contextMenu = useMemo<MenuItemDef[]>(() => {
     const menu: MenuItemDef[] = [
       {
         id: "ignore",
-        text: recurrenceSeriesId ? "Delete This Event" : "Delete Event",
+        text: recurrenceSeriesId ? t`Hide this event` : t`Hide event`,
         action: handleIgnore,
       },
     ];
@@ -76,13 +75,13 @@ export function EventChip({
     if (recurrenceSeriesId) {
       menu.push({
         id: "ignore-series",
-        text: "Delete All Recurring Events",
+        text: t`Hide all recurring events`,
         action: handleIgnoreSeries,
       });
     }
 
     return menu;
-  }, [recurrenceSeriesId, handleIgnore, handleIgnoreSeries]);
+  }, [recurrenceSeriesId, handleIgnore, handleIgnoreSeries, t]);
   const showContextMenu = useNativeContextMenu(contextMenu);
 
   if (!event || !title) {
