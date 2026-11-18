@@ -4971,6 +4971,7 @@ dependencies = [
 name = "diarization"
 version = "0.1.0"
 dependencies = [
+ "data",
  "eyre",
  "sherpa-rs",
  "thiserror 2.0.18",
