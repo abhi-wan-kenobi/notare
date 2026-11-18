@@ -261,7 +261,11 @@ fn wtype_paste_chord() -> Result<(), String> {
 /// text stays on the clipboard (batch-paste mode).
 fn paste_via_clipboard(text: &str, restore: bool) -> Result<(), String> {
     let mut clipboard = arboard::Clipboard::new().map_err(|e| e.to_string())?;
-    let saved = if restore { clipboard.get_text().ok() } else { None };
+    let saved = if restore {
+        clipboard.get_text().ok()
+    } else {
+        None
+    };
 
     clipboard
         .set_text(text.to_string())
@@ -333,9 +337,7 @@ mod tests {
     use super::{InjectionStrategy, resolve_strategy};
     use std::collections::HashMap;
 
-    fn env_fn(
-        vars: &[(&'static str, &'static str)],
-    ) -> impl Fn(&str) -> Option<String> {
+    fn env_fn(vars: &[(&'static str, &'static str)]) -> impl Fn(&str) -> Option<String> {
         let map: HashMap<&'static str, &'static str> = vars.iter().copied().collect();
         move |key: &str| map.get(key).map(|v| v.to_string())
     }
@@ -355,7 +357,10 @@ mod tests {
 
     #[test]
     fn explicit_wayland_session_prefers_wtype() {
-        let env = env_fn(&[("XDG_SESSION_TYPE", "wayland"), ("WAYLAND_DISPLAY", "wayland-0")]);
+        let env = env_fn(&[
+            ("XDG_SESSION_TYPE", "wayland"),
+            ("WAYLAND_DISPLAY", "wayland-0"),
+        ]);
         assert_eq!(resolve_strategy(&env, true), InjectionStrategy::Wtype);
     }
 
@@ -400,7 +405,10 @@ mod tests {
 
     #[test]
     fn explicit_x11_session_type_overrides_wayland_display() {
-        let env = env_fn(&[("XDG_SESSION_TYPE", "x11"), ("WAYLAND_DISPLAY", "wayland-0")]);
+        let env = env_fn(&[
+            ("XDG_SESSION_TYPE", "x11"),
+            ("WAYLAND_DISPLAY", "wayland-0"),
+        ]);
         assert_eq!(resolve_strategy(&env, false), InjectionStrategy::Enigo);
     }
 

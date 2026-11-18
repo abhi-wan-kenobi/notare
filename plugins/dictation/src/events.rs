@@ -24,9 +24,7 @@ pub enum DictationPhase {
 
 /// Where recognized speech goes (mirrors the `dictation_output_mode` setting;
 /// serialized as `"type"` / `"batch"` so the two representations match).
-#[derive(
-    Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, specta::Type,
-)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "kebab-case")]
 pub enum DictationOutputMode {
     /// Final transcript segments are typed into the focused app as they
