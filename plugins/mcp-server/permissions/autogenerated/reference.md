@@ -8,6 +8,7 @@ Default permissions for the MCP server plugin
 - `allow-set-settings`
 - `allow-regenerate-token`
 - `allow-get-status`
+- `allow-get-bridge-path`
 
 ## Permission Table
 
@@ -17,6 +18,32 @@ Default permissions for the MCP server plugin
 <th>Description</th>
 </tr>
 
+
+<tr>
+<td>
+
+`mcp-server:allow-get-bridge-path`
+
+</td>
+<td>
+
+Enables the get_bridge_path command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`mcp-server:deny-get-bridge-path`
+
+</td>
+<td>
+
+Denies the get_bridge_path command without any pre-configured scope.
+
+</td>
+</tr>
 
 <tr>
 <td>

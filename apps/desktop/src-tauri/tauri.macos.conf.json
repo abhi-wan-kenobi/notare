@@ -1,7 +1,8 @@
 {
   "bundle": {
     "externalBin": [
-      "binaries/check-permissions"
+      "binaries/check-permissions",
+      "binaries/notare-mcp"
     ]
   }
 }

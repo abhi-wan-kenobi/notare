@@ -295,6 +295,18 @@
       "type": "string",
       "oneOf": [
         {
+          "description": "Enables the get_bridge_path command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-get-bridge-path",
+          "markdownDescription": "Enables the get_bridge_path command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the get_bridge_path command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-get-bridge-path",
+          "markdownDescription": "Denies the get_bridge_path command without any pre-configured scope."
+        },
+        {
           "description": "Enables the get_settings command without any pre-configured scope.",
           "type": "string",
           "const": "allow-get-settings",
@@ -343,10 +355,10 @@
           "markdownDescription": "Denies the set_settings command without any pre-configured scope."
         },
         {
-          "description": "Default permissions for the MCP server plugin\n#### This default permission set includes:\n\n- `allow-get-settings`\n- `allow-set-settings`\n- `allow-regenerate-token`\n- `allow-get-status`",
+          "description": "Default permissions for the MCP server plugin\n#### This default permission set includes:\n\n- `allow-get-settings`\n- `allow-set-settings`\n- `allow-regenerate-token`\n- `allow-get-status`\n- `allow-get-bridge-path`",
           "type": "string",
           "const": "default",
-          "markdownDescription": "Default permissions for the MCP server plugin\n#### This default permission set includes:\n\n- `allow-get-settings`\n- `allow-set-settings`\n- `allow-regenerate-token`\n- `allow-get-status`"
+          "markdownDescription": "Default permissions for the MCP server plugin\n#### This default permission set includes:\n\n- `allow-get-settings`\n- `allow-set-settings`\n- `allow-regenerate-token`\n- `allow-get-status`\n- `allow-get-bridge-path`"
         }
       ]
     }

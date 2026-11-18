@@ -13,54 +13,44 @@ For the comprehensive architecture, security model, and tool schemas, see the co
 
 The MCP integration offers two transport options:
 
-1. **In-app streamable HTTP server:**
-   - Runs inside the Notare desktop application.
+1. **In-app streamable HTTP server (default for omp, Cursor, Claude Code):**
+   - Runs directly inside the Notare desktop application.
    - Listens on `127.0.0.1:<port>` (default port is `8787`, configurable in **Settings → MCP Server**).
    - Enforces Bearer token authentication (`Authorization: Bearer <token>`). Tokens are stored in your OS keychain.
    - Strictly binds to loopback (`127.0.0.1`); never accessible from external networks.
 
 2. **Stdio bridge (`notare-mcp`):**
    - For clients like Claude Desktop that communicate over standard input/output (`stdio`).
-   - A lightweight companion binary that proxies requests to the desktop application's loopback HTTP server using your bearer token.
+   - A lightweight companion binary bundled directly inside the Notare desktop application as a Tauri sidecar:
+     - **macOS:** `/Applications/Notare.app/Contents/MacOS/notare-mcp`
+     - **Windows:** `C:\Program Files\Notare\notare-mcp.exe`
+     - **Linux:** `/usr/bin/notare-mcp` (or next to `notare` inside the AppImage)
+   - Proxies JSON-RPC requests to the desktop application's loopback HTTP server using your bearer token.
 
 ---
 
 ## Client configuration
 
-Enable the MCP server under **Settings → MCP Server** in Notare, then copy your generated bearer token.
+Enable the MCP server under **Settings → MCP Server** in Notare, then copy your configuration snippets.
 
-### Claude Desktop
+### HTTP clients (omp, Cursor, Claude Code)
 
-Edit your Claude Desktop configuration file:
-- **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
-- **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
-- **Linux:** `~/.config/Claude/claude_desktop_config.json`
+Clients that speak streamable HTTP connect directly without needing the stdio bridge.
 
-Add the `notare` server:
+In your client configuration (e.g. `~/.omp/config.json`, `~/.cursor/mcp.json`, or Claude Code):
 
 ```json
 {
-  "mcpServers": {
-    "notare": {
-      "command": "notare-mcp",
-      "args": [
-        "--port",
-        "8787",
-        "--token",
-        "YOUR_BEARER_TOKEN"
-      ]
+  "notare": {
+    "url": "http://127.0.0.1:8787",
+    "headers": {
+      "Authorization": "Bearer YOUR_BEARER_TOKEN"
     }
   }
 }
 ```
 
-<Note>
-  You can click **Copy Claude config** directly from **Settings → MCP Server** in Notare to copy a pre-filled configuration snippet with your active port and token.
-</Note>
-
-### Cursor
-
-Edit `~/.cursor/mcp.json` (or workspace `.cursor/mcp.json`):
+In Cursor (`~/.cursor/mcp.json` or workspace `.cursor/mcp.json` under `mcpServers`):
 
 ```json
 {
@@ -75,6 +65,38 @@ Edit `~/.cursor/mcp.json` (or workspace `.cursor/mcp.json`):
 }
 ```
 
+### Claude Desktop
+
+Claude Desktop requires a stdio-based transport. Use the bundled `notare-mcp` binary that ships with the app.
+
+Edit your Claude Desktop configuration file:
+- **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
+- **Linux:** `~/.config/Claude/claude_desktop_config.json`
+
+Add the `notare` server:
+
+```json
+{
+  "mcpServers": {
+    "notare": {
+      "command": "/Applications/Notare.app/Contents/MacOS/notare-mcp",
+      "args": [
+        "--port",
+        "8787",
+        "--token",
+        "YOUR_BEARER_TOKEN"
+      ]
+    }
+  }
+}
+```
+
+*(Replace `/Applications/Notare.app/Contents/MacOS/notare-mcp` with `C:\Program Files\Notare\notare-mcp.exe` on Windows or `/usr/bin/notare-mcp` on Linux).*
+
+<Note>
+  You can copy the pre-filled configuration snippet directly from **Settings → MCP Server** in Notare. It automatically detects and inserts the absolute path to `notare-mcp` on your operating system alongside your active port and token.
+</Note>
 ---
 
 ## Available tools (read-only)

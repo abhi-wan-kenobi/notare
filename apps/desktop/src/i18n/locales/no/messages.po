@@ -952,10 +952,6 @@ msgstr ""
 msgid "Current version"
 msgstr ""
 
-#: src/settings/mcp/index.tsx
-msgid "Cursor (HTTP SSE transport)"
-msgstr ""
-
 #: src/settings/ai/stt/select.tsx
 msgid "Custom model identifier"
 msgstr ""
@@ -1682,6 +1678,10 @@ msgstr ""
 
 #: src/settings/general/notification.tsx
 msgid "How long the mic must be active before triggering"
+msgstr ""
+
+#: src/settings/mcp/index.tsx
+msgid "HTTP clients (omp, Cursor, Claude Code)"
 msgstr ""
 
 #: src/contacts/humans.tsx
@@ -3630,6 +3630,10 @@ msgstr ""
 #: src/onboarding/folder-location.tsx
 #: src/settings/general/storage/notes-location.tsx
 msgid "The app will restart after onboarding to apply your storage changes"
+msgstr ""
+
+#: src/settings/mcp/index.tsx
+msgid "The bridge binary wasn't found in this install, so this snippet needs a notare-mcp on your PATH."
 msgstr ""
 
 #: src/settings/general/app-settings.tsx

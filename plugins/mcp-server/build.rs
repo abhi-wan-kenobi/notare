@@ -3,6 +3,7 @@ const COMMANDS: &[&str] = &[
     "set_settings",
     "regenerate_token",
     "get_status",
+    "get_bridge_path",
 ];
 
 fn main() {

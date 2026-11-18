@@ -24,6 +24,7 @@ pub fn make_specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::set_settings,
             commands::regenerate_token,
             commands::get_status,
+            commands::get_bridge_path,
         ])
         .typ::<types::McpServerSettings>()
         .typ::<types::McpServerSettingsInput>()

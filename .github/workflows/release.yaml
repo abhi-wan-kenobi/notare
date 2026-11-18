@@ -109,6 +109,12 @@ jobs:
       # cmake configure time, and the LunarG SDK action does NOT include them
       # on Windows. Until that's resolved, Windows ships CPU-only local-llm
       # (the Vulkan offload is linux-only in release builds).
+      - name: Build MCP sidecar
+        shell: bash
+        run: ./scripts/build-mcp-sidecar.sh x86_64-pc-windows-msvc
+        env:
+          CARGO_TARGET_DIR: 'D:\nb'
+
       - run: pnpm -F desktop tauri build --config ./src-tauri/tauri.conf.stable.json --features gpu-vulkan,directml,local-llm,sync
         env:
           CI: false
@@ -177,6 +183,9 @@ jobs:
       # offload, on the same SDK this job already installs for `gpu-vulkan`.
       # See the Windows job above for why the base `local-llm` is not listed
       # separately.
+      - name: Build MCP sidecar
+        run: ./scripts/build-mcp-sidecar.sh x86_64-unknown-linux-gnu
+
       - run: pnpm -F desktop tauri build --config ./src-tauri/tauri.conf.stable.json --features gpu-vulkan,local-llm-vulkan,sync
         env:
           CI: false
@@ -270,6 +279,9 @@ jobs:
       # (crates/local-llm-llama/Cargo.toml:15) and nothing in this repo
       # asserts Metal either way. This is the first release to ship it, so
       # treat Apple-Silicon throughput as unmeasured until someone runs it.
+      - name: Build MCP sidecar
+        run: ./scripts/build-mcp-sidecar.sh aarch64-apple-darwin
+
       - run: pnpm -F desktop tauri build --config ./src-tauri/tauri.conf.stable.json --config ./src-tauri/tauri.conf.stable-macos.json --features local-llm,sync
         env:
           CI: false

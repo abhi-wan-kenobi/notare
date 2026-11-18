@@ -952,10 +952,6 @@ msgstr "Creating event…"
 msgid "Current version"
 msgstr "Current version"
 
-#: src/settings/mcp/index.tsx
-msgid "Cursor (HTTP SSE transport)"
-msgstr "Cursor (HTTP SSE transport)"
-
 #: src/settings/ai/stt/select.tsx
 msgid "Custom model identifier"
 msgstr "Custom model identifier"
@@ -1683,6 +1679,10 @@ msgstr "How far in advance to generate briefs before events start."
 #: src/settings/general/notification.tsx
 msgid "How long the mic must be active before triggering"
 msgstr "How long the mic must be active before triggering"
+
+#: src/settings/mcp/index.tsx
+msgid "HTTP clients (omp, Cursor, Claude Code)"
+msgstr "HTTP clients (omp, Cursor, Claude Code)"
 
 #: src/contacts/humans.tsx
 msgid "Human"
@@ -3631,6 +3631,10 @@ msgstr "That key cannot be part of a global shortcut."
 #: src/settings/general/storage/notes-location.tsx
 msgid "The app will restart after onboarding to apply your storage changes"
 msgstr "The app will restart after onboarding to apply your storage changes"
+
+#: src/settings/mcp/index.tsx
+msgid "The bridge binary wasn't found in this install, so this snippet needs a notare-mcp on your PATH."
+msgstr "The bridge binary wasn't found in this install, so this snippet needs a notare-mcp on your PATH."
 
 #: src/settings/general/app-settings.tsx
 msgid "The compact parchment bar with a dancing waveform."

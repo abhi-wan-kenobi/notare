@@ -17,6 +17,11 @@ import { SettingsPageTitle } from "~/settings/page-title";
 
 const MCP_SETTINGS_QUERY_KEY = ["settings", "mcp-server"] as const;
 const MCP_STATUS_QUERY_KEY = ["settings", "mcp-server", "status"] as const;
+const MCP_BRIDGE_PATH_QUERY_KEY = [
+  "settings",
+  "mcp-server",
+  "bridge-path",
+] as const;
 
 function unwrap<T>(
   result: { status: "ok"; data: T } | { status: "error"; error: string },
@@ -43,6 +48,11 @@ export function SettingsMcp() {
     refetchInterval: 3000,
   });
 
+  const { data: sidecarPath } = useQuery({
+    queryKey: MCP_BRIDGE_PATH_QUERY_KEY,
+    queryFn: async () => unwrap(await mcpCommands.getBridgePath()),
+  });
+
   if (error) {
     throw error;
   }
@@ -62,6 +72,7 @@ export function SettingsMcp() {
       settings={settings}
       isRunning={status?.running ?? false}
       errorMsg={status?.error}
+      sidecarPath={sidecarPath}
     />
   );
 }
@@ -70,10 +81,12 @@ function McpSettingsContent({
   settings,
   isRunning,
   errorMsg,
+  sidecarPath,
 }: {
   settings: McpServerSettings;
   isRunning: boolean;
   errorMsg?: string | null;
+  sidecarPath?: string | null;
 }) {
   const { t } = useLingui();
   const queryClient = useQueryClient();
@@ -82,7 +95,7 @@ function McpSettingsContent({
   const [port, setPort] = useState(settings.port);
   const [tokenCopied, setTokenCopied] = useState(false);
   const [claudeCopied, setClaudeCopied] = useState(false);
-  const [cursorCopied, setCursorCopied] = useState(false);
+  const [httpCopied, setHttpCopied] = useState(false);
 
   const saveMutation = useMutation({
     mutationFn: async (next: McpServerSettingsInput) => {
@@ -124,7 +137,7 @@ function McpSettingsContent({
     {
       mcpServers: {
         notare: {
-          command: "notare-mcp",
+          command: sidecarPath || "notare-mcp",
           args: ["--port", String(port), "--token", settings.bearer_token],
         },
       },
@@ -133,7 +146,7 @@ function McpSettingsContent({
     2,
   );
 
-  const cursorHttpConfig = JSON.stringify(
+  const httpConfig = JSON.stringify(
     {
       mcpServers: {
         notare: {
@@ -292,34 +305,42 @@ function McpSettingsContent({
               </span>
             </Button>
           </div>
+          {!sidecarPath && (
+            <p className="text-muted-foreground text-xs">
+              <Trans>
+                The bridge binary wasn't found in this install, so this snippet
+                needs a notare-mcp on your PATH.
+              </Trans>
+            </p>
+          )}
           <pre className="bg-muted/60 text-muted-foreground overflow-x-auto rounded p-3 font-mono text-[11px] leading-relaxed">
             {claudeConfig}
           </pre>
         </div>
 
-        {/* Cursor */}
+        {/* HTTP clients */}
         <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold">
-              <Trans>Cursor (HTTP SSE transport)</Trans>
+              <Trans>HTTP clients (omp, Cursor, Claude Code)</Trans>
             </span>
             <Button
               variant="outline"
               size="sm"
-              onClick={() => copyToClipboard(cursorHttpConfig, setCursorCopied)}
+              onClick={() => copyToClipboard(httpConfig, setHttpCopied)}
             >
-              {cursorCopied ? (
+              {httpCopied ? (
                 <CheckIcon className="h-3 w-3 text-green-500" />
               ) : (
                 <CopyIcon className="h-3 w-3" />
               )}
               <span className="ml-1 text-[11px]">
-                {cursorCopied ? t`Copied` : t`Copy JSON`}
+                {httpCopied ? t`Copied` : t`Copy JSON`}
               </span>
             </Button>
           </div>
           <pre className="bg-muted/60 text-muted-foreground overflow-x-auto rounded p-3 font-mono text-[11px] leading-relaxed">
-            {cursorHttpConfig}
+            {httpConfig}
           </pre>
         </div>
       </div>

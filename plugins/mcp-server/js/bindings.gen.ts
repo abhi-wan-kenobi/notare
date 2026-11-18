@@ -37,6 +37,20 @@ async getStatus() : Promise<Result<McpServerStatus, string>> {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
+},
+/**
+ * Absolute path of the bundled `notare-mcp` stdio bridge (a Tauri
+ * sidecar), or `None` in builds that do not carry it (dev runs). The
+ * Settings page puts it into the Claude Desktop snippet so the copied
+ * config works without the user locating the binary.
+ */
+async getBridgePath() : Promise<Result<string | null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:mcp-server|get_bridge_path") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 }
 }
 
