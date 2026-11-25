@@ -17,7 +17,7 @@ thiserror = { workspace = true }
 tokio = { workspace = true, features = ["rt", "macros", "fs", "sync"] }
 tokio-util = { workspace = true }
 tracing = { workspace = true }
-zip = { version = "9", default-features = false, features = ["deflate"] }
+zip = { version = "9", default-features = false, features = ["deflate", "deflate64"] }
 
 [dev-dependencies]
 crc32fast = "1"
