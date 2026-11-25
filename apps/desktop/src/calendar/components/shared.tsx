@@ -12,8 +12,6 @@ export type CalendarProvider = {
   badge?: string | null;
   platform?: "macos" | "all";
   docsPath?: string;
-  /** Legacy cloud (Nango) integration id — dead in Notare, kept for Outlook. */
-  nangoIntegrationId?: string;
   /** Direct integration using the user's own OAuth client (no cloud). */
   direct?: boolean;
   /** Local imported `.ics` calendar files (no network at all). */
@@ -34,7 +32,6 @@ const _PROVIDERS = [
       />
     ),
     platform: "macos",
-    nangoIntegrationId: undefined,
   },
   {
     disabled: false,
@@ -45,7 +42,6 @@ const _PROVIDERS = [
     platform: "all",
     docsPath:
       "https://github.com/abhi-wan-kenobi/notare/blob/main/docs/GOOGLE-CALENDAR.md",
-    nangoIntegrationId: undefined,
     direct: true,
   },
   {
@@ -57,7 +53,6 @@ const _PROVIDERS = [
     platform: "all",
     docsPath:
       "https://github.com/abhi-wan-kenobi/notare/blob/main/docs/OUTLOOK-CALENDAR.md",
-    nangoIntegrationId: undefined,
     direct: true,
   },
   {
@@ -69,7 +64,6 @@ const _PROVIDERS = [
     platform: "all",
     docsPath:
       "https://github.com/abhi-wan-kenobi/notare/blob/main/docs/ICS-IMPORT.md",
-    nangoIntegrationId: undefined,
     ics: true,
   },
 ] as const satisfies readonly CalendarProvider[];

@@ -18,24 +18,12 @@ vi.mock("@lingui/react/macro", () => ({
 
 vi.mock("@tauri-apps/plugin-os", () => ({ platform: () => "linux" }));
 
-vi.mock("~/auth", () => ({ useAuth: () => ({ session: null }) }));
-vi.mock("~/auth/billing", () => ({
-  useBillingAccess: () => ({
-    isPaid: false,
-    isPro: false,
-    upgradeToPro: vi.fn(),
-  }),
-}));
-vi.mock("~/auth/useConnections", () => ({
-  useConnections: () => ({ data: undefined, isPending: false, isError: false }),
-}));
 vi.mock("~/shared/hooks/usePermissions", () => ({
   usePermission: () => ({ status: "authorized" }),
 }));
 vi.mock("~/shared/hooks/useNativeContextMenu", () => ({
   useNativeContextMenu: () => undefined,
 }));
-vi.mock("~/shared/integration", () => ({ openIntegrationUrl: vi.fn() }));
 
 vi.mock("~/calendar/hidden-providers", () => ({
   useHiddenCalendarProviders: () => mocks.hidden,
@@ -52,9 +40,6 @@ vi.mock("./apple/permission", () => ({
 vi.mock("./google/content", () => ({ GoogleDirectContent: () => null }));
 vi.mock("./outlook/content", () => ({ OutlookDirectContent: () => null }));
 vi.mock("./ics/content", () => ({ IcsContent: () => null }));
-vi.mock("./oauth/provider-content", () => ({
-  OAuthProviderContent: () => null,
-}));
 
 import { CalendarSidebarContent } from "./sidebar";
 
