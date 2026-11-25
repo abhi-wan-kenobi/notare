@@ -480,6 +480,7 @@ msgstr "Attendee left"
 msgid "Attendees"
 msgstr "Attendees"
 
+#: src/contacts/details.tsx
 #: src/settings/general/permissions.tsx
 msgid "Audio"
 msgstr "Audio"
@@ -1031,9 +1032,17 @@ msgstr "Couldn't delete snippet"
 msgid "Couldn't download {name}"
 msgstr "Couldn't download {name}"
 
+#: src/contacts/details.tsx
+msgid "Couldn't forget this voice."
+msgstr "Couldn't forget this voice."
+
 #: src/snippets/index.tsx
 msgid "Couldn't insert text"
 msgstr "Couldn't insert text"
+
+#: src/contacts/details.tsx
+msgid "Couldn't learn a voice from that file."
+msgstr "Couldn't learn a voice from that file."
 
 #: src/snippets/index.tsx
 msgid "Couldn't load history"
@@ -1066,6 +1075,14 @@ msgstr "Couldn't paste the last dictation. Try again."
 #: src/main/series/index.tsx
 msgid "Couldn't prepare the meeting note. Try again."
 msgstr "Couldn't prepare the meeting note. Try again."
+
+#: src/session/components/note-input/transcript/renderer/speaker-assign.tsx
+msgid "Couldn't remember this voice: the recording was not found."
+msgstr "Couldn't remember this voice: the recording was not found."
+
+#: src/session/components/note-input/transcript/renderer/speaker-assign.tsx
+msgid "Couldn't remember this voice."
+msgstr "Couldn't remember this voice."
 
 #. placeholder {0}: saveMutation.error.message
 #: src/settings/mcp/index.tsx
@@ -1764,6 +1781,10 @@ msgstr "For live notes, try Whisper Small or Large Turbo. For a quality-first fi
 msgid "Forever"
 msgstr "Forever"
 
+#: src/contacts/details.tsx
+msgid "Forget voice"
+msgstr "Forget voice"
+
 #: src/templates/template-icon-picker.tsx
 msgid "Frequently used"
 msgstr "Frequently used"
@@ -2026,6 +2047,10 @@ msgstr "Import failed: {importError}"
 #: src/settings/personalization/dictionary-settings.tsx
 msgid "Import finished: {addedCount} added, {updatedCount} updated."
 msgstr "Import finished: {addedCount} added, {updatedCount} updated."
+
+#: src/contacts/details.tsx
+msgid "Import recording"
+msgstr "Import recording"
 
 #: src/settings/personalization/dictionary-settings.tsx
 msgid "Import…"
@@ -2753,9 +2778,17 @@ msgstr "Not configured"
 msgid "Not connected"
 msgstr "Not connected"
 
+#: src/session/components/note-input/transcript/renderer/speaker-assign.tsx
+msgid "Not enough speech from this speaker to remember their voice. Try \"Apply to all\", or a longer segment."
+msgstr "Not enough speech from this speaker to remember their voice. Try \"Apply to all\", or a longer segment."
+
 #: src/settings/ai/stt/select.tsx
 msgid "Not installed"
 msgstr "Not installed"
+
+#: src/contacts/details.tsx
+msgid "Not saved. Assign this person to a speaker in a transcript and tick Remember voice, or import a recording of just them."
+msgstr "Not saved. Assign this person to a speaker in a transcript and tick Remember voice, or import a recording of just them."
 
 #: src/settings/dictation/shortcut-recorder.tsx
 msgid "Not set"
@@ -3368,6 +3401,10 @@ msgstr "Reject"
 msgid "Related Notes"
 msgstr "Related Notes"
 
+#: src/session/components/note-input/transcript/renderer/speaker-assign.tsx
+msgid "Remember voice"
+msgstr "Remember voice"
+
 #: src/settings/todo/provider-content.tsx
 msgid "Reminders"
 msgstr "Reminders"
@@ -3423,6 +3460,10 @@ msgstr "Replace"
 #: src/session/components/note-input/search/bar.tsx
 msgid "Replace all"
 msgstr "Replace all"
+
+#: src/contacts/details.tsx
+msgid "Replace from recording"
+msgstr "Replace from recording"
 
 #: src/settings/todo/github.tsx
 msgid "Replace repository"
@@ -3570,6 +3611,10 @@ msgstr "Save date"
 #: src/settings/ai/shared/index.tsx
 msgid "Saved"
 msgstr "Saved"
+
+#: src/contacts/details.tsx
+msgid "Saved on this device. On-device transcription names this person when it hears them."
+msgstr "Saved on this device. On-device transcription names this person when it hears them."
 
 #: src/settings/ai/shared/index.tsx
 msgid "Saving…"
@@ -4606,6 +4651,18 @@ msgstr "View all in Snippets"
 #: src/contacts/organization-details.tsx
 msgid "View LinkedIn profile"
 msgstr "View LinkedIn profile"
+
+#: src/contacts/details.tsx
+msgid "Voice"
+msgstr "Voice"
+
+#: src/session/components/note-input/transcript/renderer/speaker-assign.tsx
+msgid "Voice remembered. On-device transcription will now recognize this person."
+msgstr "Voice remembered. On-device transcription will now recognize this person."
+
+#: src/contacts/details.tsx
+msgid "Voice saved."
+msgstr "Voice saved."
 
 #. placeholder {0}: selectedTarget.provider === "google" ? "Google" : "Outlook"
 #: src/session/components/outer-header/overflow/schedule-followup.tsx
