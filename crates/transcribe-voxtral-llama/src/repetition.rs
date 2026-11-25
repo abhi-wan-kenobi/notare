@@ -6,44 +6,43 @@ const MIN_LOOP_REPEATS: usize = 4;
 /// Longest phrase, in words, checked for a loop.
 const MAX_LOOP_PHRASE_WORDS: usize = 8;
 
-/// Collapse every phrase that repeats back-to-back [`MIN_LOOP_REPEATS`] or more
-/// times into a single occurrence, along with a truncated repeat that the
-/// token cap cut off right after it. Text without such a loop comes back
-/// unchanged.
+/// Collapse a decoding loop at the end of the text to its first occurrence.
+///
+/// A greedy-decoding loop never stops by itself: it runs to the token cap, so
+/// it always ends the text, usually with the last repeat cut off. Only such a
+/// trailing run is collapsed: a phrase of up to [`MAX_LOOP_PHRASE_WORDS`] words
+/// repeated [`MIN_LOOP_REPEATS`]+ times with nothing after it but a partial
+/// repeat. Repetition followed by other words is speech ("no no no no and he
+/// left") and is left alone. Everything kept is the original text, whitespace
+/// included.
 pub(crate) fn collapse_repetition_loops(text: &str) -> String {
-    let words: Vec<&str> = text.split_whitespace().collect();
-    let keys: Vec<String> = words.iter().map(|word| comparison_key(word)).collect();
+    let words: Vec<(usize, &str)> = word_spans(text);
+    let keys: Vec<String> = words.iter().map(|(_, word)| comparison_key(word)).collect();
 
-    let mut kept: Vec<&str> = Vec::with_capacity(words.len());
-    let mut collapsed_any = false;
-    let mut i = 0;
-    while i < words.len() {
-        match loop_at(&keys, i) {
-            Some((phrase_len, end)) => {
-                kept.extend_from_slice(&words[i..i + phrase_len]);
-                collapsed_any = true;
-                i = end;
-            }
-            None => {
-                kept.push(words[i]);
-                i += 1;
-            }
+    for start in 0..keys.len() {
+        if let Some(phrase_len) = trailing_loop_at(&keys, start) {
+            let (offset, word) = words[start + phrase_len - 1];
+            return text[..offset + word.len()].to_string();
         }
     }
-
-    if collapsed_any {
-        kept.join(" ")
-    } else {
-        text.to_string()
-    }
+    text.to_string()
 }
 
-/// The shortest phrase starting at `start` that repeats at least
-/// [`MIN_LOOP_REPEATS`] times, as `(phrase length, index after the loop)`.
-/// The loop also swallows a partial repeat that follows it.
-fn loop_at(keys: &[String], start: usize) -> Option<(usize, usize)> {
+/// Byte offset and text of every whitespace-separated word.
+fn word_spans(text: &str) -> Vec<(usize, &str)> {
+    let base = text.as_ptr() as usize;
+    text.split_whitespace()
+        .map(|word| (word.as_ptr() as usize - base, word))
+        .collect()
+}
+
+/// The shortest phrase starting at `start` that repeats [`MIN_LOOP_REPEATS`]+
+/// times and then runs to the end of the text, allowing a cut-off final repeat.
+fn trailing_loop_at(keys: &[String], start: usize) -> Option<usize> {
     for len in 1..=MAX_LOOP_PHRASE_WORDS {
-        let phrase = keys.get(start..start + len)?;
+        let Some(phrase) = keys.get(start..start + len) else {
+            break;
+        };
         if phrase.iter().any(String::is_empty) {
             continue;
         }
@@ -52,17 +51,12 @@ fn loop_at(keys: &[String], start: usize) -> Option<(usize, usize)> {
         while keys.get(end..end + len) == Some(phrase) {
             end += len;
         }
-        if (end - start) / len < MIN_LOOP_REPEATS {
-            continue;
+        let tail = &keys[end..];
+        let tail_is_partial_repeat =
+            tail.len() < len && tail.iter().zip(phrase).all(|(a, b)| a == b);
+        if (end - start) / len >= MIN_LOOP_REPEATS && tail_is_partial_repeat {
+            return Some(len);
         }
-
-        let partial = keys[end..]
-            .iter()
-            .zip(phrase)
-            .take(len - 1)
-            .take_while(|(word, expected)| word == expected)
-            .count();
-        return Some((len, end + partial));
     }
     None
 }
@@ -100,11 +94,12 @@ mod tests {
     }
 
     #[test]
-    fn leaves_ordinary_repetition_alone() {
+    fn keeps_repetition_that_speech_continues_after() {
         for text in [
             "no, no, no, that is wrong",
             "very very good",
-            "I think, I think we should wait",
+            "I told him no no no no and he left",
+            "go to the store go to the store go to the store go to the store go to the park",
             "",
         ] {
             assert_eq!(collapse_repetition_loops(text), text);
@@ -112,7 +107,11 @@ mod tests {
     }
 
     #[test]
-    fn keeps_whitespace_when_nothing_loops() {
+    fn keeps_the_original_whitespace_before_the_loop() {
+        assert_eq!(
+            collapse_repetition_loops("line one\nline  two\tok ok ok ok ok"),
+            "line one\nline  two\tok"
+        );
         let text = "line one\nline two  with  spaces";
         assert_eq!(collapse_repetition_loops(text), text);
     }
@@ -120,8 +119,8 @@ mod tests {
     #[test]
     fn single_word_loops_collapse_with_case_and_punctuation_ignored() {
         assert_eq!(
-            collapse_repetition_loops("okay Okay, okay. OKAY okay so"),
-            "okay so"
+            collapse_repetition_loops("so okay Okay, okay. OKAY okay"),
+            "so okay"
         );
     }
 
