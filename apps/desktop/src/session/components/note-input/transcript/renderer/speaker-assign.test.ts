@@ -28,21 +28,56 @@ import type { Segment } from "~/stt/live-segment";
 const {
   assignTranscriptSpeakerMock,
   addSessionParticipantMock,
+  audioPathMock,
   createHumanMock,
+  enrollVoiceMock,
   toastErrorMock,
+  toastSuccessMock,
+  transcriptMock,
   useHumansMock,
   useSessionParticipantsMock,
 } = vi.hoisted(() => ({
   assignTranscriptSpeakerMock: vi.fn(),
   addSessionParticipantMock: vi.fn(),
+  audioPathMock: vi.fn(),
   createHumanMock: vi.fn(),
+  enrollVoiceMock: vi.fn(),
   toastErrorMock: vi.fn(),
+  toastSuccessMock: vi.fn(),
+  transcriptMock: {
+    current: { sessionId: "session-1", words: [], speakerHints: [] } as {
+      sessionId: string;
+      words: unknown[];
+      speakerHints: unknown[];
+    },
+  },
   useHumansMock: vi.fn(),
   useSessionParticipantsMock: vi.fn(),
 }));
 
 vi.mock("@hypr/ui/components/ui/toast", () => ({
-  sonnerToast: { error: toastErrorMock },
+  sonnerToast: { error: toastErrorMock, success: toastSuccessMock },
+}));
+
+vi.mock("@hypr/plugin-fs-sync", () => ({
+  commands: { audioPath: audioPathMock },
+}));
+
+vi.mock("./data-hooks", () => ({
+  useTranscriptOffset: () => 0,
+}));
+
+vi.mock("~/db", () => ({
+  executeTransaction: vi.fn(),
+  liveQueryClient: { execute: vi.fn() },
+  useLiveQuery: vi.fn(),
+}));
+
+vi.mock("~/contacts/voice-profiles", async () => ({
+  ...(await vi.importActual<typeof import("~/contacts/voice-profiles")>(
+    "~/contacts/voice-profiles",
+  )),
+  enrollVoice: enrollVoiceMock,
 }));
 
 vi.mock("@hypr/ui/components/ui/popover", async () => {
@@ -140,7 +175,7 @@ vi.mock("~/session/queries", () => ({
 
 vi.mock("~/stt/queries", () => ({
   assignTranscriptSpeaker: assignTranscriptSpeakerMock,
-  useTranscript: () => ({ sessionId: "session-1" }),
+  useTranscript: () => transcriptMock.current,
 }));
 
 beforeEach(() => {
@@ -151,6 +186,13 @@ beforeEach(() => {
   createHumanMock.mockResolvedValue("human-new");
   useHumansMock.mockReturnValue([{ id: "human-1", name: "Alice", email: "" }]);
   useSessionParticipantsMock.mockReturnValue([]);
+  transcriptMock.current = {
+    sessionId: "session-1",
+    words: [],
+    speakerHints: [],
+  };
+  audioPathMock.mockResolvedValue({ status: "ok", data: "/notes/audio.wav" });
+  enrollVoiceMock.mockResolvedValue(undefined);
 });
 
 function option(
@@ -261,7 +303,7 @@ describe("SpeakerAssignPopover", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Speaker 2" }));
-    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Apply to all" }));
     fireEvent.click(screen.getByRole("button", { name: "Alice" }));
     fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
 
@@ -340,6 +382,125 @@ describe("SpeakerAssignPopover", () => {
       expect(confirm.disabled).toBe(false);
     });
     expect(screen.getByRole("button", { name: "Alice" })).not.toBeNull();
+  });
+
+  describe("Remember voice", () => {
+    const speakerHint = (wordId: string, speakerIndex: number) => ({
+      word_id: wordId,
+      type: "provider_speaker_index",
+      value: JSON.stringify({
+        provider: "hyprnote",
+        speaker_index: speakerIndex,
+      }),
+    });
+    const word = (id: string, start: number, end: number, channel = 1) => ({
+      id,
+      text: id,
+      start_ms: start,
+      end_ms: end,
+      channel,
+    });
+    const segment = {
+      id: "segment-1",
+      key: { channel: "RemoteParty", speaker_index: 2, speaker_human_id: null },
+      start_ms: 0,
+      end_ms: 1_500,
+      text: "hello",
+      words: [
+        {
+          id: "w1",
+          text: "hello",
+          start_ms: 0,
+          end_ms: 1_500,
+          channel: "RemoteParty",
+          is_final: true,
+        },
+      ],
+    } as Segment;
+
+    function assignWithVoice() {
+      render(
+        createElement(SpeakerAssignPopover, {
+          segment,
+          transcriptId: "transcript-1",
+          color: "red",
+          label: "Speaker 2",
+        }),
+      );
+      fireEvent.click(screen.getByRole("button", { name: "Speaker 2" }));
+      fireEvent.click(screen.getByRole("checkbox", { name: "Remember voice" }));
+      fireEvent.click(screen.getByRole("button", { name: "Alice" }));
+      fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+    }
+
+    it("learns the voice from every turn of that speaker on that channel", async () => {
+      transcriptMock.current = {
+        sessionId: "session-1",
+        words: [
+          word("w1", 0, 1_500),
+          word("w2", 1_700, 3_000),
+          word("w3", 3_000, 9_000),
+          word("w4", 10_000, 12_000, 0),
+          word("w5", 20_000, 22_000),
+        ],
+        speakerHints: [
+          speakerHint("w1", 2),
+          speakerHint("w2", 2),
+          speakerHint("w3", 0),
+          speakerHint("w4", 2),
+          speakerHint("w5", 2),
+        ],
+      };
+
+      assignWithVoice();
+
+      await waitFor(() => {
+        expect(enrollVoiceMock).toHaveBeenCalledWith({
+          humanId: "human-1",
+          audioPath: "/notes/audio.wav",
+          spans: [
+            { start_ms: 0, end_ms: 3_000 },
+            { start_ms: 20_000, end_ms: 22_000 },
+          ],
+        });
+      });
+      expect(audioPathMock).toHaveBeenCalledWith("session-1");
+      await waitFor(() => expect(toastSuccessMock).toHaveBeenCalled());
+    });
+
+    it("refuses too little speech instead of saving a weak profile", async () => {
+      transcriptMock.current = {
+        sessionId: "session-1",
+        words: [word("w1", 0, 1_500)],
+        speakerHints: [speakerHint("w1", 2)],
+      };
+
+      assignWithVoice();
+
+      await waitFor(() => expect(toastErrorMock).toHaveBeenCalled());
+      expect(assignTranscriptSpeakerMock).toHaveBeenCalled();
+      expect(enrollVoiceMock).not.toHaveBeenCalled();
+    });
+
+    it("only assigns when Remember voice is left unticked", async () => {
+      render(
+        createElement(SpeakerAssignPopover, {
+          segment,
+          transcriptId: "transcript-1",
+          color: "red",
+          label: "Speaker 2",
+        }),
+      );
+      fireEvent.click(screen.getByRole("button", { name: "Speaker 2" }));
+      fireEvent.click(screen.getByRole("button", { name: "Alice" }));
+      fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+
+      await waitFor(() =>
+        expect(assignTranscriptSpeakerMock).toHaveBeenCalled(),
+      );
+      expect(audioPathMock).not.toHaveBeenCalled();
+      expect(enrollVoiceMock).not.toHaveBeenCalled();
+    });
   });
 });
 

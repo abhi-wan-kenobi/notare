@@ -2,6 +2,7 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { SearchIcon } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 
+import { commands as fsSyncCommands } from "@hypr/plugin-fs-sync";
 import type { EventParticipant } from "@hypr/store";
 import { Checkbox } from "@hypr/ui/components/ui/checkbox";
 import {
@@ -13,8 +14,16 @@ import {
 import { sonnerToast } from "@hypr/ui/components/ui/toast";
 import { cn } from "@hypr/utils";
 
+import { useTranscriptOffset } from "./data-hooks";
+
 import { useSessionEventParticipants } from "~/calendar/queries";
 import { createHuman, useHumans } from "~/contacts/queries";
+import {
+  collectVoiceSpans,
+  enrollVoice,
+  MIN_ENROLLMENT_SPEECH_MS,
+  selectSpeakerWords,
+} from "~/contacts/voice-profiles";
 import {
   addSessionParticipant,
   useSession,
@@ -40,15 +49,55 @@ export function SpeakerAssignPopover({
   className?: string;
   onAssigned?: (humanId: string) => void;
 }) {
+  const { t } = useLingui();
   const [open, setOpen] = useState(false);
-  const sessionId = useTranscript(transcriptId)?.sessionId;
+  const transcript = useTranscript(transcriptId);
+  const sessionId = transcript?.sessionId;
+  const offsetMs = useTranscriptOffset(transcriptId);
 
   const handleOpenChange = useCallback((nextOpen: boolean) => {
     setOpen(nextOpen);
   }, []);
 
-  const handleAssign = useCallback(
+  const rememberVoice = useCallback(
     async (humanId: string, assignmentMode: AssignmentMode) => {
+      if (!transcript) return;
+      const { spans, speechMs } = collectVoiceSpans(
+        selectSpeakerWords(transcript, segment, assignmentMode),
+        offsetMs,
+      );
+      if (speechMs < MIN_ENROLLMENT_SPEECH_MS) {
+        sonnerToast.error(
+          t`Not enough speech from this speaker to remember their voice. Try "Apply to all", or a longer segment.`,
+        );
+        return;
+      }
+      const audio = await fsSyncCommands.audioPath(transcript.sessionId);
+      if (audio.status === "error") {
+        sonnerToast.error(
+          t`Couldn't remember this voice: the recording was not found.`,
+        );
+        return;
+      }
+      try {
+        await enrollVoice({ humanId, audioPath: audio.data, spans });
+        sonnerToast.success(
+          t`Voice remembered. On-device transcription will now recognize this person.`,
+        );
+      } catch (error) {
+        console.error("[transcript] failed to remember voice", error);
+        sonnerToast.error(t`Couldn't remember this voice.`);
+      }
+    },
+    [offsetMs, segment, t, transcript],
+  );
+
+  const handleAssign = useCallback(
+    async (
+      humanId: string,
+      assignmentMode: AssignmentMode,
+      shouldRememberVoice: boolean,
+    ) => {
       if (segment.words.length === 0) return;
       const anchorWordId = getAssignmentAnchorWordId(segment);
       if (!anchorWordId) return;
@@ -62,8 +111,13 @@ export function SpeakerAssignPopover({
       });
       onAssigned?.(humanId);
       handleOpenChange(false);
+      if (shouldRememberVoice) {
+        // Decoding a long recording takes seconds; the popover is closed and
+        // the result arrives as a toast.
+        void rememberVoice(humanId, assignmentMode);
+      }
     },
-    [handleOpenChange, onAssigned, transcriptId, segment],
+    [handleOpenChange, onAssigned, rememberVoice, transcriptId, segment],
   );
 
   return (
@@ -273,7 +327,11 @@ function ParticipantList({
   onSelect,
 }: {
   sessionId: string | undefined;
-  onSelect: (humanId: string, mode: AssignmentMode) => Promise<void>;
+  onSelect: (
+    humanId: string,
+    mode: AssignmentMode,
+    rememberVoice: boolean,
+  ) => Promise<void>;
 }) {
   const { t } = useLingui();
   const session = useSession(sessionId ?? "");
@@ -288,6 +346,7 @@ function ParticipantList({
     useState<SpeakerParticipantOption | null>(null);
   const [applyToAllMatching, setApplyToAllMatching] = useState(true);
   const [assigning, setAssigning] = useState(false);
+  const [rememberVoice, setRememberVoice] = useState(false);
 
   const participants = useMemo(
     () =>
@@ -418,7 +477,11 @@ function ParticipantList({
       .then(async (humanId) => {
         if (!humanId) return;
         await linkHumanToSession(humanId);
-        await onSelect(humanId, applyToAllMatching ? "all" : "segment");
+        await onSelect(
+          humanId,
+          applyToAllMatching ? "all" : "segment",
+          rememberVoice,
+        );
       })
       .catch((error) => {
         console.error("[transcript] failed to assign speaker", error);
@@ -430,6 +493,7 @@ function ParticipantList({
     getCurrentHumanId,
     linkHumanToSession,
     onSelect,
+    rememberVoice,
     selectedOption,
     t,
   ]);
@@ -501,15 +565,26 @@ function ParticipantList({
         </div>
       </AppFloatingPanel>
       <div className="flex items-center gap-3 pt-1 pb-3 pl-2">
-        <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2">
-          <Checkbox
-            checked={applyToAllMatching}
-            onCheckedChange={(value) => setApplyToAllMatching(value === true)}
-          />
-          <span className="text-muted-foreground text-sm whitespace-nowrap">
-            <Trans>Apply to all</Trans>
-          </span>
-        </label>
+        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+          <label className="flex cursor-pointer items-center gap-2">
+            <Checkbox
+              checked={applyToAllMatching}
+              onCheckedChange={(value) => setApplyToAllMatching(value === true)}
+            />
+            <span className="text-muted-foreground text-sm whitespace-nowrap">
+              <Trans>Apply to all</Trans>
+            </span>
+          </label>
+          <label className="flex cursor-pointer items-center gap-2">
+            <Checkbox
+              checked={rememberVoice}
+              onCheckedChange={(value) => setRememberVoice(value === true)}
+            />
+            <span className="text-muted-foreground text-sm whitespace-nowrap">
+              <Trans>Remember voice</Trans>
+            </span>
+          </label>
+        </div>
         <button
           type="button"
           className={cn([
