@@ -78,12 +78,29 @@ type PluginAcl = {
   definedPermissions: Set<string>;
   // binding method name -> command name
   methods: Map<string, string>;
+  // TAURI_INVOKE calls whose enclosing binding name could not be read
+  unmapped: string[];
 };
 
-// Binding method name -> [plugin name, command], from every
-// `TAURI_INVOKE("plugin:<name>|<command>", ...)` and its enclosing method.
-function bindingMethods(path: string): Map<string, [string, string]> {
-  const methods = new Map<string, [string, string]>();
+function declaredName(fn: ts.Node): string | undefined {
+  const named =
+    ts.isMethodDeclaration(fn) || ts.isFunctionDeclaration(fn)
+      ? fn
+      : ts.isPropertyAssignment(fn.parent) ||
+          ts.isVariableDeclaration(fn.parent) ||
+          ts.isPropertyDeclaration(fn.parent)
+        ? fn.parent
+        : undefined;
+  return named?.name && ts.isIdentifier(named.name)
+    ? named.name.text
+    : undefined;
+}
+
+// Every `TAURI_INVOKE("plugin:<name>|<command>", ...)` in a bindings file,
+// keyed by the binding that wraps it.
+function bindingInvokes(path: string) {
+  const invokes: Array<{ plugin: string; command: string; method?: string }> =
+    [];
   visit(parse(path), (node) => {
     if (
       !ts.isCallExpression(node) ||
@@ -97,15 +114,18 @@ function bindingMethods(path: string): Map<string, [string, string]> {
       target && ts.isStringLiteralLike(target)
         ? /^plugin:([\w-]+)\|(\w+)$/.exec(target.text)
         : null;
-    let method: ts.Node | undefined = node.parent;
-    while (method && !ts.isMethodDeclaration(method)) {
-      method = method.parent;
+    if (!invoke) return;
+    let fn: ts.Node | undefined = node.parent;
+    while (fn && !ts.isFunctionLike(fn)) {
+      fn = fn.parent;
     }
-    if (invoke && method && ts.isIdentifier(method.name)) {
-      methods.set(method.name.text, [invoke[1], invoke[2]]);
-    }
+    invokes.push({
+      plugin: invoke[1],
+      command: invoke[2],
+      method: fn ? declaredName(fn) : undefined,
+    });
   });
-  return methods;
+  return invokes;
 }
 
 function loadPlugins(): Map<string, PluginAcl> {
@@ -116,12 +136,15 @@ function loadPlugins(): Map<string, PluginAcl> {
     const packagePath = join(pluginDir, "package.json");
     if (!existsSync(bindingsPath) || !existsSync(packagePath)) continue;
 
-    const invokes = bindingMethods(bindingsPath);
-    const name = [...invokes.values()][0]?.[0];
+    const invokes = bindingInvokes(bindingsPath);
+    const name = invokes[0]?.plugin;
     if (!name) continue;
-    const methods = new Map(
-      [...invokes].map(([method, [, command]]) => [method, command]),
-    );
+    const methods = new Map<string, string>();
+    const unmapped: string[] = [];
+    for (const { command, method } of invokes) {
+      if (method) methods.set(method, command);
+      else unmapped.push(command);
+    }
 
     const permissionFiles = existsSync(join(pluginDir, "permissions"))
       ? walk(join(pluginDir, "permissions"), (p) => p.endsWith(".toml"))
@@ -154,6 +177,7 @@ function loadPlugins(): Map<string, PluginAcl> {
       defaultPermissions,
       definedPermissions,
       methods,
+      unmapped,
     });
   }
   return plugins;
@@ -187,9 +211,17 @@ function scanDesktopSources(plugins: Map<string, PluginAcl>): Scan {
       ) {
         continue;
       }
-      const plugin = plugins.get(statement.moduleSpecifier.text);
-      const bindings = statement.importClause?.namedBindings;
-      if (!plugin || !bindings) continue;
+      const packageName = /^@hypr\/plugin-[\w-]+/.exec(
+        statement.moduleSpecifier.text,
+      )?.[0];
+      const plugin = packageName ? plugins.get(packageName) : undefined;
+      const clause = statement.importClause;
+      if (!plugin || !clause) continue;
+      if (clause.name) {
+        scan.unscanned.push(`${file}: default import of ${plugin.name}`);
+      }
+      const bindings = clause.namedBindings;
+      if (!bindings) continue;
       if (ts.isNamespaceImport(bindings)) {
         scan.unscanned.push(`${file}: namespace import of ${plugin.name}`);
         continue;
@@ -207,10 +239,12 @@ function scanDesktopSources(plugins: Map<string, PluginAcl>): Scan {
       const plugin = locals.get(node.text);
       if (!plugin) return;
       const parent = node.parent;
-      // Import specifiers, `x.commands` and `{ commands: … }` name the
-      // export or a property, not a use of the local alias.
+      // Import specifiers, `x.commands`, `{ commands: … }` and `typeof
+      // commands` name the export, a property or a type, not a runtime use
+      // of the local alias.
       if (
         ts.isImportSpecifier(parent) ||
+        ts.isTypeQueryNode(parent) ||
         (ts.isPropertyAccessExpression(parent) && parent.name === node) ||
         (ts.isPropertyAssignment(parent) && parent.name === node)
       ) {
@@ -246,6 +280,12 @@ describe("plugin command ACL", () => {
     expect(
       [...plugins.values()].find((p) => p.name === "settings")?.methods.size,
     ).toBeGreaterThan(0);
+    // A bindings shape the parser cannot name would hide that plugin's calls.
+    expect(
+      [...plugins.values()].flatMap((p) =>
+        p.unmapped.map((command) => `${p.name}|${command}`),
+      ),
+    ).toEqual([]);
   });
 
   it("only reaches plugin commands through `<alias>.<method>`", () => {
