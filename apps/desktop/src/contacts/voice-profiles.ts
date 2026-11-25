@@ -193,7 +193,9 @@ export function buildRecognizedSpeakerHints(
     return anchorWordId
       ? [
           {
-            id: `${anchorWordId}:user_speaker_assignment`,
+            // Its own id, so it can never collide with a manual assignment
+            // anchored on the same word.
+            id: `${anchorWordId}:user_speaker_assignment:recognized`,
             word_id: anchorWordId,
             type: "user_speaker_assignment",
             value: JSON.stringify({ human_id }),
@@ -291,7 +293,9 @@ function saveVoiceProfile(
   return enqueueDatabaseWrite(`voice_profiles:${humanId}`, async () => {
     const now = new Date().toISOString();
     // Biometric data: replaced and forgotten profiles are deleted outright,
-    // not tombstoned.
+    // not tombstoned. The insert only lands while the person still exists,
+    // so an enrollment finishing after the contact was deleted rolls back
+    // instead of leaving an orphaned voice behind.
     await executeTransaction([
       {
         sql: `DELETE FROM voice_profiles WHERE human_id = ?`,
@@ -303,7 +307,10 @@ function saveVoiceProfile(
             id, human_id, embedding, dim, model, sample_count,
             created_at, updated_at
           )
-          VALUES (?, ?, unhex(?), ?, ?, ?, ?, ?)
+          SELECT ?, ?, unhex(?), ?, ?, ?, ?, ?
+          WHERE EXISTS (
+            SELECT 1 FROM humans WHERE id = ? AND deleted_at IS NULL
+          )
         `,
         params: [
           id(),
@@ -314,7 +321,9 @@ function saveVoiceProfile(
           sampleCount,
           now,
           now,
+          humanId,
         ],
+        expectedRowsAffected: 1,
       },
     ]);
   });

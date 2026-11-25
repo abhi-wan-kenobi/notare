@@ -102,14 +102,7 @@ pub async fn compute_voice_embedding(
 ) -> Result<Vec<f32>, String> {
     tokio::task::spawn_blocking(move || {
         let mono = decode_to_mono_16k(&audio_path)?;
-        let sample = if spans.is_empty() {
-            mono
-        } else {
-            concat_spans(&mono, &spans)
-        };
-        if sample.is_empty() {
-            return Err("no audio in the requested spans".to_string());
-        }
+        let sample = enrollment_sample(mono, &spans)?;
         let mut index = hypr_diarization::VoiceProfileIndex::from_bundled().map_err(stringify)?;
         // Enroll under a throwaway id, then read the stored embedding back.
         index
@@ -143,6 +136,29 @@ fn concat_spans(mono: &[f32], spans: &[AudioSpanMs]) -> Vec<f32> {
         .filter_map(|span| sample_range(mono.len(), span.start_ms, span.end_ms))
         .flat_map(|range| mono[range].iter().copied())
         .collect()
+}
+
+/// Below this much audio the speaker embedding is too noisy to recognize
+/// anyone by; the caller is told instead of getting a weak profile.
+const MIN_ENROLLMENT_SAMPLES: usize = 3 * SAMPLE_RATE_HZ;
+
+/// The audio to embed for enrollment: the requested spans (or the whole file
+/// when none are given), refused when shorter than [`MIN_ENROLLMENT_SAMPLES`]
+/// (for example spans that lie past the end of the recording).
+fn enrollment_sample(mono: Vec<f32>, spans: &[AudioSpanMs]) -> Result<Vec<f32>, String> {
+    let sample = if spans.is_empty() {
+        mono
+    } else {
+        concat_spans(&mono, spans)
+    };
+    if sample.len() < MIN_ENROLLMENT_SAMPLES {
+        return Err(format!(
+            "need at least {} s of speech to learn a voice, got {:.1} s",
+            MIN_ENROLLMENT_SAMPLES / SAMPLE_RATE_HZ,
+            sample.len() as f32 / SAMPLE_RATE_HZ as f32,
+        ));
+    }
+    Ok(sample)
 }
 
 fn diarize_and_align(
@@ -325,5 +341,39 @@ mod tests {
             end_ms: 2_000,
         }];
         assert!(concat_spans(&mono, &spans).is_empty());
+    }
+
+    #[test]
+    fn enrollment_sample_refuses_spans_that_fall_past_the_recording() {
+        // A 5 s recording asked for 0-2 s plus 4-60 s holds only 3 s.
+        let mono = vec![0.0_f32; ms(5_000)];
+        let spans = [
+            AudioSpanMs {
+                start_ms: 0,
+                end_ms: 2_000,
+            },
+            AudioSpanMs {
+                start_ms: 4_000,
+                end_ms: 60_000,
+            },
+        ];
+        assert_eq!(
+            enrollment_sample(mono.clone(), &spans).unwrap().len(),
+            ms(3_000)
+        );
+
+        let short = [AudioSpanMs {
+            start_ms: 4_000,
+            end_ms: 60_000,
+        }];
+        let err = enrollment_sample(mono, &short).unwrap_err();
+        assert!(err.contains("got 1.0 s"), "{err}");
+    }
+
+    #[test]
+    fn enrollment_sample_uses_the_whole_file_without_spans() {
+        let mono = vec![0.5_f32; ms(4_000)];
+        assert_eq!(enrollment_sample(mono.clone(), &[]).unwrap(), mono);
+        assert!(enrollment_sample(vec![0.5_f32; ms(2_000)], &[]).is_err());
     }
 }
