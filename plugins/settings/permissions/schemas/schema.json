@@ -403,6 +403,18 @@
           "markdownDescription": "Denies the set_vault_base command without any pre-configured scope."
         },
         {
+          "description": "Enables the settings_path command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-settings-path",
+          "markdownDescription": "Enables the settings_path command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the settings_path command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-settings-path",
+          "markdownDescription": "Denies the settings_path command without any pre-configured scope."
+        },
+        {
           "description": "Enables the vault_base command without any pre-configured scope.",
           "type": "string",
           "const": "allow-vault-base",

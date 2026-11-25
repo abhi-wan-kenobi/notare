@@ -45,6 +45,7 @@
     "llm-auth:default",
     "local-llm:default",
     "local-stt:default",
+    "embedding-search:default",
     "dialog:default",
     "hooks:default",
     "icon:default",

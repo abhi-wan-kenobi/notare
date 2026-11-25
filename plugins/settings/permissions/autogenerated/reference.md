@@ -261,6 +261,32 @@ Denies the set_vault_base command without any pre-configured scope.
 <tr>
 <td>
 
+`settings:allow-settings-path`
+
+</td>
+<td>
+
+Enables the settings_path command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`settings:deny-settings-path`
+
+</td>
+<td>
+
+Denies the settings_path command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
 `settings:allow-vault-base`
 
 </td>

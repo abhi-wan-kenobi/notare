@@ -307,6 +307,18 @@
           "markdownDescription": "Denies the delete_session_chunks command without any pre-configured scope."
         },
         {
+          "description": "Enables the download_embedding_model command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-download-embedding-model",
+          "markdownDescription": "Enables the download_embedding_model command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the download_embedding_model command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-download-embedding-model",
+          "markdownDescription": "Denies the download_embedding_model command without any pre-configured scope."
+        },
+        {
           "description": "Enables the embed_and_index_chunks command without any pre-configured scope.",
           "type": "string",
           "const": "allow-embed-and-index-chunks",
@@ -343,10 +355,10 @@
           "markdownDescription": "Denies the semantic_search command without any pre-configured scope."
         },
         {
-          "description": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-embed-and-index-chunks`\n- `allow-delete-session-chunks`\n- `allow-semantic-search`\n- `allow-embedding-index-status`",
+          "description": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-embed-and-index-chunks`\n- `allow-delete-session-chunks`\n- `allow-semantic-search`\n- `allow-embedding-index-status`\n- `allow-download-embedding-model`",
           "type": "string",
           "const": "default",
-          "markdownDescription": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-embed-and-index-chunks`\n- `allow-delete-session-chunks`\n- `allow-semantic-search`\n- `allow-embedding-index-status`"
+          "markdownDescription": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-embed-and-index-chunks`\n- `allow-delete-session-chunks`\n- `allow-semantic-search`\n- `allow-embedding-index-status`\n- `allow-download-embedding-model`"
         }
       ]
     }

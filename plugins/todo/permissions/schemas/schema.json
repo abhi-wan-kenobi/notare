@@ -355,6 +355,18 @@
           "markdownDescription": "Denies the fetch_todos command without any pre-configured scope."
         },
         {
+          "description": "Enables the github_issue_comments command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-github-issue-comments",
+          "markdownDescription": "Enables the github_issue_comments command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the github_issue_comments command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-github-issue-comments",
+          "markdownDescription": "Denies the github_issue_comments command without any pre-configured scope."
+        },
+        {
           "description": "Enables the github_issue_detail command without any pre-configured scope.",
           "type": "string",
           "const": "allow-github-issue-detail",
@@ -451,10 +463,10 @@
           "markdownDescription": "Denies the request_full_access command without any pre-configured scope."
         },
         {
-          "description": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-authorization-status`\n- `allow-request-full-access`\n- `allow-list-todo-lists`\n- `allow-fetch-todos`\n- `allow-read-path`\n- `allow-create-todo`\n- `allow-complete-todo`\n- `allow-delete-todo`\n- `allow-linear-list-teams`\n- `allow-linear-list-tickets`\n- `allow-github-issue-state`\n- `allow-github-issue-detail`",
+          "description": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-authorization-status`\n- `allow-request-full-access`\n- `allow-list-todo-lists`\n- `allow-fetch-todos`\n- `allow-read-path`\n- `allow-create-todo`\n- `allow-complete-todo`\n- `allow-delete-todo`\n- `allow-linear-list-teams`\n- `allow-linear-list-tickets`\n- `allow-github-issue-state`\n- `allow-github-issue-detail`\n- `allow-github-issue-comments`",
           "type": "string",
           "const": "default",
-          "markdownDescription": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-authorization-status`\n- `allow-request-full-access`\n- `allow-list-todo-lists`\n- `allow-fetch-todos`\n- `allow-read-path`\n- `allow-create-todo`\n- `allow-complete-todo`\n- `allow-delete-todo`\n- `allow-linear-list-teams`\n- `allow-linear-list-tickets`\n- `allow-github-issue-state`\n- `allow-github-issue-detail`"
+          "markdownDescription": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-authorization-status`\n- `allow-request-full-access`\n- `allow-list-todo-lists`\n- `allow-fetch-todos`\n- `allow-read-path`\n- `allow-create-todo`\n- `allow-complete-todo`\n- `allow-delete-todo`\n- `allow-linear-list-teams`\n- `allow-linear-list-tickets`\n- `allow-github-issue-state`\n- `allow-github-issue-detail`\n- `allow-github-issue-comments`"
         }
       ]
     }

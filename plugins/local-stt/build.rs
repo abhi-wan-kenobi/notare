@@ -12,6 +12,7 @@ const COMMANDS: &[&str] = &[
     "prewarm_stt",
     "list_supported_models",
     "list_supported_languages",
+    "soniqo_model_dir",
 ];
 
 fn main() {

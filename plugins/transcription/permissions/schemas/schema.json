@@ -295,6 +295,18 @@
       "type": "string",
       "oneOf": [
         {
+          "description": "Enables the compute_voice_embedding command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-compute-voice-embedding",
+          "markdownDescription": "Enables the compute_voice_embedding command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the compute_voice_embedding command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-compute-voice-embedding",
+          "markdownDescription": "Denies the compute_voice_embedding command without any pre-configured scope."
+        },
+        {
           "description": "Enables the export_to_vtt command without any pre-configured scope.",
           "type": "string",
           "const": "allow-export-to-vtt",
@@ -451,6 +463,18 @@
           "markdownDescription": "Denies the run_denoise command without any pre-configured scope."
         },
         {
+          "description": "Enables the run_diarization command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-run-diarization",
+          "markdownDescription": "Enables the run_diarization command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the run_diarization command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-run-diarization",
+          "markdownDescription": "Denies the run_diarization command without any pre-configured scope."
+        },
+        {
           "description": "Enables the set_mic_muted command without any pre-configured scope.",
           "type": "string",
           "const": "allow-set-mic-muted",
@@ -535,10 +559,22 @@
           "markdownDescription": "Denies the suggest_providers_for_languages_live command without any pre-configured scope."
         },
         {
-          "description": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-list-microphone-devices`\n- `allow-get-current-microphone-device`\n- `allow-start-capture`\n- `allow-stop-capture`\n- `allow-get-mic-muted`\n- `allow-set-mic-muted`\n- `allow-get-capture-state`\n- `allow-get-capture-snapshot`\n- `allow-is-supported-languages-live`\n- `allow-suggest-providers-for-languages-live`\n- `allow-list-documented-language-codes-live`\n- `allow-render-transcript-segments`\n- `allow-start-transcription`\n- `allow-stop-transcription`\n- `allow-run-denoise`\n- `allow-parse-subtitle`\n- `allow-export-to-vtt`\n- `allow-is-supported-languages-batch`\n- `allow-suggest-providers-for-languages-batch`\n- `allow-list-documented-language-codes-batch`",
+          "description": "Enables the update_capture_config command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-update-capture-config",
+          "markdownDescription": "Enables the update_capture_config command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the update_capture_config command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-update-capture-config",
+          "markdownDescription": "Denies the update_capture_config command without any pre-configured scope."
+        },
+        {
+          "description": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-list-microphone-devices`\n- `allow-get-current-microphone-device`\n- `allow-start-capture`\n- `allow-stop-capture`\n- `allow-get-mic-muted`\n- `allow-set-mic-muted`\n- `allow-get-capture-state`\n- `allow-get-capture-snapshot`\n- `allow-is-supported-languages-live`\n- `allow-suggest-providers-for-languages-live`\n- `allow-list-documented-language-codes-live`\n- `allow-render-transcript-segments`\n- `allow-start-transcription`\n- `allow-stop-transcription`\n- `allow-run-denoise`\n- `allow-parse-subtitle`\n- `allow-export-to-vtt`\n- `allow-is-supported-languages-batch`\n- `allow-suggest-providers-for-languages-batch`\n- `allow-list-documented-language-codes-batch`\n- `allow-update-capture-config`\n- `allow-run-diarization`\n- `allow-compute-voice-embedding`",
           "type": "string",
           "const": "default",
-          "markdownDescription": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-list-microphone-devices`\n- `allow-get-current-microphone-device`\n- `allow-start-capture`\n- `allow-stop-capture`\n- `allow-get-mic-muted`\n- `allow-set-mic-muted`\n- `allow-get-capture-state`\n- `allow-get-capture-snapshot`\n- `allow-is-supported-languages-live`\n- `allow-suggest-providers-for-languages-live`\n- `allow-list-documented-language-codes-live`\n- `allow-render-transcript-segments`\n- `allow-start-transcription`\n- `allow-stop-transcription`\n- `allow-run-denoise`\n- `allow-parse-subtitle`\n- `allow-export-to-vtt`\n- `allow-is-supported-languages-batch`\n- `allow-suggest-providers-for-languages-batch`\n- `allow-list-documented-language-codes-batch`"
+          "markdownDescription": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-list-microphone-devices`\n- `allow-get-current-microphone-device`\n- `allow-start-capture`\n- `allow-stop-capture`\n- `allow-get-mic-muted`\n- `allow-set-mic-muted`\n- `allow-get-capture-state`\n- `allow-get-capture-snapshot`\n- `allow-is-supported-languages-live`\n- `allow-suggest-providers-for-languages-live`\n- `allow-list-documented-language-codes-live`\n- `allow-render-transcript-segments`\n- `allow-start-transcription`\n- `allow-stop-transcription`\n- `allow-run-denoise`\n- `allow-parse-subtitle`\n- `allow-export-to-vtt`\n- `allow-is-supported-languages-batch`\n- `allow-suggest-providers-for-languages-batch`\n- `allow-list-documented-language-codes-batch`\n- `allow-update-capture-config`\n- `allow-run-diarization`\n- `allow-compute-voice-embedding`"
         }
       ]
     }
