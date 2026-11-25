@@ -14,7 +14,11 @@ pub fn extract_zip(zip_path: impl AsRef<Path>, output_dir: impl AsRef<Path>) -> 
 
     for i in 0..archive.len() {
         let mut entry = archive.by_index(i)?;
-        let entry_name = entry.name().to_string();
+        // `name()` is fallible since zip 9; it is only used in the error text.
+        let entry_name = entry.name().map_or_else(
+            |e| format!("<unreadable name: {e}>"),
+            |name| name.into_owned(),
+        );
         let Some(enclosed_path) = entry.enclosed_name() else {
             return Err(Error::OperationFailed(format!(
                 "zip entry has invalid path: {entry_name}"
