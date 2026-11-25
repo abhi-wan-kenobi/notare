@@ -16,6 +16,7 @@ Default permissions for the plugin
 - `allow-linear-list-tickets`
 - `allow-github-issue-state`
 - `allow-github-issue-detail`
+- `allow-github-issue-comments`
 
 ## Permission Table
 
@@ -152,6 +153,32 @@ Enables the fetch_todos command without any pre-configured scope.
 <td>
 
 Denies the fetch_todos command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`todo:allow-github-issue-comments`
+
+</td>
+<td>
+
+Enables the github_issue_comments command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`todo:deny-github-issue-comments`
+
+</td>
+<td>
+
+Denies the github_issue_comments command without any pre-configured scope.
 
 </td>
 </tr>

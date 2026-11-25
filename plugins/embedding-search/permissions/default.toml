@@ -5,4 +5,5 @@ permissions = [
     "allow-delete-session-chunks",
     "allow-semantic-search",
     "allow-embedding-index-status",
+    "allow-download-embedding-model",
 ]

@@ -11,6 +11,7 @@ const COMMANDS: &[&str] = &[
     "linear_list_tickets",
     "github_issue_state",
     "github_issue_detail",
+    "github_issue_comments",
 ];
 
 fn main() {

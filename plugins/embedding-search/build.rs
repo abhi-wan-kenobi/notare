@@ -3,6 +3,7 @@ const COMMANDS: &[&str] = &[
     "delete_session_chunks",
     "semantic_search",
     "embedding_index_status",
+    "download_embedding_model",
 ];
 
 fn main() {
