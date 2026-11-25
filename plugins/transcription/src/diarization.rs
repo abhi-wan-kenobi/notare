@@ -11,6 +11,13 @@ pub struct DiarWordInput {
     pub end_ms: u64,
 }
 
+/// A stretch of the recording, in milliseconds from the start of the audio file.
+#[derive(Debug, Clone, Copy, Deserialize, specta::Type)]
+pub struct AudioSpanMs {
+    pub start_ms: u64,
+    pub end_ms: u64,
+}
+
 /// The diarizer's per-word speaker assignment.
 #[derive(Debug, Clone, Serialize, specta::Type)]
 pub struct DiarWordSpeaker {
@@ -79,19 +86,34 @@ pub async fn run_diarization(
     .map_err(|e| e.to_string())?
 }
 
-/// Compute a speaker embedding for a short enrollment clip. The caller stores it
-/// as a voice profile (`voice_profiles` table) against a human. Uses the same
-/// bundled embedding model as diarization, so enrolled profiles are directly
-/// comparable to diarized speakers.
+/// Compute a speaker embedding for enrollment. The caller stores it as a voice
+/// profile (`voice_profiles` table) against a human. Uses the same bundled
+/// embedding model as diarization, so enrolled profiles are directly comparable
+/// to diarized speakers.
+///
+/// `spans` selects one speaker's turns inside a longer recording (a meeting);
+/// they are concatenated before embedding. An empty list embeds the whole file
+/// (a clip of just that person).
 #[tauri::command]
 #[specta::specta]
-pub async fn compute_voice_embedding(audio_path: String) -> Result<Vec<f32>, String> {
+pub async fn compute_voice_embedding(
+    audio_path: String,
+    spans: Vec<AudioSpanMs>,
+) -> Result<Vec<f32>, String> {
     tokio::task::spawn_blocking(move || {
         let mono = decode_to_mono_16k(&audio_path)?;
+        let sample = if spans.is_empty() {
+            mono
+        } else {
+            concat_spans(&mono, &spans)
+        };
+        if sample.is_empty() {
+            return Err("no audio in the requested spans".to_string());
+        }
         let mut index = hypr_diarization::VoiceProfileIndex::from_bundled().map_err(stringify)?;
         // Enroll under a throwaway id, then read the stored embedding back.
         index
-            .enroll("__probe__".to_string(), &mono)
+            .enroll("__probe__".to_string(), &sample)
             .map_err(stringify)?;
         index
             .profiles()
@@ -102,6 +124,25 @@ pub async fn compute_voice_embedding(audio_path: String) -> Result<Vec<f32>, Str
     })
     .await
     .map_err(|e| e.to_string())?
+}
+
+/// The 16 kHz sample range a millisecond span covers, clamped to the audio.
+/// `None` when the span is empty or lies past the end.
+fn sample_range(len: usize, start_ms: u64, end_ms: u64) -> Option<std::ops::Range<usize>> {
+    let to_sample = |ms: u64| {
+        usize::try_from(ms.saturating_mul(SAMPLE_RATE_HZ as u64) / 1000).unwrap_or(usize::MAX)
+    };
+    let start = to_sample(start_ms).min(len);
+    let end = to_sample(end_ms).min(len);
+    (start < end).then_some(start..end)
+}
+
+fn concat_spans(mono: &[f32], spans: &[AudioSpanMs]) -> Vec<f32> {
+    spans
+        .iter()
+        .filter_map(|span| sample_range(mono.len(), span.start_ms, span.end_ms))
+        .flat_map(|range| mono[range].iter().copied())
+        .collect()
 }
 
 fn diarize_and_align(
@@ -195,13 +236,11 @@ fn identify_speakers(
 
     let mut out = Vec::new();
     for (speaker_index, seg) in speakers {
-        let start = (seg.start_ms as usize) * SAMPLE_RATE_HZ / 1000;
-        let end = ((seg.end_ms as usize) * SAMPLE_RATE_HZ / 1000).min(mono.len());
-        if start >= end {
+        let Some(range) = sample_range(mono.len(), seg.start_ms, seg.end_ms) else {
             continue;
-        }
+        };
         if let Some(human_id) = index
-            .identify(&mono[start..end], MATCH_THRESHOLD)
+            .identify(&mono[range], MATCH_THRESHOLD)
             .map_err(stringify)?
         {
             out.push(SpeakerHuman {
@@ -223,4 +262,68 @@ fn decode_to_mono_16k(audio_path: &str) -> Result<Vec<f32>, String> {
 
 fn stringify<E: std::fmt::Display>(e: E) -> String {
     e.to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn ms(ms: u64) -> usize {
+        (ms as usize) * SAMPLE_RATE_HZ / 1000
+    }
+
+    #[test]
+    fn sample_range_clamps_to_the_audio() {
+        let len = ms(2_000);
+        assert_eq!(sample_range(len, 500, 1_000), Some(ms(500)..ms(1_000)));
+        assert_eq!(sample_range(len, 1_500, 9_000), Some(ms(1_500)..len));
+        assert_eq!(sample_range(len, 2_000, 3_000), None);
+        assert_eq!(sample_range(len, 1_000, 1_000), None);
+        assert_eq!(sample_range(len, 1_200, 800), None);
+        assert_eq!(sample_range(len, u64::MAX - 1, u64::MAX), None);
+    }
+
+    #[test]
+    fn concat_spans_keeps_only_the_requested_audio_in_order() {
+        // Each sample holds its own index, so the output shows exactly which
+        // samples were taken.
+        let mono: Vec<f32> = (0..ms(3_000)).map(|i| i as f32).collect();
+        let spans = [
+            AudioSpanMs {
+                start_ms: 2_000,
+                end_ms: 2_500,
+            },
+            AudioSpanMs {
+                start_ms: 100,
+                end_ms: 200,
+            },
+            AudioSpanMs {
+                start_ms: 2_900,
+                end_ms: 4_000,
+            },
+            AudioSpanMs {
+                start_ms: 5_000,
+                end_ms: 6_000,
+            },
+        ];
+
+        let out = concat_spans(&mono, &spans);
+
+        let expected: Vec<f32> = (ms(2_000)..ms(2_500))
+            .chain(ms(100)..ms(200))
+            .chain(ms(2_900)..ms(3_000))
+            .map(|i| i as f32)
+            .collect();
+        assert_eq!(out, expected);
+    }
+
+    #[test]
+    fn concat_spans_is_empty_when_no_span_overlaps_the_audio() {
+        let mono = vec![0.0_f32; ms(1_000)];
+        let spans = [AudioSpanMs {
+            start_ms: 1_000,
+            end_ms: 2_000,
+        }];
+        assert!(concat_spans(&mono, &spans).is_empty());
+    }
 }
