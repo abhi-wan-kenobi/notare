@@ -12,12 +12,20 @@ import { useSTTConnection } from "./useSTTConnection";
 
 import { useAuth } from "~/auth";
 import { useBillingAccess } from "~/auth/billing";
+import {
+  buildRecognizedSpeakerHints,
+  loadEnrolledVoiceProfiles,
+} from "~/contacts/voice-profiles";
 import { env } from "~/env";
 import {
   deleteProcessedAudioForRetention,
   normalizeAudioRetention,
 } from "~/services/audio-retention";
-import { useSession, useSessionParticipants } from "~/session/queries";
+import {
+  addSessionParticipant,
+  useSession,
+  useSessionParticipants,
+} from "~/session/queries";
 import { useAiProvider } from "~/settings/providers";
 import { useConfigValue } from "~/shared/config";
 import { id } from "~/shared/utils";
@@ -555,6 +563,10 @@ export const useRunBatch = (sessionId: string) => {
         shouldRunLocalDiarization(target.provider, target.model)
       ) {
         try {
+          const enrolled = await loadEnrolledVoiceProfiles().catch((error) => {
+            console.error("[runBatch] failed to load voice profiles", error);
+            return [];
+          });
           const diarized = await transcriptionCommands.runDiarization(
             filePath,
             // Only an EXPLICIT user-set count constrains diarization to exactly
@@ -566,17 +578,17 @@ export const useRunBatch = (sessionId: string) => {
             // options.numSpeakers); undefined falls back to auto-detect.
             fixedNumSpeakers ?? null,
             diarizationWords,
-            // Enrolled voice profiles for recognition — wired to the
-            // voice_profiles store + enrollment UX in P2.6 (#15). Empty for now
-            // means diarization-only ("Speaker N", no auto-naming).
-            [],
+            // Enrolled voices: diarized speakers that match one are named.
+            enrolled,
           );
-          if (
-            diarized.status === "ok" &&
-            diarized.data.word_speakers.length > 0
-          ) {
-            const speakerHints: SpeakerHintWithId[] =
-              diarized.data.word_speakers.map((r) => ({
+          if (diarized.status === "error") {
+            console.error(
+              "[runBatch] on-device diarization failed",
+              diarized.error,
+            );
+          } else if (diarized.data.word_speakers.length > 0) {
+            const speakerHints: SpeakerHintWithId[] = [
+              ...diarized.data.word_speakers.map((r) => ({
                 id: id(),
                 word_id: r.word_id,
                 type: "provider_speaker_index",
@@ -584,8 +596,24 @@ export const useRunBatch = (sessionId: string) => {
                   provider: target.provider,
                   speaker_index: r.speaker_index,
                 }),
-              }));
+              })),
+              ...buildRecognizedSpeakerHints(
+                diarized.data.word_speakers,
+                diarized.data.speaker_humans,
+              ),
+            ];
             await appendTranscriptWordsAndHints(transcriptId, [], speakerHints);
+
+            const participantIds = new Set(
+              participants.map((participant) => participant.humanId),
+            );
+            for (const humanId of new Set(
+              diarized.data.speaker_humans.map((match) => match.human_id),
+            )) {
+              if (!participantIds.has(humanId)) {
+                await addSessionParticipant(sessionId, humanId, "auto");
+              }
+            }
           }
         } catch (error) {
           console.error("[runBatch] on-device diarization failed", error);

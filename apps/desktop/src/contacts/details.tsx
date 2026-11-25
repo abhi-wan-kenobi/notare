@@ -1,4 +1,5 @@
 import { Trans, useLingui } from "@lingui/react/macro";
+import { open as selectFile } from "@tauri-apps/plugin-dialog";
 import {
   Building2,
   CircleMinus,
@@ -17,6 +18,7 @@ import {
   PopoverTrigger,
 } from "@hypr/ui/components/ui/popover";
 import { Textarea } from "@hypr/ui/components/ui/textarea";
+import { sonnerToast } from "@hypr/ui/components/ui/toast";
 import { cn } from "@hypr/utils";
 
 import {
@@ -28,6 +30,11 @@ import {
   useHumanSessions,
 } from "./queries";
 import { ContactFacehash, getContactBgClass } from "./shared";
+import {
+  enrollVoice,
+  forgetVoiceProfile,
+  useHumanVoiceProfile,
+} from "./voice-profiles";
 
 export function DetailsColumn({
   human,
@@ -209,6 +216,7 @@ export function DetailsColumn({
                 personId={human.id}
                 value={human.memo}
               />
+              <PersonVoiceField key={`${human.id}:voice`} personId={human.id} />
             </div>
 
             {personSessions.length > 0 && (
@@ -431,6 +439,96 @@ function EditablePersonMemoField({
           className="min-h-[80px] resize-none border-none px-0 py-2 text-base shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
           rows={3}
         />
+      </div>
+    </div>
+  );
+}
+
+function PersonVoiceField({ personId }: { personId: string }) {
+  const { t } = useLingui();
+  const profile = useHumanVoiceProfile(personId);
+  const [busy, setBusy] = useState(false);
+
+  const handleImport = useCallback(async () => {
+    const picked = await selectFile({
+      multiple: false,
+      directory: false,
+      filters: [
+        {
+          name: t`Audio`,
+          extensions: ["wav", "mp3", "m4a", "flac", "ogg"],
+        },
+      ],
+    });
+    if (!picked || Array.isArray(picked)) return;
+
+    setBusy(true);
+    try {
+      await enrollVoice({ humanId: personId, audioPath: picked, spans: [] });
+      sonnerToast.success(t`Voice saved.`);
+    } catch (error) {
+      console.error("[contacts] failed to learn voice from file", error);
+      sonnerToast.error(t`Couldn't learn a voice from that file.`);
+    } finally {
+      setBusy(false);
+    }
+  }, [personId, t]);
+
+  const handleForget = useCallback(async () => {
+    setBusy(true);
+    try {
+      await forgetVoiceProfile(personId);
+    } catch (error) {
+      console.error("[contacts] failed to forget voice", error);
+      sonnerToast.error(t`Couldn't forget this voice.`);
+    } finally {
+      setBusy(false);
+    }
+  }, [personId, t]);
+
+  return (
+    <div className="border-border flex border-b px-4 py-3">
+      <div className="text-muted-foreground w-28 pt-1.5 text-sm">
+        <Trans>Voice</Trans>
+      </div>
+      <div className="flex flex-1 flex-col gap-2">
+        <p className="text-muted-foreground pt-1.5 text-sm">
+          {profile ? (
+            <Trans>
+              Saved on this device. On-device transcription names this person
+              when it hears them.
+            </Trans>
+          ) : (
+            <Trans>
+              Not saved. Assign this person to a speaker in a transcript and
+              tick Remember voice, or import a recording of just them.
+            </Trans>
+          )}
+        </p>
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={busy}
+            onClick={() => void handleImport()}
+          >
+            {profile ? (
+              <Trans>Replace from recording</Trans>
+            ) : (
+              <Trans>Import recording</Trans>
+            )}
+          </Button>
+          {profile && (
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={busy}
+              onClick={() => void handleForget()}
+            >
+              <Trans>Forget voice</Trans>
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );
