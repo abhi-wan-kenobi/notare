@@ -1,5 +1,6 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
+import ts from "typescript";
 import { describe, expect, it } from "vitest";
 
 // Tauri denies any plugin command that no capability grants, and every caller
@@ -25,17 +26,47 @@ function walk(dir: string, accept: (path: string) => boolean): string[] {
   });
 }
 
+function parse(path: string): ts.SourceFile {
+  return ts.createSourceFile(
+    path,
+    readFileSync(path, "utf8"),
+    ts.ScriptTarget.Latest,
+    true,
+    path.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
+  );
+}
+
+function visit(node: ts.Node, fn: (node: ts.Node) => void) {
+  fn(node);
+  ts.forEachChild(node, (child) => visit(child, fn));
+}
+
 function capabilityGrants(): Set<string> {
   const dir = join(desktopRoot, "src-tauri/capabilities");
   const grants = new Set<string>();
   for (const file of readdirSync(dir).filter((f) => f.endsWith(".json"))) {
-    const capability = JSON.parse(readFileSync(join(dir, file), "utf8")) as {
-      permissions: Array<string | { identifier: string }>;
-    };
+    const capability: unknown = JSON.parse(
+      readFileSync(join(dir, file), "utf8"),
+    );
+    if (
+      !capability ||
+      typeof capability !== "object" ||
+      !("permissions" in capability) ||
+      !Array.isArray(capability.permissions)
+    ) {
+      continue;
+    }
     for (const permission of capability.permissions) {
-      grants.add(
-        typeof permission === "string" ? permission : permission.identifier,
-      );
+      if (typeof permission === "string") {
+        grants.add(permission);
+      } else if (
+        permission &&
+        typeof permission === "object" &&
+        "identifier" in permission &&
+        typeof permission.identifier === "string"
+      ) {
+        grants.add(permission.identifier);
+      }
     }
   }
   return grants;
@@ -49,6 +80,34 @@ type PluginAcl = {
   methods: Map<string, string>;
 };
 
+// Binding method name -> [plugin name, command], from every
+// `TAURI_INVOKE("plugin:<name>|<command>", ...)` and its enclosing method.
+function bindingMethods(path: string): Map<string, [string, string]> {
+  const methods = new Map<string, [string, string]>();
+  visit(parse(path), (node) => {
+    if (
+      !ts.isCallExpression(node) ||
+      !ts.isIdentifier(node.expression) ||
+      node.expression.text !== "TAURI_INVOKE"
+    ) {
+      return;
+    }
+    const target = node.arguments[0];
+    const invoke =
+      target && ts.isStringLiteralLike(target)
+        ? /^plugin:([\w-]+)\|(\w+)$/.exec(target.text)
+        : null;
+    let method: ts.Node | undefined = node.parent;
+    while (method && !ts.isMethodDeclaration(method)) {
+      method = method.parent;
+    }
+    if (invoke && method && ts.isIdentifier(method.name)) {
+      methods.set(method.name.text, [invoke[1], invoke[2]]);
+    }
+  });
+  return methods;
+}
+
 function loadPlugins(): Map<string, PluginAcl> {
   const plugins = new Map<string, PluginAcl>();
   for (const dir of readdirSync(pluginsRoot)) {
@@ -57,19 +116,12 @@ function loadPlugins(): Map<string, PluginAcl> {
     const packagePath = join(pluginDir, "package.json");
     if (!existsSync(bindingsPath) || !existsSync(packagePath)) continue;
 
-    const methods = new Map<string, string>();
-    let name: string | undefined;
-    // Generated bindings may be reformatted, so methods can be indented.
-    for (const chunk of readFileSync(bindingsPath, "utf8").split(
-      /\basync (?=\w+\s*\()/,
-    )) {
-      const method = /^(\w+)\s*\(/.exec(chunk)?.[1];
-      const invoke = /TAURI_INVOKE\("plugin:([\w-]+)\|(\w+)"/.exec(chunk);
-      if (!method || !invoke) continue;
-      name = invoke[1];
-      methods.set(method, invoke[2]);
-    }
+    const invokes = bindingMethods(bindingsPath);
+    const name = [...invokes.values()][0]?.[0];
     if (!name) continue;
+    const methods = new Map(
+      [...invokes].map(([method, [, command]]) => [method, command]),
+    );
 
     const permissionFiles = existsSync(join(pluginDir, "permissions"))
       ? walk(join(pluginDir, "permissions"), (p) => p.endsWith(".toml"))
@@ -107,104 +159,102 @@ function loadPlugins(): Map<string, PluginAcl> {
   return plugins;
 }
 
-type CommandsImport = {
-  file: string;
-  text: string;
-  plugin: PluginAcl;
-  local: string;
+type Scan = {
+  uses: Array<{ file: string; plugin: PluginAcl; command: string }>;
+  // Ways of reaching a plugin's commands that the scan cannot follow.
+  unscanned: string[];
 };
 
-function stripComments(text: string): string {
-  return text.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|\s)\/\/.*$/gm, "$1");
-}
-
-// Every `import { commands [as alias] } from "@hypr/plugin-*"` in the desktop
-// frontend, with comments stripped from the importing file.
-function commandsImports(plugins: Map<string, PluginAcl>): CommandsImport[] {
-  const imports: CommandsImport[] = [];
+// Walks every desktop source file: each `commands` import from a plugin
+// package, then every reference to its local name. `<local>.<method>` (a call
+// or a reference) is a use; any other reference would hide calls from the
+// scan, so it is reported.
+function scanDesktopSources(plugins: Map<string, PluginAcl>): Scan {
+  const scan: Scan = { uses: [], unscanned: [] };
   const sources = walk(
     join(desktopRoot, "src"),
     (p) => /\.tsx?$/.test(p) && !/\.test\.tsx?$/.test(p),
   );
   for (const path of sources) {
-    const text = stripComments(readFileSync(path, "utf8"));
-    for (const match of text.matchAll(
-      /import\s*(?:type\s*)?\{([^}]*)\}\s*from\s*"(@hypr\/plugin-[\w-]+)"/g,
-    )) {
-      const plugin = plugins.get(match[2]);
-      const alias = /(?:^|[\s,])commands(?:\s+as\s+(\w+))?\s*(?:,|$)/.exec(
-        match[1],
-      );
-      if (!plugin || !alias) continue;
-      imports.push({
-        file: path.slice(repoRoot.length + 1),
-        text:
-          text.slice(0, match.index) +
-          text.slice(match.index + match[0].length),
-        plugin,
-        local: alias[1] ?? "commands",
-      });
-    }
-  }
-  return imports;
-}
+    const file = path.slice(repoRoot.length + 1);
+    const source = parse(path);
+    const locals = new Map<string, PluginAcl>();
 
-// Every `<alias>.<method>` use (call or reference) of a plugin's commands.
-function calledCommands(imports: CommandsImport[]) {
-  return imports.flatMap(({ file, text, plugin, local }) =>
-    [...text.matchAll(new RegExp(`\\b${local}\\s*\\.\\s*(\\w+)`, "g"))].flatMap(
-      (use) => {
-        const command = plugin.methods.get(use[1]);
-        return command ? [{ file, plugin, command }] : [];
-      },
-    ),
-  );
+    for (const statement of source.statements) {
+      if (
+        !ts.isImportDeclaration(statement) ||
+        !ts.isStringLiteral(statement.moduleSpecifier)
+      ) {
+        continue;
+      }
+      const plugin = plugins.get(statement.moduleSpecifier.text);
+      const bindings = statement.importClause?.namedBindings;
+      if (!plugin || !bindings) continue;
+      if (ts.isNamespaceImport(bindings)) {
+        scan.unscanned.push(`${file}: namespace import of ${plugin.name}`);
+        continue;
+      }
+      for (const element of bindings.elements) {
+        if ((element.propertyName ?? element.name).text === "commands") {
+          locals.set(element.name.text, plugin);
+        }
+      }
+    }
+    if (locals.size === 0) continue;
+
+    visit(source, (node) => {
+      if (!ts.isIdentifier(node)) return;
+      const plugin = locals.get(node.text);
+      if (!plugin) return;
+      const parent = node.parent;
+      // Import specifiers, `x.commands` and `{ commands: … }` name the
+      // export or a property, not a use of the local alias.
+      if (
+        ts.isImportSpecifier(parent) ||
+        (ts.isPropertyAccessExpression(parent) && parent.name === node) ||
+        (ts.isPropertyAssignment(parent) && parent.name === node)
+      ) {
+        return;
+      }
+      if (ts.isPropertyAccessExpression(parent) && parent.expression === node) {
+        const command = plugin.methods.get(parent.name.text);
+        if (command) scan.uses.push({ file, plugin, command });
+        return;
+      }
+      scan.unscanned.push(
+        `${file}: \`${node.text}\` used other than as ${node.text}.<method>`,
+      );
+    });
+  }
+  return scan;
 }
 
 describe("plugin command ACL", () => {
   const grants = capabilityGrants();
   const plugins = loadPlugins();
-  const imports = commandsImports(plugins);
-  const calls = calledCommands(imports);
+  const { uses, unscanned } = scanDesktopSources(plugins);
 
   it("finds the frontend's plugin command calls", () => {
     // Guards the parser itself: an empty scan would pass vacuously.
-    expect(calls.length).toBeGreaterThan(50);
+    expect(uses.length).toBeGreaterThan(50);
     expect(
-      calls.some(
+      uses.some(
         (c) =>
           c.plugin.name === "transcription" && c.command === "run_diarization",
       ),
     ).toBe(true);
+    expect(
+      [...plugins.values()].find((p) => p.name === "settings")?.methods.size,
+    ).toBeGreaterThan(0);
   });
 
   it("only reaches plugin commands through `<alias>.<method>`", () => {
-    // The scan above sees nothing else: a namespace import, a destructured
-    // `commands`, or the object passed around would hide calls from it.
-    const unscanned: string[] = [];
-    const sources = walk(
-      join(desktopRoot, "src"),
-      (p) => /\.tsx?$/.test(p) && !/\.test\.tsx?$/.test(p),
-    );
-    for (const path of sources) {
-      const text = stripComments(readFileSync(path, "utf8"));
-      if (/import\s+\*\s+as\s+\w+\s+from\s+"@hypr\/plugin-/.test(text)) {
-        unscanned.push(`${path.slice(repoRoot.length + 1)}: namespace import`);
-      }
-    }
-    for (const { file, text, local } of imports) {
-      const bare = new RegExp(`\\b${local}\\b(?!\\s*\\.\\s*\\w)`);
-      if (bare.test(text)) {
-        unscanned.push(
-          `${file}: \`${local}\` used other than as ${local}.<method>`,
-        );
-      }
-    }
     expect(unscanned.sort()).toEqual([]);
   });
+
   it("grants every plugin command the desktop frontend calls", () => {
     const denied = new Set<string>();
-    for (const { file, plugin, command } of calls) {
+    for (const { file, plugin, command } of uses) {
       const permission = `allow-${command.replace(/_/g, "-")}`;
       const granted =
         grants.has(`${plugin.name}:${permission}`) ||
