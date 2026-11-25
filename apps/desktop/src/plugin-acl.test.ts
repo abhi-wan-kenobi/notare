@@ -115,15 +115,13 @@ function bindingInvokes(path: string) {
         ? /^plugin:([\w-]+)\|(\w+)$/.exec(target.text)
         : null;
     if (!invoke) return;
-    let fn: ts.Node | undefined = node.parent;
-    while (fn && !ts.isFunctionLike(fn)) {
-      fn = fn.parent;
+    // The outermost named function is the binding the frontend calls; an
+    // inner helper inside it must not take its place.
+    let method: string | undefined;
+    for (let fn: ts.Node | undefined = node.parent; fn; fn = fn.parent) {
+      if (ts.isFunctionLike(fn)) method = declaredName(fn) ?? method;
     }
-    invokes.push({
-      plugin: invoke[1],
-      command: invoke[2],
-      method: fn ? declaredName(fn) : undefined,
-    });
+    invokes.push({ plugin: invoke[1], command: invoke[2], method });
   });
   return invokes;
 }
@@ -252,7 +250,13 @@ function scanDesktopSources(plugins: Map<string, PluginAcl>): Scan {
       }
       if (ts.isPropertyAccessExpression(parent) && parent.expression === node) {
         const command = plugin.methods.get(parent.name.text);
-        if (command) scan.uses.push({ file, plugin, command });
+        if (command) {
+          scan.uses.push({ file, plugin, command });
+        } else {
+          scan.unscanned.push(
+            `${file}: ${node.text}.${parent.name.text} is not a ${plugin.name} binding`,
+          );
+        }
         return;
       }
       scan.unscanned.push(
