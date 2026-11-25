@@ -59,10 +59,11 @@ function loadPlugins(): Map<string, PluginAcl> {
 
     const methods = new Map<string, string>();
     let name: string | undefined;
+    // Generated bindings may be reformatted, so methods can be indented.
     for (const chunk of readFileSync(bindingsPath, "utf8").split(
-      /\n(?=async )/,
+      /\basync (?=\w+\s*\()/,
     )) {
-      const method = /^async (\w+)\(/.exec(chunk)?.[1];
+      const method = /^(\w+)\s*\(/.exec(chunk)?.[1];
       const invoke = /TAURI_INVOKE\("plugin:([\w-]+)\|(\w+)"/.exec(chunk);
       if (!method || !invoke) continue;
       name = invoke[1];
@@ -106,15 +107,27 @@ function loadPlugins(): Map<string, PluginAcl> {
   return plugins;
 }
 
-// Every `<alias>.<method>(` call on a plugin's `commands` export, per source file.
-function calledCommands(plugins: Map<string, PluginAcl>) {
-  const calls: Array<{ file: string; plugin: PluginAcl; command: string }> = [];
+type CommandsImport = {
+  file: string;
+  text: string;
+  plugin: PluginAcl;
+  local: string;
+};
+
+function stripComments(text: string): string {
+  return text.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|\s)\/\/.*$/gm, "$1");
+}
+
+// Every `import { commands [as alias] } from "@hypr/plugin-*"` in the desktop
+// frontend, with comments stripped from the importing file.
+function commandsImports(plugins: Map<string, PluginAcl>): CommandsImport[] {
+  const imports: CommandsImport[] = [];
   const sources = walk(
     join(desktopRoot, "src"),
     (p) => /\.tsx?$/.test(p) && !/\.test\.tsx?$/.test(p),
   );
-  for (const file of sources) {
-    const text = readFileSync(file, "utf8");
+  for (const path of sources) {
+    const text = stripComments(readFileSync(path, "utf8"));
     for (const match of text.matchAll(
       /import\s*(?:type\s*)?\{([^}]*)\}\s*from\s*"(@hypr\/plugin-[\w-]+)"/g,
     )) {
@@ -123,28 +136,36 @@ function calledCommands(plugins: Map<string, PluginAcl>) {
         match[1],
       );
       if (!plugin || !alias) continue;
-      const local = alias[1] ?? "commands";
-      for (const call of text.matchAll(
-        new RegExp(`\\b${local}\\s*\\.\\s*(\\w+)\\s*\\(`, "g"),
-      )) {
-        const command = plugin.methods.get(call[1]);
-        if (command) {
-          calls.push({
-            file: file.slice(repoRoot.length + 1),
-            plugin,
-            command,
-          });
-        }
-      }
+      imports.push({
+        file: path.slice(repoRoot.length + 1),
+        text:
+          text.slice(0, match.index) +
+          text.slice(match.index + match[0].length),
+        plugin,
+        local: alias[1] ?? "commands",
+      });
     }
   }
-  return calls;
+  return imports;
+}
+
+// Every `<alias>.<method>` use (call or reference) of a plugin's commands.
+function calledCommands(imports: CommandsImport[]) {
+  return imports.flatMap(({ file, text, plugin, local }) =>
+    [...text.matchAll(new RegExp(`\\b${local}\\s*\\.\\s*(\\w+)`, "g"))].flatMap(
+      (use) => {
+        const command = plugin.methods.get(use[1]);
+        return command ? [{ file, plugin, command }] : [];
+      },
+    ),
+  );
 }
 
 describe("plugin command ACL", () => {
   const grants = capabilityGrants();
   const plugins = loadPlugins();
-  const calls = calledCommands(plugins);
+  const imports = commandsImports(plugins);
+  const calls = calledCommands(imports);
 
   it("finds the frontend's plugin command calls", () => {
     // Guards the parser itself: an empty scan would pass vacuously.
@@ -157,6 +178,30 @@ describe("plugin command ACL", () => {
     ).toBe(true);
   });
 
+  it("only reaches plugin commands through `<alias>.<method>`", () => {
+    // The scan above sees nothing else: a namespace import, a destructured
+    // `commands`, or the object passed around would hide calls from it.
+    const unscanned: string[] = [];
+    const sources = walk(
+      join(desktopRoot, "src"),
+      (p) => /\.tsx?$/.test(p) && !/\.test\.tsx?$/.test(p),
+    );
+    for (const path of sources) {
+      const text = stripComments(readFileSync(path, "utf8"));
+      if (/import\s+\*\s+as\s+\w+\s+from\s+"@hypr\/plugin-/.test(text)) {
+        unscanned.push(`${path.slice(repoRoot.length + 1)}: namespace import`);
+      }
+    }
+    for (const { file, text, local } of imports) {
+      const bare = new RegExp(`\\b${local}\\b(?!\\s*\\.\\s*\\w)`);
+      if (bare.test(text)) {
+        unscanned.push(
+          `${file}: \`${local}\` used other than as ${local}.<method>`,
+        );
+      }
+    }
+    expect(unscanned.sort()).toEqual([]);
+  });
   it("grants every plugin command the desktop frontend calls", () => {
     const denied = new Set<string>();
     for (const { file, plugin, command } of calls) {
@@ -184,5 +229,20 @@ describe("plugin command ACL", () => {
       }
     }
     expect(undefinedPermissions.sort()).toEqual([]);
+  });
+
+  it("defines a permission for every command a plugin exposes", () => {
+    // A command in the bindings but not in build.rs has no permission, so no
+    // capability can ever grant it; the first frontend call would be denied.
+    const missing: string[] = [];
+    for (const plugin of plugins.values()) {
+      for (const command of plugin.methods.values()) {
+        const permission = `allow-${command.replace(/_/g, "-")}`;
+        if (!plugin.definedPermissions.has(permission)) {
+          missing.push(`${plugin.name}:${permission}`);
+        }
+      }
+    }
+    expect(missing.sort()).toEqual([]);
   });
 });
