@@ -233,7 +233,16 @@ impl VoxtralModel {
                 .map_err(|e| VoxtralError::Decode(e.to_string()))?;
         }
 
-        Ok(output.trim().to_string())
+        let text = output.trim();
+        let collapsed = crate::repetition::collapse_repetition_loops(text);
+        if collapsed.len() != text.len() {
+            tracing::warn!(
+                before_chars = text.len(),
+                after_chars = collapsed.len(),
+                "voxtral_repetition_loop_collapsed"
+            );
+        }
+        Ok(collapsed)
     }
 }
 

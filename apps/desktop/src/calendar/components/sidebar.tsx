@@ -1,9 +1,8 @@
 import { useLingui } from "@lingui/react/macro";
 import { platform } from "@tauri-apps/plugin-os";
-import { ChevronRight, EyeOffIcon, PlusIcon } from "lucide-react";
-import { useCallback, useMemo, type MouseEvent } from "react";
+import { ChevronRight, EyeOffIcon } from "lucide-react";
+import { useMemo } from "react";
 
-import type { ConnectionItem } from "@hypr/api-client";
 import {
   Accordion,
   AccordionContent,
@@ -17,20 +16,15 @@ import { AppleCalendarSelection } from "./apple/calendar-selection";
 import { AccessPermissionRow, TroubleShootingLink } from "./apple/permission";
 import { GoogleDirectContent } from "./google/content";
 import { IcsContent } from "./ics/content";
-import { OAuthProviderContent } from "./oauth/provider-content";
 import { OutlookDirectContent } from "./outlook/content";
 import { type CalendarProvider, PROVIDERS } from "./shared";
 
-import { useAuth } from "~/auth";
-import { useBillingAccess } from "~/auth/billing";
-import { useConnections } from "~/auth/useConnections";
 import {
   setCalendarProviderHidden,
   useHiddenCalendarProviders,
 } from "~/calendar/hidden-providers";
 import { useNativeContextMenu } from "~/shared/hooks/useNativeContextMenu";
 import { usePermission } from "~/shared/hooks/usePermissions";
-import { openIntegrationUrl } from "~/shared/integration";
 
 function getProviderBadgeClassName(badge: string) {
   if (badge === "Beta") {
@@ -38,50 +32,6 @@ function getProviderBadgeClassName(badge: string) {
   }
 
   return "rounded-full border border-border px-2 text-xs font-light text-muted-foreground";
-}
-
-function getDefaultOpenProviderIds(
-  providers: CalendarProvider[],
-  connections: ConnectionItem[] | undefined,
-) {
-  return providers
-    .filter(
-      (provider) =>
-        !provider.nangoIntegrationId ||
-        connections?.some(
-          (connection) =>
-            connection.integration_id === provider.nangoIntegrationId,
-        ),
-    )
-    .map((provider) => provider.id);
-}
-
-function getProviderConnectionCounts(
-  providers: CalendarProvider[],
-  connections: ConnectionItem[] | undefined,
-) {
-  return new Map(
-    providers
-      .filter((provider) => provider.nangoIntegrationId)
-      .map((provider) => [
-        provider.id,
-        connections?.filter(
-          (connection) =>
-            connection.integration_id === provider.nangoIntegrationId,
-        ).length ?? 0,
-      ]),
-  );
-}
-
-function getProviderAccordionKey(
-  providers: CalendarProvider[],
-  connectionCounts: Map<string, number>,
-) {
-  return providers
-    .map(
-      (provider) => `${provider.id}:${connectionCounts.get(provider.id) ?? -1}`,
-    )
-    .join("|");
 }
 
 function ProviderIcon({ provider }: { provider: CalendarProvider }) {
@@ -124,15 +74,9 @@ function HiddenProvidersRow({ providers }: { providers: CalendarProvider[] }) {
   );
 }
 
-export function CalendarSidebarContent({
-  returnTo = "calendar",
-}: {
-  returnTo?: string;
-}) {
+export function CalendarSidebarContent() {
   const isMacos = platform() === "macos";
   const calendar = usePermission("calendar");
-  const { isPaid } = useBillingAccess();
-  const { data: connections } = useConnections(isPaid);
 
   const hiddenProviderIds = useHiddenCalendarProviders();
   const platformProviders = useMemo(
@@ -150,25 +94,19 @@ export function CalendarSidebarContent({
     () => platformProviders.filter((p) => hiddenProviderIds.includes(p.id)),
     [hiddenProviderIds, platformProviders],
   );
-  const defaultOpenProviders = useMemo(
-    () => getDefaultOpenProviderIds(visibleProviders, connections),
-    [connections, visibleProviders],
-  );
-  const providerConnectionCounts = useMemo(
-    () => getProviderConnectionCounts(visibleProviders, connections),
-    [connections, visibleProviders],
-  );
-  const accordionKey = useMemo(
-    () => getProviderAccordionKey(visibleProviders, providerConnectionCounts),
-    [providerConnectionCounts, visibleProviders],
+  const visibleProviderIds = useMemo(
+    () => visibleProviders.map((provider) => provider.id),
+    [visibleProviders],
   );
 
   return (
     <>
       <Accordion
-        key={accordionKey}
+        // Remount when the visible set changes so every shown provider
+        // starts open, including one that was just unhidden.
+        key={visibleProviderIds.join("|")}
         type="multiple"
-        defaultValue={defaultOpenProviders}
+        defaultValue={visibleProviderIds}
       >
         {visibleProviders.map((provider) =>
           provider.disabled ? (
@@ -191,7 +129,6 @@ export function CalendarSidebarContent({
               key={provider.id}
               provider={provider}
               calendar={calendar}
-              returnTo={returnTo}
             />
           ),
         )}
@@ -206,135 +143,34 @@ export function CalendarSidebarContent({
 function ProviderAccordionItem({
   provider,
   calendar,
-  returnTo,
 }: {
   provider: CalendarProvider;
   calendar: ReturnType<typeof usePermission>;
-  returnTo: string;
 }) {
   const { t } = useLingui();
-  const auth = useAuth();
-  const { isPaid, isPro, upgradeToPro } = useBillingAccess();
-  const { data: connections, isPending, isError } = useConnections(isPaid);
-  const providerConnections =
-    connections?.filter(
-      (connection) => connection.integration_id === provider.nangoIntegrationId,
-    ) ?? [];
-
-  const requiresPro = !!provider.nangoIntegrationId && !isPro;
-
-  const canAddAccount =
-    !!provider.nangoIntegrationId &&
-    !!auth.session &&
-    isPaid &&
-    !isPending &&
-    !isError;
-  const shouldConnectOnClick =
-    canAddAccount && providerConnections.length === 0;
-
-  const handleTriggerClick = useCallback(
-    (event: MouseEvent<HTMLButtonElement>) => {
-      if (requiresPro) {
-        event.preventDefault();
-        return;
-      }
-      if (!shouldConnectOnClick) return;
-      event.preventDefault();
-      void openIntegrationUrl(
-        provider.nangoIntegrationId,
-        undefined,
-        "connect",
-        returnTo,
-      );
-    },
-    [provider.nangoIntegrationId, requiresPro, returnTo, shouldConnectOnClick],
-  );
-  const handleAddAccount = useCallback(
-    (event: MouseEvent<HTMLButtonElement>) => {
-      if (!canAddAccount) return;
-      event.preventDefault();
-      event.stopPropagation();
-      void openIntegrationUrl(
-        provider.nangoIntegrationId,
-        undefined,
-        "connect",
-        returnTo,
-      );
-    },
-    [canAddAccount, provider.nangoIntegrationId, returnTo],
-  );
-  const handleUpgradeToPro = useCallback(
-    (event: MouseEvent<HTMLButtonElement>) => {
-      event.preventDefault();
-      event.stopPropagation();
-      upgradeToPro();
-    },
-    [upgradeToPro],
-  );
   const providerMenuItems = useMemo(
     () => [
-      ...(canAddAccount
-        ? [
-            {
-              id: `add-${provider.id}-account`,
-              text: t`Add ${provider.displayName} account`,
-              action: () =>
-                void openIntegrationUrl(
-                  provider.nangoIntegrationId,
-                  undefined,
-                  "connect",
-                  returnTo,
-                ),
-            },
-          ]
-        : []),
       {
         id: `hide-${provider.id}`,
         text: t`Hide ${provider.displayName}`,
         action: () => setProviderHidden(provider.id, true),
       },
     ],
-    [
-      canAddAccount,
-      provider.displayName,
-      provider.id,
-      provider.nangoIntegrationId,
-      returnTo,
-      t,
-    ],
+    [provider.displayName, provider.id, t],
   );
   const showProviderMenu = useNativeContextMenu(providerMenuItems);
-  const hasAddAccountButton = canAddAccount && !requiresPro;
 
   return (
     <AccordionItem value={provider.id} className="group/provider border-none">
       <div
         onContextMenu={showProviderMenu}
-        className={cn([
-          "group/row hover:bg-accent relative -mx-2 grid items-center gap-1 rounded-full px-2",
-          requiresPro
-            ? "grid-cols-[minmax(0,1fr)_auto]"
-            : hasAddAccountButton
-              ? "grid-cols-[minmax(0,1fr)_auto_auto_auto]"
-              : "grid-cols-[minmax(0,1fr)_auto_auto]",
-        ])}
+        className="group/row hover:bg-accent relative -mx-2 grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-1 rounded-full px-2"
       >
-        <AccordionHeader
-          className={cn(["min-w-0", requiresPro && "opacity-60"])}
-        >
-          <AccordionTriggerPrimitive
-            className="flex w-full min-w-0 items-center py-3 text-left text-sm font-medium transition-all hover:no-underline"
-            onClick={handleTriggerClick}
-          >
+        <AccordionHeader className="min-w-0">
+          <AccordionTriggerPrimitive className="flex w-full min-w-0 items-center py-3 text-left text-sm font-medium transition-all hover:no-underline">
             <div className="flex min-w-0 items-center gap-2">
               <ProviderIcon provider={provider} />
-              <span
-                className={cn([
-                  "flex min-w-0 items-center gap-2 transition-opacity duration-150",
-                  requiresPro &&
-                    "group-focus-within/row:opacity-0 group-hover/row:opacity-0",
-                ])}
-              >
+              <span className="flex min-w-0 items-center gap-2">
                 <span className="truncate text-sm font-medium">
                   {provider.displayName}
                 </span>
@@ -348,90 +184,59 @@ function ProviderAccordionItem({
           </AccordionTriggerPrimitive>
         </AccordionHeader>
 
-        {requiresPro ? (
-          <button
-            type="button"
-            onClick={handleUpgradeToPro}
-            className="border-primary bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:ring-ring pointer-events-none absolute top-1/2 right-1 z-10 shrink-0 translate-x-1 -translate-y-1/2 rounded-full border-2 px-3 py-1 text-xs font-medium opacity-0 shadow-[0_4px_14px_rgba(87,83,78,0.18)] transition-all duration-150 group-focus-within/row:pointer-events-auto group-focus-within/row:translate-x-0 group-focus-within/row:opacity-100 group-hover/row:pointer-events-auto group-hover/row:translate-x-0 group-hover/row:opacity-100 focus-visible:ring-2 focus-visible:outline-none"
-            aria-label={t`Upgrade to Pro for ${provider.displayName}`}
-          >
-            {t`Upgrade to Pro`}
-          </button>
-        ) : hasAddAccountButton ? (
-          <button
-            type="button"
-            onClick={handleAddAccount}
-            className="text-muted-foreground hover:bg-accent hover:text-foreground shrink-0 rounded-full p-1 transition-colors"
-            aria-label={t`Add ${provider.displayName} account`}
-          >
-            <PlusIcon className="size-4" />
-          </button>
-        ) : null}
+        <button
+          type="button"
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            setProviderHidden(provider.id, true);
+          }}
+          className="text-muted-foreground hover:bg-accent hover:text-foreground shrink-0 rounded-full p-1 opacity-0 transition-all group-focus-within/row:opacity-100 group-hover/row:opacity-100"
+          aria-label={t`Hide ${provider.displayName}`}
+          title={t`Hide ${provider.displayName}`}
+        >
+          <EyeOffIcon className="size-4" />
+        </button>
 
-        {!requiresPro && (
-          <button
-            type="button"
-            onClick={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              setProviderHidden(provider.id, true);
-            }}
-            className="text-muted-foreground hover:bg-accent hover:text-foreground shrink-0 rounded-full p-1 opacity-0 transition-all group-focus-within/row:opacity-100 group-hover/row:opacity-100"
-            aria-label={t`Hide ${provider.displayName}`}
-            title={t`Hide ${provider.displayName}`}
-          >
-            <EyeOffIcon className="size-4" />
-          </button>
-        )}
-
-        {!requiresPro && (
-          <ChevronRight
-            className={cn([
-              "text-muted-foreground size-4 shrink-0 transition-transform duration-200",
-              "group-data-[state=open]/provider:rotate-90",
-            ])}
-          />
-        )}
+        <ChevronRight
+          className={cn([
+            "text-muted-foreground size-4 shrink-0 transition-transform duration-200",
+            "group-data-[state=open]/provider:rotate-90",
+          ])}
+        />
       </div>
-      {!requiresPro && (
-        <AccordionContent className="pb-3">
-          {provider.id === "apple" && (
-            <div className="flex flex-col gap-3">
-              {calendar.status !== "authorized" ? (
-                <AccessPermissionRow
-                  title={t`Calendar`}
-                  status={calendar.status}
-                  isPending={calendar.isPending}
-                  onOpen={calendar.open}
-                  onRequest={calendar.request}
-                  onReset={calendar.reset}
-                />
-              ) : (
-                <AppleCalendarSelection
-                  leftAction={
-                    <TroubleShootingLink
-                      isPending={calendar.isPending}
-                      onOpen={calendar.open}
-                      onRequest={calendar.request}
-                      onReset={calendar.reset}
-                    />
-                  }
-                />
-              )}
-            </div>
-          )}
-          {provider.id === "google" && (
-            <GoogleDirectContent config={provider} />
-          )}
-          {provider.id === "outlook" && (
-            <OutlookDirectContent config={provider} />
-          )}
-          {provider.ics && <IcsContent config={provider} />}
-          {provider.nangoIntegrationId && (
-            <OAuthProviderContent config={provider} returnTo={returnTo} />
-          )}
-        </AccordionContent>
-      )}
+      <AccordionContent className="pb-3">
+        {provider.id === "apple" && (
+          <div className="flex flex-col gap-3">
+            {calendar.status !== "authorized" ? (
+              <AccessPermissionRow
+                title={t`Calendar`}
+                status={calendar.status}
+                isPending={calendar.isPending}
+                onOpen={calendar.open}
+                onRequest={calendar.request}
+                onReset={calendar.reset}
+              />
+            ) : (
+              <AppleCalendarSelection
+                leftAction={
+                  <TroubleShootingLink
+                    isPending={calendar.isPending}
+                    onOpen={calendar.open}
+                    onRequest={calendar.request}
+                    onReset={calendar.reset}
+                  />
+                }
+              />
+            )}
+          </div>
+        )}
+        {provider.id === "google" && <GoogleDirectContent config={provider} />}
+        {provider.id === "outlook" && (
+          <OutlookDirectContent config={provider} />
+        )}
+        {provider.ics && <IcsContent config={provider} />}
+      </AccordionContent>
     </AccordionItem>
   );
 }

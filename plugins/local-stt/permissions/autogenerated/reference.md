@@ -17,6 +17,7 @@ Default permissions for the plugin
 - `allow-prewarm-stt`
 - `allow-list-supported-models`
 - `allow-list-supported-languages`
+- `allow-soniqo-model-dir`
 
 ## Permission Table
 
@@ -335,6 +336,32 @@ Enables the prewarm_stt command without any pre-configured scope.
 <td>
 
 Denies the prewarm_stt command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`local-stt:allow-soniqo-model-dir`
+
+</td>
+<td>
+
+Enables the soniqo_model_dir command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`local-stt:deny-soniqo-model-dir`
+
+</td>
+<td>
+
+Denies the soniqo_model_dir command without any pre-configured scope.
 
 </td>
 </tr>

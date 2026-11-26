@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-compute-voice-embedding"
+description = "Enables the compute_voice_embedding command without any pre-configured scope."
+commands.allow = ["compute_voice_embedding"]
+
+[[permission]]
+identifier = "deny-compute-voice-embedding"
+description = "Denies the compute_voice_embedding command without any pre-configured scope."
+commands.deny = ["compute_voice_embedding"]
