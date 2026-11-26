@@ -264,11 +264,6 @@ msgstr "Add"
 msgid "Add \"{0}\""
 msgstr "Add \"{0}\""
 
-#. placeholder {0}: provider.displayName
-#: src/calendar/components/sidebar.tsx
-msgid "Add {0} account"
-msgstr "Add {0} account"
-
 #: src/snippets/index.tsx
 msgid "Add {pairs} to your dictionary?"
 msgstr "Add {pairs} to your dictionary?"
@@ -3286,7 +3281,6 @@ msgstr "Recipes"
 msgid "Recognized text is typed straight into the focused app while you talk."
 msgstr "Recognized text is typed straight into the focused app while you talk."
 
-#: src/calendar/components/oauth/status.tsx
 #: src/settings/todo/provider-content.tsx
 msgid "Reconnect required"
 msgstr "Reconnect required"
@@ -4522,15 +4516,6 @@ msgstr "Upgrade for private repos."
 #: src/settings/todo/provider-content.tsx
 msgid "Upgrade to connect"
 msgstr "Upgrade to connect"
-
-#: src/calendar/components/sidebar.tsx
-msgid "Upgrade to Pro"
-msgstr "Upgrade to Pro"
-
-#. placeholder {0}: provider.displayName
-#: src/calendar/components/sidebar.tsx
-msgid "Upgrade to Pro for {0}"
-msgstr "Upgrade to Pro for {0}"
 
 #: src/settings/ai/llm/select.tsx
 #: src/settings/ai/stt/select.tsx

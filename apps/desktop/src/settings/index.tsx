@@ -163,7 +163,7 @@ function SettingsView({ tab }: { tab: Extract<Tab, { type: "settings" }> }) {
                   data-section="calendar"
                 >
                   <SyncProvider>
-                    <CalendarSidebarContent returnTo="settings" />
+                    <CalendarSidebarContent />
                   </SyncProvider>
                 </SettingsSection>
                 <SettingsSection
