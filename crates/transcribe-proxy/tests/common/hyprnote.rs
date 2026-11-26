@@ -3,7 +3,6 @@ use std::time::Duration;
 
 use bytes::Bytes;
 use futures_util::StreamExt;
-use owhisper_client::hypr_ws_client;
 use owhisper_client::{
     BatchClient, BatchSttAdapter, DeepgramAdapter, HyprnoteAdapter, ListenClient,
 };
@@ -30,10 +29,6 @@ pub struct TranscriptEvent {
 pub struct ClientStreamResult {
     pub responses: Vec<StreamResponse>,
     pub terminal_error: Option<String>,
-}
-
-fn is_mock_trailing_disconnect(error: &hypr_ws_client::Error) -> bool {
-    format!("{error:?}").contains("ResetWithoutClosingHandshake")
 }
 
 impl TranscriptEvent {
@@ -169,9 +164,6 @@ pub async fn collect_streaming_via_client_result(
         match next {
             Some(Ok(response)) => responses.push(response),
             Some(Err(error)) => {
-                if !responses.is_empty() && is_mock_trailing_disconnect(&error) {
-                    break;
-                }
                 return ClientStreamResult {
                     responses,
                     terminal_error: Some(format!("display: {error}; debug: {error:?}")),

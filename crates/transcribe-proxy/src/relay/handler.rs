@@ -23,6 +23,22 @@ use super::types::{
     convert, is_control_message,
 };
 
+/// Upper bound on waiting for a client's Close reply; RFC 6455 leaves it to
+/// the endpoint, and a misbehaving client must not hold the relay open.
+const CLIENT_CLOSE_HANDSHAKE_TIMEOUT: Duration = Duration::from_secs(5);
+
+/// Upper bound on waiting for an upstream whose send side already failed to
+/// finish closing, before the session is aborted.
+const UPSTREAM_CLOSE_TIMEOUT: Duration = Duration::from_secs(5);
+
+const NORMAL_CLOSE_CODE: u16 = 1000;
+
+enum DataOutcome {
+    Continue,
+    Stop,
+    UpstreamSendFailed,
+}
+
 #[derive(Clone)]
 pub struct WebSocketProxy {
     upstream_request: ClientRequestBuilder,
@@ -214,7 +230,7 @@ impl WebSocketProxy {
         control_types: &Option<ControlMessageTypes>,
         shutdown_tx: &tokio::sync::broadcast::Sender<ShutdownSignal>,
         upstream_sender: &mut UpstreamSender,
-    ) -> bool {
+    ) -> DataOutcome {
         let is_control = control_types
             .as_ref()
             .is_some_and(|types| is_control_message(&data, types));
@@ -232,7 +248,7 @@ impl WebSocketProxy {
                 code: DEFAULT_CLOSE_CODE,
                 reason: reason.to_string(),
             });
-            return true;
+            return DataOutcome::Stop;
         }
 
         if let Err(e) = pending.flush_to(upstream_sender).await {
@@ -243,7 +259,7 @@ impl WebSocketProxy {
                         error = ?e,
                         "pending_flush_failed"
                     );
-                    let _ = shutdown_tx.send(ShutdownSignal::Abort);
+                    return DataOutcome::UpstreamSendFailed;
                 }
                 FlushError::InvalidUtf8 => {
                     tracing::error!(
@@ -257,10 +273,10 @@ impl WebSocketProxy {
                     });
                 }
             }
-            return true;
+            return DataOutcome::Stop;
         }
 
-        false
+        DataOutcome::Continue
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -297,6 +313,7 @@ impl WebSocketProxy {
                     if let Ok(signal) = result
                         && let ShutdownSignal::Close { code, reason } = signal {
                             let _ = upstream_sender.send(convert::to_tungstenite_close(code, reason)).await;
+                            Self::drain_client_until_close(&mut client_receiver).await;
                         }
                     break;
                 }
@@ -345,8 +362,13 @@ impl WebSocketProxy {
 
                             let data = text_str.into_bytes();
 
-                            if Self::process_data_message(&mut pending, data, true, &control_types, &shutdown_tx, &mut upstream_sender).await {
-                                break;
+                            match Self::process_data_message(&mut pending, data, true, &control_types, &shutdown_tx, &mut upstream_sender).await {
+                                DataOutcome::Continue => {}
+                                DataOutcome::Stop => break,
+                                DataOutcome::UpstreamSendFailed => {
+                                    Self::await_upstream_shutdown(&mut shutdown_rx, &shutdown_tx, &mut client_receiver).await;
+                                    break;
+                                }
                             }
                         }
                         Message::Binary(bytes) => {
@@ -369,8 +391,13 @@ impl WebSocketProxy {
                                 ClientBinaryMessage::Binary(data) => (data, false),
                             };
 
-                            if Self::process_data_message(&mut pending, data, is_text, &control_types, &shutdown_tx, &mut upstream_sender).await {
-                                break;
+                            match Self::process_data_message(&mut pending, data, is_text, &control_types, &shutdown_tx, &mut upstream_sender).await {
+                                DataOutcome::Continue => {}
+                                DataOutcome::Stop => break,
+                                DataOutcome::UpstreamSendFailed => {
+                                    Self::await_upstream_shutdown(&mut shutdown_rx, &shutdown_tx, &mut client_receiver).await;
+                                    break;
+                                }
                             }
                         }
                         Message::Ping(data) => {
@@ -405,6 +432,53 @@ impl WebSocketProxy {
         }
     }
 
+    /// Tasks only receive shutdown signals sent by the *other* task, so the
+    /// upstream side must send its own Close to the client. It is always a
+    /// normal close: a provider error has already reached the client in-band,
+    /// and clients treat any other close code as a second, terminal error.
+    async fn close_client(client_sender: &mut ClientSender, signal: &ShutdownSignal) {
+        if let ShutdownSignal::Close { reason, .. } = signal {
+            let _ = client_sender
+                .send(convert::to_axum_close(NORMAL_CLOSE_CODE, reason.clone()))
+                .await;
+        }
+    }
+
+    /// A failed upstream send means the upstream is closing, but it may still
+    /// have undelivered messages (typically the provider's error) in flight.
+    /// Let the upstream reader forward them and decide how the session ends;
+    /// aborting here would race it and drop them.
+    async fn await_upstream_shutdown(
+        shutdown_rx: &mut tokio::sync::broadcast::Receiver<ShutdownSignal>,
+        shutdown_tx: &tokio::sync::broadcast::Sender<ShutdownSignal>,
+        client_receiver: &mut ClientReceiver,
+    ) {
+        match tokio::time::timeout(UPSTREAM_CLOSE_TIMEOUT, shutdown_rx.recv()).await {
+            Ok(Ok(ShutdownSignal::Close { .. })) => {
+                Self::drain_client_until_close(client_receiver).await;
+            }
+            Ok(_) => {}
+            Err(_) => {
+                let _ = shutdown_tx.send(ShutdownSignal::Abort);
+            }
+        }
+    }
+
+    /// Complete the closing handshake after the proxy sent Close: read (and
+    /// discard) whatever the client still sends until its Close reply.
+    /// Dropping the socket with unread client data makes the kernel send a
+    /// TCP RST, which can destroy the Close frame before the client reads it.
+    async fn drain_client_until_close(client_receiver: &mut ClientReceiver) {
+        let _ = tokio::time::timeout(CLIENT_CLOSE_HANDSHAKE_TIMEOUT, async {
+            while let Some(Ok(msg)) = client_receiver.next().await {
+                if matches!(msg, Message::Close(_)) {
+                    break;
+                }
+            }
+        })
+        .await;
+    }
+
     async fn run_upstream_to_client(
         mut upstream_receiver: UpstreamReceiver,
         mut client_sender: ClientSender,
@@ -432,6 +506,7 @@ impl WebSocketProxy {
                             .take()
                             .map(|(code, reason)| ShutdownSignal::Close { code, reason })
                             .unwrap_or(ShutdownSignal::Abort);
+                        Self::close_client(&mut client_sender, &signal).await;
                         let _ = shutdown_tx.send(signal);
                         break;
                     };
@@ -449,6 +524,7 @@ impl WebSocketProxy {
                                 .take()
                                 .map(|(code, reason)| ShutdownSignal::Close { code, reason })
                                 .unwrap_or(ShutdownSignal::Abort);
+                            Self::close_client(&mut client_sender, &signal).await;
                             let _ = shutdown_tx.send(signal);
                             break;
                         }
@@ -540,6 +616,7 @@ impl WebSocketProxy {
                                 );
                             }
 
+                            Self::close_client(&mut client_sender, &signal).await;
                             let _ = shutdown_tx.send(signal);
                             break;
                         }

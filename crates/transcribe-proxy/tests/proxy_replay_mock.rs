@@ -65,18 +65,9 @@ fn assert_any_message_contains(messages: &[String], needles: &[&str], context: &
 }
 
 fn assert_close_code(close_info: CloseInfo, expected: u16, context: &str) {
-    if let Some((code, _reason)) = close_info {
-        assert_eq!(code, expected, "{context}");
-    }
-}
-
-fn assert_close_code_in(close_info: CloseInfo, expected: &[u16], context: &str) {
-    if let Some((code, _reason)) = close_info {
-        assert!(
-            expected.contains(&code),
-            "{context}, got {code}, expected one of {expected:?}"
-        );
-    }
+    let (code, _reason) =
+        close_info.unwrap_or_else(|| panic!("{context}: no close frame received"));
+    assert_eq!(code, expected, "{context}");
 }
 
 #[tokio::test]
@@ -120,10 +111,12 @@ async fn test_deepgram_auth_error_replay() {
         &["INVALID_AUTH", "Invalid credentials"],
         "expected auth error message",
     );
-    assert_close_code_in(
+    // The error is delivered in-band above; the proxy then closes normally so
+    // clients do not surface a second, terminal error.
+    assert_close_code(
         result.close_info,
-        &[4401, 1008],
-        "expected close code 4401 or 1008",
+        1000,
+        "expected normal close after in-band error",
     );
 }
 
@@ -144,10 +137,12 @@ async fn test_deepgram_rate_limit_replay() {
         &["TOO_MANY_REQUESTS", "Too many requests"],
         "expected rate limit error message",
     );
-    assert_close_code_in(
+    // The error is delivered in-band above; the proxy then closes normally so
+    // clients do not surface a second, terminal error.
+    assert_close_code(
         result.close_info,
-        &[4429, 1008],
-        "expected close code 4429 or 1008",
+        1000,
+        "expected normal close after in-band error",
     );
 }
 
@@ -188,10 +183,12 @@ async fn test_soniox_error_replay() {
         &["error_code", "Cannot continue request"],
         "expected error message",
     );
-    assert_close_code_in(
+    // The error is delivered in-band above; the proxy then closes normally so
+    // clients do not surface a second, terminal error.
+    assert_close_code(
         result.close_info,
-        &[4500, 1011],
-        "expected close code 4500 or 1011",
+        1000,
+        "expected normal close after in-band error",
     );
 }
 
