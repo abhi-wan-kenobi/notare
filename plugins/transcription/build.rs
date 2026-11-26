@@ -19,6 +19,9 @@ const COMMANDS: &[&str] = &[
     "is_supported_languages_batch",
     "suggest_providers_for_languages_batch",
     "list_documented_language_codes_batch",
+    "update_capture_config",
+    "run_diarization",
+    "compute_voice_embedding",
 ];
 
 fn main() {

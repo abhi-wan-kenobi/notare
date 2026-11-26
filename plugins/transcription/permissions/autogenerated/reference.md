@@ -24,6 +24,9 @@ Default permissions for the plugin
 - `allow-is-supported-languages-batch`
 - `allow-suggest-providers-for-languages-batch`
 - `allow-list-documented-language-codes-batch`
+- `allow-update-capture-config`
+- `allow-run-diarization`
+- `allow-compute-voice-embedding`
 
 ## Permission Table
 
@@ -33,6 +36,32 @@ Default permissions for the plugin
 <th>Description</th>
 </tr>
 
+
+<tr>
+<td>
+
+`transcription:allow-compute-voice-embedding`
+
+</td>
+<td>
+
+Enables the compute_voice_embedding command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`transcription:deny-compute-voice-embedding`
+
+</td>
+<td>
+
+Denies the compute_voice_embedding command without any pre-configured scope.
+
+</td>
+</tr>
 
 <tr>
 <td>
@@ -375,6 +404,32 @@ Denies the run_denoise command without any pre-configured scope.
 <tr>
 <td>
 
+`transcription:allow-run-diarization`
+
+</td>
+<td>
+
+Enables the run_diarization command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`transcription:deny-run-diarization`
+
+</td>
+<td>
+
+Denies the run_diarization command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
 `transcription:allow-set-mic-muted`
 
 </td>
@@ -550,6 +605,32 @@ Enables the suggest_providers_for_languages_live command without any pre-configu
 <td>
 
 Denies the suggest_providers_for_languages_live command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`transcription:allow-update-capture-config`
+
+</td>
+<td>
+
+Enables the update_capture_config command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`transcription:deny-update-capture-config`
+
+</td>
+<td>
+
+Denies the update_capture_config command without any pre-configured scope.
 
 </td>
 </tr>

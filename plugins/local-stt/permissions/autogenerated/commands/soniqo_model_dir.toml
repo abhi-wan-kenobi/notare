@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-soniqo-model-dir"
+description = "Enables the soniqo_model_dir command without any pre-configured scope."
+commands.allow = ["soniqo_model_dir"]
+
+[[permission]]
+identifier = "deny-soniqo-model-dir"
+description = "Denies the soniqo_model_dir command without any pre-configured scope."
+commands.deny = ["soniqo_model_dir"]

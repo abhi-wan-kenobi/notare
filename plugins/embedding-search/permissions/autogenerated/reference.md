@@ -8,6 +8,7 @@ Default permissions for the plugin
 - `allow-delete-session-chunks`
 - `allow-semantic-search`
 - `allow-embedding-index-status`
+- `allow-download-embedding-model`
 
 ## Permission Table
 
@@ -40,6 +41,32 @@ Enables the delete_session_chunks command without any pre-configured scope.
 <td>
 
 Denies the delete_session_chunks command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`embedding-search:allow-download-embedding-model`
+
+</td>
+<td>
+
+Enables the download_embedding_model command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`embedding-search:deny-download-embedding-model`
+
+</td>
+<td>
+
+Denies the download_embedding_model command without any pre-configured scope.
 
 </td>
 </tr>

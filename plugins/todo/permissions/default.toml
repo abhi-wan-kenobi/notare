@@ -13,4 +13,5 @@ permissions = [
     "allow-linear-list-tickets",
     "allow-github-issue-state",
     "allow-github-issue-detail",
+    "allow-github-issue-comments",
 ]
