@@ -1,4 +1,5 @@
 mod model;
+mod repetition;
 
 pub use model::{MMPROJ_FILE, TranscribeTarget, VoxtralError, VoxtralModel, WEIGHT_FILE};
 
