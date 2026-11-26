@@ -35,7 +35,7 @@
     "prosemirror-inputrules": "^1.5.1",
     "prosemirror-keymap": "^1.2.3",
     "prosemirror-markdown": "^1.13.4",
-    "prosemirror-model": "^1.25.4",
+    "prosemirror-model": "^1.25.13",
     "prosemirror-schema-list": "^1.5.1",
     "prosemirror-search": "^1.1.0",
     "prosemirror-state": "^1.4.4",
@@ -51,7 +51,7 @@
     "@types/react-dom": "^19.2.3",
     "jsdom": "^26.1.0",
     "typescript": "~5.8.3",
-    "vitest": "^4.1.11"
+    "vitest": "^4.1.12"
   },
   "peerDependencies": {
     "react": "^19.2.3",
