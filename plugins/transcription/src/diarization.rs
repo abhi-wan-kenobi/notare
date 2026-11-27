@@ -141,12 +141,14 @@ fn concat_spans(mono: &[f32], spans: &[AudioSpanMs]) -> Vec<f32> {
 /// Below this much audio the speaker embedding is too noisy to recognize
 /// anyone by; the caller is told instead of getting a weak profile.
 const MIN_ENROLLMENT_SAMPLES: usize = 3 * SAMPLE_RATE_HZ;
+const MAX_ENROLLMENT_SAMPLES: usize = 60 * SAMPLE_RATE_HZ;
 
 /// The audio to embed for enrollment: the requested spans (or the whole file
-/// when none are given), refused when shorter than [`MIN_ENROLLMENT_SAMPLES`]
-/// (for example spans that lie past the end of the recording).
+/// when none are given), capped at [`MAX_ENROLLMENT_SAMPLES`] and refused when
+/// shorter than [`MIN_ENROLLMENT_SAMPLES`] (for example spans that lie past the
+/// end of the recording).
 fn enrollment_sample(mono: Vec<f32>, spans: &[AudioSpanMs]) -> Result<Vec<f32>, String> {
-    let sample = if spans.is_empty() {
+    let mut sample = if spans.is_empty() {
         mono
     } else {
         concat_spans(&mono, spans)
@@ -158,6 +160,7 @@ fn enrollment_sample(mono: Vec<f32>, spans: &[AudioSpanMs]) -> Result<Vec<f32>, 
             sample.len() as f32 / SAMPLE_RATE_HZ as f32,
         ));
     }
+    sample.truncate(MAX_ENROLLMENT_SAMPLES);
     Ok(sample)
 }
 
@@ -375,5 +378,14 @@ mod tests {
         let mono = vec![0.5_f32; ms(4_000)];
         assert_eq!(enrollment_sample(mono.clone(), &[]).unwrap(), mono);
         assert!(enrollment_sample(vec![0.5_f32; ms(2_000)], &[]).is_err());
+    }
+
+    #[test]
+    fn enrollment_sample_caps_imported_clips_at_one_minute() {
+        let mono: Vec<f32> = (0..ms(75_000)).map(|sample| sample as f32).collect();
+        let sample = enrollment_sample(mono, &[]).unwrap();
+
+        assert_eq!(sample.len(), ms(60_000));
+        assert_eq!(sample.last(), Some(&((ms(60_000) - 1) as f32)));
     }
 }
