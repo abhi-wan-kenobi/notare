@@ -475,6 +475,7 @@ msgstr ""
 msgid "Attendees"
 msgstr ""
 
+#: src/contacts/details.tsx
 #: src/settings/general/permissions.tsx
 msgid "Audio"
 msgstr ""
@@ -1026,8 +1027,16 @@ msgstr ""
 msgid "Couldn't download {name}"
 msgstr ""
 
+#: src/contacts/details.tsx
+msgid "Couldn't forget this voice."
+msgstr ""
+
 #: src/snippets/index.tsx
 msgid "Couldn't insert text"
+msgstr ""
+
+#: src/contacts/details.tsx
+msgid "Couldn't learn a voice from that file."
 msgstr ""
 
 #: src/snippets/index.tsx
@@ -1060,6 +1069,14 @@ msgstr ""
 #: src/main/home/index.tsx
 #: src/main/series/index.tsx
 msgid "Couldn't prepare the meeting note. Try again."
+msgstr ""
+
+#: src/session/components/note-input/transcript/renderer/speaker-assign.tsx
+msgid "Couldn't remember this voice: the recording was not found."
+msgstr ""
+
+#: src/session/components/note-input/transcript/renderer/speaker-assign.tsx
+msgid "Couldn't remember this voice."
 msgstr ""
 
 #. placeholder {0}: saveMutation.error.message
@@ -1759,6 +1776,10 @@ msgstr ""
 msgid "Forever"
 msgstr ""
 
+#: src/contacts/details.tsx
+msgid "Forget voice"
+msgstr ""
+
 #: src/templates/template-icon-picker.tsx
 msgid "Frequently used"
 msgstr ""
@@ -2020,6 +2041,10 @@ msgstr ""
 
 #: src/settings/personalization/dictionary-settings.tsx
 msgid "Import finished: {addedCount} added, {updatedCount} updated."
+msgstr ""
+
+#: src/contacts/details.tsx
+msgid "Import recording"
 msgstr ""
 
 #: src/settings/personalization/dictionary-settings.tsx
@@ -2748,8 +2773,16 @@ msgstr ""
 msgid "Not connected"
 msgstr ""
 
+#: src/session/components/note-input/transcript/renderer/speaker-assign.tsx
+msgid "Not enough speech from this speaker to remember their voice. Try \"Apply to all\", or a longer segment."
+msgstr ""
+
 #: src/settings/ai/stt/select.tsx
 msgid "Not installed"
+msgstr ""
+
+#: src/contacts/details.tsx
+msgid "Not saved. Assign this person to a speaker in a transcript and tick Remember voice, or import a recording of just them."
 msgstr ""
 
 #: src/settings/dictation/shortcut-recorder.tsx
@@ -3362,6 +3395,10 @@ msgstr ""
 msgid "Related Notes"
 msgstr ""
 
+#: src/session/components/note-input/transcript/renderer/speaker-assign.tsx
+msgid "Remember voice"
+msgstr ""
+
 #: src/settings/todo/provider-content.tsx
 msgid "Reminders"
 msgstr ""
@@ -3416,6 +3453,10 @@ msgstr ""
 
 #: src/session/components/note-input/search/bar.tsx
 msgid "Replace all"
+msgstr ""
+
+#: src/contacts/details.tsx
+msgid "Replace from recording"
 msgstr ""
 
 #: src/settings/todo/github.tsx
@@ -3563,6 +3604,10 @@ msgstr ""
 
 #: src/settings/ai/shared/index.tsx
 msgid "Saved"
+msgstr ""
+
+#: src/contacts/details.tsx
+msgid "Saved on this device. On-device transcription names this person when it hears them."
 msgstr ""
 
 #: src/settings/ai/shared/index.tsx
@@ -4590,6 +4635,18 @@ msgstr ""
 
 #: src/contacts/organization-details.tsx
 msgid "View LinkedIn profile"
+msgstr ""
+
+#: src/contacts/details.tsx
+msgid "Voice"
+msgstr ""
+
+#: src/session/components/note-input/transcript/renderer/speaker-assign.tsx
+msgid "Voice remembered. On-device transcription will now recognize this person."
+msgstr ""
+
+#: src/contacts/details.tsx
+msgid "Voice saved."
 msgstr ""
 
 #. placeholder {0}: selectedTarget.provider === "google" ? "Google" : "Outlook"
