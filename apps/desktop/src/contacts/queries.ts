@@ -1,3 +1,5 @@
+import { VOICE_EMBEDDING_MODEL } from "./voice-profiles";
+
 import { executeTransaction, liveQueryClient, useLiveQuery } from "~/db";
 import { enqueueDatabaseWrite } from "~/db/write-queue";
 import { humanIdForEmail, organizationIdForName } from "~/shared/ids";
@@ -409,7 +411,10 @@ export function updateOrganization(
 }
 
 export function deleteHuman(humanId: string): Promise<void> {
-  return softDeleteContact("humans", humanId);
+  // A voice profile is biometric data; it goes with the person.
+  return softDeleteContact("humans", humanId, [
+    { sql: `DELETE FROM voice_profiles WHERE human_id = ?`, params: [humanId] },
+  ]);
 }
 
 export function deleteOrganization(organizationId: string): Promise<void> {
@@ -547,6 +552,31 @@ export function mergeHumans(
         `,
         params: [now, now, duplicateId],
       },
+      // Keep the primary's own usable voice profile; otherwise inherit the
+      // duplicate's. Whatever is left on the duplicate is deleted below.
+      {
+        sql: `
+          UPDATE voice_profiles
+          SET human_id = ?, updated_at = ?
+          WHERE human_id = ? AND deleted_at IS NULL AND model = ?
+            AND NOT EXISTS (
+              SELECT 1 FROM voice_profiles
+              WHERE human_id = ? AND deleted_at IS NULL AND model = ?
+            )
+        `,
+        params: [
+          primaryId,
+          now,
+          duplicateId,
+          VOICE_EMBEDDING_MODEL,
+          primaryId,
+          VOICE_EMBEDDING_MODEL,
+        ],
+      },
+      {
+        sql: `DELETE FROM voice_profiles WHERE human_id = ?`,
+        params: [duplicateId],
+      },
     ]);
   });
 }
@@ -671,6 +701,7 @@ function mapOrganizationRow(row: OrganizationSqlRow): OrganizationRecord {
 function softDeleteContact(
   table: "humans" | "organizations",
   contactId: string,
+  alsoRun: Array<{ sql: string; params: unknown[] }> = [],
 ): Promise<void> {
   return enqueueDatabaseWrite(`${table}:${contactId}`, async () => {
     const now = new Date().toISOString();
@@ -683,6 +714,7 @@ function softDeleteContact(
         `,
         params: [now, now, contactId],
       },
+      ...alsoRun,
     ]);
   });
 }

@@ -309,7 +309,7 @@ describe("contact SQLite queries", () => {
     await mergeHumans("human-primary", "human-duplicate");
 
     const statements = mocks.executeTransaction.mock.calls[0][0];
-    expect(statements).toHaveLength(4);
+    expect(statements).toHaveLength(6);
     expect(statements[0].sql).toContain("UPDATE session_participants");
     expect(statements[1].params).toContain("human-primary");
     expect(statements[2].params).toContain("Engineer, Founder");
@@ -318,6 +318,14 @@ describe("contact SQLite queries", () => {
     expect(statements[3].params[statements[3].params.length - 1]).toBe(
       "human-duplicate",
     );
+    // The duplicate's voice profile moves only when the primary has none,
+    // and none is left behind on the tombstoned contact.
+    expect(statements[4].sql).toContain("UPDATE voice_profiles");
+    expect(statements[4].sql).toContain("NOT EXISTS");
+    expect(statements[4].params[0]).toBe("human-primary");
+    expect(statements[4].params[2]).toBe("human-duplicate");
+    expect(statements[5].sql).toContain("DELETE FROM voice_profiles");
+    expect(statements[5].params).toEqual(["human-duplicate"]);
   });
 
   it("creates an organization and updates the human atomically", async () => {

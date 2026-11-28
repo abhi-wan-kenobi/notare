@@ -129,14 +129,18 @@ async runDiarization(audioPath: string, numSpeakers: number | null, words: DiarW
 }
 },
 /**
- * Compute a speaker embedding for a short enrollment clip. The caller stores it
- * as a voice profile (`voice_profiles` table) against a human. Uses the same
- * bundled embedding model as diarization, so enrolled profiles are directly
- * comparable to diarized speakers.
+ * Compute a speaker embedding for enrollment. The caller stores it as a voice
+ * profile (`voice_profiles` table) against a human. Uses the same bundled
+ * embedding model as diarization, so enrolled profiles are directly comparable
+ * to diarized speakers.
+ * 
+ * `spans` selects one speaker's turns inside a longer recording (a meeting);
+ * they are concatenated before embedding. An empty list embeds the whole file
+ * (a clip of just that person).
  */
-async computeVoiceEmbedding(audioPath: string) : Promise<Result<number[], string>> {
+async computeVoiceEmbedding(audioPath: string, spans: AudioSpanMs[]) : Promise<Result<number[], string>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("plugin:transcription|compute_voice_embedding", { audioPath }) };
+    return { status: "ok", data: await TAURI_INVOKE("plugin:transcription|compute_voice_embedding", { audioPath, spans }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -231,6 +235,10 @@ transcriptionEvent: "plugin:transcription:transcription-event"
 
 /** user-defined types **/
 
+/**
+ * A stretch of the recording, in milliseconds from the start of the audio file.
+ */
+export type AudioSpanMs = { start_ms: number; end_ms: number }
 export type BatchAlternatives = { transcript: string; confidence: number; words?: BatchWord[] }
 export type BatchChannel = { alternatives: BatchAlternatives[] }
 export type BatchErrorCode = "unknown" | "timed_out" | "audio_metadata_join_failed" | "audio_metadata_read_failed" | "batch_capability_unsupported" | "direct_batch_unsupported" | "progressive_batch_unsupported" | "direct_request_failed" | "progressive_actor_spawn_failed" | "progressive_start_cancelled" | "progressive_stopped_without_completion_signal" | "progressive_finished_without_status" | "progressive_start_failed" | "progressive_stream_error" | "progressive_stream_timeout"
